@@ -16,7 +16,7 @@ import { useTruncatedName } from './useTruncatedName';
 /**
  * The trigger of a context switcher (the current Specification, the workspace being read): a quiet
  * label; the current name on one line (identifier-like names cut in the middle, prose at the end)
- * or wrapped in full for a Specification title, with an optional trailing status that never
+ * or wrapped to three lines for a Specification title, with an optional trailing status that never
  * truncates; one detail line of the kind's segments
  * joined by " · " (the first segment comes first so it is the last to truncate); the up-down glyph.
  * The full name is offered in a tooltip on hover and
@@ -45,7 +45,7 @@ export function ContextSwitcherTrigger({
   note?: string;
   /** The current context has not settled yet: a neutral placeholder instead of the name. */
   loading?: boolean;
-  /** Wrap a prose title in full instead of shortening a one-line identity. */
+  /** Give a prose title up to three lines. The picker option displays the full title. */
   wrapName?: boolean;
 } & Omit<ComponentPropsWithRef<'button'>, 'children' | 'name' | 'className' | 'title'>) {
   const fitted = useTruncatedName(name);
@@ -115,7 +115,7 @@ export function ContextSwitcherTrigger({
                     variant="title-sm"
                     className={cn(
                       'block min-w-0 flex-1 text-content-primary',
-                      wrapName ? 'whitespace-normal wrap-anywhere' : 'truncate',
+                      wrapName ? 'line-clamp-3 whitespace-normal wrap-anywhere' : 'truncate',
                     )}
                     data-context-switcher-name={wrapName ? 'wrap' : fitted.mode}
                   >

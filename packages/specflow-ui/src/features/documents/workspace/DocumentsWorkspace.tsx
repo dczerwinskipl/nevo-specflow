@@ -118,6 +118,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
 
   const [demoNotice, setDemoNotice] = useState(false);
   const treeController = useRef<DocumentTreeController>(null);
+  const treeHeadingRef = useRef<HTMLHeadingElement>(null);
   // Stable: the callbacks read the controller only when the user acts.
   const [treeActions] = useState<DocumentsTreeActions>(() => ({
     assignType: (id) => treeController.current?.assignType(id),
@@ -205,6 +206,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
         requestRef={requestRef}
         commitRef={commitRef}
         takeDiscardedRef={takeDiscardedRef}
+        fallbackFocusRef={treeHeadingRef}
       />
       <AppWorkspace
         scroll="content"
@@ -241,6 +243,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
           })}
         >
           <DocumentsTreePanel
+            headingRef={treeHeadingRef}
             specId={specId}
             documentId={documentId}
             controllerRef={treeController}

@@ -90,7 +90,8 @@ of a Full Task's Back), Documents, then Changes and Repository when Git is avail
 (`productNavigationModel.ts`).
 Full Task is not a sidebar list page.
 
-The Specification switcher wraps the current title. Switching retains the Current or Archive
+The Specification switcher wraps the current title to three lines. The expanded picker shows the
+full title. Switching retains the Current or Archive
 collection and the Tasks, Documents or Sessions area when browsing that Specification. It opens
 the destination area without carrying the previous Specification's filters or item selection.
 Other routes open the destination Overview. Pending document edits use the existing leave guard.

@@ -18,6 +18,7 @@ export function DocumentRouteGuard({
   requestRef,
   commitRef,
   takeDiscardedRef,
+  fallbackFocusRef,
 }: {
   specId: string;
   /** Asks to leave the unsaved documents (tree operations, closing every tab); false = keep editing. */
@@ -33,6 +34,7 @@ export function DocumentRouteGuard({
    * guard itself never removes them.
    */
   takeDiscardedRef?: RefObject<(() => string[]) | null>;
+  fallbackFocusRef?: RefObject<HTMLHeadingElement | null>;
 }) {
   const store = useDocumentDraftStore();
   const ops = useDocumentSaveOwner();
@@ -46,6 +48,7 @@ export function DocumentRouteGuard({
   // Documents the user chose to discard, removed once the departure has really happened.
   const discarded = useRef<string[]>([]);
   const promptOpener = useRef<HTMLElement | null>(null);
+  const promptDisclosure = useRef<HTMLButtonElement | null>(null);
   const stayed = useRef(false);
   const mounted = useRef(false);
   const [open, setOpen] = useState(false);
@@ -60,6 +63,13 @@ export function DocumentRouteGuard({
           discarded.current = [];
           const active = document.activeElement;
           promptOpener.current = active instanceof HTMLElement ? active : null;
+          // A popover option can disappear when the modal takes over. Keep its disclosure button.
+          const panelId = active?.closest('[role="dialog"][id]')?.id;
+          promptDisclosure.current = panelId
+            ? document.querySelector<HTMLButtonElement>(
+                `button[aria-controls="${CSS.escape(panelId)}"]`,
+              )
+            : null;
         }
 
         waiting.current.push(resolve);
@@ -209,12 +219,22 @@ export function DocumentRouteGuard({
         // A contextual switcher may have closed while the confirmation was open.
         event.preventDefault();
         const opener = promptOpener.current;
-        if (opener?.isConnected) {
+        if (opener?.isConnected && opener !== document.body) {
           opener.focus({ preventScroll: true });
+          if (document.activeElement === opener) {
+            return;
+          }
         }
 
-        if (document.activeElement !== opener) {
-          editor?.focusContent();
+        const previousFocus = document.activeElement;
+        editor?.focusContent();
+        if (document.activeElement !== previousFocus) {
+          return;
+        }
+
+        promptDisclosure.current?.focus({ preventScroll: true });
+        if (document.activeElement === previousFocus) {
+          fallbackFocusRef?.current?.focus({ preventScroll: true });
         }
       }}
       onContinue={() => finish(false)}

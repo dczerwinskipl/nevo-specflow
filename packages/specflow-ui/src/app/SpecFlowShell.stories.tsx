@@ -134,7 +134,7 @@ export function RoutedApplication({
           ...(navigationScenario === 'long'
             ? {
                 title:
-                  'Very long specification identity describing orchestration across independently continuing agent sessions and repository boundaries',
+                  'Very long specification identity describing orchestration across independently continuing agent sessions, document updates, review handovers, workspace transitions and repository boundaries',
                 intro: undefined,
               }
             : {}),
@@ -830,9 +830,9 @@ export const NavigationLongNames: Story = {
   args: { path: '/specs/admission?collection=current', navigationScenario: 'long' },
   tags: ['integration'],
   play: async ({ canvas }) => {
-    // The navigation trigger displays the full title even before the picker is opened.
+    // The accessible name keeps the complete title when the visible label is clamped.
     const trigger = await canvas.findByRole('button', {
-      name: /Current specification Very long specification identity/,
+      name: /Current specification Very long specification identity.*repository boundaries/,
     });
     const name = trigger.querySelector<HTMLElement>('[data-context-switcher-name="wrap"]');
     await waitFor(() => {
@@ -842,8 +842,43 @@ export const NavigationLongNames: Story = {
 
       const lineHeight = Number.parseFloat(getComputedStyle(name).lineHeight);
 
-      return name.clientHeight > lineHeight ? name : null;
-    }, 'Long title must wrap without horizontal clipping');
+      return name.clientHeight > lineHeight &&
+        name.clientHeight <= 3 * lineHeight + 1 &&
+        name.scrollHeight > name.clientHeight
+        ? name
+        : null;
+    }, 'Long title must use at most three lines and clip only vertically');
+  },
+};
+export const NavigationLongNamesNarrow: Story = {
+  args: NavigationLongNames.args,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  tags: ['integration'],
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Open navigation' }));
+    const doc = canvasElement.ownerDocument;
+    const trigger = await waitFor(
+      () =>
+        doc.querySelector<HTMLButtonElement>(
+          '.drawer-panel[data-state="open"] button:has([data-context-switcher-name="wrap"])',
+        ),
+      'The Specification switcher must be available in the drawer',
+    );
+    const name = trigger.querySelector<HTMLElement>('[data-context-switcher-name="wrap"]')!;
+    const lineHeight = Number.parseFloat(getComputedStyle(name).lineHeight);
+    if (name.clientHeight > 3 * lineHeight + 1 || name.scrollHeight <= name.clientHeight) {
+      throw new Error('The drawer title must fit in three visible lines');
+    }
+
+    await userEvent.click(trigger);
+    await waitFor(
+      () =>
+        Array.from(doc.querySelectorAll('[role="option"][aria-selected="true"]')).find((option) =>
+          option.textContent?.includes('repository boundaries'),
+        ),
+      'The selected option must retain the full title',
+    );
+    await userEvent.keyboard('{Escape}{Escape}');
   },
 };
 export const NavigationIdentity: Story = {

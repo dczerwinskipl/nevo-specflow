@@ -21,22 +21,13 @@ related:
 
 ## Shared behavior
 
-These rules apply consistently wherever the same document or archetype is presented. Surface-specific behavior belongs to [Documents tree](documents-tree.md), [Create archetypes](create-archetypes.md) and [Editor mode](documents-editor-mode.md).
+This document owns **cross-screen transitions, the state matrix and accessibility**. It does not repeat the complete UI contracts:
 
-- **Type identity:** A file row uses one icon slot. A recognized `documentTypes[].icon` takes precedence over the format icon; otherwise the format icon remains. Type identity is still available through the row's accessible name, tooltip, menu, document header and opened-tab metadata. Tabs retain the file name, not `DocumentContent.title`.
-- **Unclassified and missing files:** Unclassified files remain in their folders, with **Assign type** first in the menu. Dangling registry entries remain in the tree with **File missing** and can be unregistered.
-- **Required documents and blockers:** Close-refusing issues appear above unmet **Expected documents**, each with **Add**. Completed requirements and nonblocking summaries do not occupy this region.
-- **Document actions:** **New document** selects a type and editable file name; **Assign type** uses the same type chooser without the file name or untyped choice. The selected archetype can suggest types.
-- **Create:** Archetypes appear as a radio list with `useWhen`; selected instructions are disclosed on demand and optional document templates use preselected checkboxes.
-- **Read-only:** The document header explains why editing is unavailable. The tree shows any Specification-wide reason once.
+- [Documents tree](documents-tree.md) owns type icons, unclassified/dangling entries, requirements, blockers and the New/Assign/Remove dialogs.
+- [Create archetypes](create-archetypes.md) owns archetype selection, instructions and template checkboxes.
+- [Editor mode](documents-editor-mode.md) owns read-only, Save/refusal states, drafts, tab identity, binary previews and Download actions.
 
-### Save state across screens
-
-- **Saving:** Save is the primary action; while saving it reads `Saving…` and is unavailable. The editor stays editable, the dirty marker clears only after acknowledgement, and a refusal preserves the draft.
-
-### Non-text document states
-
-- **Non-text files:** Images and binary documents open in tabs, with an image viewer or file information and **Download**. They never enter Edit or Save.
+Across all surfaces, one `ActionReason` determines the same read-only explanation. A successful Save is the only event that clears the editor's dirty marker; refusal retains its draft.
 
 ## Cross-screen transitions
 

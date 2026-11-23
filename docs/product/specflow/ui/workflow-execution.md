@@ -492,6 +492,12 @@ proposes a result); decisions that need a person stay with the person. Then, in 
   its feedback) and an info note with what Confirm applies ("Confirming approves the 5 draft tasks
   (t-01 to t-05) and moves to <next>", **See Tasks**). Actions **Confirm** (main), **Reject**. The
   rest of the Overview agrees: Tasks counts the same drafts, Sessions lists the agent's Session.
+- Under it, the commit of the agent's work (made when it finished, the same note the next step
+  shows): committed ("Its work is committed on <branch>. Commit <short id> holds N files."), still
+  running ("SpecFlow is committing its work…", the block reads again until it settles), or failed
+  (why in plain words, the files that stay uncommitted, "Confirm becomes possible once the agent's
+  work is committed" and **Retry commit** inside the note). While it runs or failed, **Confirm** is
+  disabled; a Confirm refused for it reads the block again instead of showing an error.
 - **Reject** opens "Reject the agent's result": the step goes back to ready to start with the
   owner's feedback as its hand-off (owner decision 2026-11-20); the proposal is not applied; the drafts
   and documents it wrote stay. A required **What should change** field ("The next attempt reads it

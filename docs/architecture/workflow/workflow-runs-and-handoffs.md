@@ -45,7 +45,7 @@ Readiness, Task facts and statuses are derived from these, never stored.
 
 - **Pin.** A run is pinned to `{id, version, revision}`, where `revision` is the sha256 of the canonical
   JSON of the compiled definition (annotations included). If the loaded definition differs, the run fails with `WORKFLOW_DEFINITION_CHANGED`.
-  Re-pinning is a follow-up (plan 06, F07).
+  Re-pinning is not supported.
 - **Handoff.** The step context carries what the previous attempt handed over: its transition, result,
   feedback and artifacts, or the owner's feedback after a return.
 
@@ -60,7 +60,7 @@ Readiness, Task facts and statuses are derived from these, never stored.
   A record file is also bounded to 256 KiB (see [workflow storage budgets](workflow-storage-and-recovery.md#state-and-storage)). Known limit: a
   history that grows over that byte budget is refused only when the change is serialized
   (`WORKFLOW_INPUT_INVALID`, nothing is stored); no operation checks it earlier, and bounding the run
-  history is a follow-up (plan 06, F19).
+  history is not automatically compacted.
 
 ## Returns ("back to the table")
 

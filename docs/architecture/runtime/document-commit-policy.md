@@ -9,7 +9,7 @@ read_when:
   - changing git.commits.auto.documents, manual commit or the uncommitted ledger
   - reviewing workflow state commits and Close flush behavior
 summary: >-
-    Engine commit policy, manual commit selection, uncommitted ledger and workflow execution store commit boundaries.
+  Engine commit policy, manual commit selection, uncommitted ledger and workflow execution store commit boundaries.
 related:
   - architecture.runtime.specification-documents
   - architecture.runtime.document-write-and-commit-queue

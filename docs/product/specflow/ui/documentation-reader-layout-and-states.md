@@ -33,7 +33,6 @@ Wide / Compact                                   Narrow
 [tree | results          ][  from 840 px panel) ]  [tree | results        ]   [ Related       ]
 ```
 
-
 ### Tree and search pane
 
 - **Tree pane:** workspace picker (more than one workspace), the sticky search field (the shared tree pane search bar and geometry of Documents, see [Tree pane](../../../design-system/implementation/react/component-guidelines.md#tree-pane) and [Sticky field and the software keyboard](documentation-reader-search.md#sticky-field-and-the-software-keyboard)), then the tree or the results.
@@ -173,7 +172,6 @@ Integration readiness: **ready** — the shared workspace list (`GET /api/worksp
   [API reference](../../../reference/api/workspace-docs.md)).
 
 ## Design-system dependencies
-
 
 ### Markdown rendering
 

@@ -9,7 +9,7 @@ read_when:
   - changing Task authoring, status, preparation, dependency or escalations
   - reviewing Task completion and Specification Task-set settlement
 summary: >-
-  Task index and manifests, creation, manual editing, start blockers, escalations and completion requirements.
+    Task index and manifests, creation, manual editing, start blockers, escalations and completion requirements.
 related:
   - architecture.workflow.workflow-kernel
   - architecture.workflow.workflow-runs-and-handoffs

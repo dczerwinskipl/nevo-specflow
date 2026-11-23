@@ -125,6 +125,5 @@ Schemas: `RenameSessionSchema`, `ArchiveSessionSchema` (archive and unarchive) a
 - **Detached unknown write:** unsettled Engine evidence after invocation detach returns `409 SESSION_DELETE_BLOCKED` (`details.turnId`), with the Turn visible as `activeTurn`.
 - **After deletion:** SSE closes without more data; reads/streams and repeated Delete return `404 SESSION_NOT_FOUND`. Specification/Task reads hide references; clients may treat `404` after their own Delete as completion. No tombstone.
 
-
 - Archive and unarchive leave the association untouched. An archived Session stays associated; it
   is excluded from the workspace Sessions section and from the default list (`archived=exclude`).

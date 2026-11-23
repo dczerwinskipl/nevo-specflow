@@ -25,7 +25,6 @@ Governing decision: [ADR 0016](../decisions/0016-engine-owned-document-commits.m
 failure classification live there). Exact contract: the reference. Push and publishing are not
 part of this layer. Admission bounds are in the [document limits table](document-limits.md).
 
-
 ### Write admission and durable publication
 
 **Write path (every state-changing operation).**
@@ -55,7 +54,6 @@ part of this layer. Admission bounds are in the [document limits table](document
    (records `parentHead`), computes the **effective path set**, re-checks the guard and per-path states, makes one
    path-limited commit, verifies it and completes the members.
 
-
 ### Commit-state reads
 
 - **Reads of the commit state.** The tree, the workspace `documents` section, the status of one operation and the rows of the document operation list read the active journals and batch records of the Project Home and nothing else: no control lock, no Git process, no write, bounded by the listing cap of the journal directory.
@@ -65,7 +63,6 @@ part of this layer. Admission bounds are in the [document limits table](document
 - A `reserved` or `files-writing` operation whose writer is provably gone (same host and PID namespace, or another boot) is reported as needing recovery; an unprovable one stays pending.
 - The read side sits in `documents/reads` and imports neither the writer nor the mutating modules of the queue (import boundary).
 
-
 ### Batch consolidation
 
 **Consolidation rule.** A commit batch is all non-terminal `queued` operations of **one Specification** in one
@@ -73,7 +70,6 @@ checkout, in `sequence` order, up to the caps; its commit is the final on-disk s
 Different Specifications are different commits. A batch of only saves waits for the settle period (300 ms, 250–500
 configurable) bounded by the maximum hold (5 s); any structural operation makes it eligible at once. A barrier
 operation (`reserved`/`files-writing`) delays claiming a batch that overlaps it.
-
 
 ### Claim and lease
 
@@ -86,7 +82,6 @@ operation (`reserved`/`files-writing`) delays claiming a batch that overlaps it.
 - The batch record is the commit point of every attempt and the member journals follow it, each function idempotent, so the process that takes over from a stopped executor (the dead proof, or an operator assertion) resumes a `committing` batch, completes the members of a `committed` one from the record without Git, and finds an unrecorded commit by its `Nevo-Operation` trailer instead of committing twice.
 - A record is never created under the id of a record that is not finished; a split after a failure forms two new batches with disjoint members, never two under one id.
 
-
 ### Batch commit messages
 
 - **Message of a batch commit.** The subject says what the batch did, worded from the plans of its members and restricted to what the commit holds: `spec(documents): update notes.md in <slug>`, `update 3 documents in <slug>`, `add …`, `rename <old> to <new> in <slug>`, `move …`, `delete … from <slug>` (`delete folder <name> from <slug>` for a folder, also an empty one), `classify <path> as <type> in <slug>`, and `change N documents in <slug>` when the members did different things.
@@ -94,7 +89,6 @@ operation (`reserved`/`files-writing`) delays claiming a batch that overlaps it.
 - The body lists one line per change with the full names (at most 20 lines and 1500 characters, then `… and N more`), for a coalesced batch the number of operations, and `Specification: <slug>` when the subject could not name it; it is cleaned like the body of a manual commit.
 - A member whose plan cannot be read is worded from its action and the committed paths.
 - The trailers (ADR 0016 decision 3) are unchanged; the wording is not configurable.
-
 
 ### Failures, retry and abandon
 
@@ -110,7 +104,6 @@ operation (`reserved`/`files-writing`) delays claiming a batch that overlaps it.
 - The Engine functions `retryDocumentCommit`, `abandonDocumentCommit`, and `recoverDocumentOperation` (`resume`, `adopt`, `abandon`) are the actions behind `retry`, `abandon` and `recover`; `abandon` keeps the files and ends every operation of the batch `completed` as `uncommitted` (reason `abandoned`): each member's paths are upserted into the ledger first and the operation completes in the same control-lock section, so its claim is released and its journal settles; a later commit that holds the paths, a manual commit or a hand commit removes the ledger entries (there is no marker stage and no `resolve`).
 - The operator assertion that an executor whose lease cannot be proven dead has stopped is `QueueOptions.confirmExecutorStopped` of `runQueueOnce` / `drainQueue`.
 
-
 ### Failure classification
 
 - **Classification summary and ownership rules.** Permanent (a person decides): a detached HEAD, a changed branch, a repository without commits, an ignored path, an unreadable index (`index-unreadable`), a protected or not-allowed branch, a foreign edit (`content-changed`), an invalid Git policy.
@@ -120,7 +113,6 @@ operation (`reserved`/`files-writing`) delays claiming a batch that overlaps it.
 - The durable batch record decides the fate of its members: the Git-disabled and workspace gates leave a `queued` member of a `formed` or `committing` batch to the batch, and `abandon` of a waiting operation is refused while it belongs to such a batch.
 - Working content is read with `lstat` and a size-checked descriptor (raw limit): a symbolic link, a special file or an over-limit file is never hashed or committed, and Git path facts treat a working symbolic link and a committed mode `120000` entry as non-blob states.
 - The write preflight cache signature covers `HEAD`, the index lock, merge, cherry-pick, revert, rebase and sequencer state, the root `.gitignore`, the common `info/exclude` and `config` and the Project Home configuration.
-
 
 ### Post-failure guarantees
 
@@ -135,13 +127,11 @@ operation (`reserved`/`files-writing`) delays claiming a batch that overlaps it.
 - `recover --resume` on a batch that was only partly committed by hand is `recovery-unresolved`: the exits are `abandon`, or finishing the commit by hand and then `adopt`.
 - A save on another branch than a failed batch holds waits as `queued` without a `waitMs` (the sweep of the scheduler covers it); it is not marked as blocked.
 
-
 ### Commit-state projection
 
 **Commit states** (`pending`, `committed`, `failed`, `uncommitted`, `not-applicable`) are derived from the journals.
 `failed` keeps the files; `retry`, `abandon`, `flush` or the next overlapping save resolve it; `recovery-required` is
 resolved by the operator command. `abandon`, like auto-commit off, ends `uncommitted`: the paths are in the ledger (ADR 0018).
-
 
 ### Durable queue storage
 
@@ -153,7 +143,6 @@ resolved by the operator command. `abandon`, like auto-commit off, ends `uncommi
 **Interaction with other operations.** Create and other path-limited commits are unaffected. Another checkout has its
 own queue, branch and HEAD. Git deadlines: read 10 s, mutation 30 s plus 3 s grace, batch attempt 150 s; children are
 killed as a process group (tree on Windows).
-
 
 ### Scheduler
 
@@ -191,7 +180,6 @@ Runtime after its listener is up; the one-shot CLI commands start none and drain
 then calls `stop({ flush: true, deadlineMs: 10 s })`; SIGTERM and SIGINT reach it through the `start` command. A CLI
 command that writes documents calls `flushAllDocumentCommits(engine, { deadlineMs })` before it exits.
 
-
 ### Close admission and queue
 
 **Close and the document queue.** `reserveCloseOperation` (and so every Close use case) does this at
@@ -216,7 +204,6 @@ no document journal explains). A Close that was reserved earlier is read back wi
 integration destination requests `checkout:<destination>` and conflicts with the document claims of that checkout like a
 Close does (`CREATE_CONFLICT`). A Git-disabled project queues nothing, so the flush returns without asking Git.
 
-
 ### Operator takeover
 
 **Operator takeover.** The control lock is never stolen by age, PID or timeout. `takeOverDocumentQueue`
@@ -230,7 +217,6 @@ cannot prove the holder dead (Windows, macOS, containers without procfs). It nee
 2. rolls interrupted writes forward with `confirmWriterStopped`;
 3. drains every checkout with queue work, flushing, with `confirmExecutorStopped`: a lease or `committing` batch whose
    executor cannot be proven dead is taken over, a live one is reported `busy` and left alone.
-
 
 ### Foreign edits and revision conflict
 

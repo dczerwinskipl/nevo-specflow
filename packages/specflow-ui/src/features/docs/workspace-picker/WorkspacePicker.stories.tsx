@@ -279,6 +279,7 @@ function SpecificationTrigger({ name, displayKey }: SpecificationCase) {
       <ContextSwitcherTrigger
         label={t('applicationNavigation.currentSpecification')}
         name={name}
+        wrapName
         segments={displayKey ? [displayKey] : []}
       />
     </div>
@@ -333,9 +334,11 @@ const boardPlay: Story['play'] = async ({ canvasElement }) => {
     [...canvasElement.querySelectorAll<HTMLElement>(`${selector} button`)].map(
       (button) => button.getBoundingClientRect().height,
     );
-  // 72 px with a detail line, 56 px without one (the Specification without a key).
   await waitFor(() => expect(heights('[data-board-case="workspace"]')).toEqual(Array(6).fill(72)));
-  await expect(heights('[data-board-case="specification"]')).toEqual([72, 56, 72]);
+  const [withKey, withoutKey, longName] = heights('[data-board-case="specification"]');
+  await expect(withKey).toBeGreaterThanOrEqual(72);
+  await expect(withoutKey).toBeGreaterThanOrEqual(56);
+  await expect(longName).toBeGreaterThan(72);
 };
 
 /** The Specification switcher and the workspace picker side by side, in English. */

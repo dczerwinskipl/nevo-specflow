@@ -49,6 +49,7 @@ export function DocumentsTreePanel({
   specId,
   documentId,
   controllerRef,
+  headingRef,
   operations,
   requestRef,
   takeDiscardedRef,
@@ -58,6 +59,7 @@ export function DocumentsTreePanel({
   /** The open document, shown as selected. */
   documentId?: string;
   controllerRef: RefObject<DocumentTreeController | null>;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   operations: DocumentTreeOperations;
   /** Asks to leave unsaved edits before a tree operation; resolves false to cancel it. */
   requestRef: RefObject<(() => Promise<boolean>) | null>;
@@ -94,7 +96,7 @@ export function DocumentsTreePanel({
   return (
     <AppContent className="h-full w-full">
       {/* The location header is a breadcrumb trail; the page still needs its level-1 heading. */}
-      <h1 tabIndex={-1} className="sr-only">
+      <h1 ref={headingRef} tabIndex={-1} className="sr-only">
         {t('specification.viewDocuments')}
       </h1>
       <SessionRecoveryNotice specId={specId} />

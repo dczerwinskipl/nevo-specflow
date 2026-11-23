@@ -1,6 +1,7 @@
 import { useState, type ComponentPropsWithRef } from 'react';
 import { ChevronsUpDown } from 'lucide-react';
 import {
+  cn,
   Icon,
   Skeleton,
   Tooltip,
@@ -15,9 +16,10 @@ import { useTruncatedName } from './useTruncatedName';
 /**
  * The trigger of a context switcher (the current Specification, the workspace being read): a quiet
  * label; the current name on one line (identifier-like names cut in the middle, prose at the end)
- * with an optional trailing status that never truncates; one detail line of the kind's segments
+ * or wrapped to three lines for a Specification title, with an optional trailing status that never
+ * truncates; one detail line of the kind's segments
  * joined by " · " (the first segment comes first so it is the last to truncate); the up-down glyph.
- * 72 px high with segments, 56 px without. The full name is offered in a tooltip on hover and
+ * The full name is offered in a tooltip on hover and
  * keyboard focus only when it does not show whole; `note` adds a line to that tooltip (and keeps it
  * available). It opens on mouse hover and keyboard (focus-visible) focus, not on focus a drawer
  * moves here. It stays closed while the popover is open and after it closes, until the pointer
@@ -32,6 +34,7 @@ export function ContextSwitcherTrigger({
   status,
   note,
   loading = false,
+  wrapName = false,
   ...button
 }: {
   label: string;
@@ -42,9 +45,11 @@ export function ContextSwitcherTrigger({
   note?: string;
   /** The current context has not settled yet: a neutral placeholder instead of the name. */
   loading?: boolean;
+  /** Give a prose title up to three lines. The picker option displays the full title. */
+  wrapName?: boolean;
 } & Omit<ComponentPropsWithRef<'button'>, 'children' | 'name' | 'className' | 'title'>) {
   const fitted = useTruncatedName(name);
-  const showName = fitted.truncated && !loading;
+  const showName = !wrapName && fitted.truncated && !loading;
   const hasTooltip = showName || Boolean(note);
   const expanded = button['aria-expanded'] === true || button['aria-expanded'] === 'true';
   const [tooltipOpen, setTooltipOpen] = useState(false);
@@ -105,13 +110,16 @@ export function ContextSwitcherTrigger({
               ) : (
                 <span className="flex min-w-0 items-center gap-2">
                   <Typography
-                    ref={fitted.ref}
+                    ref={wrapName ? undefined : fitted.ref}
                     as="span"
                     variant="title-sm"
-                    className="block min-w-0 flex-1 truncate text-content-primary"
-                    data-context-switcher-name={fitted.mode}
+                    className={cn(
+                      'min-w-0 flex-1 text-content-primary',
+                      wrapName ? 'line-clamp-3 whitespace-normal wrap-anywhere' : 'block truncate',
+                    )}
+                    data-context-switcher-name={wrapName ? 'wrap' : fitted.mode}
                   >
-                    {fitted.text === name ? (
+                    {wrapName || fitted.text === name ? (
                       name
                     ) : (
                       <>

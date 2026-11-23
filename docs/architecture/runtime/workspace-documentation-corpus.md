@@ -32,103 +32,69 @@ and `getWorkspacesByWorkspaceIdDocsSearch`.
 
 ## Workspace identity, access and corpus
 
-- `docs.view` is required at trusted `{projectId}` scope. A global/project grant covers
-  every registered workspace; a Specification- or Session-only grant does not. Authorization
-  runs **before** workspace lookup, so forbidden principals cannot learn which checkout exists.
-  With no Engine/project documentation source, the Runtime replies `DOCS_NOT_SERVED`, not
-  synthetic demo data.
-- Every request verifies the workspace through the Engine and reads that checkout's own
-  `docs.root`, `docs.yaml` and `.nevo/config.yaml` documentation settings. Settings are
-  refreshed each time; no restart is required. A moved/missing/closing checkout is
-  `DOCS_WORKSPACE_UNAVAILABLE` (409). An unregistered id is
-  `DOCS_WORKSPACE_NOT_FOUND` (404).
-- A missing configured docs root directory returns `DOCS_NOT_CONFIGURED` (503) and only
-  its **checkout-relative** `docsRoot`; invalid docs YAML, unreadable corpus or symlink/
-  junction at docs.root, docs.yaml or config returns `DOCS_UNAVAILABLE` (503).
-  Underlying path/error details are logged on the server, not returned. Demo/no-project
-  mode answers `DOCS_NOT_SERVED` (503) rather than exposing a fake corpus.
-- Returned paths and search hit `file` values are relative to the checkout's
-  `docs.root`, with forward slashes. The CLI's search file paths are relative to its
-  checkout, so don't equate these directly.
-- `corpusRevision` is an opaque digest of the **effective documentation settings and included
-  paths/content hashes**. It is shared by tree, article and search for an unchanged corpus,
-  but is **not Git HEAD, not an embedding-index revision and not an ETag**. No
-  `If-Match`/`If-None-Match`/412 protocol is supported here; clients compare revisions
-  and reload the relevant reads after a difference.
-- Invalid frontmatter and **all documents of a duplicated ID** are skipped with reason and
-  path (visible in every 200 result). An unresolved `related` or `superseded_by` reference
-  does not skip an otherwise readable document. Strict `docs check` still fails those
-  inconsistencies. The configured proposal path prefixes mark documents as proposals,
-  not current normative guidance.
+- **Access:** `docs.view` at trusted `{projectId}` scope; global/project grants cover registered workspaces, Specification/Session-only grants do not. Authorize **before** lookup.
+- **Identity:** Engine verifies the registered checkout on every request and reads its own `docs.root`, `docs.yaml` and `.nevo/config.yaml` settings. Changes need no restart.
+- **Refusals:** unknown workspace: `404 DOCS_WORKSPACE_NOT_FOUND`; moved/missing/closing workspace: `409 DOCS_WORKSPACE_UNAVAILABLE`; missing docs root: `503 DOCS_NOT_CONFIGURED` (only checkout-relative `docsRoot`); invalid YAML, symlinks/junctions or unreadable corpus: `503 DOCS_UNAVAILABLE`. No Engine/project source or demo mode: `503 DOCS_NOT_SERVED`. Log underlying details server-side only.
+- **Paths:** returned paths are slash-separated and relative to `docs.root`; CLI search paths are checkout-relative.
+
+### Corpus revision
+
+`corpusRevision` hashes effective settings and included file paths/content. Tree, article and search share it for unchanged corpus. It is **not** Git HEAD, embedding revision or ETag: no `If-Match`/`If-None-Match`/412 protocol. Clients reload affected reads when it changes.
+
+### Corpus validity and skipped entries
+
+- Skip invalid frontmatter and **every document** with a duplicated ID, reporting reason/path in successful responses.
+- Unresolved `related`/`superseded_by` links do not exclude otherwise readable documents, but strict `docs check` fails.
+- Configured proposal path prefixes mark proposals, never current normative rules.
 
 ## Documents and search projections
 
-- Tree lists active documents, inactive deprecated/superseded documents and skipped ones;
-  `rootIndexDocumentId` exists only for an active readable `<docs.root>/README.md`.
-- Article metadata and Markdown body come from **one file read**; sections are ordered body
-  headings with a stable `sectionId`, `headingPath` and **1-based body line**. `_top`
-  represents text before the first heading. Search hit line numbers include frontmatter,
-  whereas article body section lines do not.
-- An inactive article is `410 DOCS_DOCUMENT_INACTIVE` with successor information when
-  known. A skipped ID is `404 DOCS_DOCUMENT_SKIPPED`, listing every offending file.
-  A missing ID or file disappearing/changing during its read is
-  `404 DOCS_DOCUMENT_NOT_FOUND`; the refusal carries this workspace's corpus revision
-  but tells nothing about documents of other workspaces.
-- Search ranks documents and best sections with the existing CLI docs-search semantics.
-  `q` is nonempty (up to 500 characters), `limit` is 1..50 (default 10),
-  `includeProposals` is off by default, and snippets are on by default. A search hit's
-  `id` corresponds to `documentId` in the tree/article.
-- A snippet is one plain-text excerpt from a paragraph/list/table row at most **280
-  characters**; it may start at most 40 characters before the first word match.
-  `snippetMatches` are nonoverlapping **UTF-16** `[start,end)` offsets, at most three
-  first occurrences of distinct query words; absent with an omitted snippet, empty when
-  no match or `wordMatch:false`. `wordMatch` signals actual lexical words rather
-  than a hit found by semantic similarity only.
-- `proposalsLeftOut` counts matching proposals omitted from a normal search with the
-  same limit/cutoff. It is zero when proposals are included. Semantic search may return
-  `mode:hybrid`; a lexical answer with a typed reason is **normal success**, never
-  a 503 merely because vectors are unavailable. Index progress belongs in the search
-  response; there is no separate status endpoint for the UI.
+- **Tree:** includes active/inactive (deprecated, superseded) and skipped entries. `rootIndexDocumentId` exists only for a readable, active `<docs.root>/README.md`.
+
+### Article reads and refusals
+
+- **Consistency:** metadata/body come from one file read. Headings yield ordered `sectionId`/`headingPath` and 1-based **body** lines; `_top` precedes headings. Search hit lines instead include frontmatter.
+- **Inactive:** `410 DOCS_DOCUMENT_INACTIVE` with successor when available.
+- **Skipped:** `404 DOCS_DOCUMENT_SKIPPED` naming every offending file.
+- **Missing/raced file:** `404 DOCS_DOCUMENT_NOT_FOUND` with this workspace's corpus revision, never another workspace's facts.
+
+### Search results and snippets
+
+- **Query:** nonempty `q` up to 500 characters; `limit` 1–50 (default 10). Proposals excluded and snippets included by default. Result `id` equals tree/article `documentId`.
+- **Snippet:** one text excerpt from paragraph, list or row, up to 280 characters, starting no more than 40 before first match.
+- **Matches:** `snippetMatches` has up to three nonoverlapping UTF-16 `[start,end)` ranges for distinct query words; absent without snippet, empty with no match or `wordMatch:false`. `wordMatch` means lexical, not semantic-only.
+
+### Lexical fallback and omitted proposals
+
+- `proposalsLeftOut` counts matching omitted proposals at the same cutoff/limit; zero when included.
+- Search may return `mode:hybrid` or successful lexical results with a typed reason. Missing vectors **do not** turn lexical success into 503.
+- Index progress belongs in the search result, not a separate UI status endpoint.
 
 ## Semantic refresh and concurrency policy
 
-- A checkout enables semantic search through its `docs.search.semantic`. Only the Runtime's
-  **trusted** config supplies `ai.embeddings`; a workspace cannot supply its own embedding
-  endpoint. An index belongs to that checkout at `.nevo/local/cache/docs-index/`, shared
-  with the CLI run in that checkout.
-- On every HTTP search, read-time refresh checks changed chunks and can embed up to **16**,
-  with a **7000 ms** post-corpus answer budget. Probe/embedding has a **4000 ms** deadline,
-  leaving at most **3000 ms** for query embedding. Unfinished work is aborted and does not
-  perform a partial batch write; search continues lexically with `index-building` and
-  schedules background catch-up. The abort is not `endpoint-unreachable`. The UI sets a
-  **12000 ms** request timeout for corpus load, transport and remaining work. The CLI has
-  no such answer budget.
-- If the changed corpus exceeds one bounded refresh, answer lexically immediately and
-  schedule one background catch-up after a successful endpoint probe; never silently
-  wait for a full re-embedding. When a CLI process owns the index, report that state
-  rather than racing writes. After a failed background update, retry no sooner than
-  **60 seconds**.
-- The Runtime permits **one background indexing job globally** across its workspaces.
-  While any such job occupies its embedding endpoint, another semantic-enabled
-  search does not query/embed concurrently and returns an appropriate
-  `index-building`/other lexical reason. One linked worktree may be seeding from
-  Project Home, this same checkout may be actively refreshing, or another checkout
-  may occupy the endpoint. The corresponding `indexProgress` is supplied when available.
-- At most **four** workspace corpora are retained open, with least-recently-used disposal.
-  Before worktree disposal, release that workspace's corpus and wait for its refresh.
-  Closing Runtime cancels running refreshes and waits for the index to be released;
-  completed persisted chunks remain.
-- A new linked worktree without index can seed from Project Home's cache **only** if
-  settings and embedding identity match; subsequent refresh embeds the difference.
-  Before every write, a fresh `git check-ignore` proves the index path is ignored.
-  Failed write admission is fail-closed with **no index write** and a lexical result.
-- At Runtime startup, a configured semantic-enabled primary checkout starts a
-  background refresh without delaying readiness; other checkouts refresh on search.
-  A slow/unreachable indexing endpoint under a running job is reported as
-  `index-building`, not falsely as `endpoint-unreachable`.
-- Invalid Runtime-owned docs/embeddings configuration fails startup; invalid
-  checkout-owned docs settings fail that workspace's request with 503. With semantic
-  search off or no trusted endpoint, no embedding writes or noisy refresh diagnostics occur.
+Only Runtime's trusted `ai.embeddings` config supplies the endpoint; checkout `docs.search.semantic` opts in. Index lives in that checkout at `.nevo/local/cache/docs-index/`, shared with its CLI.
+
+### Refresh deadlines and fallback
+
+- On each HTTP search, check changed chunks; embed at most 16 within a 7000 ms post-corpus answer budget. Probe/embedding deadline: 4000 ms; remaining query embedding: at most 3000 ms. UI timeout: 12000 ms. CLI has no answer budget.
+- Abort unfinished batches **without partial writes**. Return lexical `index-building`, schedule background catch-up after successful probe; an abort is not `endpoint-unreachable`.
+- Large corpus changes return lexical immediately. Never await full re-embedding or race a CLI index owner. Retry failed background updates only after 60 seconds.
+
+### Indexing concurrency and disposal
+
+- One background indexing job globally. While its endpoint is busy, other semantic searches fall back to lexical with a typed reason and available `indexProgress`; they do not concurrently embed/query.
+- Cache up to four workspace corpora (LRU). Release and await refresh before worktree disposal; shutdown cancels and awaits refresh, preserving completed chunks.
+
+### Cache seeding and write admission
+
+- Linked worktrees may seed from Project Home only with matching settings and embedding identity; refresh embeds differences.
+- Require fresh `git check-ignore` proof **before every index write**. Failure leaves no write and serves lexical search.
+
+### Startup and configuration errors
+
+- Primary semantic checkout begins background refresh without delaying readiness; others refresh on search.
+- A slow endpoint during a running job reports `index-building`, not `endpoint-unreachable`.
+- Invalid Runtime-owned embedding/docs config fails startup; invalid checkout settings fail that workspace's request with 503. Disabled semantics or absent trusted endpoint causes no embedding writes/noisy diagnostics.
 
 Every read uses `Cache-Control: no-store` and the shared endpoint rate limiter. The
 [product reader](../../product/specflow/ui/documentation-reader.md) owns the UI's

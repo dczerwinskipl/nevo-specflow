@@ -39,6 +39,8 @@ names `tasks-finished` and `task-escalated`; `archetype`, `interaction`, `produc
 interpreting. Definitions, runs and the journal have one strict format: a record in an older shape
 fails closed with `WORKFLOW_STATE_CORRUPT`, and nothing reads or migrates it.
 
+### Non-cascading definitions
+
 **No cascade.** A broken definition never takes the definitions that refer to it down:
 
 - A workflow does not check the agent archetypes of its steps. They are resolved when a step is
@@ -53,35 +55,16 @@ fails closed with `WORKFLOW_STATE_CORRUPT`, and nothing reads or migrates it.
 
 A task type still requires its workflow to load, because a Task cannot exist without one.
 
-Whole-workflow rules are checked at load time (`definitions/workflow-rules.ts`), so a broken workflow
-never loads:
+### Whole-workflow validation
 
-- ids are unique and every target exists;
-- a step has either one unconditional transition or transitions with distinct results only;
-- a step an agent may do (`executors` includes `agent`) names an archetype, and a human-only step
-  names none;
-- only a Specification workflow can produce Tasks, wait for Tasks or have Task effects;
-- only a Task workflow escalates, and an escalating transition has `feedback: required` and a step
-  target;
-- `session: reuse` can only lead to a step an agent may do;
-- a wait step's transitions are selected by a Task event `on: tasks-finished | task-escalated`
-  instead of a result (see "Wait step"). `on` exists only on wait-step transitions; a wait-step
-  transition without `on` counts as `tasks-finished`, so older files stay valid. A wait step has
-  exactly one `tasks-finished` transition (without `feedback: required`) and at most one
-  `task-escalated` transition, which needs `feedback: required` and a step target. No wait-step
-  transition has a result, reuses the Session (the Engine settles a wait without one) or leads to
-  another wait step;
-- the entry step is not a wait step: starting a run enters its entry step;
-- a return never targets a wait step: a return waits for the owner, and nobody can start a wait step;
-- every step has a `title`, a single line with a non-whitespace character (as do workflow titles and
-  transition and return labels); surfaces show it with the id as the stable reference: the projection
-  carries `title` on every step, `firstStepTitle` on the pin preview, `targetTitle` on a transition to a
-  step, `title` on each return target and `stepTitle` on a gate refusal, and the Task reads carry the
-  step `title`;
-- only a work step has gates; gate ids are unique within the step, an exit gate's `when` names results
-  the step's transitions declare (an entry gate has no `when`), only the gate type `document` exists, and
-  its `documentType` is a defined document type (a missing one is `reference-missing`; an invalid
-  document-type file does not take the workflow down).
+Validate each workflow at load. Reject the complete invalid workflow, not the rest of the catalogue.
+
+- **Graph:** unique IDs, all targets present; each step has one unconditional transition or distinct result labels.
+- **Executors:** agent-capable steps name an archetype; human-only steps do not. `session: reuse` must target an agent-capable step.
+- **Kind:** only Specification workflows produce or wait for Tasks or apply Task effects. Only Task workflows may escalate; escalation requires `feedback: required` and a step target.
+- **Wait steps:** entered only by Engine, never as an entry/return target. Transitions select Task events (`on: tasks-finished | task-escalated`), not results. Missing `on` means `tasks-finished` for legacy definitions. Require exactly one `tasks-finished` without required feedback; allow at most one `task-escalated`, with required feedback and a work-step target. No Session reuse, result or wait-to-wait transition.
+- **Titles:** nonblank single-line titles for workflows, steps, transitions and returns. Projection carries stable ID plus `title`, `firstStepTitle`, `targetTitle` or `stepTitle` as appropriate; Task reads also display titles.
+- **Gates:** only work steps have them. IDs unique per step; `when` exists only for exit gates and names a declared result. Only `document` gates are supported; referenced `documentType` must be defined. A missing type is `reference-missing`; an invalid type definition does not invalidate an otherwise valid workflow.
 
 ## Executors and actors
 
@@ -97,6 +80,8 @@ agent-supplied input or a request body (`state/model.ts`, `operations/actors.ts`
   authentication is off); the CLI builds `local:<os-user>` with `trust: local`. `trust: local` is not
   proof of a human: an agent running as the same OS user looks the same.
 
+### Executor admission
+
 The rules:
 
 - The core (`decide`) checks that the actor's class is one the step allows, and that an active
@@ -111,13 +96,15 @@ The rules:
 
 Breaking a rule fails with `WORKFLOW_EXECUTOR_NOT_ALLOWED` before anything changes. Handing an active
 agent step over to the owner (owner takeover) is not supported; it would be an explicit operation of
-its own (plan 06, F17), not a finish. No dispatch preference is stored: whether a person or an agent
+its own, not a finish. No dispatch preference is stored: whether a person or an agent
 does the next step is chosen when it starts.
 
 **After a manual step, no Session to reuse.** When a person finishes into a `session: reuse`
 transition, the continuation is an owner action with the blocker `session-unavailable`, and the
 action projection reports the next step's agent option as unavailable with that reason. Nothing
 falls back to a fresh Session.
+
+### Idempotent finish
 
 **Idempotent finish (F16).** A finish stores the digest of its request (step, attempt and the whole
 input, `finishDigest`) on the attempt (`requestDigest`). A finish that names the run's last finished
@@ -155,6 +142,8 @@ steps:
       - { id: blocked, result: blocked, to: { step: investigate }, feedback: required }
 ```
 
+### Document and section gates
+
 - A `document` gate holds when its scope **registers** a document of `documentType` (the
   Specification's or the Task's document registry) whose file exists and, with `requiredSections`, has a
   heading for each text. One such document is enough. Otherwise its reason is `no-document`,
@@ -169,6 +158,9 @@ steps:
   Ignored: a front matter block at the very start (`---` to `---` or `...`), fenced code (CommonMark: a
   fence closes only with the same character, at least as many, and no info string) and the lines of an
   HTML comment (`<!--` to `-->`). A required section has a non-whitespace character (schema).
+
+### Gate projection and evaluation
+
 - **Neutral core.** Gates are SpecFlow annotations of a work step (`SpecFlowAnnotations.work`); the
   `@nevo/workflow` core carries them opaquely and never evaluates them. Annotations are part of the
   compiled definition, so gates are covered by its revision and a run keeps the gates it was pinned with.

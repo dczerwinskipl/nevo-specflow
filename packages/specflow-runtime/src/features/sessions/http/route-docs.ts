@@ -279,7 +279,7 @@ export const sessionReadDocs = {
     tags: ['Sessions'],
     summary: 'Stream the events of a Session',
     description:
-      'Stream committed Session changes as SSE after a snapshot eventSeq, or Last-Event-ID. Stream reauthorizes each replay/live batch and at least every 30 seconds idle; a revocation closes without leaking more events. Events carry bounded projections/invalidation, not full content. Each id is a committed monotonically increasing event sequence; replay gaps/queue overflow send resync-required and close rather than skipping events. Heartbeats about 15 seconds do not advance eventSeq. Clients fetch a new bounded snapshot on a gap.',
+      'Stream committed Session changes as SSE after a snapshot eventSeq, or Last-Event-ID. Stream reauthorizes each replay/live batch and at intervals no longer than one second while idle; a revocation closes without leaking more events. Events carry bounded projections/invalidation, not full content. Each id is a committed monotonically increasing event sequence; replay gaps/queue overflow send resync-required and close rather than skipping events. Heartbeats about 15 seconds do not advance eventSeq. Clients fetch a new bounded snapshot on a gap.',
   },
 };
 

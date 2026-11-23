@@ -38,8 +38,8 @@ export type SearchVectors =
       readonly store: VectorStore;
       /**
        * Relevance floor of the vector ranking: matches whose raw cosine similarity to the query is
-       * below it are dropped before fusion (a match exactly at it is kept), so a query nothing
-       * answers by meaning adds no vector-only results. `0 <= minSimilarity < 1`. It never removes a
+       * below it are dropped before fusion (a match exactly at it is kept). This removes weak
+       * vector-only candidates; it does not establish whether the query has an answer. `0 <= minSimilarity < 1`. It never removes a
        * lexical match and never applies to fused scores. The scale is model-specific (and depends on
        * a query instruction), so there is no default: absent, every match with a positive similarity
        * is fused.
@@ -50,6 +50,8 @@ export type SearchVectors =
 
 export interface SearchRequest {
   readonly query: string;
+  /** Opt into bounded completion of an unknown single-word query (at least four characters). */
+  readonly lexicalPrefixes?: boolean;
   /** Maximum number of units returned. */
   readonly limit: number;
   readonly vectors: SearchVectors;
@@ -131,9 +133,10 @@ export function createSearchEngine(chunks: readonly Chunk[]): SearchEngine {
       }
 
       const accepted = (chunk: Chunk) => !request.filter || request.filter(chunk);
-      const lexicalRanking = lexical
-        .search(request.query)
-        .filter(({ id }) => accepted(byId.get(id)!));
+      const lexicalRanking = lexical.search(request.query, {
+        prefixes: request.lexicalPrefixes === true,
+        accept: (id) => accepted(byId.get(id)!),
+      });
       const lexicalIds = new Set(lexicalRanking.map((entry) => entry.id));
       const vectorRanking = await rankByVectors(request, byId, accepted);
       if ('reason' in vectorRanking) {

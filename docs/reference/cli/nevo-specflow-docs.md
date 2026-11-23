@@ -137,9 +137,15 @@ section ranking's candidates has no sections. Both rankings split text into the 
 Unicode letter and digit runs after compatibility normalization (NFKD), lower-cased, with
 diacritics removed and the letters without a decomposition folded to ASCII (`ł` → `l`, `ø` → `o`,
 `ß` → `ss`, `đ` → `d`, `æ` → `ae`, `œ` → `oe`, `þ` → `th`), so `płatności` is one word and
-matches `PŁATNOŚCI` and the ASCII-typed `platnosci`. Section text is matched by these exact
-words without stemming, because the engine does not know the corpus language; only the frontmatter
-ranking folds English plurals, and only of words that are ASCII after normalization.
+matches `PŁATNOŚCI` and the ASCII-typed `platnosci`. Section text uses these words without stemming. For a single-word query only, an
+otherwise unknown word of at least four normalized Unicode code points can match
+words beginning with it. An exact word in any searched section disables completion;
+more than 32 distinct completions disables it too. Only searched sections supply
+completions; one section scores its best completion rather than summing variants.
+Multiword queries retain exact matching. This is lexical matching (`wordMatch: true`),
+so vector relevance filtering preserves it. It does not translate or correct typos.
+Only the frontmatter ranking folds English plurals, and only of words that are ASCII
+after normalization. `find` and `context` retain their existing behavior.
 
 **Relevance cutoff.** With `ai.embeddings.minSimilarity` set
 ([configuration](../configuration/documentation-and-embeddings.md#relevance-cutoff-minsimilarity)),

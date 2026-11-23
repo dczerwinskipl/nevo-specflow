@@ -332,6 +332,35 @@ describe('createSearchEngine', () => {
       expect(result).toEqual({ mode: 'hybrid', hits: [] });
     });
 
+    it('keeps an opted-in prefix match below the vector floor, without changing the embedded query', async () => {
+      const texts: string[][] = [];
+      const recordingProvider = {
+        ...provider,
+        embed: (input: readonly string[]) => {
+          texts.push([...input]);
+
+          return provider.embed(input);
+        },
+      };
+      const vectors = {
+        provider: recordingProvider,
+        store: await fixedStore(),
+        minSimilarity: 0.9,
+      };
+      const exact = await fixedEngine.search({ query: 'pale', limit: 10, vectors });
+      expect(exact.hits).toEqual([]);
+
+      const prefix = await fixedEngine.search({
+        query: 'pale',
+        limit: 10,
+        vectors,
+        lexicalPrefixes: true,
+      });
+      expect(prefix.mode).toBe('hybrid');
+      expect(prefix.hits.map((hit) => [hit.unitId, hit.lexical])).toEqual([['low-word', true]]);
+      expect(texts).toEqual([['pale'], ['pale']]);
+    });
+
     it('rejects a floor outside 0 <= minSimilarity < 1', async () => {
       for (const invalid of [-0.01, 1, 1.5, Number.NaN]) {
         await expect(search('palette', invalid)).rejects.toThrow(RangeError);

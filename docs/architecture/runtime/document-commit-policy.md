@@ -23,7 +23,6 @@ related:
 
 Governing decision: [ADR 0018](../decisions/0018-engine-commit-policy-and-manual-commit.md). Push and publishing remain out of scope ("Future: push" in the ADR).
 
-
 ### Policy configuration
 
 **Policy.** `git.commits.auto.documents` (committed `.nevo/config.yaml`, overridable in `.nevo/local/config.yaml`, default
@@ -42,13 +41,11 @@ the first, the queue the second. The reservation counts the ledger's paths plus 
 flight and refuses the 201st distinct path with `DOCUMENT_UNCOMMITTED_LIMIT` before anything is written. The journal stage
 `abandoned` does not exist as a stage or a commit state (`completed` with outcome `uncommitted`, state `uncommitted`).
 
-
 ### Auto-commit disabled
 
 **Auto-commit off.** The write is the Git-disabled path with Git present: admission without the commit `preflight`, files
 written at once, no queue, the operation completes `uncommitted` (reason `auto-commit-off`) in the same control-lock
 section that upserts the ledger; its claim is released and its journal moves to `settled/`.
-
 
 ### Uncommitted ledger
 
@@ -61,7 +58,6 @@ recordedAt, reason }` and the record pins `branch`, `head` and `workspaceRoot`. 
 (after a queued batch commits, a flush, a hand commit seen by the 30-second sweep, a manual commit or the Close flush): the
 read-only effective-set read runs outside the lock and an entry is removed only if it is still the one judged. It is the only source of what a manual commit may include. Its revision is
 the sha256 of the sorted `path:postSha256` list.
-
 
 ### Manual commit admission
 
@@ -90,7 +86,6 @@ and HEAD holds it, and never commits twice; a failure that does not prove the co
 `reserved` to `committing` or `failed`; `committing` to itself (a new executor, the start of the commit), `completed`, `failed` or
 `recovery-required`; `recovery-required` to `committing` (resume), `completed` (adopt) or `failed` (abandon).
 
-
 ### Close and queued operations
 
 **Interaction.** Close refuses while the ledger of any checkout of its plan is non-empty after the flush and prune
@@ -111,7 +106,6 @@ removals) made by owner, UI or CLI operations are committed like the Specificati
 published change is ONE document operation of action `workflow` (contract
 `DOCUMENT_OPERATION_STATUS_ACTIONS`) in the document journal store
 (`specs/documents/write/execution-state.ts`):
-
 
 ### Workflow-state admission
 

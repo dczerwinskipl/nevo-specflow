@@ -39,7 +39,6 @@ names `tasks-finished` and `task-escalated`; `archetype`, `interaction`, `produc
 interpreting. Definitions, runs and the journal have one strict format: a record in an older shape
 fails closed with `WORKFLOW_STATE_CORRUPT`, and nothing reads or migrates it.
 
-
 ### Non-cascading definitions
 
 **No cascade.** A broken definition never takes the definitions that refer to it down:
@@ -55,7 +54,6 @@ fails closed with `WORKFLOW_STATE_CORRUPT`, and nothing reads or migrates it.
   a Specification archetype installs its workflow and task types.
 
 A task type still requires its workflow to load, because a Task cannot exist without one.
-
 
 ### Whole-workflow validation
 
@@ -103,7 +101,6 @@ agent-supplied input or a request body (`state/model.ts`, `operations/actors.ts`
   authentication is off); the CLI builds `local:<os-user>` with `trust: local`. `trust: local` is not
   proof of a human: an agent running as the same OS user looks the same.
 
-
 ### Executor admission
 
 The rules:
@@ -127,7 +124,6 @@ does the next step is chosen when it starts.
 transition, the continuation is an owner action with the blocker `session-unavailable`, and the
 action projection reports the next step's agent option as unavailable with that reason. Nothing
 falls back to a fresh Session.
-
 
 ### Idempotent finish
 
@@ -166,7 +162,6 @@ steps:
       - { id: answered, result: answered, to: { terminal: completed } }
       - { id: blocked, result: blocked, to: { step: investigate }, feedback: required }
 ```
-
 
 ### Document and section gates
 

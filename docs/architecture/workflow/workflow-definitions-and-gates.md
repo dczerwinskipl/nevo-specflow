@@ -96,7 +96,7 @@ The rules:
 
 Breaking a rule fails with `WORKFLOW_EXECUTOR_NOT_ALLOWED` before anything changes. Handing an active
 agent step over to the owner (owner takeover) is not supported; it would be an explicit operation of
-its own (plan 06, F17), not a finish. No dispatch preference is stored: whether a person or an agent
+its own, not a finish. No dispatch preference is stored: whether a person or an agent
 does the next step is chosen when it starts.
 
 **After a manual step, no Session to reuse.** When a person finishes into a `session: reuse`

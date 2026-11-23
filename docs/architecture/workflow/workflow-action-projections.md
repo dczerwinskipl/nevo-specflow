@@ -48,7 +48,6 @@ The Engine owns workflow definitions, pinned revisions, runs, transitions, gates
 
 ## Position, outline and next-step certainty
 
-
 ### Run position and next-step certainty
 
 - A projection names the Specification or Task subject, the pinned workflow (or first-start
@@ -127,7 +126,6 @@ The Engine owns workflow definitions, pinned revisions, runs, transitions, gates
   the graph with its own approximation.
 
 ## Start, finish, return, wait and Abandon
-
 
 ### Start and pinned revisions
 

@@ -196,3 +196,17 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `architecture/workflow/workflow-continuation-and-attention.md` | Reformat | 3 long paragraphs, 2 long bullets; longest section 1372 words | code check pending |
 | `architecture/workflow/workflow-definitions-and-gates.md` | Reformat | 0 long paragraphs, 2 long bullets; longest section 600 words | text parity #210 |
 | `architecture/workflow/workflow-kernel.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `architecture/workflow/workflow-runs-and-handoffs.md` | Reformat | 1 long paragraphs, 3 long bullets; longest section 655 words | text parity #210 |
+| `architecture/workflow/workflow-storage-and-recovery.md` | Reformat | 0 long paragraphs, 2 long bullets; longest section 728 words | text parity #210 |
+| `architecture/workflow/workflow-tasks.md` | Reformat | 3 long paragraphs, 3 long bullets; longest section 557 words | text parity #210 |
+| `design-system/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `design-system/figma/code-to-figma-projection.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `design-system/implementation/library-packaging.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 277 words | code check pending |
+| `design-system/implementation/ownership-and-tooling.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `design-system/implementation/react/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `design-system/implementation/react/component-authoring-contract.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 263 words | code check pending |
+| `design-system/implementation/react/component-guidelines.md` | Reformat | 17 long paragraphs, 10 long bullets; longest section 1210 words | code check pending |
+| `design-system/implementation/react/secondary-navigation.md` | Reformat | 12 long paragraphs, 6 long bullets; longest section 1214 words | code check pending |
+| `design-system/implementation/react/workspace-dynamic-split.md` | Reformat | 0 long paragraphs, 11 long bullets; longest section 1181 words | code check pending |
+| `design-system/implementation/storybook/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `design-system/implementation/storybook/guidelines.md` | Reformat | 1 long paragraphs, 1 long bullets; longest section 303 words | code check pending |

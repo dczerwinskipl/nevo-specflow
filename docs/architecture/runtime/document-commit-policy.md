@@ -73,52 +73,34 @@ the sha256 of the sorted `path:postSha256` list.
 
 ### Manual commit admission
 
-**Manual commit** (`manual-commit` operation): same commit port, lease, `checkout-scoped` claim and journal store as a
-queued batch. Scope `specification | definitions | all`; an optional path subset closed under shared operation ids; the
-effective set is the ledger paths of the scope that differ from `HEAD`; any ledger path edited since its post-image, or a
-changed branch, refuses the whole request (`MANUAL_COMMIT_CONFLICT`); the message is user text, validated and neutralised,
-plus the Engine trailers; author per ADR 0013. **It is not `git commit -a`**: no path outside the ledger is ever
-committed.
+Manual commit shares the queued commit port, checkout-scoped claim, lease and durable journal. It commits **only** uncommitted ledger paths, never arbitrary worktree changes (`git commit -a` is not equivalent).
 
-States: `reserved` -> `committing` -> `completed` (`committed` or `nothing-to-commit`), `failed` (no effect),
-`recovery-required`; order commit, verify, prune, complete; each step idempotent, resumed by the trailer lookup.
+- **Scope:** `specification`, `definitions` or `all`, optionally narrowed to a subset **closed under operation IDs**.
+- **Effective paths:** selected ledger entries differing from `HEAD`. A changed branch, modified post-image or mismatched ledger revision refuses the whole request (`MANUAL_COMMIT_CONFLICT`).
+- **Message:** validated/sanitized user text plus Engine trailers; author follows ADR 0013.
 
 #### Manual commit journal and lease
 
-`specs/manual-commit/` is a journal kind of the durable core (`engine/operations/manual-commit/`,
-`settled/`, a payload holding the ledger snapshot and the message, 16 KiB) with the stages `reserved`, `committing`,
-`completed`, `failed` and `recovery-required` of its own.
-
-The checkout lease moved to `specs/durable/lease.ts` (the record, the
-in-process mark and the dead proof; the queue binds it to its error vocabulary), so the queue and the manual commit exclude each
-other through one file.
-
-The module imports no other Specification slice: the composition `documents/manual-commit.ts` resolves the
-target (a Specification, the definitions, or a checkout) and supplies the ports (the claim check, the flush of the queue,
-the quiet check of the paths).
+- Durable payload contains ledger snapshot and message (16 KiB). Stages: `reserved`, `committing`, `completed` (`committed`/`nothing-to-commit`), `failed` (no effect), `recovery-required`.
+- The **same checkout lease** excludes manual commits from queue batches. The checkout claim and selected paths remain held until journal completion; colliding writes return `SPEC_BUSY`.
 
 #### Admission and reservation
 
-Admission order: Git enabled, queue at rest after a flush, ledger not empty, `ledgerRevision`, subset
-closure, pinned branch, port preflight, no path edited since its post-image; the reservation re-reads the ledger under the control
-lock and starts over when it moved.
-
-The reservation holds the checkout claim and the paths (a write of them is `SPEC_BUSY`) until
-the journal ends.
+1. Require Git, flush queue to rest and a nonempty ledger.
+2. Verify `ledgerRevision`, subset closure, pinned branch, Git preflight and unchanged post-images.
+3. Under control lock, reread the ledger; replan if it moved, then reserve the claim and journal.
 
 #### Execution and verification
 
-Execution takes the lease, records `parentHead` and the executor, records the start of the commit before Git
-runs, commits the effective set through the port (kind `manual-commit`, a multi-line sanitised body, the paths in a pathspec
-file), proves the commit holds every post-image, prunes the ledger entries as judged at the reservation, completes the journal and
-releases the lease.
+1. Acquire lease; journal `parentHead`, executor and **start of commit before Git**.
+2. Commit the effective path set using a pathspec, sanitized message and `Nevo-Operation` trailer.
+3. Verify all post-images at HEAD, prune only reserved ledger entries, complete journal and release lease.
 
 #### Replay and recovery
 
-A repeat finds its own commit by the `Nevo-Operation` trailer, accepts it only when it is the whole snapshot
-and HEAD holds it, and never commits twice; a failure that does not prove the commit never ran waits for `recover`. Journal edges:
-`reserved` to `committing` or `failed`; `committing` to itself (a new executor, the start of the commit), `completed`, `failed` or
-`recovery-required`; `recovery-required` to `committing` (resume), `completed` (adopt) or `failed` (abandon).
+- Find prior effect by `Nevo-Operation` trailer; adopt only if it matches the complete snapshot and HEAD. Never duplicate the commit.
+- If the commit may have executed but cannot be proven, require `recover`; do not blindly retry.
+- Valid transitions: `reserved` → `committing`/`failed`; `committing` → itself (new executor), `completed`/`failed`/`recovery-required`; `recovery-required` → `committing` (resume), `completed` (adopt) or `failed` (abandon).
 
 ### Close and queued operations
 

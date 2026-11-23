@@ -101,7 +101,15 @@ same receipt). Errors that are no verdict (corrupt state, busy, source unavailab
 of the Turn still open) leave the claim held and the proposal pending. A Turn without a proposal
 ends as `turn-ended`: the attempt stays active and the owner can Continue, Take over or Return.
 Post actions run after the lock is released (`finalize/post-actions.ts`); a failed one stays
-`failed` for the owner's Retry commit and is never retried by recovery on its own.
+`failed` for the owner's Retry commit and is never retried by recovery on its own. One a crash left
+`pending` is run by recovery at the next Runtime start, or by the owner's Retry commit at once
+(the same operation id and locks; refused `WORKFLOW_SPECIFICATION_BUSY` `commit-in-progress` while it
+runs in this process, `agent-turn` while the last Turn's claim is not settled yet).
+
+What the finalize judged a proposal on (`proposal.judged`, the declared paths' hashes) is journaled
+before the step state is published, and once recorded it is final: a finalize run again after a crash
+at any point past that record takes those hashes and never judges the checkout again, so an edit
+made in between is refused by the attempt commit (naming the path), never committed as the agent's.
 
 ### Attempt commit
 
@@ -128,6 +136,13 @@ Specification's document queue drains first.
 - It runs also for a result that then waits for the owner's confirmation; the owner's later Confirm
   is committed by `commit-execution-state`. A Take over commits nothing. Push stays out of scope
   (ADR 0018).
+- The owner's `commit-execution-state` leaves out only what an attempt commit still takes: the
+  entries of the Turns of an attempt in progress, or of a finished one whose attempt commit is
+  pending or failed (`attemptCommitExecutions`; every execution's entries when the attempt journals
+  cannot all be read). The execution state of an attempt that ended without its own commit (taken
+  over, returned) has no other commit: the owner's next one takes it. An owner's change tied to
+  waiting agent work is never reported done: the post action fails `WORKFLOW_ATTEMPT_COMMIT_REQUIRED`
+  and the state is committed after the attempt commit ran.
 
 ### Owner confirmation
 
@@ -152,7 +167,10 @@ attempt-commit-failed, code?}` (Retry commit first). The change is an ordinary o
   Turns; that commit never takes a ledger entry an agent Turn wrote.
 - **Reject** (`rejectAgentResult`, core `reject`): the transition is not taken; the run is `ready` at
   the attempt's step with the owner's feedback (required) as its handoff (`kind: return`). Nothing the
-  agent wrote is undone; it was committed with its attempt.
+  agent wrote is undone; it was committed with its attempt. With Git on it waits for the attempt
+  commit exactly like Confirm (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`, `actions.reject.unavailable`):
+  its run write would otherwise join the agent's uncommitted ledger entry, and the attempt commit
+  would then refuse it as mixed.
 - Both take a request id: the same request again is replayed; a confirm or reject of an attempt
   another request decided is `WORKFLOW_ATTEMPT_MISMATCH` (for a confirmed one: repeat that request,
   or Retry commit for its owner commit); with nothing waiting `WORKFLOW_POSITION_INVALID`. While a

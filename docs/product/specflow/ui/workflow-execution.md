@@ -549,14 +549,16 @@ The attempt is finished and committed before the owner decides.
   when it proposes decisions on Tasks; "completes the workflow" or "ends the workflow as abandoned"
   when it ends the run). Actions **Confirm** (main) and **Reject**.
 - **Confirm** applies the transition and its effects as the owner, an ordinary owner write. While the
-  attempt commit is pending or has failed, **Confirm is disabled** and the note explains why in plain
-  words: confirming waits until the agent's work is committed; when the commit failed the note holds
-  the failure with **Retry commit** (the same wording and button as above). Confirm becomes
-  available once the commit is made. **Reject** stays available. The same note shows the commit
-  when it is made ("Committed <short id> on <branch>: N documents and N files") and, while it runs,
-  "SpecFlow is committing its work…" (the block reads again until it settles). A Confirm refused
-  because the commit is not made yet reads the block again instead of showing an error; any other
-  refused Confirm shows its reason.
+  attempt commit is pending or has failed, **Confirm and Reject are both disabled** (a Reject would
+  write the run into the agent's uncommitted work) and one note explains why for both in plain
+  words: confirming or rejecting waits until the agent's work is committed; when the commit failed
+  the note holds the failure with **Retry commit** (the same wording and button as above). Both
+  become available once the commit is made. The same note shows the commit when it is made
+  ("Committed <short id> on <branch>: N documents and N files") and, while it runs, "SpecFlow is
+  committing its work…" (the block reads again until it settles); when it stays pending past a few
+  reads (an interruption left it so), the note adds "The commit has not finished…" with **Retry
+  commit**, the same button as after a failure. A Confirm refused because the commit is not made yet
+  reads the block again instead of showing an error; any other refused Confirm shows its reason.
 - **Reject** opens "Reject the agent's result": the step goes back to ready to start with the owner's
   feedback as its hand-off; the proposal is not applied; the drafts and documents it wrote stay (the
   description says so when it wrote drafts). The attempt's work is already committed, so Reject

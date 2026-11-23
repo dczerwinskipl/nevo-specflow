@@ -261,7 +261,7 @@ run. Every command accepts `--project-root <path>` and `--json`.
 | `workflow confirm <spec-id> [--task <task-id>] --step <id> --attempt <n> --confirms-digest <sha256> [--request-id <uuid>]`                                                                          | Confirm an agent's result that waits for the owner (D17), exactly as `workflow actions` showed it                         |
 | `workflow reject <spec-id> [--task <task-id>] --step <id> --attempt <n> --feedback <text> [--request-id <uuid>]`                                                                                    | Reject it: the step is ready again with the feedback as its handoff                                                       |
 | `workflow return <spec-id> [--task <task-id>] --step <id> [--reason <text>]`                                                                                                                        | `returnToStep`; during an agent Turn that may still run, a return request (`return-requested`)                            |
-| `workflow retry-commit <spec-id> [--task <task-id>] --step <id> --attempt <n>`                                                                                                                      | `retryAgentAttemptCommit`: the failed commit of a finished agent attempt, or a confirmation's owner commit                |
+| `workflow retry-commit <spec-id> [--task <task-id>] --step <id> --attempt <n>`                                                                                                                      | `retryAgentAttemptCommit`: the failed or pending commit of a finished agent attempt, or a confirmation's owner commit     |
 | `workflow take-over <spec-id> [--task <task-id>] --step <id> --attempt <n>`                                                                                                                         | `takeOverAgentAttempt`: end the stopped agent attempt `taken-over` and start yours; commits nothing                       |
 | `specs abandon <spec-id> --reason <text> --yes`                                                                                                                                                     | `abandonSpecification`                                                                                                    |
 
@@ -278,15 +278,17 @@ run. Every command accepts `--project-root <path>` and `--json`.
   attempt; repeating the same finish returns the recorded result (`replayed`).
 - **Confirm and Reject.** `workflow actions` shows a waiting agent result with its
   `--confirms-digest`; `workflow confirm` applies exactly that (`WORKFLOW_CONFIRMATION_CHANGED` when a
-  draft changed since: read the actions again; with Git on, `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` while the
-  agent's attempt commit has not run or failed: run `workflow retry-commit` first). Both print their request id on stderr before they run;
+  draft changed since: read the actions again; with Git on, `workflow confirm` and `workflow reject`
+  are both `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` while the agent's attempt commit has not run or failed,
+  and `workflow actions` prints one line for both with the `retry-commit` action: run
+  `workflow retry-commit` first, also for a commit an interruption left pending). Both print their request id on stderr before they run;
   after an interruption, repeat with `--request-id <uuid>` to replay (a confirm's commit runs again), or
   run `workflow retry-commit --step <id> --attempt <n>` for a confirmed attempt.
 - **Agent attempts.** An agent step is started, continued and stopped from the UI or HTTP
   (`.../workflow/agent-execution`), not from the CLI. The owner's CLI commands for it are
   `workflow take-over` (once the agent's process is proven ended; while it may still run
   `WORKFLOW_SPECIFICATION_BUSY`), `workflow retry-commit` (the remedy Close and `workflow actions`
-  name for an attempt whose commit failed), `workflow return` (while the agent's Turn may still run
+  name for an attempt whose commit failed or stays pending), `workflow return` (while the agent's Turn may still run
   it records the request and prints `Return requested: ...`; the step returns once the agent's
   process is proven stopped, and the offline CLI stops nothing, so stop the Turn from the UI) and
   `workflow confirm|reject`. Run offline while an agent Turn holds the project, every other write

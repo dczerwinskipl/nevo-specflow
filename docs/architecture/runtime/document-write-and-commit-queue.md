@@ -27,32 +27,23 @@ part of this layer. Admission bounds are in the [document limits table](document
 
 ### Write admission and durable publication
 
-**Write path (every state-changing operation).**
+Every state-changing operation follows four phases:
 
-1. _Admission_ (nothing written): validate input, limits and the Windows path rule; resolve the Specification and its location (`archive/` is read-only); read the manifest; check preconditions on disk (`expectedRevision` of every named document, path rules, collisions, protection of `overview`, `SPEC_MANIFEST_DIRTY` against the post-image of the latest non-terminal operation or `HEAD`); with Git enabled the commit port's read-only `preflight` for the operation's paths (cached per `(root, branch ref, path-set hash)` for 2 s while the stat signatures hold).
-   - Any refusal ends here with no journal and no file written.
-   - A verified file identity that changes during the planning read is `SPEC_BUSY` (`source-changed`, retry after 1 s), not evidence that the document is missing.
-   - No write is retried automatically; the caller re-reads the document before retrying.
-   - Tree and summary reads continue to skip such unstable entries.
-2. _Reservation_ under the control lock: preconditions and the manifest plan are re-checked (one re-plan, then
-   `SPEC_BUSY`/`manifest-changed`); paths of a **claimed** batch are refused; `sequence` is allocated; the plan file
-   and the content payload are durable; the operation becomes a **barrier** for its paths.
-3. _Write_: files by temp file (fixed short name in the target directory) and rename, the manifest last, then one journal transition to `queued`; content payload files are then deleted.
-   - The response is `200` after this transition, with `commit.state` `pending` (Git enabled) or `not-applicable`.
-   - A failure after the first rename rolls forward from the payload while the claim and barrier are held. _Replay and roll-forward._ The same `operationId` is the retry and the crash recovery.
-   - An equal request returns the stored result with the **current** commit state and writes nothing; a different request, or the same id on another Specification, is `DOCUMENT_OPERATION_CONFLICT`.
-   - A journal in `reserved` or `files-writing` records the writer's **executor identity** (`pid`, `hostId`, and where `/proc` supplies them `pidNamespaceId`, `processStartTime`, `bootId`); the field exists only in those two stages.
-   - The write is continued from the payload only when that writer is this very process (a write that stopped inside it), is provably gone (same host and PID namespace and the PID is absent or has another start time, or another boot id) or an operator asserted it; a live or unprovable writer is `SPEC_BUSY` (`write-in-progress`).
-   - Each path is at its pre or its post state (anything else is a foreign edit), a path already at post is skipped, and the target is hashed again immediately before it is replaced, so continuing twice is harmless.
-   - A foreign edit found while nothing of the write is on disk (at the `reserved` stage, or right after `files-writing`) ends the operation as `failed` (`DOCUMENT_REVISION_CONFLICT`, no claim, the client keeps nothing half done).
-   - Once any path is in place a foreign edit, a full disk, an I/O error or an unprovable payload leaves the operation `recovery-required` in its write phase, holding the claim and the barrier, and the answer is `DOCUMENT_WRITE_FAILED` or `DOCUMENT_RECOVERY_REQUIRED` (`write-conflict` for a foreign edit, with `details.conflicts`).
-   - The continuing process takes the write over by replacing the journal's `executor` under the control lock only if it is still the one proven gone, stage and backup files carry the operation and the executor in their names and are removed by pattern, and a replaced file keeps its mode.
-   - The replacement of a file narrows the window after the second hash with a hard link to the old file, which is checked after the rename; this is best effort ("Known limits" of the ADR).
-   - Empty folders left by a move or removal are an accepted state.
-   - Without Git the operation completes at once as `not-applicable` (`git-disabled`) and its record moves to `settled/`, where it and its plan file stay for 24 hours so that the id keeps replaying.
-4. _Commit_ (asynchronous): the worker holding the checkout lease forms the batch of one Specification, claims it
-   (records `parentHead`), computes the **effective path set**, re-checks the guard and per-path states, makes one
-   path-limited commit, verifies it and completes the members.
+1. **Admission (read-only).** Validate input/limits/Windows paths; resolve Specification (archived sources are read-only), manifest, `expectedRevision`, protected `overview`, collisions and `SPEC_MANIFEST_DIRTY` against latest nonterminal post-image or `HEAD`. With Git enabled, run path-scoped preflight, cached at most 2 seconds while `(root, branch ref, path-set hash)` and stat signatures match.
+   - Any refusal writes no journal/files. A source whose identity changes during planning returns `SPEC_BUSY` / `source-changed` (retry after 1 second), **not** missing. Caller rereads; no automatic retry. Tree reads skip unstable entries.
+2. **Reservation (control lock).** Recheck conditions and manifest, re-plan once or refuse `SPEC_BUSY` / `manifest-changed`. Reject paths claimed by a batch. Allocate sequence; persist plan and payload; establish a path barrier.
+3. **Publication.** Write short-name temp files and rename, manifest last; transition journal to `queued`, then remove payload. Only then return `200` and `commit.state: pending` (Git enabled) or `not-applicable`. Without Git, settle immediately as `not-applicable` / `git-disabled`, retaining journal and plan in `settled/` for 24 hours.
+4. **Commit (async).** Checkout-lease holder batches one Specification, records `parentHead`, calculates effective paths, rechecks guards and post-images, commits only those paths, verifies result, then settles members.
+
+**Idempotent recovery of phase 3**
+
+- `operationId` identifies both request replay and crash recovery. Identical replay returns stored outcome with **current** commit state; changed body or Specification returns `DOCUMENT_OPERATION_CONFLICT`.
+- In `reserved`/`files-writing`, journal stores writer `pid`/`hostId` and, where available, `pidNamespaceId`/`processStartTime`/`bootId`.
+- Resume from payload only if the writer is this process, provably stopped (same host/namespace, absent or changed PID/start, different boot), or an operator confirms. Otherwise `SPEC_BUSY` / `write-in-progress`.
+- Each target must match pre/post hash; skip already-published post-images and rehash immediately before replacement. A foreign edit before any publication fails with `DOCUMENT_REVISION_CONFLICT` and releases claim.
+- After partial publication, foreign edits, disk/I/O failures or unprovable payload leave `recovery-required`, retaining claim/barrier, with `DOCUMENT_WRITE_FAILED` or `DOCUMENT_RECOVERY_REQUIRED` / `write-conflict` and `details.conflicts`.
+- Takeover atomically updates the executor under control lock after proving it stopped. Stage/backup files identify operation and executor; cleanup is scoped to those names. Preserve replaced file modes.
+- Hard-link verification after rename narrows, but cannot eliminate, the final external-writer race ([ADR](../decisions/0016-engine-owned-document-commits.md)). Empty folders left by moves/removal are allowed.
 
 ### Commit-state reads
 

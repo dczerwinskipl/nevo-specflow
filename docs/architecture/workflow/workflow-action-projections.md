@@ -30,47 +30,23 @@ The Engine owns workflow definitions, pinned revisions, runs, transitions, gates
 
 ## Owner actor and read boundary
 
-- Every HTTP action is a **human owner** action. The Runtime derives actor identity and
-  trust from authenticated/trusted-local `request.authz`; request bodies must never supply
-  an actor, executor class or trust level. A managed **agent** attempt uses its separate
-  authorized execution path, not these owner endpoints.
-- Read projections require `spec.view`; start/finish/return/reevaluate require `spec.manage`;
-  Specification Abandon requires `spec.close-specification`. Capabilities are checked at
-  the trusted Specification scope **before** reading the request body. Bodies are capped at
-  **64 KiB**; responses are `Cache-Control: no-store`. The demo Runtime supplies the same
-  Engine rules over in-memory execution state (ADR 0025); without Engine the route responds
-  `503 WORKFLOW_UNAVAILABLE`.
-- `GET .../workflow/actions` is an **authoritative projection**, not a list of suggested
-  actions. Clients render only actions whose availability permits them; they never infer an
-  alternative action from history, gate labels, presence of files or error message text.
-  Stable `kind`, `reason` and `code` values are machine-readable, while messages,
-  purposes and instructions are display-only text.
+- **Actor:** HTTP actions are human-owner operations. Runtime derives actor/trust from authenticated or trusted-local `request.authz`; never accept actor, executor or trust from request bodies. Managed agents use a separate authorized path.
+- **Capabilities:** `spec.view` for projections; `spec.manage` for start/finish/return/reevaluate; `spec.close-specification` for Abandon. Check trusted Specification scope before reading bodies (max 64 KiB). Responses: `Cache-Control: no-store`.
+- **Runtime:** demo uses the same Engine rules in memory (ADR 0025); missing Engine returns `503 WORKFLOW_UNAVAILABLE`.
+- **Authority:** `GET .../workflow/actions` is definitive. Clients render available typed actions and never infer choices from file presence, history, labels or message text. `kind`/`reason`/`code` are stable; explanatory strings are not.
 
 ## Position, outline and next-step certainty
 
 ### Run position and next-step certainty
 
-- A projection names the Specification or Task subject, the pinned workflow (or first-start
-  candidate), run position (`not-started`, `ready`, `active`, `waiting`,
-  `blocked`, `terminal`), the last handoff and allowed start/finish/return options.
-  A terminal abandonment includes `abandonment` attribution where recorded.
-- For a Specification with a resolvable workflow, the outline's `stepCount` and each step's **1-based position** reflect the definition's declared order, **not execution progress**.
-  - A run can branch or loop.
-  - `current` is absent before start and after terminal completion.
-  - `next` exists only when every transition certainly reaches the same step; it is absent if any transition ends the run or several next steps are possible.
-  - Before first start, it is the entry step.
-  - `tasksStep` is the first certain reachable `produces:tasks` step along this chain with no branch or terminal edge.
+- **Projection:** subject, pinned workflow (or start candidate), `not-started`/`ready`/`active`/`waiting`/`blocked`/`terminal` position, last handoff, allowed actions and terminal abandonment attribution.
+- **Outline:** `stepCount` and 1-based step positions follow the **definition**, not runtime progress; runs can branch or loop.
+- **Certainty:** `current` is absent before start/after terminal. `next` exists only if all possible transitions reach the same step; before start it is the entry. `tasksStep` is the first certainly reachable `produces:tasks` step without branch/terminal edge.
 
 ### Action availability and Task types
 
-- A Task's effective status/edit/remove/approval actions and a Specification's
-  `createTask`/`exit` appear as typed `allowed` or `unavailable` results.
-  After the Specification run ends, Task edits/removal and Create Task are unavailable
-  with `specification-ended`; the commands refuse `WORKFLOW_SPECIFICATION_ENDED`.
-- `specification.taskTypes` is the **effective** allowed Task-type catalogue in order:
-  pinned workflow policy after the Specification starts, otherwise the archetype binding.
-  Each type includes the work steps of its Task workflow in declared order. Unresolved or
-  invalid Task workflow types are absent; clients offer exactly the returned types.
+- Task edit/remove/status/approval and Specification `createTask`/`exit` are typed `allowed` or `unavailable`. Once Specification ends, Create/Edit/Remove are `specification-ended`; mutations refuse `WORKFLOW_SPECIFICATION_ENDED`.
+- `specification.taskTypes` lists allowed Task types in effective order: pinned workflow policy after start, otherwise archetype binding. Each type lists declared Task workflow steps. Exclude unresolved/invalid workflow types; the client offers no others.
 
 ## Gates and document relations
 
@@ -88,42 +64,19 @@ The Engine owns workflow definitions, pinned revisions, runs, transitions, gates
 
 ### Document relations
 
-- `documentRelations` is calculated only for the Specification or **one Task's own**
-  projection with a resolved unchanged workflow, not for a multi-Task listing. It
-  relates the active step's exit gates and the certainly next step's entry gates
-  to documents: `needed-to-finish`, `needed-to-start` or `used`, with
-  `blocksNow`. Unmet exit gates that apply to **every result** are needed to finish;
-  conditional unmet gates do not falsely block all results. Unmet next-step entry gates
-  block only when no step is active (ready/not-started/blocked).
-- A gate with a missing section names the closest registered document; one with no
-  document file names the registered documents of its type, or nothing if none exist.
-  When several gates name one document, retain the strongest relation and prefer
-  the active step's gate. Once the run ended, relations are empty. The UI uses these
-  structured facts, not a reconstruction from transition text.
+- Project `documentRelations` only for one Specification or Task with resolved, unchanged workflow, not multi-Task lists.
+- Relate active exit gates and certain next-step entry gates as `needed-to-finish`, `needed-to-start` or `used` with `blocksNow`. Only unmet exit gates shared by **every** result block finish; conditional gates do not. Next-step entry gates block only without an active step.
+- A missing section points to the closest registered document; a missing file points to registered documents of that type, or none. Consolidate duplicate relations by strongest, preferring active step. Terminal runs have none. UI does not infer relations from text.
 
 ### Terminal Task blockers
 
-- The terminal completed transition is `unavailable:tasks-open` while open Tasks
-  remain. It includes stable `openTasks` causes. `resolvableByFinish:true` and
-  `closableTasks` are supplied only when this finish's own `tasks` and
-  `taskDecisions` can close all remaining Tasks. `documentChangePending` names
-  Tasks that a pending document write still blocks; an active/broken Task cannot
-  be silently cancelled by a speculative UI result.
+A completed transition reports `unavailable:tasks-open` while Tasks remain. `openTasks` lists stable causes. `resolvableByFinish:true` / `closableTasks` appear only if this finish's `tasks`/`taskDecisions` close **all** blockers. `documentChangePending` identifies Tasks held by queued writes; an active/broken Task cannot be silently cancelled.
 
 ## Task context and dependency authoring
 
-- `taskAuthoring` is present for a single non-broken Task projection only, not for
-  multi-Task listings. Its `context` is the Engine's effective list, explicit or
-  default, with entries `resolved`, `unresolved` or `awaited`. An awaited
-  process artifact (`artifact:true`) is expected, not a stale broken reference.
-- Without explicit context, the default rule is `task.md`, the Task's other documents
-  and the registered Specification overview, each required. `defaultEntries`
-  is the read-only default at observation time; editing `context:null` returns
-  to that list, not to a default reimplemented in the UI.
-- `dependencyCandidates` lists other Tasks in list order and the Engine's
-  `dependency`, `would-create-cycle`, `cancelled` or `broken` refusals.
-  It is empty once dependency changes are unavailable. The client never validates
-  the graph with its own approximation.
+- **Scope:** `taskAuthoring` appears only for one non-broken Task. Engine `context` entries are `resolved`, `unresolved` or `awaited`; `artifact:true` marks an expected process artifact.
+- **Default:** without explicit context, require `task.md`, other Task documents and registered Specification overview. `defaultEntries` is Engine's read-time default; `context:null` resets to it, not to UI-calculated rules.
+- **Dependencies:** `dependencyCandidates` gives ordered Tasks and `dependency`/`would-create-cycle`/`cancelled`/`broken` refusals. Empty when editing is unavailable; UI never approximates graph checks.
 
 ## Start, finish, return, wait and Abandon
 

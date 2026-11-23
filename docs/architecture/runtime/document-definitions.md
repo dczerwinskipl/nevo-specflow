@@ -20,7 +20,6 @@ related:
 
 ## Definitions: framework invariant and configuration
 
-
 ### Framework invariant
 
 - **Framework invariant (compiled constants, not configurable).** Exactly one thing is required of every Specification: the main document `overview.md` (document id `overview`, type `overview`, protected from deletion).
@@ -28,7 +27,6 @@ related:
 - Parser rule 5 and rule 6 enforce it, and no definition can remove or relax it: every archetype's requirements contain `overview` with `minCount` >= 1 and every scaffold creates it.
 - What is compiled is only the three constants (document id, path and type id `overview`); no definition text is compiled.
 - The `overview` **document type** and the `overview` template are _configuration that the framework requires_: they live in the project's definition files and are validated (see "Definitions as project data"); without the type every archetype is invalid and Create refuses with an actionable error.
-
 
 ### Project configuration
 
@@ -109,7 +107,6 @@ in the Engine's **kind registry** (directory name, supported `schemaVersion`s, s
 dependencies on other kinds); the loader core is not touched. `.nevo/agents/` is the repository's own agent-profile
 namespace and is unrelated; `.nevo/definitions/` does not collide with it.
 
-
 ### Loader validation
 
 **Loading (Engine, read-only).** `loadDefinitions` and the catalogue resolution take no lock and start no process.
@@ -139,7 +136,6 @@ namespace and is unrelated; `.nevo/definitions/` does not collide with it.
   the last 2 seconds is never trusted from the cache (same rule as the revision memo). `catalogueRevision` is the
   sha256 of the canonical JSON of the valid catalogue; the catalogue route's ETag also covers `problems`.
 
-
 ### Catalogue consumers
 
 **Consumers.** Create, the scaffold, the tree projection and the catalogue route all take the catalogue from this
@@ -149,14 +145,12 @@ loader; there is no other source. Create with no usable archetype (directory abs
 catalogue for their rules (they use the manifest and the persisted snapshot); the catalogue only supplies display
 text (archetype title, type titles) and tree `archetype.defined`.
 
-
 ### Removing definitions
 
 **Deleting a definition.** Removes it from the catalogue for new work only. An existing Specification keeps its
 persisted `archetype` snapshot and registry; its tree reports `archetype: { id, version, defined: 'absent' }` and no
 title; its document types are shown by id. Referential integrity is inside the configuration: deleting a document
 type that an archetype requires or templates invalidates that archetype (reported), other archetypes still load.
-
 
 ### Seed installation
 
@@ -169,14 +163,12 @@ type that an archetype requires or templates invalidates that archetype (reporte
 - Files are written atomically (a file the plan saw as absent is created exclusively, so one that appeared meanwhile is never replaced); a link, a special file or an unreadable kind folder on the way refuses the whole install before anything is written, and a template file alone counts as "the project has definitions". **The installed files are committed**: with Git enabled they go into one path-limited Engine commit (ADR 0013: operation trailer, hooks off, protected-branch guard), after a pre-check that refuses a protected or not-allowed branch, a detached HEAD or a busy checkout before anything is written; with Git disabled the install is a plain write.
 - `init` writes the definitions before the configuration marker and commits them after it.
 
-
 ### Repository authorization
 
 **Authorization.** Definitions are repository files: Git permissions decide who changes them. The HTTP catalogue is
 read-only (capability of `create-options`). The CLI resolves to the **Project Home** (not the current checkout); run
 from a linked checkout it either operates on the home or refuses and prints the home path. Switching the home
 checkout's branch changes the definitions for the whole project.
-
 
 ### Additional loader guarantees
 

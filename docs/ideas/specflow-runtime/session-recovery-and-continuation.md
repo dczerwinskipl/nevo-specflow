@@ -76,13 +76,13 @@ Native resume support is **not** a guarantee that the original native context st
 
 ## Boundaries and proposed ownership
 
-| Component | Owns | Must not own |
-| --- | --- | --- |
-| Sessions (Runtime) | Session/Turn history, continuation lineage, accepted continuation intent and target Session creation | Workflow gates, Engine writer claims, authoritative Git outcome |
-| RecoveryCoordinator (Runtime composition) | Read-only assessment, safe sequencing of existing reconciliation, provider eligibility checks, continuation context compilation and action coordination | A second canonical workflow/claim store, a force-release path |
-| Engine | Workflow attempt transitions, exact execution claims, Git effects and their receipts, workspace identity and baseline checks | Vendor conversation formats, summary generation |
-| Provider adapter | Native resume eligibility and transport-specific readiness; start of a validated new invocation | Decision to accept uncertain workspace effects or silently switch execution identity |
-| UI | States, evidence, explicit owner choices and review actions | Inferring success, force-unlocking claims or reconstructing state from partial SSE |
+| Component                                 | Owns                                                                                                                                                    | Must not own                                                                         |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Sessions (Runtime)                        | Session/Turn history, continuation lineage, accepted continuation intent and target Session creation                                                    | Workflow gates, Engine writer claims, authoritative Git outcome                      |
+| RecoveryCoordinator (Runtime composition) | Read-only assessment, safe sequencing of existing reconciliation, provider eligibility checks, continuation context compilation and action coordination | A second canonical workflow/claim store, a force-release path                        |
+| Engine                                    | Workflow attempt transitions, exact execution claims, Git effects and their receipts, workspace identity and baseline checks                            | Vendor conversation formats, summary generation                                      |
+| Provider adapter                          | Native resume eligibility and transport-specific readiness; start of a validated new invocation                                                         | Decision to accept uncertain workspace effects or silently switch execution identity |
+| UI                                        | States, evidence, explicit owner choices and review actions                                                                                             | Inferring success, force-unlocking claims or reconstructing state from partial SSE   |
 
 This is composition above independent Sessions. No workflow attempt is created for a standalone
 chat. Associations to Specification/Task are optional context, not Session identity or authority.
@@ -120,13 +120,13 @@ Inputs:
 
 Candidate user-facing results:
 
-| Result | Meaning | Allowed next action |
-| --- | --- | --- |
-| `ready-native` | Original provider context is eligible and previous invocation is settled | Validate again and create the next Turn in the same Session |
-| `ready-fresh` | The previous writer is settled and a new context may be prepared | Create a successor Session with bounded context |
-| `review-required` | Process settled, but changed files, partial output or tool effects need human reconciliation | Inspect artifacts/diff and record explicit disposition first |
-| `blocked` | Writer may still run, claim unresolved, provider identity uncertain or workspace cannot be verified | Reconcile through existing positive evidence or guided operator recovery |
-| `unavailable` | Required persisted history, identity or workspace is corrupt/missing | Explain missing evidence; no invented "recovery succeeded" |
+| Result            | Meaning                                                                                             | Allowed next action                                                      |
+| ----------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `ready-native`    | Original provider context is eligible and previous invocation is settled                            | Validate again and create the next Turn in the same Session              |
+| `ready-fresh`     | The previous writer is settled and a new context may be prepared                                    | Create a successor Session with bounded context                          |
+| `review-required` | Process settled, but changed files, partial output or tool effects need human reconciliation        | Inspect artifacts/diff and record explicit disposition first             |
+| `blocked`         | Writer may still run, claim unresolved, provider identity uncertain or workspace cannot be verified | Reconcile through existing positive evidence or guided operator recovery |
+| `unavailable`     | Required persisted history, identity or workspace is corrupt/missing                                | Explain missing evidence; no invented "recovery succeeded"               |
 
 The projection is not a second persisted state machine. Persist accepted owner decisions,
 reconciliation receipts and new Session lineage, not a competing copy of the claim/Turn state.
@@ -148,16 +148,16 @@ continuation or after a settled Turn; do not rely on a crash-time summarizer to 
 
 Candidate fields (exact schema deferred to contract design):
 
-| Group | Source and expected content |
-| --- | --- |
-| Identity | `recoveryId`, predecessor Session/Turn, optional workflow subject/step/attempt |
-| Objective | Original user request and explicit owner instructions with provenance |
-| Decisions | Owner-approved decisions, handoffs and outstanding confirmations |
-| Progress | Completed Turns, accepted workflow transitions, tool results marked as observed vs proven |
-| Artifacts | Content IDs/revisions, workspace incarnation, Git HEAD, commit IDs, paths and content hashes |
-| Open work | Remaining tasks, latest failed/interrupted operation, unanswered questions |
-| Uncertainty | Unknown dispatches, partial streams, unverified edits, failed post-actions, stale interactions |
-| Execution constraints | Permitted operation scope, provider selection, workspace and current gates |
+| Group                 | Source and expected content                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| Identity              | `recoveryId`, predecessor Session/Turn, optional workflow subject/step/attempt                 |
+| Objective             | Original user request and explicit owner instructions with provenance                          |
+| Decisions             | Owner-approved decisions, handoffs and outstanding confirmations                               |
+| Progress              | Completed Turns, accepted workflow transitions, tool results marked as observed vs proven      |
+| Artifacts             | Content IDs/revisions, workspace incarnation, Git HEAD, commit IDs, paths and content hashes   |
+| Open work             | Remaining tasks, latest failed/interrupted operation, unanswered questions                     |
+| Uncertainty           | Unknown dispatches, partial streams, unverified edits, failed post-actions, stale interactions |
+| Execution constraints | Permitted operation scope, provider selection, workspace and current gates                     |
 
 Avoid copying the whole transcript, storing credentials, reusable broker capabilities,
 unredacted tool secrets or provider-private chain-of-thought. Use existing chunked content,
@@ -246,23 +246,23 @@ new provider Turn merely because the app restarted.
 
 ## Failure matrix and acceptance evidence
 
-| Fault window / case | Minimum evidence and expected behavior |
-| --- | --- |
-| Crash before dispatch intent | Existing admission recovered; no phantom provider input |
-| Crash after dispatch intent, before native correlation | Unknown unless positive evidence; never replay input |
-| Runtime/host crash during writable Turn | Verify exact stopped process identity and claim settlement; preserve partial history and dirty files |
-| Limit/auth failure before dispatch | No effect, explicit unavailable state; context remains durable |
-| Limit/auth failure after dispatch | Follow recorded native/claim facts, not the error message alone |
-| Lost native context after several days | Fresh successor possible once safe, with predecessor lineage |
-| Native resume incompatible with rebound/missing workspace | Refuse; do not reuse a native context in another checkout |
-| Provider switch during unfinished workflow attempt | Explicit Engine interruption/handover, no actor spoof or gate advance |
-| Tool call or broker write in flight | Block or review until effect outcome is known; do not release based on time |
-| Dirty workspace from interrupted Turn | Preserve/compare artifacts; no blind reset, overwrite or unscoped commit |
-| Crash during workflow finish / attempt commit | Existing journal and idempotent operation evidence decide; do not retry ambiguous external effects |
-| Lost HTTP ACK, retry or repeated owner click | Same accepted request returns same target Session/Turn |
-| Corrupt Session database or missing worktree | Fail closed with recovery evidence; no silent new empty history |
-| Secret in transcript/tool output | Redaction preserved in continuation input and logs |
-| Two simultaneous continuation requests | CAS/serial admission; no duplicate successor for one idempotent intent |
+| Fault window / case                                       | Minimum evidence and expected behavior                                                               |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Crash before dispatch intent                              | Existing admission recovered; no phantom provider input                                              |
+| Crash after dispatch intent, before native correlation    | Unknown unless positive evidence; never replay input                                                 |
+| Runtime/host crash during writable Turn                   | Verify exact stopped process identity and claim settlement; preserve partial history and dirty files |
+| Limit/auth failure before dispatch                        | No effect, explicit unavailable state; context remains durable                                       |
+| Limit/auth failure after dispatch                         | Follow recorded native/claim facts, not the error message alone                                      |
+| Lost native context after several days                    | Fresh successor possible once safe, with predecessor lineage                                         |
+| Native resume incompatible with rebound/missing workspace | Refuse; do not reuse a native context in another checkout                                            |
+| Provider switch during unfinished workflow attempt        | Explicit Engine interruption/handover, no actor spoof or gate advance                                |
+| Tool call or broker write in flight                       | Block or review until effect outcome is known; do not release based on time                          |
+| Dirty workspace from interrupted Turn                     | Preserve/compare artifacts; no blind reset, overwrite or unscoped commit                             |
+| Crash during workflow finish / attempt commit             | Existing journal and idempotent operation evidence decide; do not retry ambiguous external effects   |
+| Lost HTTP ACK, retry or repeated owner click              | Same accepted request returns same target Session/Turn                                               |
+| Corrupt Session database or missing worktree              | Fail closed with recovery evidence; no silent new empty history                                      |
+| Secret in transcript/tool output                          | Redaction preserved in continuation input and logs                                                   |
+| Two simultaneous continuation requests                    | CAS/serial admission; no duplicate successor for one idempotent intent                               |
 
 ### End-to-end DoD
 
@@ -287,15 +287,15 @@ successful prompt exchange.
 
 ## Delivery slices
 
-| Slice | Deliverable | Dependencies |
-| --- | --- | --- |
-| R0 | Audit and design decision: existing recovery paths, actor binding, data retention, provider eligibility | Current Session contracts and PR #169 |
-| R1 | Read-only `RecoveryAssessment` with truthful reasons and UI inspection | Existing reconcile/process evidence |
-| R2 | Bounded `ContinuationContext`, provenance, redaction and checkpoint references | Session history/content, Engine artifacts |
-| R3 | Native resume validation + fresh successor Session with idempotent lineage | R1–R2 |
-| R4 | Workflow attempt interruption/restart or explicit actor-epoch handover | Engine review of PR #169 model, R3 |
-| R5 | Cross-provider handover, complete UX and fault-injection E2E | R3–R4 |
-| R6 | Optional local-state backup/restore and portability policy | Separate security/retention proposal |
+| Slice | Deliverable                                                                                             | Dependencies                              |
+| ----- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| R0    | Audit and design decision: existing recovery paths, actor binding, data retention, provider eligibility | Current Session contracts and PR #169     |
+| R1    | Read-only `RecoveryAssessment` with truthful reasons and UI inspection                                  | Existing reconcile/process evidence       |
+| R2    | Bounded `ContinuationContext`, provenance, redaction and checkpoint references                          | Session history/content, Engine artifacts |
+| R3    | Native resume validation + fresh successor Session with idempotent lineage                              | R1–R2                                     |
+| R4    | Workflow attempt interruption/restart or explicit actor-epoch handover                                  | Engine review of PR #169 model, R3        |
+| R5    | Cross-provider handover, complete UX and fault-injection E2E                                            | R3–R4                                     |
+| R6    | Optional local-state backup/restore and portability policy                                              | Separate security/retention proposal      |
 
 R0 should identify what is already shipped rather than reimplement process/claim recovery.
 R1–R3 are the smallest useful increment for the original lost-provider-context case.

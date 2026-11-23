@@ -1,7 +1,8 @@
 # Retrieval cost and contract coverage (#207)
 
 This manual benchmark measures the actual repository `docs:search` and `docs:get --content`
-CLI boundaries at three immutable revisions. It does not change search ranking or calibrate
+CLI boundaries at four immutable revisions, including the Task discovery repair in #215.
+It does not change search ranking or calibrate
 the vector-only relevance floor (#156). The existing `docs:eval` measures ranking; this
 benchmark measures the subsequent reading cost and a bounded contract checklist.
 
@@ -13,9 +14,11 @@ outside this checkout, then install and build the docs launcher **in each**:
 ```sh
 git fetch origin e5adca56cfbb6c4b0839e6ee2a80c1f772174796
 git fetch origin 0ad0449fd05a6ec780cfebbc688b728d08fd231f
+git fetch origin 3ff4fd5bad3438cefb0139db9d71dab111009806
 git worktree add --detach ../nevo-docs-baseline e5adca56cfbb6c4b0839e6ee2a80c1f772174796
 git worktree add --detach ../nevo-docs-205 0ad0449fd05a6ec780cfebbc688b728d08fd231f
 git worktree add --detach ../nevo-docs-214 f62846051bbfc69b30e138fe00cf68c193e4b3a7
+git worktree add --detach ../nevo-docs-215 3ff4fd5bad3438cefb0139db9d71dab111009806
 # In each worktree:
 pnpm install --frozen-lockfile
 pnpm turbo run build --filter=nevo-repo-docs --output-logs=errors-only
@@ -30,6 +33,7 @@ python tools/docs/eval/retrieval-cost/benchmark.py \
   --checkout baseline=../nevo-docs-baseline \
   --checkout after205=../nevo-docs-205 \
   --checkout after214=../nevo-docs-214 \
+  --checkout after215=../nevo-docs-215 \
   --output tools/docs/eval/retrieval-cost/results/2026-11-23-lexical
 ```
 

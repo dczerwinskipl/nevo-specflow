@@ -261,3 +261,18 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `product/specflow/ui/documents-tree.md` | Reformat | 7 long paragraphs, 4 long bullets; longest section 642 words | text parity #210 |
 | `product/specflow/ui/full-session.md` | Reformat | 3 long paragraphs, 9 long bullets; longest section 1022 words | code check pending |
 | `product/specflow/ui/shell-geometry.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 390 words | code check pending |
+| `product/specflow/ui/specification-overview.md` | Reformat | 1 long paragraphs, 6 long bullets; longest section 1914 words | code check pending |
+| `product/specflow/ui/specification-sessions.md` | Reformat | 0 long paragraphs, 2 long bullets; longest section 268 words | code check pending |
+| `product/specflow/ui/specs-overview.md` | Reformat | 1 long paragraphs, 3 long bullets; longest section 489 words | code check pending |
+| `product/specflow/ui/workflow-execution.md` | Reformat | 0 long paragraphs, 6 long bullets; longest section 1131 words | code check pending |
+| `product/specflow/ui/workflow-workbench-decisions.md` | Move history | future UX/history in current contract | code check pending |
+| `reference/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/authorization.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/openapi.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/operation-progress.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/session-telemetry.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/sessions.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/specflow-specification-operations.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/specification-creation-demo.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/specification-documents.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/api/specification-workflow.md` | Keep | no long paragraph/bullet detected | code check pending |

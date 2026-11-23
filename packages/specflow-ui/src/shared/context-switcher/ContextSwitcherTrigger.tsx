@@ -114,8 +114,8 @@ export function ContextSwitcherTrigger({
                     as="span"
                     variant="title-sm"
                     className={cn(
-                      'block min-w-0 flex-1 text-content-primary',
-                      wrapName ? 'line-clamp-3 whitespace-normal wrap-anywhere' : 'truncate',
+                      'min-w-0 flex-1 text-content-primary',
+                      wrapName ? 'line-clamp-3 whitespace-normal wrap-anywhere' : 'block truncate',
                     )}
                     data-context-switcher-name={wrapName ? 'wrap' : fitted.mode}
                   >

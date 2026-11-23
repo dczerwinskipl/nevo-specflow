@@ -679,27 +679,29 @@ export const ClosingADirtyDocumentAsksFirst: Story = {
   },
 };
 export const CancelledSpecificationSwitchRestoresDrawerFocus: Story = {
-  args: { path: '/specs/api-integration/documents/spec?collection=current' },
   play: async ({ canvas, userEvent }) => {
     await viewport(390, 844);
+    await settleViewport(390, 844);
     await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
     const input = await canvas.findByRole('textbox', { name: 'Treść specification.md' });
     await userEvent.click(input);
     await userEvent.keyboard('{Control>}{End}{/Control}{Enter}Drawer draft');
     await userEvent.click(await canvas.findByRole('button', { name: 'Wróć do: Dokumenty' }));
-    await canvas.findByRole('button', { name: /^specification.md/ });
+    await waitFor(() => {
+      expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent('/documents?');
+    });
 
     const page = within(document.body);
     await userEvent.click(await canvas.findByRole('button', { name: 'Otwórz nawigację' }));
     const trigger = await page.findByRole('button', { name: /^Bieżąca specyfikacja/ });
     await userEvent.click(trigger);
-    await userEvent.click(await page.findByRole('option', { name: /Runtime authorization/ }));
+    await userEvent.click(await page.findByRole('option', { name: /Repository authentication/ }));
     const dialog = await page.findByRole('alertdialog');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Kontynuuj edycję' }));
     await waitFor(() => expect(trigger).toHaveFocus());
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
-    await userEvent.keyboard('{Escape}');
+    await userEvent.click(page.getByRole('button', { name: 'Zamknij nawigację' }));
     await userEvent.click(await canvas.findByRole('button', { name: /^specification.md/ }));
     await expect(
       await canvas.findByRole('textbox', { name: 'Treść specification.md' }),

@@ -78,10 +78,11 @@ any default.
 
 **Open:**
 
-- **Partial-word queries:** controlled prefix matching on the lexical side (a cut-short word
-  matching the words it starts, bounded so short prefixes do not match everything), then the prefix
-  matching and the floor re-evaluated together, since prefix matches are word matches the floor
-  never drops.
+- **Partial-word queries:** bounded single-word lexical completion is implemented and
+  [re-evaluated with the floor](../../../tools/docs/eval/reports/2026-11-23-prefix/README.md).
+  It improves incomplete-word recall without a per-question Recall@10 loss at the same
+  floor in the 60-question tuning and 20-question held-out sets. Cross-language stems
+  absent from the corpus still require semantic retrieval; this does not resolve answerability.
 - **Questions without an answer:** a similarity floor is not a reliable answerability signal; near-domain
   questions the documentation does not answer score like answerable ones. Telling them apart needs
   another signal (a reranker, agreement between the lexical and vector rankings) measured on a

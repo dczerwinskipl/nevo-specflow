@@ -96,6 +96,23 @@ const request = {
 };
 
 describe('searchDocumentationWithLeftOut', () => {
+  it('uses body prefixes for visible hits and the left-out proposal count', async () => {
+    const search: DocsSearch = {
+      chunks: createDocsChunkSource({ corpus }),
+      vectors: { reason: { code: 'semantic-disabled', message: 'off' } },
+    };
+    const result = await searchDocumentationWithLeftOut(search, {
+      ...request,
+      query: 'insta',
+      snippets: true,
+    });
+    expect(result.mode).toBe('lexical');
+    expect(result.results.map((hit) => [hit.id, hit.wordMatch])).toEqual([['guide', true]]);
+    expect(result.proposalsLeftOut).toBe(1);
+    expect(result.results[0]!.sections[0]!.snippet).toContain('Install');
+    expect(result.results[0]!.sections[0]!.snippetMatches).toContainEqual({ start: 0, end: 7 });
+  });
+
   it('counts the proposals the same query would add, embedding the query once', async () => {
     const { provider, search } = semanticSearch();
     const source = createDocsChunkSource({ corpus });

@@ -254,6 +254,7 @@ async function rank(
   const candidates = request.limit * DOCUMENT_CANDIDATES_PER_RESULT;
   const sections = await searchEngine().search({
     query: request.query,
+    lexicalPrefixes: true,
     limit: candidates,
     vectors,
     filter: (chunk) => request.includeProposals || !(chunk as DocsChunk).metadata.proposal,

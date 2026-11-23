@@ -1,0 +1,6153 @@
+{
+  "model": "qwen3-embedding:0.6b",
+  "queryInstruction": "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: ",
+  "variants": [
+    {
+      "name": "context",
+      "summaries": {
+        "all": {
+          "questions": 20,
+          "recallAt5": 0.3,
+          "recallAt10": 0.325,
+          "mrr": 0.25
+        },
+        "en": {
+          "questions": 11,
+          "recallAt5": 0.36363636363636365,
+          "recallAt10": 0.4090909090909091,
+          "mrr": 0.33333333333333337
+        },
+        "pl": {
+          "questions": 9,
+          "recallAt5": 0.2222222222222222,
+          "recallAt10": 0.2222222222222222,
+          "mrr": 0.14814814814814814
+        },
+        "correct": {
+          "questions": 4,
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "mrr": 0.8333333333333334
+        },
+        "partial": {
+          "questions": 8,
+          "recallAt5": 0.125,
+          "recallAt10": 0.1875,
+          "mrr": 0.14583333333333334
+        },
+        "typo": {
+          "questions": 8,
+          "recallAt5": 0.125,
+          "recallAt10": 0.125,
+          "mrr": 0.0625
+        }
+      },
+      "falsePositives": {
+        "all": {
+          "questions": 85,
+          "withVectorOnly": 0,
+          "withAny": 6
+        },
+        "negative": {
+          "questions": 5,
+          "withVectorOnly": 0,
+          "withAny": 4
+        },
+        "random": {
+          "questions": 80,
+          "withVectorOnly": 0,
+          "withAny": 2
+        }
+      }
+    },
+    {
+      "name": "lexical",
+      "summaries": {
+        "all": {
+          "questions": 20,
+          "recallAt5": 0.425,
+          "recallAt10": 0.525,
+          "mrr": 0.33999999999999997
+        },
+        "en": {
+          "questions": 11,
+          "recallAt5": 0.6818181818181818,
+          "recallAt10": 0.7727272727272727,
+          "mrr": 0.5121212121212121
+        },
+        "pl": {
+          "questions": 9,
+          "recallAt5": 0.1111111111111111,
+          "recallAt10": 0.2222222222222222,
+          "mrr": 0.12962962962962965
+        },
+        "correct": {
+          "questions": 4,
+          "recallAt5": 0.75,
+          "recallAt10": 1,
+          "mrr": 0.7916666666666666
+        },
+        "partial": {
+          "questions": 8,
+          "recallAt5": 0.5625,
+          "recallAt10": 0.5625,
+          "mrr": 0.31666666666666665
+        },
+        "typo": {
+          "questions": 8,
+          "recallAt5": 0.125,
+          "recallAt10": 0.25,
+          "mrr": 0.1375
+        }
+      },
+      "falsePositives": {
+        "all": {
+          "questions": 85,
+          "withVectorOnly": 0,
+          "withAny": 12
+        },
+        "negative": {
+          "questions": 5,
+          "withVectorOnly": 0,
+          "withAny": 4
+        },
+        "random": {
+          "questions": 80,
+          "withVectorOnly": 0,
+          "withAny": 8
+        }
+      }
+    },
+    {
+      "name": "hybrid@none",
+      "minSimilarity": null,
+      "summaries": {
+        "all": {
+          "questions": 20,
+          "recallAt5": 0.7,
+          "recallAt10": 0.8,
+          "mrr": 0.6079166666666667
+        },
+        "en": {
+          "questions": 11,
+          "recallAt5": 0.8181818181818182,
+          "recallAt10": 0.9090909090909091,
+          "mrr": 0.6696969696969698
+        },
+        "pl": {
+          "questions": 9,
+          "recallAt5": 0.5555555555555556,
+          "recallAt10": 0.6666666666666666,
+          "mrr": 0.5324074074074074
+        },
+        "correct": {
+          "questions": 4,
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "mrr": 0.875
+        },
+        "partial": {
+          "questions": 8,
+          "recallAt5": 0.625,
+          "recallAt10": 0.8125,
+          "mrr": 0.6041666666666666
+        },
+        "typo": {
+          "questions": 8,
+          "recallAt5": 0.625,
+          "recallAt10": 0.6875,
+          "mrr": 0.478125
+        }
+      },
+      "falsePositives": {
+        "all": {
+          "questions": 85,
+          "withVectorOnly": 80,
+          "withAny": 85
+        },
+        "negative": {
+          "questions": 5,
+          "withVectorOnly": 1,
+          "withAny": 5
+        },
+        "random": {
+          "questions": 80,
+          "withVectorOnly": 79,
+          "withAny": 80
+        }
+      }
+    },
+    {
+      "name": "hybrid@0.36",
+      "minSimilarity": 0.36,
+      "summaries": {
+        "all": {
+          "questions": 20,
+          "recallAt5": 0.7,
+          "recallAt10": 0.8,
+          "mrr": 0.6070833333333333
+        },
+        "en": {
+          "questions": 11,
+          "recallAt5": 0.8181818181818182,
+          "recallAt10": 0.9545454545454546,
+          "mrr": 0.6833333333333332
+        },
+        "pl": {
+          "questions": 9,
+          "recallAt5": 0.5555555555555556,
+          "recallAt10": 0.6111111111111112,
+          "mrr": 0.5138888888888888
+        },
+        "correct": {
+          "questions": 4,
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "mrr": 0.875
+        },
+        "partial": {
+          "questions": 8,
+          "recallAt5": 0.625,
+          "recallAt10": 0.6875,
+          "mrr": 0.5833333333333333
+        },
+        "typo": {
+          "questions": 8,
+          "recallAt5": 0.625,
+          "recallAt10": 0.8125,
+          "mrr": 0.496875
+        }
+      },
+      "falsePositives": {
+        "all": {
+          "questions": 85,
+          "withVectorOnly": 9,
+          "withAny": 17
+        },
+        "negative": {
+          "questions": 5,
+          "withVectorOnly": 1,
+          "withAny": 5
+        },
+        "random": {
+          "questions": 80,
+          "withVectorOnly": 8,
+          "withAny": 12
+        }
+      }
+    },
+    {
+      "name": "hybrid@0.42",
+      "minSimilarity": 0.42,
+      "summaries": {
+        "all": {
+          "questions": 20,
+          "recallAt5": 0.575,
+          "recallAt10": 0.65,
+          "mrr": 0.49714285714285716
+        },
+        "en": {
+          "questions": 11,
+          "recallAt5": 0.6818181818181818,
+          "recallAt10": 0.7727272727272727,
+          "mrr": 0.5727272727272728
+        },
+        "pl": {
+          "questions": 9,
+          "recallAt5": 0.4444444444444444,
+          "recallAt10": 0.5,
+          "mrr": 0.40476190476190477
+        },
+        "correct": {
+          "questions": 4,
+          "recallAt5": 1,
+          "recallAt10": 1,
+          "mrr": 0.875
+        },
+        "partial": {
+          "questions": 8,
+          "recallAt5": 0.6875,
+          "recallAt10": 0.6875,
+          "mrr": 0.525
+        },
+        "typo": {
+          "questions": 8,
+          "recallAt5": 0.25,
+          "recallAt10": 0.4375,
+          "mrr": 0.28035714285714286
+        }
+      },
+      "falsePositives": {
+        "all": {
+          "questions": 85,
+          "withVectorOnly": 0,
+          "withAny": 12
+        },
+        "negative": {
+          "questions": 5,
+          "withVectorOnly": 0,
+          "withAny": 4
+        },
+        "random": {
+          "questions": 80,
+          "withVectorOnly": 0,
+          "withAny": 8
+        }
+      }
+    }
+  ],
+  "proposalHits": 0,
+  "proposalsAboveExpected": 186,
+  "results": [
+    {
+      "question": "auth",
+      "lang": "en",
+      "class": "partial",
+      "expected": ["architecture.runtime.authorization", "reference.api.authorization"],
+      "variants": {
+        "context": {
+          "ids": [
+            "docs.architecture-runtime-auth-readme",
+            "product.specflow.ui.application-navigation-and-auth",
+            "architecture.runtime.endpoint-policy",
+            "product.specflow.ui.authentication-recovery",
+            "reference.cli.nevo-specflow-contract",
+            "architecture.runtime.authorization",
+            "architecture.ui.specflow-application-composition",
+            "product.specflow.ui.application-architecture"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0.5,
+            "reciprocalRank": 0.16666666666666666
+          }
+        },
+        "lexical": {
+          "ids": [
+            "architecture.runtime.endpoint-policy",
+            "product.specflow.ui.application-navigation-and-auth",
+            "reference.cli.nevo-specflow-contract",
+            "docs.architecture-runtime-auth-readme",
+            "architecture.runtime.authorization",
+            "architecture.overview",
+            "architecture.runtime.ownership-and-lifecycle",
+            "architecture.ai.session-admission-and-providers",
+            "product.specflow.ui.authentication-recovery",
+            "engineering.shared.code-organization"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0.5,
+            "recallAt10": 0.5,
+            "reciprocalRank": 0.2
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "docs.architecture-runtime-auth-readme",
+            "architecture.runtime.endpoint-policy",
+            "product.specflow.ui.application-navigation-and-auth",
+            "reference.cli.nevo-specflow-contract",
+            "product.specflow.ui.authentication-recovery",
+            "architecture.runtime.authorization",
+            "reference.api.authorization",
+            "architecture.ai.session-admission-and-providers",
+            "reference.configuration.authorization",
+            "reference.providers.claude"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 1,
+            "reciprocalRank": 0.16666666666666666
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "docs.architecture-runtime-auth-readme",
+            "architecture.runtime.endpoint-policy",
+            "product.specflow.ui.authentication-recovery",
+            "product.specflow.ui.application-navigation-and-auth",
+            "reference.cli.nevo-specflow-contract",
+            "architecture.runtime.authorization",
+            "architecture.overview",
+            "architecture.runtime.ownership-and-lifecycle",
+            "reference.configuration.authorization",
+            "architecture.ai.session-admission-and-providers"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0.5,
+            "reciprocalRank": 0.16666666666666666
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "docs.architecture-runtime-auth-readme",
+            "architecture.runtime.endpoint-policy",
+            "product.specflow.ui.application-navigation-and-auth",
+            "reference.cli.nevo-specflow-contract",
+            "architecture.runtime.authorization",
+            "architecture.overview",
+            "architecture.runtime.ownership-and-lifecycle",
+            "product.specflow.ui.authentication-recovery",
+            "architecture.ai.session-admission-and-providers",
+            "engineering.shared.code-organization"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0.5,
+            "recallAt10": 0.5,
+            "reciprocalRank": 0.2
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 4,
+      "bestSimilarity": 0.43300839882981923
+    },
+    {
+      "question": "tailw",
+      "lang": "en",
+      "class": "partial",
+      "expected": ["design-system.implementation.tailwind.styling-guidelines"],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": [
+            "docs.design-system-tailwind-readme",
+            "design-system.implementation.tailwind.styling-guidelines",
+            "docs.design-system-readme",
+            "docs.design-system-react-readme",
+            "docs.readme",
+            "design-system.implementation.react.component-authoring-contract",
+            "design-system.implementation.library-packaging",
+            "design-system.implementation.react.component-guidelines"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.5
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "docs.design-system-tailwind-readme",
+            "design-system.implementation.tailwind.styling-guidelines",
+            "design-system.implementation.react.component-guidelines",
+            "docs.design-system-readme",
+            "docs.design-system-react-readme",
+            "design-system.implementation.react.secondary-navigation",
+            "docs.readme",
+            "product.shared.vocabulary",
+            "design-system.implementation.react.component-authoring-contract",
+            "design-system.implementation.library-packaging"
+          ],
+          "vectorOnly": 2,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.5
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "docs.design-system-tailwind-readme",
+            "design-system.implementation.tailwind.styling-guidelines",
+            "docs.design-system-readme",
+            "docs.design-system-react-readme",
+            "docs.readme",
+            "design-system.implementation.react.component-authoring-contract",
+            "design-system.implementation.library-packaging",
+            "design-system.implementation.react.component-guidelines"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.5
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "docs.design-system-tailwind-readme",
+            "design-system.implementation.tailwind.styling-guidelines",
+            "docs.design-system-readme",
+            "docs.design-system-react-readme",
+            "docs.readme",
+            "design-system.implementation.react.component-authoring-contract",
+            "design-system.implementation.library-packaging",
+            "design-system.implementation.react.component-guidelines"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.5
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.40368445852341267
+    },
+    {
+      "question": "openap",
+      "lang": "en",
+      "class": "partial",
+      "expected": ["reference.api.openapi"],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": [
+            "engineering.repository.ci",
+            "docs.reference-readme",
+            "reference.api.openapi",
+            "reference.api.task-reads",
+            "reference.api.specification-documents",
+            "reference.api.specflow-specification-operations",
+            "architecture.ai.session-telemetry-observations",
+            "architecture.ai.session-commands",
+            "architecture.ai.session-admission-and-providers",
+            "reference.api.sessions"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.3333333333333333
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.api.openapi",
+            "docs.reference-readme",
+            "reference.api.specflow-specification-operations",
+            "engineering.repository.ci",
+            "reference.api.task-reads",
+            "reference.api.specs-overview",
+            "reference.api.specs-operations-list",
+            "reference.api.workspaces",
+            "architecture.ai.session-admission-and-providers",
+            "reference.api.specification-workspace"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "reference.api.openapi",
+            "docs.reference-readme",
+            "engineering.repository.ci",
+            "reference.api.task-reads",
+            "reference.api.specification-documents",
+            "reference.api.specflow-specification-operations",
+            "architecture.ai.session-telemetry-observations",
+            "architecture.ai.session-commands",
+            "architecture.ai.session-admission-and-providers",
+            "reference.api.sessions"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "reference.api.openapi",
+            "engineering.repository.ci",
+            "docs.reference-readme",
+            "reference.api.task-reads",
+            "reference.api.specification-documents",
+            "reference.api.specflow-specification-operations",
+            "architecture.ai.session-telemetry-observations",
+            "architecture.ai.session-commands",
+            "architecture.ai.session-admission-and-providers",
+            "reference.api.sessions"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.47427395014070145
+    },
+    {
+      "question": "releas",
+      "lang": "en",
+      "class": "partial",
+      "expected": ["engineering.repository.releasing"],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": [
+            "engineering.shared.code-organization",
+            "engineering.repository.releasing",
+            "docs.engineering-repository-readme",
+            "engineering.repository.git-workflow",
+            "engineering.repository.ci",
+            "architecture.repository-structure",
+            "architecture.ai.session-history-and-events",
+            "architecture.runtime.document-commit-policy",
+            "engineering.repository.commit-conventions",
+            "architecture.ai.session-storage-and-lifecycle"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.5
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "engineering.repository.releasing",
+            "architecture.repository-structure",
+            "engineering.repository.git-workflow",
+            "engineering.shared.code-organization",
+            "adr.0003-branch-and-release-model",
+            "product.shared.vocabulary",
+            "engineering.repository.product-packaging",
+            "docs.engineering-repository-readme",
+            "adr.0005-repository-tooling-is-separate-from-the-product-api",
+            "design-system.implementation.library-packaging"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "engineering.repository.releasing",
+            "engineering.shared.code-organization",
+            "docs.engineering-repository-readme",
+            "engineering.repository.git-workflow",
+            "engineering.repository.ci",
+            "architecture.repository-structure",
+            "architecture.ai.session-history-and-events",
+            "architecture.runtime.document-commit-policy",
+            "engineering.repository.commit-conventions",
+            "architecture.ai.session-storage-and-lifecycle"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "engineering.shared.code-organization",
+            "engineering.repository.releasing",
+            "docs.engineering-repository-readme",
+            "engineering.repository.git-workflow",
+            "engineering.repository.ci",
+            "architecture.repository-structure",
+            "architecture.ai.session-history-and-events",
+            "architecture.runtime.document-commit-policy",
+            "engineering.repository.commit-conventions",
+            "architecture.ai.session-storage-and-lifecycle"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.5
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.41244450944167066
+    },
+    {
+      "question": "lokaliz",
+      "lang": "pl",
+      "class": "partial",
+      "expected": ["product.shared.localization"],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.localization",
+            "product.specflow.ui.application-navigation-and-auth",
+            "architecture.runtime.configuration",
+            "engineering.repository.local-setup",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "architecture.runtime.ownership-and-lifecycle",
+            "product.specflow.ui.application-architecture",
+            "engineering.shared.testing",
+            "design-system.implementation.react.component-authoring-contract",
+            "design-system.implementation.tailwind.styling-guidelines"
+          ],
+          "vectorOnly": 10,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.36": {
+          "ids": ["product.shared.localization"],
+          "vectorOnly": 1,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.42": {
+          "ids": ["product.shared.localization"],
+          "vectorOnly": 1,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.476243747271503
+    },
+    {
+      "question": "transkrypt",
+      "lang": "pl",
+      "class": "partial",
+      "expected": ["architecture.ai.session-storage-and-lifecycle"],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "architecture.ai.session-history-and-events",
+            "reference.providers.antigravity",
+            "product.specflow.ui.documents-cross-screen",
+            "product.specflow.ui.create-archetypes",
+            "architecture.ai.canonical-session-turn-work",
+            "product.specflow.ui.documentation-reader-navigation",
+            "product.specflow.ui.full-session",
+            "product.specflow.ui.ai-session-ux",
+            "adr.0009-product-package-build-model",
+            "architecture.ai.session-telemetry-observations"
+          ],
+          "vectorOnly": 10,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.3129090132804811
+    },
+    {
+      "question": "odzysk",
+      "lang": "pl",
+      "class": "partial",
+      "expected": [
+        "engineering.shared.specflow-git-recovery",
+        "product.specflow.ui.authentication-recovery"
+      ],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.cli.specflow-specification-commands",
+            "engineering.shared.specification-create-recovery",
+            "adr.0014-feature-owned-operation-lists",
+            "architecture.runtime.document-operation-transport",
+            "reference.providers.antigravity",
+            "product.specflow.ui.authentication-recovery",
+            "architecture.runtime.ownership-and-lifecycle",
+            "architecture.ai.session-commands",
+            "architecture.workflow.deterministic-workflow",
+            "reference.providers.codex"
+          ],
+          "vectorOnly": 10,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0.5,
+            "reciprocalRank": 0.16666666666666666
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 5,
+      "bestSimilarity": 0.3803171064161254
+    },
+    {
+      "question": "claim",
+      "lang": "en",
+      "class": "partial",
+      "expected": ["architecture.runtime.workspace-execution-claims"],
+      "variants": {
+        "context": {
+          "ids": [
+            "architecture.runtime.workspace-execution-claims",
+            "architecture.runtime.document-write-and-commit-queue",
+            "architecture.runtime.specflow-engine",
+            "adr.0018-engine-commit-policy-and-manual-commit",
+            "engineering.shared.specflow-git-recovery",
+            "architecture.overview"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "lexical": {
+          "ids": [
+            "architecture.runtime.workspace-execution-claims",
+            "architecture.runtime.document-write-and-commit-queue",
+            "architecture.runtime.specflow-engine",
+            "adr.0018-engine-commit-policy-and-manual-commit",
+            "architecture.ai.session-storage-and-lifecycle",
+            "adr.0016-engine-owned-document-commits",
+            "architecture.ai.session-admission-and-providers",
+            "design-system.figma.code-to-figma-projection",
+            "engineering.shared.specflow-git-recovery",
+            "design-system.implementation.react.secondary-navigation"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "architecture.runtime.workspace-execution-claims",
+            "architecture.runtime.document-write-and-commit-queue",
+            "architecture.runtime.specflow-engine",
+            "adr.0018-engine-commit-policy-and-manual-commit",
+            "architecture.ai.session-storage-and-lifecycle",
+            "reference.providers.claude",
+            "engineering.shared.specflow-git-recovery",
+            "reference.providers.antigravity",
+            "adr.0016-engine-owned-document-commits",
+            "product.specflow.specification-creation"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "architecture.runtime.workspace-execution-claims",
+            "architecture.runtime.document-write-and-commit-queue",
+            "architecture.runtime.specflow-engine",
+            "adr.0018-engine-commit-policy-and-manual-commit",
+            "architecture.ai.session-storage-and-lifecycle",
+            "adr.0016-engine-owned-document-commits",
+            "architecture.ai.session-admission-and-providers",
+            "engineering.shared.specflow-git-recovery",
+            "design-system.figma.code-to-figma-projection",
+            "design-system.implementation.react.secondary-navigation"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "architecture.runtime.workspace-execution-claims",
+            "architecture.runtime.document-write-and-commit-queue",
+            "architecture.runtime.specflow-engine",
+            "adr.0018-engine-commit-policy-and-manual-commit",
+            "architecture.ai.session-storage-and-lifecycle",
+            "adr.0016-engine-owned-document-commits",
+            "architecture.ai.session-admission-and-providers",
+            "design-system.figma.code-to-figma-projection",
+            "engineering.shared.specflow-git-recovery",
+            "design-system.implementation.react.secondary-navigation"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.47862724970032805
+    },
+    {
+      "question": "tailwnd tokens",
+      "lang": "en",
+      "class": "typo",
+      "expected": ["design-system.implementation.tailwind.styling-guidelines"],
+      "variants": {
+        "context": {
+          "ids": [
+            "reference.api.session-telemetry",
+            "reference.api.task-reads",
+            "design-system.principles.ui-ux-guidelines",
+            "docs.design-system-tailwind-readme"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": [
+            "design-system.principles.ui-ux-guidelines",
+            "reference.api.task-reads",
+            "product.specflow.ui.application-navigation-and-auth",
+            "reference.api.session-telemetry",
+            "reference.providers.codex",
+            "architecture.ai.session-telemetry-observations",
+            "design-system.figma.code-to-figma-projection",
+            "docs.design-system-tailwind-readme",
+            "design-system.principles.information-hierarchy",
+            "design-system.principles.layout-and-containment"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.api.task-reads",
+            "design-system.principles.ui-ux-guidelines",
+            "docs.design-system-tailwind-readme",
+            "reference.api.session-telemetry",
+            "design-system.implementation.tailwind.styling-guidelines",
+            "architecture.ai.session-telemetry-observations",
+            "reference.providers.codex",
+            "docs.reference-readme",
+            "product.specflow.ui.application-navigation-and-auth",
+            "reference.providers.claude"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.2
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "docs.design-system-tailwind-readme",
+            "design-system.principles.ui-ux-guidelines",
+            "reference.api.task-reads",
+            "design-system.implementation.tailwind.styling-guidelines",
+            "reference.api.session-telemetry",
+            "product.specflow.ui.application-navigation-and-auth",
+            "reference.providers.codex",
+            "architecture.ai.session-telemetry-observations",
+            "design-system.figma.code-to-figma-projection",
+            "design-system.principles.information-hierarchy"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.25
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "docs.design-system-tailwind-readme",
+            "design-system.principles.ui-ux-guidelines",
+            "reference.api.task-reads",
+            "reference.api.session-telemetry",
+            "product.specflow.ui.application-navigation-and-auth",
+            "reference.providers.codex",
+            "architecture.ai.session-telemetry-observations",
+            "design-system.figma.code-to-figma-projection",
+            "design-system.principles.information-hierarchy",
+            "design-system.principles.layout-and-containment"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.42430493039349704
+    },
+    {
+      "question": "opnapi generaton",
+      "lang": "en",
+      "class": "typo",
+      "expected": ["reference.api.openapi"],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.api.openapi",
+            "docs.reference-readme",
+            "reference.api.specs-operations-list",
+            "product.specflow.specification-creation",
+            "adr.0014-feature-owned-operation-lists",
+            "reference.api.operation-progress",
+            "reference.api.specification-creation-demo",
+            "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
+            "product.shared.vocabulary",
+            "architecture.runtime.specification-create-lifecycle"
+          ],
+          "vectorOnly": 10,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.36": {
+          "ids": ["reference.api.openapi"],
+          "vectorOnly": 1,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.4172722827076107
+    },
+    {
+      "question": "pull reqest description",
+      "lang": "en",
+      "class": "typo",
+      "expected": ["engineering.repository.pull-requests"],
+      "variants": {
+        "context": {
+          "ids": [
+            "engineering.repository.commit-conventions",
+            "engineering.repository.pull-requests",
+            "engineering.repository.git-workflow",
+            "engineering.repository.ci",
+            "engineering.repository.dependencies-and-security",
+            "product.specflow.specification-documents",
+            "product.specflow.ui.specification-overview",
+            "reference.api.openapi",
+            "docs.engineering-repository-readme"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.5
+          }
+        },
+        "lexical": {
+          "ids": [
+            "engineering.repository.pull-requests",
+            "engineering.repository.commit-conventions",
+            "engineering.repository.ci",
+            "engineering.repository.dependencies-and-security",
+            "docs.engineering-repository-readme",
+            "product.specflow.ui.specification-overview",
+            "engineering.repository.git-workflow",
+            "product.specflow.specification-documents",
+            "engineering.repository.dogfooding",
+            "design-system.principles.information-hierarchy"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "engineering.repository.commit-conventions",
+            "engineering.repository.pull-requests",
+            "engineering.repository.ci",
+            "product.specflow.specification-documents",
+            "engineering.repository.git-workflow",
+            "engineering.repository.dependencies-and-security",
+            "product.specflow.ui.specification-overview",
+            "docs.engineering-repository-readme",
+            "product.specflow.ui.specs-overview",
+            "product.specflow.ui.personas"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.5
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "engineering.repository.commit-conventions",
+            "engineering.repository.pull-requests",
+            "engineering.repository.ci",
+            "product.specflow.specification-documents",
+            "engineering.repository.dependencies-and-security",
+            "docs.engineering-repository-readme",
+            "product.specflow.ui.specification-overview",
+            "engineering.repository.git-workflow",
+            "product.specflow.ui.specs-overview",
+            "engineering.repository.dogfooding"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.5
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "engineering.repository.pull-requests",
+            "engineering.repository.commit-conventions",
+            "engineering.repository.ci",
+            "engineering.repository.dependencies-and-security",
+            "docs.engineering-repository-readme",
+            "product.specflow.ui.specification-overview",
+            "engineering.repository.git-workflow",
+            "product.specflow.specification-documents",
+            "engineering.repository.dogfooding",
+            "design-system.principles.information-hierarchy"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.478410483808086
+    },
+    {
+      "question": "integraton tests on linx",
+      "lang": "en",
+      "class": "typo",
+      "expected": ["engineering.repository.local-setup"],
+      "variants": {
+        "context": {
+          "ids": [
+            "design-system.implementation.react.component-authoring-contract",
+            "engineering.cli.testing",
+            "engineering.shared.testing",
+            "product.specflow.ui.specification-overview",
+            "product.specflow.ui.workflow-execution",
+            "design-system.implementation.storybook.guidelines",
+            "design-system.implementation.tailwind.styling-guidelines",
+            "engineering.repository.ci",
+            "engineering.repository.git-workflow",
+            "adr.0007-documentation-architecture-and-taxonomy"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": [
+            "engineering.shared.testing",
+            "design-system.implementation.react.component-authoring-contract",
+            "engineering.repository.ci",
+            "design-system.implementation.storybook.guidelines",
+            "engineering.cli.testing",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "engineering.repository.pull-requests",
+            "adr.0012-product-package-topology-and-dependency-direction",
+            "docs.design-system-storybook-readme",
+            "engineering.repository.local-setup"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 1,
+            "reciprocalRank": 0.1
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "engineering.shared.testing",
+            "engineering.cli.testing",
+            "engineering.repository.ci",
+            "design-system.implementation.storybook.guidelines",
+            "design-system.implementation.react.component-authoring-contract",
+            "design-system.implementation.tailwind.styling-guidelines",
+            "docs.design-system-storybook-readme",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "engineering.repository.pull-requests",
+            "architecture.runtime.specification-documents"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "engineering.shared.testing",
+            "design-system.implementation.react.component-authoring-contract",
+            "engineering.repository.ci",
+            "design-system.implementation.storybook.guidelines",
+            "engineering.cli.testing",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "engineering.repository.pull-requests",
+            "adr.0012-product-package-topology-and-dependency-direction",
+            "docs.design-system-storybook-readme",
+            "engineering.repository.local-setup"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 1,
+            "reciprocalRank": 0.1
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "engineering.shared.testing",
+            "design-system.implementation.react.component-authoring-contract",
+            "engineering.repository.ci",
+            "design-system.implementation.storybook.guidelines",
+            "engineering.cli.testing",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "engineering.repository.pull-requests",
+            "adr.0012-product-package-topology-and-dependency-direction",
+            "docs.design-system-storybook-readme",
+            "engineering.repository.local-setup"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 1,
+            "reciprocalRank": 0.1
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 5,
+      "bestSimilarity": 0.40903815541976274
+    },
+    {
+      "question": "jak napisac storie",
+      "lang": "pl",
+      "class": "typo",
+      "expected": ["design-system.implementation.storybook.guidelines"],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "design-system.implementation.storybook.guidelines",
+            "docs.design-system-storybook-readme",
+            "engineering.shared.testing",
+            "docs.readme",
+            "product.specflow.specification-documents",
+            "design-system.implementation.react.component-authoring-contract",
+            "product.specflow.specification-creation",
+            "architecture.principles.normative-language",
+            "design-system.implementation.ownership-and-tooling",
+            "architecture.runtime.document-write-and-commit-queue"
+          ],
+          "vectorOnly": 10,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.36": {
+          "ids": ["design-system.implementation.storybook.guidelines"],
+          "vectorOnly": 1,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.41384359878585064
+    },
+    {
+      "question": "konfiguracja embedingow",
+      "lang": "pl",
+      "class": "typo",
+      "expected": ["reference.configuration.documentation-and-embeddings"],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.configuration.documentation-and-embeddings",
+            "engineering.repository.local-setup",
+            "architecture.runtime.configuration",
+            "adr.0020-documentation-discovery-is-a-product-capability",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "docs.reference-readme",
+            "product.specflow.specification-creation",
+            "reference.configuration.specflow-git-worktrees",
+            "design-system.principles.layout-and-containment",
+            "architecture.runtime.document-definitions"
+          ],
+          "vectorOnly": 10,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "reference.configuration.documentation-and-embeddings",
+            "engineering.repository.local-setup"
+          ],
+          "vectorOnly": 2,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.42": {
+          "ids": ["reference.configuration.documentation-and-embeddings"],
+          "vectorOnly": 1,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.503897017123299
+    },
+    {
+      "question": "odzyskiwnie po błedzie commita",
+      "lang": "pl",
+      "class": "typo",
+      "expected": ["engineering.shared.specflow-git-recovery"],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": ["product.shared.vocabulary"],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "architecture.runtime.document-commit-policy",
+            "reference.cli.specflow-specification-commands",
+            "adr.0018-engine-commit-policy-and-manual-commit",
+            "architecture.runtime.document-write-and-commit-queue",
+            "product.specflow.ui.document-editor-client-behavior",
+            "adr.0013-engine-owned-commits-and-protected-branches",
+            "architecture.runtime.document-operation-transport",
+            "product.specflow.specification-creation",
+            "architecture.workflow.workflow-storage-and-recovery"
+          ],
+          "vectorOnly": 9,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "product.shared.vocabulary",
+            "architecture.runtime.document-commit-policy",
+            "reference.cli.specflow-specification-commands",
+            "adr.0018-engine-commit-policy-and-manual-commit",
+            "architecture.runtime.document-write-and-commit-queue",
+            "product.specflow.ui.document-editor-client-behavior",
+            "adr.0013-engine-owned-commits-and-protected-branches",
+            "architecture.runtime.document-operation-transport",
+            "product.specflow.specification-creation",
+            "architecture.workflow.workflow-storage-and-recovery"
+          ],
+          "vectorOnly": 9,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "architecture.runtime.document-commit-policy",
+            "product.shared.vocabulary",
+            "reference.cli.specflow-specification-commands",
+            "adr.0018-engine-commit-policy-and-manual-commit"
+          ],
+          "vectorOnly": 3,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.4805865392685876
+    },
+    {
+      "question": "postep operacji w UI",
+      "lang": "pl",
+      "class": "typo",
+      "expected": ["engineering.shared.operation-progress", "reference.api.operation-progress"],
+      "variants": {
+        "context": {
+          "ids": [
+            "architecture.ui.specflow-application-composition",
+            "product.specflow.ui.application-architecture",
+            "product.specflow.ui.application-navigation-and-auth",
+            "product.specflow.ui.documentation-reader",
+            "product.specflow.ui.documents-archetypes",
+            "design-system.principles.ui-ux-guidelines",
+            "product.specflow.ui.personas",
+            "product.specflow.ui.workflow-execution",
+            "product.specflow.ui.documents-cross-screen",
+            "product.specflow.ui.data-loading-and-integration"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "lexical": {
+          "ids": [
+            "design-system.implementation.react.component-guidelines",
+            "product.shared.vocabulary",
+            "design-system.implementation.react.secondary-navigation",
+            "design-system.implementation.react.item-tabs",
+            "adr.0008-product-naming-and-surfaces",
+            "design-system.principles.system-boundary",
+            "docs.product-specflow-ui-readme",
+            "design-system.principles.ui-ux-guidelines",
+            "product.specflow.ui.application-architecture",
+            "architecture.overview"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.ui.personas",
+            "design-system.principles.ui-ux-guidelines",
+            "docs.product-specflow-ui-readme",
+            "design-system.principles.system-boundary",
+            "product.specflow.ui.application-architecture",
+            "product.specflow.ui.interaction-model",
+            "adr.0008-product-naming-and-surfaces",
+            "engineering.shared.operation-progress",
+            "product.shared.vocabulary",
+            "architecture.ui.specflow-application-composition"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0.5,
+            "reciprocalRank": 0.125
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "product.specflow.ui.personas",
+            "design-system.principles.ui-ux-guidelines",
+            "docs.product-specflow-ui-readme",
+            "design-system.principles.system-boundary",
+            "product.specflow.ui.application-architecture",
+            "product.specflow.ui.interaction-model",
+            "adr.0008-product-naming-and-surfaces",
+            "engineering.shared.operation-progress",
+            "architecture.ui.specflow-application-composition",
+            "design-system.implementation.ownership-and-tooling"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0.5,
+            "reciprocalRank": 0.125
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "product.specflow.ui.personas",
+            "design-system.principles.ui-ux-guidelines",
+            "docs.product-specflow-ui-readme",
+            "design-system.principles.system-boundary",
+            "product.specflow.ui.interaction-model",
+            "product.specflow.ui.application-architecture",
+            "engineering.shared.operation-progress",
+            "design-system.implementation.react.component-guidelines",
+            "product.shared.vocabulary",
+            "design-system.implementation.react.secondary-navigation"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 0.5,
+            "reciprocalRank": 0.14285714285714285
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.4830082808596092
+    },
+    {
+      "question": "operation progress events",
+      "lang": "en",
+      "class": "correct",
+      "expected": ["engineering.shared.operation-progress", "reference.api.operation-progress"],
+      "variants": {
+        "context": {
+          "ids": [
+            "reference.api.operation-progress",
+            "engineering.shared.operation-progress",
+            "reference.api.specs-operations-list",
+            "adr.0014-feature-owned-operation-lists",
+            "reference.api.specflow-specification-operations",
+            "architecture.ai.provider-boundary",
+            "product.specflow.specification-creation",
+            "architecture.runtime.document-operation-transport",
+            "architecture.ai.session-history-and-events",
+            "adr.0016-engine-owned-document-commits"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "lexical": {
+          "ids": [
+            "reference.api.operation-progress",
+            "engineering.shared.operation-progress",
+            "reference.api.specs-operations-list",
+            "reference.api.specflow-specification-operations",
+            "adr.0014-feature-owned-operation-lists",
+            "architecture.ai.provider-boundary",
+            "architecture.ai.session-history-and-events",
+            "reference.api.specification-creation-demo",
+            "adr.0016-engine-owned-document-commits",
+            "product.specflow.ui.create-archetypes"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.api.operation-progress",
+            "engineering.shared.operation-progress",
+            "reference.api.specs-operations-list",
+            "adr.0014-feature-owned-operation-lists",
+            "architecture.ai.session-history-and-events",
+            "architecture.ai.provider-boundary",
+            "reference.api.specflow-specification-operations",
+            "architecture.runtime.document-operation-transport",
+            "reference.protocols.session-provider-driver",
+            "reference.api.specification-creation-demo"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "reference.api.operation-progress",
+            "engineering.shared.operation-progress",
+            "reference.api.specs-operations-list",
+            "adr.0014-feature-owned-operation-lists",
+            "architecture.ai.session-history-and-events",
+            "architecture.ai.provider-boundary",
+            "reference.api.specflow-specification-operations",
+            "adr.0016-engine-owned-document-commits",
+            "product.specflow.ui.create-archetypes",
+            "reference.api.specification-creation-demo"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "reference.api.operation-progress",
+            "engineering.shared.operation-progress",
+            "reference.api.specs-operations-list",
+            "adr.0014-feature-owned-operation-lists",
+            "reference.api.specflow-specification-operations",
+            "architecture.ai.provider-boundary",
+            "architecture.ai.session-history-and-events",
+            "adr.0016-engine-owned-document-commits",
+            "reference.api.specification-creation-demo",
+            "product.specflow.ui.create-archetypes"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.6509609727921477
+    },
+    {
+      "question": "workspace execution claims",
+      "lang": "en",
+      "class": "correct",
+      "expected": ["architecture.runtime.workspace-execution-claims"],
+      "variants": {
+        "context": {
+          "ids": [
+            "architecture.runtime.workspace-execution-claims",
+            "architecture.runtime.specflow-engine",
+            "architecture.overview",
+            "architecture.ai.session-admission-and-providers",
+            "architecture.ai.provider-boundary",
+            "architecture.runtime.task-read-composition",
+            "product.specflow.ui.specification-overview",
+            "architecture.runtime.specification-workspace-composition",
+            "architecture.runtime.workspace-documentation-corpus",
+            "reference.api.workspace-docs"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "lexical": {
+          "ids": [
+            "architecture.runtime.workspace-execution-claims",
+            "architecture.runtime.specflow-engine",
+            "architecture.ai.session-admission-and-providers",
+            "architecture.ai.provider-boundary",
+            "architecture.runtime.specflow-project-home",
+            "architecture.workflow.workflow-storage-and-recovery",
+            "architecture.runtime.task-read-composition",
+            "architecture.runtime.specification-close-admission",
+            "architecture.runtime.specification-close-lifecycle",
+            "architecture.ai.canonical-session-turn-work"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "architecture.runtime.workspace-execution-claims",
+            "architecture.ai.session-admission-and-providers",
+            "architecture.runtime.specflow-engine",
+            "architecture.ai.provider-boundary",
+            "architecture.runtime.specification-workspace-composition",
+            "reference.api.workspaces",
+            "reference.api.specification-workspace",
+            "architecture.runtime.task-read-composition",
+            "adr.0022-workspace-scoped-documentation-reader",
+            "architecture.ai.canonical-session-turn-work"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "architecture.runtime.workspace-execution-claims",
+            "architecture.ai.session-admission-and-providers",
+            "architecture.runtime.specflow-engine",
+            "architecture.ai.provider-boundary",
+            "architecture.runtime.specification-workspace-composition",
+            "reference.api.workspaces",
+            "reference.api.specification-workspace",
+            "architecture.runtime.task-read-composition",
+            "adr.0022-workspace-scoped-documentation-reader",
+            "architecture.ai.canonical-session-turn-work"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "architecture.runtime.workspace-execution-claims",
+            "architecture.ai.session-admission-and-providers",
+            "architecture.runtime.specflow-engine",
+            "architecture.ai.provider-boundary",
+            "architecture.runtime.specification-workspace-composition",
+            "reference.api.workspaces",
+            "reference.api.specification-workspace",
+            "architecture.runtime.task-read-composition",
+            "adr.0022-workspace-scoped-documentation-reader",
+            "architecture.ai.canonical-session-turn-work"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.7226342966389847
+    },
+    {
+      "question": "co pokazuje ekran Full Session",
+      "lang": "pl",
+      "class": "correct",
+      "expected": ["product.specflow.ui.full-session"],
+      "variants": {
+        "context": {
+          "ids": [
+            "product.specflow.ui.full-session",
+            "product.specflow.ui.specification-sessions",
+            "product.specflow.ui.ai-session-ux",
+            "product.specflow.ui.workflow-execution",
+            "design-system.implementation.react.workspace-dynamic-split",
+            "product.specflow.ui.interaction-model",
+            "architecture.ai.session-admission-and-providers",
+            "architecture.ai.session-association-and-list",
+            "architecture.ai.session-commands",
+            "architecture.ai.session-history-and-events"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "lexical": {
+          "ids": [
+            "product.specflow.ui.full-session",
+            "design-system.implementation.react.workspace-dynamic-split",
+            "architecture.ai.session-admission-and-providers",
+            "product.specflow.ui.interaction-model",
+            "product.specflow.ui.specification-sessions",
+            "product.specflow.ui.ai-session-ux",
+            "architecture.ai.session-history-and-events",
+            "product.specflow.ui.documents-editor-mode",
+            "architecture.ai.session-storage-and-lifecycle",
+            "reference.protocols.session-provider-driver"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.ui.full-session",
+            "architecture.ai.session-admission-and-providers",
+            "product.specflow.ui.interaction-model",
+            "product.specflow.ui.specification-sessions",
+            "product.specflow.ui.ai-session-ux",
+            "architecture.ai.session-history-and-events",
+            "design-system.implementation.react.workspace-dynamic-split",
+            "reference.protocols.session-provider-driver",
+            "architecture.runtime.specification-workspace-composition",
+            "product.specflow.ui.documents-editor-mode"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "product.specflow.ui.full-session",
+            "architecture.ai.session-admission-and-providers",
+            "product.specflow.ui.interaction-model",
+            "product.specflow.ui.specification-sessions",
+            "product.specflow.ui.ai-session-ux",
+            "architecture.ai.session-history-and-events",
+            "design-system.implementation.react.workspace-dynamic-split",
+            "reference.protocols.session-provider-driver",
+            "architecture.runtime.specification-workspace-composition",
+            "product.specflow.ui.documents-editor-mode"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "product.specflow.ui.full-session",
+            "architecture.ai.session-admission-and-providers",
+            "product.specflow.ui.interaction-model",
+            "product.specflow.ui.specification-sessions",
+            "architecture.ai.session-history-and-events",
+            "product.specflow.ui.ai-session-ux",
+            "design-system.implementation.react.workspace-dynamic-split",
+            "reference.protocols.session-provider-driver",
+            "architecture.runtime.specification-workspace-composition",
+            "product.specflow.ui.documents-editor-mode"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.6517158396814257
+    },
+    {
+      "question": "testowanie komend CLI",
+      "lang": "pl",
+      "class": "correct",
+      "expected": ["engineering.cli.testing"],
+      "variants": {
+        "context": {
+          "ids": [
+            "reference.cli.specflow-specification-commands",
+            "engineering.cli.architecture",
+            "engineering.cli.testing",
+            "reference.cli.nevo-specflow-contract",
+            "product.specflow.cli.interaction-model",
+            "product.specflow.cli.personas",
+            "docs.engineering-cli-readme",
+            "docs.product-specflow-cli-readme",
+            "reference.cli.nevo-specflow-docs",
+            "architecture.runtime.specflow-engine"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.3333333333333333
+          }
+        },
+        "lexical": {
+          "ids": [
+            "product.specflow.cli.interaction-model",
+            "reference.cli.nevo-specflow-contract",
+            "docs.engineering-cli-readme",
+            "engineering.cli.architecture",
+            "docs.product-specflow-cli-readme",
+            "engineering.cli.testing",
+            "product.specflow.cli.personas",
+            "architecture.overview",
+            "reference.cli.specflow-specification-commands",
+            "product.shared.localization"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 0,
+            "recallAt10": 1,
+            "reciprocalRank": 0.16666666666666666
+          }
+        },
+        "hybrid@none": {
+          "ids": [
+            "engineering.cli.architecture",
+            "engineering.cli.testing",
+            "product.specflow.cli.interaction-model",
+            "docs.engineering-cli-readme",
+            "reference.cli.nevo-specflow-contract",
+            "product.specflow.cli.personas",
+            "docs.product-specflow-cli-readme",
+            "reference.cli.specflow-specification-commands",
+            "reference.providers.executable-discovery",
+            "architecture.overview"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.5
+          }
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "engineering.cli.architecture",
+            "engineering.cli.testing",
+            "product.specflow.cli.interaction-model",
+            "docs.engineering-cli-readme",
+            "reference.cli.nevo-specflow-contract",
+            "product.specflow.cli.personas",
+            "docs.product-specflow-cli-readme",
+            "reference.cli.specflow-specification-commands",
+            "reference.providers.executable-discovery",
+            "architecture.overview"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.5
+          }
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "engineering.cli.architecture",
+            "engineering.cli.testing",
+            "product.specflow.cli.interaction-model",
+            "docs.engineering-cli-readme",
+            "reference.cli.specflow-specification-commands",
+            "product.specflow.cli.personas",
+            "docs.product-specflow-cli-readme",
+            "reference.cli.nevo-specflow-contract",
+            "reference.providers.executable-discovery",
+            "architecture.overview"
+          ],
+          "vectorOnly": 0,
+          "score": {
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 0.5
+          }
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.7134240246196926
+    },
+    {
+      "question": "How do I configure email notifications for Specification reviews?",
+      "lang": "en",
+      "class": "negative",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [
+            "product.specflow.specification-documents",
+            "adr.0017-definitions-as-project-data",
+            "product.specflow.ui.workflow-workbench-decisions",
+            "reference.configuration.specification-definitions",
+            "architecture.runtime.specification-workspace-composition",
+            "reference.api.specification-creation-demo",
+            "reference.api.specification-documents",
+            "reference.api.specflow-specification-operations",
+            "reference.cli.specflow-specification-commands",
+            "engineering.shared.specification-create-recovery"
+          ],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [
+            "reference.providers.executable-discovery",
+            "product.specflow.specification-documents",
+            "product.shared.localization",
+            "engineering.repository.pull-requests",
+            "product.specflow.ui.workflow-execution",
+            "design-system.principles.ui-ux-guidelines",
+            "engineering.repository.ci",
+            "engineering.repository.dependencies-and-security",
+            "reference.cli.nevo-specflow-docs",
+            "design-system.figma.code-to-figma-projection"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.specification-documents",
+            "reference.providers.executable-discovery",
+            "product.specflow.ui.workflow-execution",
+            "product.shared.localization",
+            "engineering.repository.pull-requests",
+            "docs.product-specflow-ui-readme",
+            "engineering.repository.dependencies-and-security",
+            "product.specflow.ui.specs-overview",
+            "design-system.figma.code-to-figma-projection",
+            "product.specflow.ui.specification-overview"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "product.specflow.specification-documents",
+            "reference.providers.executable-discovery",
+            "product.specflow.ui.workflow-execution",
+            "product.shared.localization",
+            "engineering.repository.pull-requests",
+            "docs.product-specflow-ui-readme",
+            "engineering.repository.dependencies-and-security",
+            "product.specflow.ui.specs-overview",
+            "design-system.figma.code-to-figma-projection",
+            "product.specflow.ui.specification-overview"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "product.specflow.specification-documents",
+            "reference.providers.executable-discovery",
+            "product.specflow.ui.workflow-execution",
+            "product.shared.localization",
+            "engineering.repository.pull-requests",
+            "docs.product-specflow-ui-readme",
+            "engineering.repository.dependencies-and-security",
+            "product.specflow.ui.specs-overview",
+            "design-system.figma.code-to-figma-projection",
+            "product.specflow.ui.specification-overview"
+          ],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.568640048074561
+    },
+    {
+      "question": "Which monitoring dashboard shows the Runtime CPU usage?",
+      "lang": "en",
+      "class": "negative",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [
+            "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+            "adr.0025-demo-runs-the-engine-in-memory",
+            "architecture.overview",
+            "reference.providers.executable-discovery",
+            "product.specflow.ui.specification-overview",
+            "design-system.implementation.react.item-tabs",
+            "engineering.shared.operation-progress",
+            "product.specflow.ui.specs-overview",
+            "reference.cli.nevo-specflow-contract",
+            "reference.configuration.documentation-and-embeddings"
+          ],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [
+            "engineering.shared.operation-progress",
+            "product.specflow.ui.specification-overview",
+            "product.specflow.ui.specification-sessions",
+            "reference.cli.nevo-specflow-contract",
+            "product.specflow.ui.specs-overview",
+            "adr.0025-demo-runs-the-engine-in-memory",
+            "engineering.cli.testing",
+            "design-system.implementation.react.item-tabs",
+            "adr.0008-product-naming-and-surfaces",
+            "adr.0023-neutral-workflow-coordinator-and-manual-execution"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.ui.specification-overview",
+            "reference.api.session-telemetry",
+            "product.specflow.ui.specification-sessions",
+            "engineering.shared.operation-progress",
+            "adr.0025-demo-runs-the-engine-in-memory",
+            "product.specflow.ui.specs-overview",
+            "product.specflow.ui.personas",
+            "reference.cli.nevo-specflow-contract",
+            "reference.providers.executable-discovery",
+            "design-system.implementation.react.item-tabs"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "reference.api.session-telemetry",
+            "product.specflow.ui.specification-overview",
+            "adr.0025-demo-runs-the-engine-in-memory",
+            "product.specflow.ui.specs-overview",
+            "engineering.shared.operation-progress",
+            "product.specflow.ui.specification-sessions",
+            "product.specflow.ui.personas",
+            "reference.cli.nevo-specflow-contract",
+            "design-system.implementation.react.item-tabs",
+            "adr.0023-neutral-workflow-coordinator-and-manual-execution"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "engineering.shared.operation-progress",
+            "adr.0025-demo-runs-the-engine-in-memory",
+            "product.specflow.ui.specification-overview",
+            "product.specflow.ui.specification-sessions",
+            "product.specflow.ui.personas",
+            "reference.cli.nevo-specflow-contract",
+            "product.specflow.ui.specs-overview",
+            "architecture.runtime.ownership-and-lifecycle",
+            "design-system.implementation.react.item-tabs",
+            "adr.0023-neutral-workflow-coordinator-and-manual-execution"
+          ],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.48531324434474604
+    },
+    {
+      "question": "What is the on-call rotation for the Runtime team?",
+      "lang": "en",
+      "class": "negative",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [
+            "architecture.runtime.workspace-execution-claims",
+            "product.specflow.overview",
+            "product.specflow.specification-documents",
+            "product.specflow.ui.workflow-workbench-decisions",
+            "adr.0012-product-package-topology-and-dependency-direction",
+            "architecture.runtime.ownership-and-lifecycle",
+            "architecture.runtime.specflow-engine",
+            "reference.providers.executable-discovery",
+            "adr.0020-documentation-discovery-is-a-product-capability",
+            "product.specflow.ui.specification-overview"
+          ],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [
+            "architecture.repository-structure",
+            "product.specflow.specification-documents",
+            "product.specflow.ui.specs-overview",
+            "adr.0012-product-package-topology-and-dependency-direction",
+            "product.specflow.ui.specification-overview",
+            "reference.providers.executable-discovery",
+            "product.specflow.ui.ai-session-ux",
+            "architecture.overview",
+            "design-system.implementation.react.workspace-dynamic-split",
+            "adr.0021-product-neutral-ai-semantic-search-engine"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "architecture.repository-structure",
+            "reference.providers.executable-discovery",
+            "product.specflow.ui.ai-session-ux",
+            "architecture.runtime.specflow-engine",
+            "product.specflow.ui.full-session",
+            "product.specflow.specification-documents",
+            "adr.0012-product-package-topology-and-dependency-direction",
+            "architecture.overview",
+            "architecture.runtime.workspace-execution-claims",
+            "product.specflow.ui.specs-overview"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "architecture.runtime.specflow-engine",
+            "architecture.repository-structure",
+            "product.specflow.specification-documents",
+            "architecture.runtime.workspace-execution-claims",
+            "product.specflow.ui.full-session",
+            "architecture.overview",
+            "reference.providers.executable-discovery",
+            "adr.0012-product-package-topology-and-dependency-direction",
+            "product.specflow.ui.specs-overview",
+            "product.specflow.ui.ai-session-ux"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "architecture.repository-structure",
+            "product.specflow.specification-documents",
+            "product.specflow.ui.specification-overview",
+            "product.specflow.ui.specs-overview",
+            "adr.0012-product-package-topology-and-dependency-direction",
+            "reference.providers.executable-discovery",
+            "product.specflow.ui.ai-session-ux",
+            "architecture.overview",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "design-system.implementation.react.workspace-dynamic-split"
+          ],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 4,
+      "bestSimilarity": 0.4989474240667878
+    },
+    {
+      "question": "Jak wygenerować fakturę dla klienta?",
+      "lang": "pl",
+      "class": "negative",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.api.specification-creation-demo",
+            "product.specflow.cli.personas",
+            "product.specflow.ui.documents-tree",
+            "reference.providers.antigravity",
+            "docs.readme",
+            "docs.reference-readme",
+            "docs.product-specflow-ui-readme",
+            "reference.api.openapi",
+            "product.specflow.specification-creation",
+            "product.specflow.specification-documents"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": ["reference.api.specification-creation-demo"],
+          "vectorOnly": 1
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.36226654295715316
+    },
+    {
+      "question": "Jak skonfigurować VPN do biura?",
+      "lang": "pl",
+      "class": "negative",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [
+            "design-system.figma.code-to-figma-projection",
+            "design-system.principles.information-row-hierarchy",
+            "reference.providers.executable-discovery"
+          ],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [
+            "design-system.principles.information-row-hierarchy",
+            "design-system.figma.code-to-figma-projection",
+            "reference.providers.executable-discovery",
+            "engineering.shared.code-organization",
+            "architecture.principles.normative-language",
+            "product.specflow.ui.application-navigation-and-auth",
+            "design-system.implementation.react.component-authoring-contract",
+            "design-system.principles.layout-and-containment",
+            "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+            "product.specflow.ui.documentation-reader"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.executable-discovery",
+            "design-system.figma.code-to-figma-projection",
+            "reference.providers.antigravity",
+            "design-system.principles.information-row-hierarchy",
+            "reference.configuration.documentation-and-embeddings",
+            "architecture.principles.normative-language",
+            "product.specflow.ui.application-navigation-and-auth",
+            "design-system.principles.system-boundary",
+            "engineering.shared.code-organization",
+            "design-system.implementation.react.component-authoring-contract"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "design-system.principles.information-row-hierarchy",
+            "design-system.figma.code-to-figma-projection",
+            "reference.providers.executable-discovery",
+            "engineering.shared.code-organization",
+            "architecture.principles.normative-language",
+            "product.specflow.ui.application-navigation-and-auth",
+            "design-system.implementation.react.component-authoring-contract",
+            "design-system.principles.layout-and-containment",
+            "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+            "product.specflow.ui.documentation-reader"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "design-system.principles.information-row-hierarchy",
+            "design-system.figma.code-to-figma-projection",
+            "reference.providers.executable-discovery",
+            "engineering.shared.code-organization",
+            "architecture.principles.normative-language",
+            "product.specflow.ui.application-navigation-and-auth",
+            "design-system.implementation.react.component-authoring-contract",
+            "design-system.principles.layout-and-containment",
+            "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+            "product.specflow.ui.documentation-reader"
+          ],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.355624694024596
+    },
+    {
+      "question": "oheevf",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "adr.0008-product-naming-and-surfaces",
+            "product.specflow.overview",
+            "reference.api.specs-overview",
+            "design-system.principles.system-boundary",
+            "reference.cli.nevo-specflow-contract",
+            "product.specflow.ui.specification-overview",
+            "docs.reference-readme",
+            "reference.api.operation-progress",
+            "docs.product-specflow-cli-readme"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.28495497537016634
+    },
+    {
+      "question": "vivkrzjvtq chcnestw",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "reference.providers.antigravity",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "architecture.ai.session-history-and-events",
+            "product.specflow.overview",
+            "product.specflow.cli.personas",
+            "product.specflow.specification-creation",
+            "reference.cli.nevo-specflow-contract",
+            "engineering.repository.releasing",
+            "architecture.runtime.specification-create-options"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.2888089261484565
+    },
+    {
+      "question": "0058",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "architecture.ai.session-history-and-events",
+            "architecture.runtime.document-limits",
+            "reference.cli.nevo-specflow-docs",
+            "product.specflow.ui.documentation-reader-navigation",
+            "product.specflow.ui.interaction-model",
+            "reference.api.sessions",
+            "product.specflow.cli.interaction-model",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "design-system.implementation.react.item-tabs",
+            "reference.api.operation-progress"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 5,
+      "bestSimilarity": 0.2567156536996111
+    },
+    {
+      "question": "🎸🎉🔥😀",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.ui.ai-session-ux",
+            "architecture.ai.canonical-session-turn-work",
+            "design-system.implementation.react.component-guidelines",
+            "reference.providers.claude",
+            "design-system.implementation.react.item-tabs",
+            "design-system.principles.information-hierarchy",
+            "reference.api.operation-progress",
+            "adr.0008-product-naming-and-surfaces",
+            "docs.reference-readme",
+            "reference.api.openapi"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.3369989684225073
+    },
+    {
+      "question": "яшпг",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "reference.api.specs-overview",
+            "adr.0017-definitions-as-project-data",
+            "product.specflow.ui.create-archetypes",
+            "architecture.runtime.specification-create-lifecycle",
+            "adr.0009-product-package-build-model",
+            "product.shared.vocabulary",
+            "reference.providers.claude",
+            "product.specflow.ui.ai-session-ux",
+            "adr.0008-product-naming-and-surfaces"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.24941398125085953
+    },
+    {
+      "question": "这ト",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.api.task-reads",
+            "adr.0009-product-package-build-model",
+            "reference.cli.nevo-specflow-docs",
+            "docs.instructions-readme",
+            "product.specflow.ui.specification-overview",
+            "reference.providers.antigravity",
+            "engineering.shared.testing",
+            "product.specflow.ui.specs-overview",
+            "product.specflow.specification-documents",
+            "adr.0021-product-neutral-ai-semantic-search-engine"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.2971266821471989
+    },
+    {
+      "question": ";?]/",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.cli.nevo-specflow-docs",
+            "product.shared.vocabulary",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "product.specflow.ui.documents-tree",
+            "product.specflow.ui.documentation-reader-navigation",
+            "reference.providers.claude",
+            "product.specflow.ui.documentation-reader-search",
+            "product.specflow.specification-documents",
+            "architecture.principles.normative-language",
+            "reference.providers.antigravity"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": ["reference.cli.nevo-specflow-docs"],
+          "vectorOnly": 1
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.3668323141434679
+    },
+    {
+      "question": "zibabe hozu rifoki",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "design-system.implementation.react.component-authoring-contract",
+            "design-system.implementation.storybook.guidelines",
+            "design-system.implementation.react.item-tabs",
+            "architecture.workflow.workflow-runs-and-handoffs",
+            "product.specflow.ui.documents-tree",
+            "architecture.ui.specflow-application-composition",
+            "docs.instructions-readme",
+            "product.specflow.ui.specs-overview",
+            "product.shared.vocabulary",
+            "reference.cli.nevo-specflow-docs"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.23374817370981135
+    },
+    {
+      "question": "p",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [
+            "reference.cli.specflow-specification-commands",
+            "design-system.implementation.react.component-guidelines",
+            "architecture.runtime.authorization",
+            "reference.configuration.authorization",
+            "design-system.principles.layout-and-containment",
+            "engineering.repository.local-setup"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.cli.specflow-specification-commands",
+            "reference.providers.antigravity",
+            "architecture.ai.session-history-and-events",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "design-system.implementation.react.component-guidelines",
+            "reference.providers.claude",
+            "architecture.runtime.authorization",
+            "reference.cli.nevo-specflow-docs",
+            "reference.configuration.authorization",
+            "design-system.principles.layout-and-containment"
+          ],
+          "vectorOnly": 5
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "reference.cli.specflow-specification-commands",
+            "reference.providers.antigravity",
+            "architecture.ai.session-history-and-events",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "design-system.implementation.react.component-guidelines",
+            "reference.providers.claude",
+            "architecture.runtime.authorization",
+            "reference.cli.nevo-specflow-docs",
+            "reference.configuration.authorization",
+            "design-system.principles.layout-and-containment"
+          ],
+          "vectorOnly": 5
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "reference.cli.specflow-specification-commands",
+            "design-system.implementation.react.component-guidelines",
+            "architecture.runtime.authorization",
+            "reference.configuration.authorization",
+            "design-system.principles.layout-and-containment",
+            "engineering.repository.local-setup"
+          ],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.36891481852694097
+    },
+    {
+      "question": "6xćh8882nę9ćym",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "reference.providers.antigravity",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "reference.cli.nevo-specflow-docs",
+            "adr.0008-product-naming-and-surfaces",
+            "design-system.implementation.react.secondary-navigation",
+            "reference.providers.claude",
+            "reference.providers.codex",
+            "architecture.ai.session-history-and-events",
+            "docs.reference-readme"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.2807806467156054
+    },
+    {
+      "question": "hibvroqlygoqimzggo",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "architecture.ai.provider-boundary",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "engineering.repository.git-workflow",
+            "reference.cli.nevo-specflow-docs",
+            "reference.api.specs-overview",
+            "reference.providers.codex",
+            "product.specflow.ui.specification-overview",
+            "product.shared.vocabulary",
+            "reference.cli.nevo-specflow-contract"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 4,
+      "bestSimilarity": 0.3236837771195774
+    },
+    {
+      "question": "zxtcgf wgukw",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "product.shared.vocabulary",
+            "architecture.runtime.specification-worktree-integration",
+            "reference.configuration.specflow-git-worktrees",
+            "reference.api.workspaces",
+            "architecture.ui.specflow-application-composition",
+            "docs.reference-readme",
+            "product.specflow.specification-creation",
+            "architecture.ai.session-history-and-events",
+            "design-system.implementation.react.secondary-navigation"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.2688661020836594
+    },
+    {
+      "question": "6101",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "reference.providers.compatibility",
+            "product.specflow.ui.specs-overview",
+            "architecture.runtime.specification-create-lifecycle",
+            "reference.api.specification-creation-demo",
+            "reference.cli.nevo-specflow-docs",
+            "reference.configuration.specification-definitions",
+            "reference.providers.executable-discovery",
+            "docs.instructions-readme",
+            "engineering.repository.ci"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 7,
+      "bestSimilarity": 0.25267516933337864
+    },
+    {
+      "question": "🍕🐙💡🐙",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "product.specflow.cli.personas",
+            "adr.0008-product-naming-and-surfaces",
+            "product.specflow.ui.personas",
+            "product.specflow.overview",
+            "architecture.repository-structure",
+            "engineering.repository.product-packaging",
+            "adr.0005-repository-tooling-is-separate-from-the-product-api",
+            "design-system.implementation.ownership-and-tooling",
+            "reference.providers.codex"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.2678366027781698
+    },
+    {
+      "question": "жэлфюжмш",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.ui.documentation-reader-search",
+            "product.shared.localization",
+            "reference.cli.nevo-specflow-docs",
+            "reference.providers.antigravity",
+            "reference.providers.claude",
+            "adr.0014-feature-owned-operation-lists",
+            "design-system.implementation.ownership-and-tooling",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "product.specflow.specification-documents",
+            "design-system.implementation.react.component-guidelines"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.2034844782024138
+    },
+    {
+      "question": "字ス这字ト",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "design-system.implementation.library-packaging",
+            "architecture.runtime.document-limits",
+            "reference.api.workspace-docs",
+            "product.specflow.specification-documents",
+            "reference.cli.nevo-specflow-docs",
+            "reference.api.task-reads",
+            "design-system.principles.information-hierarchy",
+            "architecture.ai.session-history-and-events",
+            "design-system.principles.ui-ux-guidelines"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.2521857004353308
+    },
+    {
+      "question": "*}&",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "architecture.principles.normative-language",
+            "product.specflow.ui.interaction-model",
+            "product.specflow.ui.documentation-reader-navigation",
+            "architecture.workflow.workflow-runs-and-handoffs",
+            "product.shared.vocabulary",
+            "product.specflow.ui.documentation-reader-search",
+            "product.specflow.ui.specs-overview",
+            "architecture.runtime.specification-workspace-composition",
+            "reference.cli.nevo-specflow-docs"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.31741834685481524
+    },
+    {
+      "question": "muwa jula hoducuvu",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "architecture.principles.normative-language",
+            "product.shared.vocabulary",
+            "reference.providers.antigravity",
+            "product.specflow.ui.specs-overview",
+            "reference.api.task-reads",
+            "reference.providers.claude",
+            "architecture.ai.session-history-and-events",
+            "reference.cli.specflow-specification-commands",
+            "product.specflow.ui.documents-tree",
+            "adr.0001-record-architecture-decisions"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.28857639639184773
+    },
+    {
+      "question": "f",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [
+            "reference.cli.specflow-specification-commands",
+            "engineering.repository.local-setup",
+            "engineering.repository.ci"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.cli.nevo-specflow-docs",
+            "reference.cli.specflow-specification-commands",
+            "engineering.repository.local-setup",
+            "engineering.repository.ci",
+            "design-system.implementation.ownership-and-tooling",
+            "reference.providers.antigravity",
+            "design-system.implementation.react.component-authoring-contract",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "product.shared.vocabulary",
+            "product.specflow.specification-documents"
+          ],
+          "vectorOnly": 7
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "reference.cli.nevo-specflow-docs",
+            "reference.cli.specflow-specification-commands",
+            "engineering.repository.local-setup",
+            "engineering.repository.ci"
+          ],
+          "vectorOnly": 1
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "reference.cli.specflow-specification-commands",
+            "engineering.repository.local-setup",
+            "engineering.repository.ci"
+          ],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.36414466898098663
+    },
+    {
+      "question": "6z5ą9jxpxi",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "product.specflow.ui.specification-sessions",
+            "docs.architecture-ai-readme",
+            "reference.providers.codex",
+            "architecture.ai.session-association-and-list",
+            "product.specflow.ui.ai-session-ux",
+            "reference.api.sessions",
+            "engineering.shared.testing",
+            "docs.instructions-readme",
+            "reference.api.specification-creation-demo"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 6,
+      "bestSimilarity": 0.29064017515463003
+    },
+    {
+      "question": "lqzkkmgdqbtdtwbae",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "docs.instructions-readme",
+            "reference.providers.claude",
+            "reference.api.task-reads",
+            "engineering.shared.testing",
+            "docs.reference-readme",
+            "product.specflow.ui.ai-session-ux",
+            "product.specflow.ui.specs-overview",
+            "architecture.ai.session-history-and-events"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 4,
+      "bestSimilarity": 0.2798345807772389
+    },
+    {
+      "question": "jfbze hltfpy",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "product.specflow.ui.interaction-model",
+            "product.specflow.ui.specification-sessions",
+            "design-system.principles.information-hierarchy",
+            "architecture.ai.session-history-and-events",
+            "product.specflow.ui.application-navigation-and-auth",
+            "product.specflow.ui.ai-session-ux",
+            "design-system.principles.ui-ux-guidelines",
+            "reference.cli.nevo-specflow-docs",
+            "reference.api.specs-overview"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.24436178104538203
+    },
+    {
+      "question": "21603",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "adr.0008-product-naming-and-surfaces",
+            "reference.cli.nevo-specflow-docs",
+            "product.shared.vocabulary",
+            "product.specflow.ui.specs-overview",
+            "reference.cli.specflow-specification-commands",
+            "product.specflow.specification-creation",
+            "reference.providers.antigravity",
+            "engineering.repository.commit-conventions",
+            "architecture.runtime.specification-workspace-composition",
+            "engineering.shared.testing"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.2581772992164445
+    },
+    {
+      "question": "🔥🎉",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "architecture.ai.canonical-session-turn-work",
+            "design-system.principles.information-hierarchy",
+            "product.specflow.ui.ai-session-ux",
+            "design-system.implementation.react.item-tabs",
+            "design-system.implementation.react.component-guidelines",
+            "docs.reference-readme",
+            "reference.api.operation-progress",
+            "adr.0008-product-naming-and-surfaces",
+            "reference.api.openapi",
+            "architecture.ai.session-history-and-events"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.27009495246622867
+    },
+    {
+      "question": "пфэйкчбшяы",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "engineering.repository.product-packaging",
+            "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
+            "engineering.repository.dogfooding",
+            "product.shared.vocabulary",
+            "reference.providers.antigravity",
+            "adr.0012-product-package-topology-and-dependency-direction",
+            "adr.0009-product-package-build-model",
+            "adr.0008-product-naming-and-surfaces",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "reference.cli.nevo-specflow-docs"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.21644159266918733
+    },
+    {
+      "question": "テ他这是本",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.api.session-telemetry",
+            "reference.api.task-reads",
+            "reference.providers.codex",
+            "adr.0008-product-naming-and-surfaces",
+            "reference.cli.nevo-specflow-docs",
+            "engineering.shared.testing",
+            "adr.0009-product-package-build-model",
+            "reference.providers.antigravity",
+            "architecture.ai.session-telemetry-observations",
+            "reference.providers.claude"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.308645085239297
+    },
+    {
+      "question": "?<?@(;~,",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "architecture.ai.session-history-and-events",
+            "reference.providers.antigravity",
+            "design-system.figma.code-to-figma-projection",
+            "product.specflow.ui.create-archetypes",
+            "reference.providers.codex",
+            "reference.providers.claude",
+            "architecture.principles.normative-language",
+            "design-system.implementation.ownership-and-tooling",
+            "architecture.ai.canonical-session-turn-work",
+            "docs.architecture-ai-readme"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.33671350047861753
+    },
+    {
+      "question": "siguleta magotoka jozitu",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.ui.specs-overview",
+            "product.specflow.ui.specification-sessions",
+            "reference.api.specs-overview",
+            "reference.providers.antigravity",
+            "product.specflow.ui.specification-overview",
+            "architecture.ai.session-association-and-list",
+            "reference.providers.codex",
+            "reference.api.specification-creation-demo",
+            "reference.cli.nevo-specflow-docs",
+            "architecture.runtime.specification-create-lifecycle"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.26425024176835005
+    },
+    {
+      "question": "z",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [
+            "engineering.repository.releasing",
+            "architecture.runtime.document-manifest-and-registry",
+            "reference.configuration.specflow-git-worktrees",
+            "engineering.shared.testing",
+            "product.specflow.ui.documents-tree",
+            "adr.0003-branch-and-release-model",
+            "product.specflow.ui.documentation-reader-search",
+            "architecture.runtime.document-definitions",
+            "adr.0018-engine-commit-policy-and-manual-commit",
+            "reference.configuration.documentation-and-embeddings"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "engineering.shared.testing",
+            "engineering.repository.releasing",
+            "reference.api.task-reads",
+            "product.specflow.ui.specs-overview",
+            "architecture.runtime.document-manifest-and-registry",
+            "reference.configuration.specflow-git-worktrees",
+            "reference.providers.antigravity",
+            "docs.reference-readme",
+            "product.specflow.ui.documents-tree",
+            "adr.0003-branch-and-release-model"
+          ],
+          "vectorOnly": 4
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "engineering.repository.releasing",
+            "architecture.runtime.document-manifest-and-registry",
+            "reference.configuration.specflow-git-worktrees",
+            "engineering.shared.testing",
+            "product.specflow.ui.documents-tree",
+            "adr.0003-branch-and-release-model",
+            "product.specflow.ui.documentation-reader-search",
+            "architecture.runtime.document-definitions",
+            "adr.0018-engine-commit-policy-and-manual-commit",
+            "reference.configuration.documentation-and-embeddings"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "engineering.repository.releasing",
+            "architecture.runtime.document-manifest-and-registry",
+            "reference.configuration.specflow-git-worktrees",
+            "engineering.shared.testing",
+            "product.specflow.ui.documents-tree",
+            "adr.0003-branch-and-release-model",
+            "product.specflow.ui.documentation-reader-search",
+            "architecture.runtime.document-definitions",
+            "adr.0018-engine-commit-policy-and-manual-commit",
+            "reference.configuration.documentation-and-embeddings"
+          ],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.3230721491973513
+    },
+    {
+      "question": "6n8ż4job",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "reference.providers.antigravity",
+            "docs.reference-readme",
+            "reference.api.specification-workspace",
+            "adr.0008-product-naming-and-surfaces",
+            "reference.cli.specflow-specification-commands",
+            "reference.api.specification-workflow",
+            "product.specflow.specification-creation",
+            "reference.api.specification-creation-demo",
+            "reference.cli.nevo-specflow-contract"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.30520569544330217
+    },
+    {
+      "question": "bduccscfsf",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.ui.documents-tree",
+            "reference.providers.antigravity",
+            "architecture.runtime.workspace-documentation-corpus",
+            "adr.0007-documentation-architecture-and-taxonomy",
+            "reference.api.workspace-docs",
+            "product.specflow.ui.documents-cross-screen",
+            "reference.cli.nevo-specflow-docs",
+            "engineering.repository.commit-conventions",
+            "adr.0016-engine-owned-document-commits",
+            "adr.0022-workspace-scoped-documentation-reader"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.23344404714011197
+    },
+    {
+      "question": "xwywoesdwja nxj",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "reference.providers.antigravity",
+            "reference.api.specification-creation-demo",
+            "docs.reference-readme",
+            "reference.api.specification-workspace",
+            "product.specflow.overview",
+            "reference.api.specs-overview",
+            "docs.product-specflow-readme",
+            "product.specflow.ui.specs-overview",
+            "architecture.ui.specflow-application-composition"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.3156248052369757
+    },
+    {
+      "question": "249682",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "design-system.implementation.react.secondary-navigation",
+            "design-system.principles.layout-and-containment",
+            "product.specflow.ui.specification-overview",
+            "reference.providers.antigravity",
+            "adr.0008-product-naming-and-surfaces",
+            "reference.api.specs-overview",
+            "design-system.implementation.react.component-guidelines",
+            "reference.api.operation-progress",
+            "design-system.principles.system-boundary",
+            "product.specflow.ui.specs-overview"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 4,
+      "bestSimilarity": 0.24309389288809863
+    },
+    {
+      "question": "⚽🍕",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "architecture.runtime.specification-close-admission",
+            "reference.providers.antigravity",
+            "product.specflow.cli.interaction-model",
+            "engineering.repository.commit-conventions",
+            "reference.cli.specflow-specification-commands",
+            "docs.reference-readme",
+            "engineering.repository.product-packaging",
+            "architecture.runtime.specification-worktree-integration",
+            "design-system.implementation.react.item-tabs"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.3201506351948632
+    },
+    {
+      "question": "слотыпдй",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "docs.reference-readme",
+            "product.shared.vocabulary",
+            "product.specflow.specification-documents",
+            "docs.product-specflow-ui-readme",
+            "design-system.implementation.tailwind.styling-guidelines",
+            "docs.product-specflow-readme",
+            "design-system.implementation.react.workspace-dynamic-split",
+            "reference.providers.codex",
+            "adr.0008-product-naming-and-surfaces"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.23149266392152684
+    },
+    {
+      "question": "語テ漢한是",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.cli.nevo-specflow-docs",
+            "product.specflow.ui.create-archetypes",
+            "product.shared.vocabulary",
+            "product.specflow.overview",
+            "product.shared.localization",
+            "product.specflow.ui.full-session",
+            "architecture.principles.normative-language",
+            "reference.providers.claude",
+            "adr.0008-product-naming-and-surfaces",
+            "architecture.ai.session-history-and-events"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.2531244061823377
+    },
+    {
+      "question": ":?",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "adr.0008-product-naming-and-surfaces",
+            "reference.providers.antigravity",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "reference.cli.nevo-specflow-docs",
+            "product.specflow.overview",
+            "reference.providers.claude",
+            "architecture.principles.normative-language",
+            "product.specflow.cli.interaction-model",
+            "reference.cli.nevo-specflow-contract"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": ["product.shared.vocabulary"],
+          "vectorOnly": 1
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.38461650117144053
+    },
+    {
+      "question": "wohudu cecu woworihe",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.api.specification-creation-demo",
+            "docs.reference-readme",
+            "product.specflow.ui.specs-overview",
+            "reference.api.workspace-docs",
+            "reference.providers.antigravity",
+            "reference.api.specs-operations-list",
+            "reference.cli.specflow-specification-commands",
+            "product.shared.vocabulary",
+            "product.specflow.specification-creation",
+            "docs.instructions-readme"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.2764281433138384
+    },
+    {
+      "question": "j",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "reference.cli.nevo-specflow-docs",
+            "reference.api.specs-overview",
+            "product.specflow.ui.specs-overview",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "product.specflow.specification-documents",
+            "adr.0008-product-naming-and-surfaces",
+            "reference.providers.claude",
+            "docs.reference-readme",
+            "product.specflow.ui.specification-sessions"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.34667846128471674
+    },
+    {
+      "question": "uĄ6ylfę6",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "design-system.principles.ui-ux-guidelines",
+            "product.specflow.ui.application-architecture",
+            "product.shared.vocabulary",
+            "docs.product-specflow-ui-readme",
+            "product.specflow.ui.application-navigation-and-auth",
+            "product.specflow.ui.data-loading-and-integration",
+            "reference.providers.claude",
+            "reference.providers.antigravity",
+            "product.specflow.ui.create-archetypes",
+            "product.specflow.ui.personas"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.2777462723758683
+    },
+    {
+      "question": "sizjwewjskwjzhml",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "architecture.ai.session-history-and-events",
+            "reference.api.sessions",
+            "product.specflow.ui.specs-overview",
+            "design-system.implementation.react.component-guidelines",
+            "docs.reference-readme",
+            "reference.providers.antigravity",
+            "architecture.runtime.document-limits",
+            "reference.api.specs-overview",
+            "product.shared.vocabulary",
+            "product.specflow.overview"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.25351528733627515
+    },
+    {
+      "question": "snlmifnx brncqwc",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "architecture.runtime.specification-create-options",
+            "adr.0003-branch-and-release-model",
+            "reference.providers.codex",
+            "product.specflow.specification-creation",
+            "reference.cli.nevo-specflow-docs",
+            "reference.providers.antigravity",
+            "reference.cli.nevo-specflow-contract",
+            "product.shared.vocabulary",
+            "reference.cli.specflow-specification-commands",
+            "reference.api.specification-creation-demo"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.2621391036893836
+    },
+    {
+      "question": "2807399402",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "design-system.implementation.react.secondary-navigation",
+            "architecture.runtime.endpoint-policy",
+            "reference.providers.antigravity",
+            "docs.reference-readme",
+            "design-system.principles.ui-ux-guidelines",
+            "architecture.principles.normative-language",
+            "adr.0008-product-naming-and-surfaces",
+            "product.shared.vocabulary",
+            "adr.0009-product-package-build-model",
+            "reference.cli.nevo-specflow-docs"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 4,
+      "bestSimilarity": 0.25440498183755866
+    },
+    {
+      "question": "⚽😀😀☃",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "reference.providers.claude",
+            "adr.0008-product-naming-and-surfaces",
+            "product.specflow.cli.interaction-model",
+            "reference.cli.nevo-specflow-contract",
+            "product.specflow.cli.personas",
+            "docs.product-specflow-cli-readme",
+            "docs.reference-readme",
+            "reference.providers.antigravity",
+            "reference.providers.codex"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.33280691445567734
+    },
+    {
+      "question": "рубчгшгзпч",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "docs.reference-readme",
+            "engineering.repository.ci",
+            "engineering.repository.git-workflow",
+            "engineering.repository.pull-requests",
+            "reference.providers.antigravity",
+            "adr.0013-engine-owned-commits-and-protected-branches",
+            "engineering.repository.commit-conventions",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "reference.api.specs-overview",
+            "adr.0003-branch-and-release-model"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.2435272782421508
+    },
+    {
+      "question": "テ我ト这本",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.api.task-reads",
+            "reference.api.session-telemetry",
+            "reference.cli.nevo-specflow-docs",
+            "product.specflow.ui.specification-overview",
+            "architecture.ai.session-history-and-events",
+            "product.specflow.specification-documents",
+            "docs.instructions-readme",
+            "architecture.ai.session-telemetry-observations",
+            "reference.api.workspace-docs",
+            "docs.readme"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.27015881293217653
+    },
+    {
+      "question": "$/#~$&",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.ui.documentation-reader-navigation",
+            "product.specflow.ui.interaction-model",
+            "reference.providers.antigravity",
+            "architecture.runtime.endpoint-policy",
+            "product.specflow.ui.application-navigation-and-auth",
+            "product.specflow.ui.documentation-reader-search",
+            "reference.providers.claude",
+            "docs.reference-readme",
+            "design-system.principles.ui-ux-guidelines",
+            "product.specflow.ui.specs-overview"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.3033119082523004
+    },
+    {
+      "question": "gebupa ziwerasu bofudi",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "reference.cli.nevo-specflow-docs",
+            "product.specflow.ui.specs-overview",
+            "product.shared.vocabulary",
+            "reference.api.specs-overview",
+            "reference.api.workspace-docs",
+            "reference.api.specification-creation-demo",
+            "product.specflow.specification-creation",
+            "reference.providers.compatibility",
+            "product.specflow.specification-documents"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.2705750878010858
+    },
+    {
+      "question": "s",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [
+            "adr.0025-demo-runs-the-engine-in-memory",
+            "reference.providers.executable-discovery",
+            "design-system.implementation.react.item-tabs",
+            "engineering.repository.dogfooding",
+            "product.specflow.specification-documents",
+            "product.specflow.ui.workflow-workbench-decisions",
+            "reference.api.sessions",
+            "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
+            "adr.0015-specification-manifest-as-document-registry",
+            "adr.0018-engine-commit-policy-and-manual-commit"
+          ],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [
+            "product.specflow.specification-documents",
+            "reference.providers.executable-discovery",
+            "adr.0022-workspace-scoped-documentation-reader",
+            "design-system.implementation.react.item-tabs",
+            "adr.0019-workflow-kernel-and-automatic-continuation",
+            "adr.0025-demo-runs-the-engine-in-memory",
+            "architecture.runtime.document-limits",
+            "product.specflow.ui.documentation-reader-navigation",
+            "architecture.ai.session-admission-and-providers",
+            "architecture.runtime.authorization"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.specification-documents",
+            "reference.api.sessions",
+            "reference.providers.executable-discovery",
+            "adr.0022-workspace-scoped-documentation-reader",
+            "adr.0025-demo-runs-the-engine-in-memory",
+            "reference.cli.nevo-specflow-docs",
+            "product.specflow.ui.specification-overview",
+            "design-system.implementation.react.item-tabs",
+            "product.specflow.ui.specification-sessions",
+            "engineering.repository.dogfooding"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "reference.api.sessions",
+            "product.specflow.specification-documents",
+            "reference.providers.executable-discovery",
+            "adr.0022-workspace-scoped-documentation-reader",
+            "adr.0025-demo-runs-the-engine-in-memory",
+            "reference.cli.nevo-specflow-docs",
+            "product.specflow.ui.specification-overview",
+            "design-system.implementation.react.item-tabs",
+            "product.specflow.ui.specification-sessions",
+            "architecture.runtime.document-limits"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "product.specflow.specification-documents",
+            "reference.providers.executable-discovery",
+            "adr.0022-workspace-scoped-documentation-reader",
+            "design-system.implementation.react.item-tabs",
+            "adr.0019-workflow-kernel-and-automatic-continuation",
+            "adr.0025-demo-runs-the-engine-in-memory",
+            "reference.cli.nevo-specflow-docs",
+            "architecture.runtime.document-limits",
+            "product.specflow.ui.documentation-reader-navigation",
+            "architecture.ai.session-admission-and-providers"
+          ],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.42740327425348185
+    },
+    {
+      "question": "aóśaĆ4ldpĄnk7z",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.claude",
+            "docs.reference-readme",
+            "reference.providers.antigravity",
+            "product.specflow.cli.personas",
+            "reference.api.specs-operations-list",
+            "reference.cli.specflow-specification-commands",
+            "adr.0014-feature-owned-operation-lists",
+            "reference.providers.codex",
+            "reference.api.specs-overview",
+            "product.shared.vocabulary"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.3095696299617737
+    },
+    {
+      "question": "zsqpuefdeyxcsewbpsvt",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "reference.providers.codex",
+            "reference.api.specification-creation-demo",
+            "architecture.runtime.specification-workspace-composition",
+            "reference.providers.claude",
+            "docs.reference-readme",
+            "architecture.ai.session-history-and-events",
+            "product.specflow.ui.specification-sessions",
+            "reference.cli.nevo-specflow-docs",
+            "reference.api.specs-operations-list"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.32223385126707327
+    },
+    {
+      "question": "wziboovwotoi osaclvcq",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "reference.providers.antigravity",
+            "product.specflow.overview",
+            "product.specflow.ui.specs-overview",
+            "docs.reference-readme",
+            "reference.api.specs-overview",
+            "product.specflow.ui.personas",
+            "docs.product-specflow-readme",
+            "docs.product-specflow-ui-readme",
+            "architecture.ai.session-admission-and-providers"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.3291268153848434
+    },
+    {
+      "question": "19",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [
+            "adr.0016-engine-owned-document-commits",
+            "product.specflow.specification-documents"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "adr.0008-product-naming-and-surfaces",
+            "adr.0016-engine-owned-document-commits",
+            "product.specflow.specification-documents",
+            "reference.providers.antigravity",
+            "product.shared.vocabulary",
+            "design-system.implementation.react.component-authoring-contract",
+            "architecture.workflow.workflow-runs-and-handoffs",
+            "architecture.ai.canonical-session-turn-work",
+            "design-system.implementation.react.component-guidelines",
+            "adr.0021-product-neutral-ai-semantic-search-engine"
+          ],
+          "vectorOnly": 8
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "adr.0016-engine-owned-document-commits",
+            "product.specflow.specification-documents"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "adr.0016-engine-owned-document-commits",
+            "product.specflow.specification-documents"
+          ],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 7,
+      "bestSimilarity": 0.2567659084162358
+    },
+    {
+      "question": "🌈🦄",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "design-system.figma.code-to-figma-projection",
+            "architecture.ai.canonical-session-turn-work",
+            "design-system.principles.ui-ux-guidelines",
+            "design-system.implementation.react.component-authoring-contract",
+            "product.shared.vocabulary",
+            "design-system.principles.information-hierarchy",
+            "product.specflow.ui.ai-session-ux",
+            "product.specflow.ui.personas",
+            "design-system.implementation.react.component-guidelines",
+            "reference.providers.antigravity"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.2807377593714994
+    },
+    {
+      "question": "орцф",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.specification-documents",
+            "architecture.workflow.workflow-runs-and-handoffs",
+            "reference.api.specs-overview",
+            "product.shared.vocabulary",
+            "reference.cli.specflow-specification-commands",
+            "architecture.runtime.workspace-documentation-corpus",
+            "product.specflow.specification-creation",
+            "product.specflow.cli.interaction-model",
+            "product.specflow.ui.specs-overview",
+            "reference.cli.nevo-specflow-docs"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 5,
+      "bestSimilarity": 0.22239327548069038
+    },
+    {
+      "question": "中本字",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "architecture.principles.normative-language",
+            "product.specflow.specification-documents",
+            "adr.0004-mit-license",
+            "product.specflow.ui.create-archetypes",
+            "design-system.implementation.react.component-guidelines",
+            "engineering.repository.ci",
+            "adr.0007-documentation-architecture-and-taxonomy",
+            "reference.api.workspace-docs",
+            "engineering.repository.commit-conventions"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.21171483405320216
+    },
+    {
+      "question": ">?^^(]",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "docs.reference-readme",
+            "architecture.principles.normative-language",
+            "product.shared.vocabulary",
+            "product.specflow.ui.interaction-model",
+            "architecture.runtime.specification-workspace-composition",
+            "reference.cli.nevo-specflow-docs",
+            "product.specflow.ui.specs-overview",
+            "adr.0008-product-naming-and-surfaces",
+            "product.specflow.cli.interaction-model",
+            "reference.api.authorization"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.3386420433595315
+    },
+    {
+      "question": "cumaza gazirenu cazije",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "engineering.repository.ci",
+            "architecture.workflow.workflow-tasks",
+            "docs.instructions-readme",
+            "architecture.workflow.workflow-definitions-and-gates",
+            "architecture.runtime.specification-worktree-integration",
+            "architecture.runtime.specification-create-lifecycle",
+            "architecture.runtime.task-read-pagination-and-grouping",
+            "product.specflow.ui.specs-overview",
+            "engineering.shared.testing",
+            "architecture.runtime.task-read-composition"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.30003947920977814
+    },
+    {
+      "question": "p",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [
+            "reference.cli.specflow-specification-commands",
+            "design-system.implementation.react.component-guidelines",
+            "architecture.runtime.authorization",
+            "reference.configuration.authorization",
+            "design-system.principles.layout-and-containment",
+            "engineering.repository.local-setup"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.cli.specflow-specification-commands",
+            "reference.providers.antigravity",
+            "architecture.ai.session-history-and-events",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "design-system.implementation.react.component-guidelines",
+            "reference.providers.claude",
+            "architecture.runtime.authorization",
+            "reference.cli.nevo-specflow-docs",
+            "reference.configuration.authorization",
+            "design-system.principles.layout-and-containment"
+          ],
+          "vectorOnly": 5
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "reference.cli.specflow-specification-commands",
+            "reference.providers.antigravity",
+            "architecture.ai.session-history-and-events",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "design-system.implementation.react.component-guidelines",
+            "reference.providers.claude",
+            "architecture.runtime.authorization",
+            "reference.cli.nevo-specflow-docs",
+            "reference.configuration.authorization",
+            "design-system.principles.layout-and-containment"
+          ],
+          "vectorOnly": 5
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "reference.cli.specflow-specification-commands",
+            "design-system.implementation.react.component-guidelines",
+            "architecture.runtime.authorization",
+            "reference.configuration.authorization",
+            "design-system.principles.layout-and-containment",
+            "engineering.repository.local-setup"
+          ],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.36891481852694097
+    },
+    {
+      "question": "żżtuąuńŻ",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.ui.ai-session-ux",
+            "adr.0014-feature-owned-operation-lists",
+            "reference.providers.antigravity",
+            "product.shared.vocabulary",
+            "engineering.shared.testing",
+            "product.specflow.ui.specification-sessions",
+            "architecture.workflow.workflow-runs-and-handoffs",
+            "architecture.ui.specflow-application-composition",
+            "product.specflow.ui.interaction-model",
+            "architecture.ai.canonical-session-turn-work"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.2442701050030539
+    },
+    {
+      "question": "gjbhqujjaue",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "architecture.runtime.document-write-and-commit-queue",
+            "reference.providers.antigravity",
+            "adr.0016-engine-owned-document-commits",
+            "engineering.shared.specflow-git-recovery",
+            "architecture.runtime.document-limits",
+            "architecture.runtime.specification-create-lifecycle",
+            "adr.0013-engine-owned-commits-and-protected-branches",
+            "architecture.runtime.specification-worktree-integration",
+            "reference.providers.claude",
+            "architecture.runtime.specification-close-admission"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 5,
+      "bestSimilarity": 0.2502088685181912
+    },
+    {
+      "question": "bdlrvexg eneh",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "docs.reference-readme",
+            "reference.cli.nevo-specflow-docs",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "architecture.ai.session-history-and-events",
+            "adr.0008-product-naming-and-surfaces",
+            "design-system.principles.system-boundary",
+            "reference.providers.antigravity",
+            "product.shared.vocabulary",
+            "docs.readme",
+            "reference.protocols.session-provider-driver"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.251221287223823
+    },
+    {
+      "question": "53661643236",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.cli.nevo-specflow-docs",
+            "docs.reference-readme",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "product.specflow.ui.specs-overview",
+            "reference.api.openapi",
+            "reference.api.specs-overview",
+            "reference.providers.antigravity",
+            "adr.0008-product-naming-and-surfaces",
+            "design-system.figma.code-to-figma-projection",
+            "architecture.runtime.specification-workspace-composition"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.22389098352379072
+    },
+    {
+      "question": "🌈⚽😀",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.claude",
+            "reference.providers.codex",
+            "product.specflow.cli.personas",
+            "architecture.ai.canonical-session-turn-work",
+            "product.specflow.cli.interaction-model",
+            "product.specflow.ui.ai-session-ux",
+            "engineering.repository.ci",
+            "reference.cli.nevo-specflow-contract",
+            "design-system.implementation.react.component-guidelines",
+            "product.shared.vocabulary"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.3106470834847096
+    },
+    {
+      "question": "клвячжж",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.claude",
+            "docs.product-specflow-cli-readme",
+            "product.specflow.cli.interaction-model",
+            "engineering.cli.architecture",
+            "docs.engineering-cli-readme",
+            "product.specflow.cli.personas",
+            "product.shared.vocabulary",
+            "reference.cli.nevo-specflow-contract",
+            "docs.reference-readme",
+            "adr.0021-product-neutral-ai-semantic-search-engine"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.29681211802078145
+    },
+    {
+      "question": "本的",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.specification-documents",
+            "docs.product-readme",
+            "reference.api.workspace-docs",
+            "reference.cli.nevo-specflow-docs",
+            "adr.0007-documentation-architecture-and-taxonomy",
+            "product.specflow.ui.documentation-reader",
+            "product.specflow.ui.specs-overview",
+            "product.specflow.ui.documents-tree",
+            "architecture.principles.normative-language",
+            "product.specflow.ui.documents-archetypes"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.3457402585990338
+    },
+    {
+      "question": ",<",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "reference.cli.nevo-specflow-docs",
+            "product.specflow.ui.specs-overview",
+            "product.specflow.ui.documentation-reader-search",
+            "reference.providers.antigravity",
+            "product.shared.vocabulary",
+            "product.specflow.specification-documents",
+            "docs.reference-readme",
+            "architecture.ai.session-history-and-events",
+            "reference.api.workspace-docs"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "reference.cli.nevo-specflow-docs"
+          ],
+          "vectorOnly": 2
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.3831987532961412
+    },
+    {
+      "question": "hufo diwibu tigidiba",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "docs.product-specflow-ui-readme",
+            "product.specflow.ui.personas",
+            "product.specflow.ui.specs-overview",
+            "docs.design-system-readme",
+            "design-system.principles.ui-ux-guidelines",
+            "architecture.ui.specflow-application-composition",
+            "architecture.workflow.workflow-runs-and-handoffs",
+            "design-system.implementation.react.item-tabs",
+            "product.shared.vocabulary",
+            "design-system.implementation.ownership-and-tooling"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.2620537747316452
+    },
+    {
+      "question": "o",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": ["engineering.shared.effects-and-io"],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [
+            "engineering.shared.effects-and-io",
+            "engineering.shared.async-and-lifecycle",
+            "engineering.shared.code-organization",
+            "docs.engineering-readme",
+            "reference.cli.nevo-specflow-docs",
+            "docs.engineering-shared-readme",
+            "architecture.runtime.document-manifest-and-registry",
+            "engineering.repository.ci",
+            "architecture.runtime.document-write-and-commit-queue",
+            "architecture.runtime.specflow-engine"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "engineering.shared.effects-and-io",
+            "reference.cli.nevo-specflow-docs",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "engineering.shared.async-and-lifecycle",
+            "reference.api.specs-operations-list",
+            "reference.api.specs-overview",
+            "product.specflow.ui.specs-overview",
+            "docs.reference-readme",
+            "engineering.shared.code-organization",
+            "docs.engineering-readme"
+          ],
+          "vectorOnly": 4
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "engineering.shared.effects-and-io",
+            "engineering.shared.async-and-lifecycle",
+            "engineering.shared.code-organization",
+            "docs.engineering-readme",
+            "reference.cli.nevo-specflow-docs",
+            "docs.engineering-shared-readme",
+            "architecture.runtime.document-manifest-and-registry",
+            "engineering.repository.ci",
+            "architecture.runtime.document-write-and-commit-queue",
+            "architecture.runtime.specflow-engine"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "engineering.shared.effects-and-io",
+            "engineering.shared.async-and-lifecycle",
+            "engineering.shared.code-organization",
+            "docs.engineering-readme",
+            "reference.cli.nevo-specflow-docs",
+            "docs.engineering-shared-readme",
+            "architecture.runtime.document-manifest-and-registry",
+            "engineering.repository.ci",
+            "architecture.runtime.document-write-and-commit-queue",
+            "architecture.runtime.specflow-engine"
+          ],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.35399850110016134
+    },
+    {
+      "question": "r7j60oea9z",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.ui.specs-overview",
+            "reference.api.specs-overview",
+            "adr.0014-feature-owned-operation-lists",
+            "reference.api.operation-progress",
+            "reference.api.specs-operations-list",
+            "product.specflow.ui.specification-sessions",
+            "adr.0008-product-naming-and-surfaces",
+            "product.specflow.ui.specification-overview",
+            "docs.reference-readme",
+            "reference.providers.codex"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 5,
+      "bestSimilarity": 0.2535507810878792
+    },
+    {
+      "question": "djshjqmnsues",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "reference.cli.nevo-specflow-docs",
+            "adr.0008-product-naming-and-surfaces",
+            "reference.providers.codex",
+            "reference.api.specification-creation-demo",
+            "product.specflow.ui.specs-overview",
+            "reference.api.specs-overview",
+            "reference.api.operation-progress",
+            "product.specflow.ui.documentation-reader-search",
+            "reference.api.workspace-docs"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.30967181172474617
+    },
+    {
+      "question": "rkwettci ujtkxfyb",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.shared.vocabulary",
+            "architecture.ui.specflow-application-composition",
+            "product.specflow.ui.personas",
+            "product.specflow.cli.interaction-model",
+            "reference.providers.antigravity",
+            "product.specflow.overview",
+            "product.specflow.ui.ai-session-ux",
+            "docs.product-specflow-ui-readme",
+            "product.specflow.cli.personas",
+            "product.specflow.ui.application-architecture"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.26785419862523707
+    },
+    {
+      "question": "83486",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "docs.reference-readme",
+            "reference.providers.antigravity",
+            "reference.providers.claude",
+            "reference.api.workspace-docs",
+            "reference.api.task-reads",
+            "reference.api.operation-progress",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "reference.cli.nevo-specflow-docs",
+            "reference.api.specs-operations-list",
+            "reference.api.specs-overview"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.23194284757412936
+    },
+    {
+      "question": "😀",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "docs.reference-readme",
+            "design-system.principles.ui-ux-guidelines",
+            "reference.providers.claude",
+            "adr.0008-product-naming-and-surfaces",
+            "product.specflow.cli.personas",
+            "product.shared.vocabulary",
+            "product.specflow.cli.interaction-model",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "reference.providers.codex",
+            "docs.product-specflow-cli-readme"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 0,
+      "bestSimilarity": 0.2947610864180922
+    },
+    {
+      "question": "чсшнщму",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.claude",
+            "reference.providers.antigravity",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "architecture.ai.session-history-and-events",
+            "reference.providers.codex",
+            "product.specflow.ui.full-session",
+            "reference.api.operation-progress",
+            "reference.cli.nevo-specflow-docs",
+            "engineering.repository.ci",
+            "design-system.implementation.react.component-guidelines"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.21766231251960758
+    },
+    {
+      "question": "한的漢他",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "product.specflow.cli.interaction-model",
+            "product.specflow.ui.full-session",
+            "architecture.principles.normative-language",
+            "product.specflow.ui.create-archetypes",
+            "reference.cli.nevo-specflow-docs",
+            "reference.providers.antigravity",
+            "reference.providers.claude",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "adr.0008-product-naming-and-surfaces",
+            "product.shared.vocabulary"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.22214060496632876
+    },
+    {
+      "question": ")[?]<~%",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "architecture.ai.session-history-and-events",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "product.specflow.ui.ai-session-ux",
+            "reference.cli.nevo-specflow-docs",
+            "reference.providers.claude",
+            "product.specflow.ui.documentation-reader-search",
+            "product.shared.vocabulary",
+            "reference.providers.codex",
+            "architecture.runtime.specification-workspace-composition"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 2,
+      "bestSimilarity": 0.33824785103957267
+    },
+    {
+      "question": "lahodo muku kirepo",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.codex",
+            "adr.0004-mit-license",
+            "engineering.repository.local-setup",
+            "reference.cli.nevo-specflow-docs",
+            "product.specflow.ui.documents-tree",
+            "product.specflow.specification-documents",
+            "engineering.repository.dependencies-and-security",
+            "product.specflow.ui.documents-cross-screen",
+            "product.specflow.ui.documentation-reader-layout-and-states",
+            "architecture.principles.normative-language"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 3,
+      "bestSimilarity": 0.28596174803139024
+    },
+    {
+      "question": "h",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [
+            "design-system.implementation.react.component-guidelines",
+            "architecture.runtime.document-limits",
+            "adr.0016-engine-owned-document-commits",
+            "design-system.implementation.react.item-tabs",
+            "design-system.implementation.react.secondary-navigation"
+          ],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "design-system.implementation.react.component-guidelines",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "reference.providers.antigravity",
+            "architecture.runtime.document-limits",
+            "adr.0016-engine-owned-document-commits",
+            "reference.cli.nevo-specflow-docs",
+            "design-system.implementation.react.item-tabs",
+            "docs.instructions-readme",
+            "design-system.implementation.react.secondary-navigation",
+            "docs.reference-readme"
+          ],
+          "vectorOnly": 5
+        },
+        "hybrid@0.36": {
+          "ids": [
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "design-system.implementation.react.component-guidelines",
+            "architecture.runtime.document-limits",
+            "adr.0016-engine-owned-document-commits",
+            "design-system.implementation.react.item-tabs",
+            "design-system.implementation.react.secondary-navigation"
+          ],
+          "vectorOnly": 1
+        },
+        "hybrid@0.42": {
+          "ids": [
+            "design-system.implementation.react.component-guidelines",
+            "architecture.runtime.document-limits",
+            "adr.0016-engine-owned-document-commits",
+            "design-system.implementation.react.item-tabs",
+            "design-system.implementation.react.secondary-navigation"
+          ],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 1,
+      "bestSimilarity": 0.3673995346113847
+    },
+    {
+      "question": "qĄsęhcpva2u7",
+      "class": "random",
+      "expected": [],
+      "variants": {
+        "context": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "lexical": {
+          "ids": [],
+          "vectorOnly": 0
+        },
+        "hybrid@none": {
+          "ids": [
+            "reference.providers.antigravity",
+            "reference.providers.claude",
+            "product.specflow.ui.ai-session-ux",
+            "reference.providers.codex",
+            "architecture.ai.session-history-and-events",
+            "engineering.repository.ci",
+            "adr.0021-product-neutral-ai-semantic-search-engine",
+            "product.shared.vocabulary",
+            "product.specflow.ui.documentation-reader-search",
+            "adr.0008-product-naming-and-surfaces"
+          ],
+          "vectorOnly": 10
+        },
+        "hybrid@0.36": {
+          "ids": ["reference.providers.antigravity"],
+          "vectorOnly": 1
+        },
+        "hybrid@0.42": {
+          "ids": [],
+          "vectorOnly": 0
+        }
+      },
+      "hybridMode": "hybrid",
+      "proposals": 0,
+      "proposalsAboveExpected": 4,
+      "bestSimilarity": 0.3908829613298352
+    }
+  ]
+}

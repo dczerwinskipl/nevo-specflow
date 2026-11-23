@@ -110,6 +110,18 @@ hybrid answer may hold fewer units than the limit, or none. The similarity scale
 model and its query instruction, so the engine has no default; the consumer configures it per
 model (`ai.embeddings.minSimilarity`). It is not part of the index identity. `minSimilarity` is a relevance filter for vector-only candidates, not a confidence measure of whether the documentation answers the question.
 
+**Amendment (issue #156): bounded lexical completion.** A consumer may opt into
+`lexicalPrefixes` (off by default in the product-neutral engine). Only a query with
+one normalized word, at least four Unicode code points long, is eligible. If that
+word already occurs in accepted chunks it keeps exact BM25 behavior. Otherwise it
+may match up to 32 distinct words starting with it; a broader expansion is rejected
+entirely. Each chunk receives only the best completion's BM25 contribution, so many
+variants cannot accumulate a score for one prefix. Only accepted chunks supply
+completions. The original query is embedded unchanged; index identity and chunking
+are unchanged. This does not infer translations, correct typos or detect whether a
+question has an answer. Documentation search opts in; metadata `find`/`context`
+retain their existing exact/plural normalization.
+
 Consumer filters (for example "no proposals") apply before any candidate cut:
 rejected chunks are left out of the BM25 list and of the vector query, so they neither take a
 candidate place nor shift the ranks that are fused.

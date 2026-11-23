@@ -51,7 +51,7 @@ one Task:
   does not follow from its history under its pinned definition.
 
 - A dangling or broken Task is **broken** for every decision.
-- A Task whose pinned workflow is missing or changed is not broken: it is trusted as stored until re-pinning ([plan 06](../../ideas/specflow-engine/execution-plans/06-workflow-kernel/README.md), F07), and its next operation fails with `WORKFLOW_DEFINITION_CHANGED`.
+- A Task whose pinned workflow is missing or changed is not broken: it is trusted as stored; re-pinning is not supported, and its next operation fails with `WORKFLOW_DEFINITION_CHANGED`.
 - Only that Task breaks, and every decision sees the same list (`executionTasks` leaves broken Tasks out of the Tasks the operations, `deriveAttention` and `inspectExecution` decide on): `inspectExecution` lists it in `brokenTasks`; starting, finishing, returning or deciding it with `setTaskStatus` is refused with `WORKFLOW_STATE_CORRUPT` naming it, before anything is written; it counts as open, so the wait step never completes over it; a Task that depends on it never becomes startable (`dependencies {waitingFor}`); and when nothing else can progress, the Specification gets `tasks-stuck`.
 - The Engine never repairs it: restoring the files from Git makes the Task usable again.
 - If the restored Task is already closed and no Task is open any more, no Task event will complete the wait.

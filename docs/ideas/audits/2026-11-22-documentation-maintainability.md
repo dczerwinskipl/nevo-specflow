@@ -291,3 +291,8 @@ tracked by #206/#207 until evidenced on the final PR HEAD.
 | `reference/configuration/specification-definitions.md` | Keep | no long paragraph/bullet detected | code check pending |
 | `reference/protocols/session-provider-driver.md` | Reformat | 2 long paragraphs, 2 long bullets; longest section 441 words | code check pending |
 | `reference/providers/README.md` | Keep | no long paragraph/bullet detected | code check pending |
+| `reference/providers/antigravity-provider.md` | Reformat | 0 long paragraphs, 3 long bullets; longest section 286 words | code check pending |
+| `reference/providers/claude-provider.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 188 words | code check pending |
+| `reference/providers/codex-provider.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 160 words | code check pending |
+| `reference/providers/compatibility.md` | Reformat | 0 long paragraphs, 1 long bullets; longest section 161 words | code check pending |
+| `reference/providers/executable-discovery.md` | Reformat | 3 long paragraphs, 2 long bullets; longest section 369 words | code check pending |

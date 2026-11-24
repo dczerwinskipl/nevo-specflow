@@ -555,16 +555,14 @@ export function createClaudeDriver(
         },
         async (fact) => {
           if (
-            // A frame this adapter refused says nothing about Claude's availability.
+            // A frame this adapter refused says nothing about Claude's availability, nor does one
+            // launch that ran out of time (a slow start fails that Turn; the next one starts anew).
             (fact.kind === 'lost' && !fact.message.startsWith(claudeLoss.rejected)) ||
             (fact.kind === 'outcome' &&
               fact.error &&
-              [
-                'PROVIDER_UNAVAILABLE',
-                'PROVIDER_AUTH_REQUIRED',
-                'PROCESS_FAILED',
-                'TIMEOUT',
-              ].includes(fact.error.code))
+              ['PROVIDER_UNAVAILABLE', 'PROVIDER_AUTH_REQUIRED', 'PROCESS_FAILED'].includes(
+                fact.error.code,
+              ))
           ) {
             invalidate(
               fact.kind === 'outcome' && fact.error?.code === 'PROVIDER_AUTH_REQUIRED'

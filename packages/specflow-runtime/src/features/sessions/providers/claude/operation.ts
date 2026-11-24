@@ -34,6 +34,20 @@ export const claudeLoss = {
   connection: 'SpecFlow lost its connection to the Claude process.',
 } as const;
 
+/** Which step of a launch ran out of time; each names its own budget. */
+export function timeoutMessage(reason: unknown): string {
+  const seconds = (ms: number) => String(Math.round(ms / 1000));
+  if (reason === 'initialize-timeout') {
+    return `Claude did not answer its initialization within ${seconds(ProviderTimeouts.initializeMs)} s. Send again; if it keeps happening, check that claude starts quickly in a terminal.`;
+  }
+
+  if (reason === 'admission-timeout') {
+    return `SpecFlow could not verify the Claude installation within ${seconds(ProviderTimeouts.discoveryMs)} s after Claude started. Send again.`;
+  }
+
+  return `Claude could not be checked and started within ${seconds(ProviderTimeouts.discoveryMs)} s. Send again.`;
+}
+
 /** One owner for the bidirectional transport. Waiting for user input never blocks the
  * reader; only persistence and bounded writes apply backpressure. Outcomes are held
  * until process-tree disposal supplies settlement evidence.
@@ -214,6 +228,14 @@ export function createClaudeOperation(
             throw new ClaudeProtocolError();
           }
 
+          // Claude answered its handshake: the host's own checks that follow (installation identity,
+          // model capabilities) are not Claude's initialization and get their own budget.
+          clearTimeout(deadline);
+          deadline = setTimeout(
+            () => internal.abort('admission-timeout'),
+            ProviderTimeouts.discoveryMs,
+          );
+          deadline.unref();
           await options.initialize(object(response.response));
           initialized = true;
           clearTimeout(deadline);
@@ -382,7 +404,7 @@ export function createClaudeOperation(
         };
         if (internal.signal.aborted) {
           error.code = 'TIMEOUT';
-          error.message = 'Claude initialization timed out.';
+          error.message = timeoutMessage(internal.signal.reason);
         } else if (failure instanceof SessionError) {
           // SessionError is the adapter's sanitized public boundary. Preserve its
           // actionable reason; arbitrary native exceptions remain masked.

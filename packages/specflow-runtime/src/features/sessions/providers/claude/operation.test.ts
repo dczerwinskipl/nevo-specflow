@@ -13,6 +13,10 @@ function fixture(
     disposeOnCancel?: boolean;
     launchDelay?: number;
     initializeError?: Error;
+    /** How long the host's checks after Claude's handshake answer take. */
+    initializeDelay?: number;
+    /** Claude never answers its initialize request. */
+    silent?: boolean;
     verifyFrame?: (frame: Record<string, unknown>) => void;
     invocation?: Partial<Invocation>;
     productCli?: { trusted: false; reason: string };
@@ -46,7 +50,7 @@ function fixture(
     write(line) {
       const frame = JSON.parse(line) as Record<string, unknown>;
       sent.push(frame);
-      if (frame.type === 'control_request') {
+      if (frame.type === 'control_request' && !options.silent) {
         push({
           type: 'control_response',
           response: {
@@ -108,11 +112,19 @@ function fixture(
     },
     controller.signal,
     {
-      launch: () =>
-        launchDelay
+      launch: (signal) => {
+        // The real process owner stops the process tree when the operation is aborted.
+        signal.addEventListener('abort', () => void owner.dispose(), { once: true });
+
+        return launchDelay
           ? new Promise((resolve) => setTimeout(() => resolve(owner), launchDelay))
-          : Promise.resolve(owner),
-      initialize: () => {
+          : Promise.resolve(owner);
+      },
+      initialize: async () => {
+        if (options.initializeDelay) {
+          await new Promise((resolve) => setTimeout(resolve, options.initializeDelay));
+        }
+
         if (initializeError) {
           throw initializeError;
         }
@@ -259,6 +271,38 @@ describe('Claude bidirectional operation', () => {
         process: 'stopped',
         source: 'native-result',
       });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it("does not count the host's checks after Claude answered against Claude's handshake budget", async () => {
+    vi.useFakeTimers();
+    try {
+      const f = fixture('stopped', { initializeDelay: 12000 });
+      await vi.advanceTimersByTimeAsync(12000);
+      await f.ready();
+      f.result();
+      await f.operation.done;
+      expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('names the handshake budget when Claude never answers its initialization', async () => {
+    vi.useFakeTimers();
+    try {
+      const f = fixture('stopped', { silent: true });
+      await vi.advanceTimersByTimeAsync(10000);
+      await f.operation.done;
+      const last = f.facts.at(-1);
+      expect(last).toMatchObject({
+        kind: 'outcome',
+        outcome: 'failed',
+        error: { code: 'TIMEOUT' },
+      });
+      expect(last?.kind === 'outcome' && last.error?.message).toContain(
+        'did not answer its initialization within 10 s',
+      );
     } finally {
       vi.useRealTimers();
     }

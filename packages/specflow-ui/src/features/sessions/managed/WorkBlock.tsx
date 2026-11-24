@@ -12,6 +12,9 @@ import { workStateTextClassName } from './workStatus';
  * outcome if it was not a plain completion. The whole block is the one click target into the Turn's
  * Work history (chevron + hover, no extra visible label).
  *
+ * Pressed (a tap on a phone, where there is no hover) shows the selected surface, so the tap
+ * visibly lands on the whole row.
+ *
  * The leading icon sits in a small tile so the block does not drown in conversation text, without
  * a container at rest (layout-and-containment: borderless-first; hover/focus show the surface).
  * Colour is used only for exceptions: failed tool actions and a failed/stopped/interrupted Turn.
@@ -33,7 +36,7 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
       <button
         type="button"
         onClick={onInspect}
-        className="group/work flex w-full min-w-0 cursor-pointer items-start gap-3 rounded-control px-2 py-2 text-left outline-none transition-colors hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus-ring"
+        className="group/work flex w-full min-w-0 cursor-pointer items-start gap-3 rounded-control px-2 py-2 text-left outline-none transition-colors hover:bg-surface-hover active:bg-surface-selected focus-visible:outline-2 focus-visible:outline-focus-ring"
       >
         <span
           aria-hidden="true"

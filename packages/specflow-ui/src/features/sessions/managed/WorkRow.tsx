@@ -147,7 +147,9 @@ export function WorkRowContent({
         "before:absolute before:-inset-y-1.5 before:right-[-0.5rem] before:rounded-control before:content-['']",
         bleed === 'rail' ? 'before:left-[-2.5rem]' : 'before:left-[-0.5rem]',
         'before:transition-colors before:[transition-duration:var(--motion-duration-fast)] motion-reduce:before:transition-none',
-        'hover:before:bg-surface-hover focus-visible:before:outline-2 focus-visible:before:outline-focus-ring',
+        // Hover, then pressed (a tap on a phone, where there is no hover), then focus: on the
+        // whole row's surface.
+        'hover:before:bg-surface-hover active:before:bg-surface-selected focus-visible:before:outline-2 focus-visible:before:outline-focus-ring',
         fastColorTransitionClassName,
       )}
     >

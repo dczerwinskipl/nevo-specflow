@@ -43,5 +43,16 @@ describe('Claude tool subjects', () => {
       ),
     ).toBe('File has not been read yet: job.sh …');
     expect(firstLine('x'.repeat(400), 10)).toBe('xxxxxxxxx…');
+    // The live refusal of a file outside the worktree (2026-11-24): the root itself reads as `.`.
+    expect(
+      claudeToolError(
+        String.raw`\tmp\dummy-job\job.sh is outside ` +
+          workspace +
+          '; --restricted confines the file tools to the working directory.',
+        workspace,
+      ),
+    ).toBe(
+      String.raw`\tmp\dummy-job\job.sh is outside .; --restricted confines the file tools to the working directory.`,
+    );
   });
 });

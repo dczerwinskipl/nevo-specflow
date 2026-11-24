@@ -498,6 +498,105 @@ describe('durable Session store', () => {
       ['dummy/test.sh', 'TOOL_FAILED'],
     ]);
   });
+  it('names Claude Work recorded before subjects from what was stored', async () => {
+    const { sessionId } = await create('claude');
+    const workspace = join(directory, 'workspace');
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      nativeWorkspace: workspace,
+      nativeScope: 'account',
+      input: { requestId: randomUUID(), message: 'Old turn' },
+    });
+    let driverSeq = 0;
+    const emit = (fact: DriverFact) =>
+      store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
+    // Exactly what the adapter recorded before subjects existed.
+    await emit({ kind: 'work-open', key: 'tools', workKind: 'tool', title: 'Claude tools' });
+    for (const [key, name] of [
+      ['a', 'job.sh'],
+      ['b', 'test.sh'],
+    ] as const) {
+      await emit({
+        kind: 'action-open',
+        key,
+        parentKey: 'tools',
+        title: 'Write',
+        operation: 'write',
+      });
+      await emit({
+        kind: 'text',
+        key,
+        channel: 'tool-input',
+        text: JSON.stringify({ file_path: join(workspace, 'dummy', name), content: 'x' }),
+      });
+    }
+
+    await emit({ kind: 'action-update', key: 'a', state: 'completed' });
+    await emit({
+      kind: 'text',
+      key: 'b',
+      channel: 'tool-output',
+      text: '<tool_use_error>File has not been read yet.</tool_use_error>',
+    });
+    await emit({ kind: 'action-update', key: 'b', state: 'failed' });
+    await emit({ kind: 'work-update', key: 'tools', state: 'failed' });
+    await emit({
+      kind: 'work-open',
+      key: 'note',
+      workKind: 'commentary',
+      title: 'Claude commentary',
+    });
+    await emit({
+      kind: 'text',
+      key: 'note',
+      channel: 'commentary',
+      text: 'I will use a scratch dir.',
+    });
+    await emit({ kind: 'work-update', key: 'note', state: 'completed' });
+    await emit({
+      kind: 'work-open',
+      key: 'ask',
+      workKind: 'interaction',
+      title: 'Claude permission',
+    });
+    await emit({
+      kind: 'interaction',
+      key: 'ask',
+      interaction: {
+        kind: 'permission',
+        prompt: 'Allow this command once?',
+        actionSummary: 'Run command:\nrm -rf dummy',
+      },
+    });
+
+    const work = await store!.call<WorkPage>({
+      op: 'work',
+      sessionId,
+      turnId: start.turnId,
+      actor: 'user',
+      limit: 40,
+    });
+    expect(sessionValidators.work(work)).toBe(true);
+    expect(work.items.map((item) => [item.title.text, item.operation, item.subject])).toEqual([
+      ['Write', 'write', 'dummy/job.sh'],
+      ['I will use a scratch dir.', undefined, undefined],
+      ['Bash', 'command', 'rm -rf dummy'],
+    ]);
+    expect(work.items[0]!.failure).toEqual({
+      subject: 'dummy/test.sh',
+      message: 'File has not been read yet.',
+    });
+    const actions = await store!.call<ActionPage>({
+      op: 'actions',
+      sessionId,
+      workId: work.items[0]!.workId,
+      actor: 'user',
+      limit: 40,
+    });
+    expect(actions.items.map((item) => item.subject)).toEqual(['dummy/job.sh', 'dummy/test.sh']);
+  });
   it('checks single-selection answers before durable admission and expires native-cancelled questions', async () => {
     const { sessionId } = await create();
     const start = await store!.call<StartAdmission>({

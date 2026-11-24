@@ -247,9 +247,10 @@ export function relativeTo(text: string, root: string | undefined): string {
     .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`))
     .join(separator);
 
+  // A path under the root loses it; the root itself reads as `.`.
   return text.replace(
     new RegExp(pattern + separator + '?', /^[A-Za-z]:/.test(root) ? 'gi' : 'g'),
-    '',
+    (match) => (/[\\/]$/.test(match) ? '' : '.'),
   );
 }
 

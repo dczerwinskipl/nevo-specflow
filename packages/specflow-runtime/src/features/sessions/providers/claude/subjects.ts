@@ -65,7 +65,8 @@ export function relativeText(value: string, workspace?: string): string {
   const escaped = root.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\\|\//g, '[\\\\/]');
   const pattern = new RegExp(escaped + '[\\\\/]?', /^[A-Za-z]:/.test(root) ? 'gi' : 'g');
 
-  return value.replace(pattern, '');
+  // A path under the root loses it; the root itself reads as `.`.
+  return value.replace(pattern, (match) => (/[\\/]$/.test(match) ? '' : '.'));
 }
 
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value : undefined);

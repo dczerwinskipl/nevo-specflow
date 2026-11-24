@@ -313,3 +313,30 @@ it('answers a catalogue read at once after the first probe and probes again only
   f.change({ fingerprint: 'rechecked' });
   expect((await f.driver.refresh!(signal, { recheck: true })).models).toEqual([]);
 });
+
+it('aborts an in-flight probe at close and resolves only once it settled', async () => {
+  const f = fixture();
+  const events: string[] = [];
+  f.probe.mockImplementationOnce(
+    (options) =>
+      new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => {
+          // The probe disposes its process tree before it settles.
+          setTimeout(() => {
+            events.push('probe settled');
+            reject(new Error('aborted'));
+          }, 20);
+        });
+      }),
+  );
+  const reading = f.driver.refresh!(new AbortController().signal);
+  await vi.waitFor(() => expect(f.probe).toHaveBeenCalledTimes(1));
+
+  await f.driver.close!().then(() => events.push('closed'));
+
+  expect(events).toEqual(['probe settled', 'closed']);
+  await reading;
+  // After close a read starts no probe.
+  await f.driver.refresh!(new AbortController().signal);
+  expect(f.probe).toHaveBeenCalledTimes(1);
+});

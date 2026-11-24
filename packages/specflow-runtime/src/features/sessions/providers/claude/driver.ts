@@ -94,6 +94,8 @@ export function createClaudeDriver(
   let discovered = false;
   /** When the last background revalidation started (it reads the installation, never awaited). */
   let revalidatedAt = 0;
+  /** Aborted by `close`: every discovery (and the probe processes it runs) stops with it. */
+  const closing = new AbortController();
   const locator = createExecutableLocator(claudeExecutable, {
     ...(options.executable !== undefined ? { configured: options.executable } : {}),
     environment,
@@ -210,7 +212,11 @@ export function createClaudeDriver(
       return discover(signal);
     }
 
-    if (!discovery && (checkedAt === 0 || now() - revalidatedAt >= CLAUDE_REVALIDATE_MS)) {
+    if (
+      !closing.signal.aborted &&
+      !discovery &&
+      (checkedAt === 0 || now() - revalidatedAt >= CLAUDE_REVALIDATE_MS)
+    ) {
       revalidatedAt = now();
       // Never awaited: its outcome is the next read's descriptor.
       void discover(AbortSignal.timeout(ProviderTimeouts.discoveryMs)).catch(() => undefined);
@@ -224,6 +230,7 @@ export function createClaudeDriver(
     discovery ??= (async () => {
       const boundedSignal = AbortSignal.any([
         signal,
+        closing.signal,
         AbortSignal.timeout(ProviderTimeouts.discoveryMs),
       ]);
       let inspectedAuthentication: string | undefined;
@@ -497,6 +504,11 @@ export function createClaudeDriver(
     describe: () => structuredClone(descriptor),
     refresh,
     contextScope: () => scope,
+    async close() {
+      closing.abort();
+      // The probe disposes its process tree before its discovery settles (its cwd is the workspace).
+      await discovery?.catch(() => undefined);
+    },
     async validate(selection, signal = AbortSignal.timeout(ProviderTimeouts.discoveryMs)) {
       if (selection.providerId !== 'claude') {
         throw new SessionError('PROVIDER_UNAVAILABLE', 'Claude provider identity is required.');

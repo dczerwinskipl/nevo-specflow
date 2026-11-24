@@ -111,6 +111,11 @@ export interface SessionDriver {
   /** `recheck`: discover the executable again from scratch and probe again (an explicit recheck). */
   refresh?(signal: AbortSignal, options?: { recheck?: boolean }): Promise<ProviderDescriptor>;
   contextScope?(): string;
+  /**
+   * Ends the driver's own background work (a discovery the Runtime started at start or behind a
+   * read): aborts it and resolves once its provider processes have settled. Later reads start none.
+   */
+  close?(): Promise<void>;
   validate(selection: Invocation['selection'], signal?: AbortSignal): void | Promise<void>;
   start(invocation: Invocation, emit: EmitFact, signal: AbortSignal): ProviderOperation;
 }

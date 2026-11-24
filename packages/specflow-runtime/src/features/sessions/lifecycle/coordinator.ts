@@ -969,6 +969,12 @@ export function createSessionCoordinator(
       }
 
       closed = true;
+      // A provider's background discovery (its probe runs in the workspace) ends with the Runtime.
+      const driversClosing = Promise.all(
+        driverList.map((driver) =>
+          driver.close ? driver.close().catch(() => undefined) : Promise.resolve(),
+        ),
+      );
       const telemetryClosing = telemetry.close();
       void telemetryClosing.catch(() => undefined);
       for (const live of active.values()) {
@@ -979,7 +985,7 @@ export function createSessionCoordinator(
       try {
         await telemetryClosing;
         await Promise.race([
-          Promise.all([...active.values()].map((live) => live.done)),
+          Promise.all([...active.values()].map((live) => live.done)).then(() => driversClosing),
           delay(5000, undefined, { signal: timeout.signal }).then(() => {
             throw new SessionError(
               'SESSION_RECOVERY_REQUIRED',

@@ -200,7 +200,13 @@ describe('Claude bidirectional operation', () => {
         source: 'unverified',
       });
       expect(f.facts.slice(-2)).toEqual([
-        { kind: 'text', key: 'provider-error', channel: 'commentary', text: reason },
+        {
+          kind: 'text',
+          key: 'provider-error',
+          channel: 'commentary',
+          text: reason,
+          notice: 'error',
+        },
         { kind: 'lost', message: reason },
       ]);
     },
@@ -335,6 +341,7 @@ describe('Claude bidirectional operation', () => {
       key: 'provider-error',
       channel: 'commentary',
       text: 'Claude quota or rate limit prevented the operation.',
+      notice: 'error',
     });
     expect(f.facts.at(-1)).toMatchObject({ kind: 'outcome', outcome: 'failed' });
     expect(JSON.stringify(f.facts)).not.toContain('private native diagnostic');

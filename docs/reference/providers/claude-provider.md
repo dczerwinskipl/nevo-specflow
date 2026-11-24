@@ -90,7 +90,9 @@ currently verified login is protected.
 `acceptEdits` is the default writable mode when managed execution is available: a writable Turn
 without a native mode (agent step execution) runs in it. Each mode is probed and can be unavailable
 independently. `auto` offers only the models native initialization marks `supportsAutoMode`; Claude
-would run any other model in `default`, so such a choice is refused before launch. `bypassPermissions` is not admitted. Model IDs, titles and
+would run any other model in `default`, so such a choice is refused before launch
+(`MODEL_UNSUPPORTED` with `details.reason: mode-model-unsupported`), and the catalogue lists the
+models `auto` runs as its `providerModes[].modelIds` so a client offers no such pair. `bypassPermissions` is not admitted. Model IDs, titles and
 per-model effort lists come from native initialization, never a static list; an effort outside the
 model's list is rejected before dispatch.
 
@@ -116,7 +118,9 @@ model's list is rejected before dispatch.
 Before launch one store transaction reserves an independent native UUID, workspace and account scope
 with the Turn. A fenced dispatch-intent transaction precedes the first user frame. Correlation must
 match the reserved ID. Confirmed contexts resume only in the same workspace and account; an
-unconfirmed possible dispatch is never replayed as a new conversation. Native IDs and account
+unconfirmed possible dispatch is never resumed or rebound. Once its Turn has settled (no process of
+it runs on), the next Turn starts a new native context under a new reservation instead of refusing
+the Session for good. Native IDs and account
 binding are not exposed.
 
 ## Questions and permissions

@@ -17,6 +17,7 @@ import type {
   SessionInfo,
   ToolOperation,
   SessionListFilter,
+  NoticeSeverity,
 } from '@nevo/specflow-contracts/sessions';
 import type { NativeProcessIdentity } from '../providers/process/process-identity';
 import type { WorkAggregate } from '../lifecycle/work-aggregate';
@@ -84,6 +85,11 @@ export type DriverFact =
       key: string;
       channel: 'commentary' | 'reasoning' | 'answer' | 'tool-input' | 'tool-output';
       text: string;
+      /**
+       * Commentary SpecFlow writes itself (a relayed provider error, a stopped process, a
+       * recovery), never the agent's words: the conversation shows it as a notice of this severity.
+       */
+      notice?: NoticeSeverity;
     }
   | {
       kind: 'interaction';

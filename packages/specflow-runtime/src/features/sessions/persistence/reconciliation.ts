@@ -125,7 +125,9 @@ export function createEffectReconciliation(db: Dependencies) {
       turnId: c.turnId,
       invocationId: c.invocationId,
     };
-    if (c.recovered) {
+    // A native stop says why in its outcome (`PROCESS_STOPPED`, explained by the client); a notice
+    // repeating it would say the same thing twice.
+    if (c.recovered && c.source !== 'native-stopped') {
       db.applyFact({
         ...base,
         driverSeq: ++seq,
@@ -133,12 +135,11 @@ export function createEffectReconciliation(db: Dependencies) {
           kind: 'text',
           key: 'runtime-recovery',
           channel: 'commentary',
+          notice: c.source === 'not-dispatched' ? 'info' : 'warning',
           text:
             c.source === 'not-dispatched'
               ? 'Runtime recovered an operation that never reached provider launch.'
-              : c.source === 'native-stopped'
-                ? 'The agent process stopped while its outcome was not recorded. Output not persisted before then is unavailable; review the workspace changes before continuing.'
-                : 'Runtime recovered a verified execution outcome. Output not persisted before interruption is unavailable.',
+              : 'Runtime recovered a verified execution outcome. Output not persisted before interruption is unavailable.',
         },
       });
     }

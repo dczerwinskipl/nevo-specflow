@@ -57,6 +57,10 @@ The conversation is a chat, not a debugging console.
 - Raw tool operations, tool titles, artifacts and system logs never become chat rows. A long
   assistant report stays one Markdown answer.
 - Commentary in the chat is plain muted prose, rendered the same way as in Work history.
+- **SpecFlow notices.** Commentary SpecFlow writes itself (a provider error it relays, a process it
+  stopped, a recovery, an approval policy note) carries `notice.severity` and never reads as the
+  agent talking: an `InlineNote` with the severity's icon and tone (error: danger, warning:
+  attention, info: info), led by a bold **SpecFlow:** and announced as "SpecFlow error/warning/note".
 
 ## Work block
 
@@ -167,16 +171,25 @@ TOOL RESPONSE                 Copy    verbatim output, no gutter
   variants are its work modes). The default is the catalogue's `defaultModeId`, else the first
   usable mode.
 - **Unusable modes are omitted**, not shown disabled (not ready, not authorized, outside the
-  provider's offered safety modes, or not runnable by the selected model). The one exception: the
-  Session's **current** mode stays listed, disabled with the catalogue's reason, when it became
-  unusable, so the picker never claims a mode the next Turn would not inherit. The trigger is text on
-  every layout.
+  provider's offered safety modes). The one exception: the Session's **current** mode stays listed,
+  disabled with the catalogue's reason, when it became unusable, so the picker never claims a mode
+  the next Turn would not inherit. The trigger is text on every layout.
+- **Mode and model pairs.** A mode that runs only some models (`providerModes[].modelIds`, e.g.
+  Claude's auto) stays listed but disabled with **Not for the selected model** while another model
+  is selected, and the Model picker lists the models that mode does not run disabled with **Not in
+  the selected work mode**. When the selected pair is still one the Runtime would refuse (a saved
+  Session pair), an attention note above the Composer names both and Send stays off until another
+  model or mode is picked. A refusal with `details.reason: mode-model-unsupported` says the same,
+  never "model not available".
 - Model and effort are one picker; effort appears only when the provider allows the override. A
   provider without models or without the model override renders no picker.
-- **Refused vs unknown outcome.** A definitely refused command (a 4xx that is not
-  `SESSION_RECOVERY_REQUIRED`) is released: draft and overrides stay for the user to adjust and
-  resend. A command whose outcome is unknown stays retained for an exact replay with the same
-  request id.
+- **Refused vs unknown outcome.** A definitely refused Send (any 4xx, including a start's 409
+  `SESSION_RECOVERY_REQUIRED`: its admission is one transaction, so nothing was started) is
+  released: draft and overrides stay for the user to adjust and resend. Only an answer that was lost
+  (network, timeout, 5xx) leaves the outcome unknown: the request stays retained for an exact replay
+  with the same request id, and **Check the Session** re-reads the Session; if the message arrived
+  (a Turn runs or a newer request entry is there) the same request is confirmed, otherwise it is
+  dropped and the message is editable again.
 - **Saved request can't be read.** A retained command (or Session start) that is present but
   unreadable is never dropped silently: the Composer and the start form show **Saved request can't
   be read** with **Discard saved request** and a warning that it may already have been applied.
@@ -365,7 +378,11 @@ Commentary of its own for that reason, one quiet line under **Turn failed** / **
   an unresolved Turn's claim, is still held): wait for it, or check the outcome of the Turn whose
   outcome is unknown, then send again.
 - `PROCESS_STOPPED` (settled on native-stop evidence after a Runtime restart): the agent stopped
-  while its result could not be recorded; review the workspace changes before continuing.
+  while its result could not be recorded; review the workspace changes before continuing. The
+  Runtime writes no notice of its own for it, so it is said once.
+
+An interrupted outcome is an attention `InlineNote` and a failed one a danger note, each with its
+icon; only a cancelled Turn keeps the neutral marker.
 
 Provider failures already have the provider's Commentary in the conversation and get no second line.
 

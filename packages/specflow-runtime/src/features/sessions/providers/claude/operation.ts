@@ -154,6 +154,7 @@ export function createClaudeOperation(
         key: 'provider-error',
         channel: 'commentary',
         text: fact.error.message,
+        notice: 'error',
       });
     }
 
@@ -299,6 +300,7 @@ export function createClaudeOperation(
                   text:
                     'Allowlisted product CLI commands are not approved automatically in this Turn: ' +
                     trust.reason,
+                  notice: 'warning',
                 });
               }
             } else {
@@ -314,6 +316,7 @@ export function createClaudeOperation(
                 key,
                 channel: 'commentary',
                 text: 'Allowed by the archetype allowlist: ' + action.action.command.slice(0, 500),
+                notice: 'info',
               });
               await send(request.respond(0, { kind: 'permission', requestId, decision: 'allow' }));
               continue;

@@ -84,9 +84,11 @@ export function ComposerModePicker({
               // generic "unavailable" wording. Ready modes have no description — no catalogue
               // provides one, and this component does not invent copy per provider mode.
               description={
-                option.disabled
-                  ? (option.reason ?? t('managedSession.intent.unavailable'))
-                  : undefined
+                option.modelUnsupported
+                  ? t('managedSession.intent.modelUnsupported')
+                  : option.disabled
+                    ? (option.reason ?? t('managedSession.intent.unavailable'))
+                    : undefined
               }
             >
               {option.title}

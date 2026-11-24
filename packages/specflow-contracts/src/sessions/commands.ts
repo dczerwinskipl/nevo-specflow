@@ -268,6 +268,12 @@ export const ProviderDescriptorSchema = Type.Object(
             ),
             mode: SessionModeSchema,
             readiness: Type.Union([Type.Literal('ready'), Type.Literal('unavailable')]),
+            /**
+             * The `models` this mode runs (by `modelId`) when it runs only some of them (Claude's
+             * auto mode only models with auto support); absent: every model. A Turn with another
+             * model in this mode is refused with `MODEL_UNSUPPORTED`.
+             */
+            modelIds: Type.Optional(Type.Array(choice(256), { maxItems: 100 })),
             authorized: Type.Optional(Type.Boolean()),
             reason: Type.Optional(Type.String({ maxLength: 512 })),
           },

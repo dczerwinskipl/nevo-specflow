@@ -174,6 +174,7 @@ export function createCodexOperation(
               key: 'permission-policy:' + ++sequence,
               channel: 'commentary',
               text: 'Codex requested permissions beyond the managed execution policy; the request was denied.',
+              notice: 'warning',
             });
 
             return;
@@ -469,6 +470,7 @@ export function createCodexOperation(
             key: 'provider-error',
             channel: 'commentary',
             text: result.error.message,
+            notice: 'error',
           });
         }
 

@@ -50,7 +50,12 @@ import {
   type ConversationScrollPosition,
 } from './conversation/useConversationScroll';
 import { ComposerModePicker } from './ComposerPresetPicker';
-import { runtimeWorkModeCommand, runtimeWorkModes, selectedWorkModeId } from './workModes';
+import {
+  modeRunsModel,
+  runtimeWorkModeCommand,
+  runtimeWorkModes,
+  selectedWorkModeId,
+} from './workModes';
 import { createWorkInspector } from './WorkInspector';
 import { SessionContext, sessionContextStack } from './context/SessionContext';
 import { SessionContextSourceProvider } from './context/sessionContextValue';
@@ -91,6 +96,9 @@ function browserStorage() {
     return undefined;
   }
 }
+
+/** The tone of a SpecFlow notice of each severity. */
+const noticeTones = { error: 'danger', warning: 'attention', info: 'info' } as const;
 
 /**
  * One conversation entry, rendered per its semantic role (full-session.md "Conversation").
@@ -163,6 +171,26 @@ function EntryRow({
     );
   }
 
+  if (entry.kind === 'commentary' && entry.notice) {
+    // SpecFlow's own words (a relayed provider error, a process it stopped, a recovery), never the
+    // agent's: a notice with its severity's icon and tone, labelled as from SpecFlow, so it does
+    // not read as the agent talking. Short by construction, so the preview is the text.
+    const severity = entry.notice.severity;
+
+    return (
+      <article data-entry-id={entry.id} className="grid min-w-0 gap-1">
+        <InlineNote tone={noticeTones[severity]}>
+          <span className="sr-only">{t(`managedSession.notice.${severity}`)} </span>
+          <span className="font-semibold text-content-primary">
+            {t('managedSession.notice.source')}
+          </span>{' '}
+          {entry.text.text}
+          {entry.text.complete ? '' : '…'}
+        </InlineNote>
+      </article>
+    );
+  }
+
   if (entry.kind === 'commentary') {
     // Plain muted prose, no icon, no container: a pulse icon does not fit commentary semantically,
     // and it reads fine as Markdown alone. `text-content-muted` (not `-secondary`) so it is
@@ -183,12 +211,15 @@ function EntryRow({
   // dead-end Work history panel every time.
   // Why it ended and what to do, when the Runtime recorded no Commentary of its own for it.
   const reason = outcomeReason(entry.error?.code, t);
-  const tone =
+  // A failed or interrupted Turn is an error/warning state with its tone's icon, not a quiet
+  // bullet; a cancelled one (the owner's own stop) keeps the neutral marker.
+  const label = outcomeLabels[entry.text.text] ?? entry.text.text;
+  const warning =
     entry.text.text === 'failed'
-      ? 'danger'
-      : entry.text.text === 'completed'
-        ? undefined
-        : 'neutral';
+      ? ('danger' as const)
+      : entry.text.text === 'interrupted'
+        ? ('attention' as const)
+        : undefined;
 
   return (
     <article
@@ -199,24 +230,32 @@ function EntryRow({
       )}
     >
       {srLabel}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* The icon's accessible name names the specific outcome ("Niepowodzenie"/"Zatrzymano"/
-            "Przerwano"), not the generic entry-kind label ("Wynik tury") every outcome entry
-            shared before — the same resolved label the adjacent text already renders. */}
-        {tone && (
-          <StatusIndicator
-            tone={tone}
-            aria-label={outcomeLabels[entry.text.text] ?? kindLabel}
-            decorative={false}
+      {warning ? (
+        <InlineNote tone={warning}>
+          <span
+            className={cn(
+              'font-semibold',
+              warning === 'danger' ? 'text-content-error' : 'text-content-primary',
+            )}
+          >
+            {label}
+          </span>
+        </InlineNote>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The marker's accessible name names the specific outcome ("Zatrzymano"), not the
+              generic entry-kind label ("Wynik tury"). */}
+          {entry.text.text !== 'completed' && (
+            <StatusIndicator tone="neutral" aria-label={label} decorative={false} />
+          )}
+          <ReadableText
+            api={api}
+            sessionId={sessionId}
+            value={{ ...entry.text, text: label }}
+            onGrow={onGrow}
           />
-        )}
-        <ReadableText
-          api={api}
-          sessionId={sessionId}
-          value={{ ...entry.text, text: outcomeLabels[entry.text.text] ?? entry.text.text }}
-          onGrow={onGrow}
-        />
-      </div>
+        </div>
+      )}
       {reason && (
         <Typography as="p" variant="body-sm" className="text-content-secondary">
           {reason}
@@ -478,8 +517,8 @@ function ManagedSessionConversation({
   // `mode` + `providerModeId`.
   const currentModeId = snapshot?.session.providerModeId;
   const workModes = useMemo(
-    () => runtimeWorkModes(provider, currentModeId),
-    [provider, currentModeId],
+    () => runtimeWorkModes(provider, currentModeId, selectedModelId),
+    [provider, currentModeId, selectedModelId],
   );
   const workModeId = selectedWorkModeId(
     workModes,
@@ -493,10 +532,16 @@ function ManagedSessionConversation({
   // Mirrors the Send button's own disabled condition so MessageComposer's Enter-to-submit path
   // (which bypasses the button's `disabled` attribute entirely) cannot start a Turn the capability
   // gate, an empty draft, or an in-flight command would otherwise block.
+  // A work mode that does not run the selected model (the Session's saved pair, or a pick the
+  // catalogue changed under): said above the Composer, and not sent, since the Runtime refuses it.
+  const workModeModelIds = provider?.providerModes?.find(
+    (mode) => mode.modeId === workModeId,
+  )?.modelIds;
+  const pairUnsupported = !modeRunsModel(provider, workModeId, selectedModelId);
   const canSend =
     !!snapshot &&
     !state.commandBusy &&
-    (!!state.pending || snapshot.session.capabilities.start) &&
+    (!!state.pending || (snapshot.session.capabilities.start && !pairUnsupported)) &&
     (!!state.pending || !!state.draft.trim());
   // The composer shows one adaptive Send/Stop action, not two simultaneous
   // buttons: Stop only while a Turn is actually running and cancellable, Send/Retry otherwise.
@@ -817,8 +862,30 @@ function ManagedSessionConversation({
                       </Alert>
                     ) : (
                       state.commandError &&
-                      (state.sendFailure ? (
-                        <Alert tone="attention" title={t(sendFailureKey(state.sendFailure))} />
+                      (state.sendFailure === 'unconfirmed' && state.pending ? (
+                        // Outcome unknown: Retry (the Send button) confirms the same request; the
+                        // check re-reads the Session and either confirms it or frees the draft.
+                        <Alert tone="attention" title={t('managedSession.sendFailure.unconfirmed')}>
+                          <p>{t('managedSession.unconfirmedCheckBody')}</p>
+                          <Button
+                            size="sm"
+                            disabled={state.commandBusy}
+                            onClick={() => void feed.checkUnconfirmed()}
+                          >
+                            {t('managedSession.unconfirmedCheck')}
+                          </Button>
+                        </Alert>
+                      ) : state.sendFailure ? (
+                        <Alert
+                          tone="attention"
+                          title={t(
+                            sendFailureKey(
+                              state.sendFailure === 'SESSION_RECOVERY_REQUIRED' && !unknownTurn
+                                ? 'SESSION_RECOVERY_REQUIRED_SESSION'
+                                : state.sendFailure,
+                            ),
+                          )}
+                        />
                       ) : (
                         <Alert tone="attention" title={t('managedSession.commandFailed')} />
                       ))
@@ -827,6 +894,18 @@ function ManagedSessionConversation({
                         archived bar (full-session.md "Session actions"). */}
                     <div>
                       <div role="status">
+                        {pairUnsupported && !state.pending && !archived && !viewOnly ? (
+                          <InlineNote tone="attention" className="mb-3">
+                            {t('managedSession.modeModelUnsupported', {
+                              mode:
+                                workModes.find((mode) => mode.id === workModeId)?.title ??
+                                workModeId,
+                              model:
+                                provider?.models.find((model) => model.modelId === selectedModelId)
+                                  ?.title ?? selectedModelId,
+                            })}
+                          </InlineNote>
+                        ) : null}
                         {state.archivedRefusal && !archived ? (
                           <InlineNote tone="info" className="mb-3">
                             {t('managedSession.sessionActions.archivedElsewhere')}
@@ -1015,6 +1094,7 @@ function ManagedSessionConversation({
                                   }
                                   onChange={(modelId, effort) => feed.setModel(modelId, effort)}
                                   disabled={state.commandBusy || !!state.pending}
+                                  modelIds={workModeModelIds}
                                   compact={!isSplit}
                                 />
                                 {sending ? (
@@ -1094,6 +1174,9 @@ const explainedSendFailures = [
   'MODEL_UNSUPPORTED',
   'CAPABILITY_UNSUPPORTED',
   'SESSION_RECOVERY_REQUIRED',
+  // The Session (not a Turn above) needs recovery: nothing above to check.
+  'SESSION_RECOVERY_REQUIRED_SESSION',
+  'mode-model-unsupported',
 ] as const;
 
 function sendFailureKey(failure: string) {

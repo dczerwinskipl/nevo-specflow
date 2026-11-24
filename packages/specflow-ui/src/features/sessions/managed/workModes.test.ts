@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
-import { runtimeWorkModeCommand, runtimeWorkModes, selectedWorkModeId } from './workModes';
+import {
+  modeRunsModel,
+  runtimeWorkModeCommand,
+  runtimeWorkModes,
+  selectedWorkModeId,
+} from './workModes';
 
 const provider = {
   providerId: 'p',
@@ -64,6 +69,23 @@ describe('Runtime work modes', () => {
     expect(selectedWorkModeId(options, [], 'ask')).toBe('plan');
     expect(selectedWorkModeId(runtimeWorkModes(provider), [], 'build')).toBe('plan');
     expect(selectedWorkModeId([], [undefined], undefined)).toBeUndefined();
+  });
+
+  it('lists a mode that does not run the selected model disabled, saying so', () => {
+    const auto = {
+      ...provider,
+      providerModes: provider.providerModes!.map((mode) =>
+        mode.modeId === 'plan' ? { ...mode, modelIds: ['sonnet'] } : mode,
+      ),
+    };
+    expect(runtimeWorkModes(auto, undefined, 'haiku')).toEqual([
+      { id: 'plan', title: 'Plan', disabled: true, modelUnsupported: true },
+    ]);
+    expect(runtimeWorkModes(auto, undefined, 'sonnet')).toEqual([{ id: 'plan', title: 'Plan' }]);
+    // The provider default (no chosen model) and a mode without a model list are never refused.
+    expect(modeRunsModel(auto, 'plan', undefined)).toBe(true);
+    expect(modeRunsModel(auto, 'build', 'haiku')).toBe(true);
+    expect(modeRunsModel(auto, 'plan', 'haiku')).toBe(false);
   });
 
   it("maps a pick onto the StartTurn command: the mode's engine mode plus its provider mode id", () => {

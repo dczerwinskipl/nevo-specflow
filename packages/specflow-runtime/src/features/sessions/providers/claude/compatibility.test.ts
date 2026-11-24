@@ -101,6 +101,16 @@ it('refuses before launch a model that has no native auto mode, and defaults a w
   await expect(
     f.driver.validate({ ...auto, modelId: 'claude-haiku-4-5-20251001' }),
   ).rejects.toThrow('no auto mode for this model');
+  await expect(
+    f.driver.validate({ ...auto, modelId: 'claude-haiku-4-5-20251001' }),
+  ).rejects.toMatchObject({
+    code: 'MODEL_UNSUPPORTED',
+    details: { reason: 'mode-model-unsupported', field: 'providerModeId' },
+  });
+  // The catalogue names the models auto runs, so a client offers no pair validate refuses.
+  const modes = f.driver.describe().providerModes;
+  expect(modes?.find((mode) => mode.modeId === 'auto')?.modelIds).toEqual(['haiku']);
+  expect(modes?.find((mode) => mode.modeId === 'acceptEdits')?.modelIds).toBeUndefined();
   await f.driver.validate({
     providerId: 'claude',
     mode: 'workspace-write',

@@ -16802,6 +16802,15 @@
                                     }
                                   ]
                                 },
+                                "modelIds": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 256
+                                  },
+                                  "maxItems": 100
+                                },
                                 "authorized": {
                                   "type": "boolean"
                                 },
@@ -18345,6 +18354,37 @@
                             },
                             "additionalProperties": false
                           },
+                          "notice": {
+                            "type": "object",
+                            "required": [
+                              "severity"
+                            ],
+                            "properties": {
+                              "severity": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "error"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "warning"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "info"
+                                    ]
+                                  }
+                                ]
+                              }
+                            },
+                            "additionalProperties": false
+                          },
                           "createdAt": {
                             "type": "string",
                             "maxLength": 40
@@ -19824,6 +19864,37 @@
                               "message": {
                                 "type": "string",
                                 "maxLength": 2048
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "notice": {
+                            "type": "object",
+                            "required": [
+                              "severity"
+                            ],
+                            "properties": {
+                              "severity": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "error"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "warning"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "info"
+                                    ]
+                                  }
+                                ]
                               }
                             },
                             "additionalProperties": false

@@ -317,7 +317,15 @@ export function createClaudeDriver(
               protocolProfile: 'claude-stream-json-v1',
               ...(result.version ? { version: result.version } : {}),
             },
-            providerModes,
+            // A mode that runs only some models names them, so a client offers no pair that
+            // validate would refuse.
+            providerModes: providerModes.map((mode) => {
+              const runs = available.get(mode.modeId);
+
+              return runs && runs.length !== result.models.length
+                ? { ...mode, modelIds: runs.map((model) => model.modelId) }
+                : mode;
+            }),
             defaultModeId: options.managedWrites ? 'acceptEdits' : 'plan',
             modes: options.managedWrites ? ['read-only', 'workspace-write'] : ['read-only'],
           };
@@ -408,6 +416,7 @@ export function createClaudeDriver(
       throw new SessionError(
         'MODEL_UNSUPPORTED',
         'The installed Claude has no auto mode for this model; choose another model or mode.',
+        { reason: 'mode-model-unsupported', field: 'providerModeId' },
       );
     }
 

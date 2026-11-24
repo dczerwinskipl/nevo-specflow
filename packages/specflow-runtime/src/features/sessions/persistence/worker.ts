@@ -229,6 +229,7 @@ export async function runSessionWorker(): Promise<void> {
     existing?: string,
     digest?: WorkDigest,
     error?: ConversationEntry['error'],
+    notice?: ConversationEntry['notice'],
   ): ConversationEntry {
     const old = existing
       ? decode<ConversationEntry>(get('SELECT data FROM entries WHERE id=?', existing))
@@ -244,6 +245,7 @@ export async function runSessionWorker(): Promise<void> {
       ...(workId ? { workId } : {}),
       ...(digest ? { digest } : {}),
       ...(error ? { error } : {}),
+      ...(notice ? { notice } : {}),
     };
     run(
       'INSERT OR REPLACE INTO entries VALUES(?,?,?,?,?)',
@@ -990,10 +992,11 @@ export async function runSessionWorker(): Promise<void> {
             );
           }
 
-          if (previous?.dispatched && !previous.confirmed) {
-            fail('SESSION_RECOVERY_REQUIRED', 'An unconfirmed dispatch cannot be retried.');
-          }
-
+          // A dispatch Claude never confirmed (it stopped before naming its context) belongs to a
+          // Turn that has settled: no nonterminal Turn is left (checked above), so no process of it
+          // runs on. Nothing of that native context was confirmed, so there is nothing to resume:
+          // the next Turn starts a new native context under a new reservation (the old one may
+          // exist natively and is never reused). A dispatch still unsettled stays TURN_CONFLICT.
           const reservation = previous?.confirmed ? String(previous.native) : randomUUID();
           let nativeSessionId = reservation;
           if (previous?.confirmed) {

@@ -203,7 +203,13 @@ export function createManagedInvocation(options: {
           workKind: 'commentary',
           title: 'Permission allowlist',
         });
-        await emit({ kind: 'text', key, channel: 'commentary', text: allowlist.notice });
+        await emit({
+          kind: 'text',
+          key,
+          channel: 'commentary',
+          text: allowlist.notice,
+          notice: 'warning',
+        });
       }
 
       driverInvoked = true;

@@ -10,6 +10,7 @@ import {
   validateTelemetryContextUsage,
   CommandPermissionActionSchema,
   ToolOperationSchema,
+  NoticeSeveritySchema,
 } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
 import type { DriverFact } from '../persistence/protocol';
@@ -129,6 +130,7 @@ const schema = Type.Union([
         ),
       ),
       text: text(16384),
+      notice: Type.Optional(NoticeSeveritySchema),
     },
     closed,
   ),
@@ -174,6 +176,10 @@ export function validateDriverFact(fact: DriverFact): void {
       'SESSION_INPUT_INVALID',
       'Provider fact violates the canonical protocol.',
     );
+  }
+
+  if (fact.kind === 'text' && fact.notice && fact.channel !== 'commentary') {
+    throw new SessionError('SESSION_INPUT_INVALID', 'Only commentary can be a SpecFlow notice.');
   }
 
   if (

@@ -203,6 +203,40 @@ describe('Session coordinator', () => {
     });
     expect(work.items.map((item) => item.state)).not.toContain('completed');
   });
+  it('refuses a selection its driver rejects before any Turn or dispatch is recorded', async () => {
+    const commands: string[] = [];
+    const refusal = new SessionError('MODEL_UNSUPPORTED', 'No auto mode for this model.', {
+      reason: 'mode-model-unsupported',
+    });
+    const driver: SessionDriver = {
+      ...createMockDriver(),
+      validate: (selection) => {
+        if (selection.providerModeId === 'auto') {
+          throw refusal;
+        }
+      },
+    };
+    const { sessionId } = await setup(undefined, driver, (store) => ({
+      ...store,
+      call(command) {
+        commands.push(command.op);
+
+        return store.call(command);
+      },
+    }));
+    await expect(
+      runtime!.start('actor', sessionId, {
+        requestId: randomUUID(),
+        message: 'Refused',
+        providerModeId: 'auto',
+      }),
+    ).rejects.toBe(refusal);
+    expect(commands).not.toContain('start');
+    expect(commands).not.toContain('dispatch-intent');
+    const snapshot = await runtime!.snapshot(sessionId, 'actor');
+    expect(snapshot.entries).toEqual([]);
+    expect(snapshot.activeTurn).toBeUndefined();
+  });
   it.each(['resolve', 'reject'] as const)(
     'preserves lost operation uncertainty when its handle later %ss',
     async (completion) => {

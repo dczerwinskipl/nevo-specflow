@@ -4,7 +4,12 @@ import { expect, fn, userEvent, within, waitFor } from 'storybook/test';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { ManagedSession } from './ManagedSession';
 import type { ManagedSessionsApi } from './api';
-import { fixtureApi, fixtureSessionId, sessionFixture } from './managedSession.stories-support';
+import {
+  fixtureApi,
+  fixtureSessionId,
+  providerFixture,
+  sessionFixture,
+} from './managedSession.stories-support';
 import {
   genericSpecLevelSnapshot,
   richDefaultApi,
@@ -717,6 +722,92 @@ export const SendPending: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
     await expect(await canvas.findByRole('status', { name: 'Wysyłanie…' })).toBeVisible();
     await expect(editor).toBeDisabled();
+    await expect(editor).toHaveValue('Sprawdź specyfikację');
+  },
+};
+
+/** A Turn SpecFlow stopped: its own notice (an error, labelled as from SpecFlow, apart from the
+ * agent's words) and the interrupted outcome as a warning, said once. */
+const stopped = sessionFixture();
+stopped.history = { hasOlder: false };
+stopped.entries = [
+  stopped.entries[0]!,
+  {
+    ...stopped.entries[0]!,
+    id: 'stopped-notice',
+    ordinal: 2,
+    kind: 'commentary',
+    notice: { severity: 'error' },
+    text: {
+      text: 'SpecFlow stopped the Claude process because it sent output that SpecFlow does not support.',
+      complete: true,
+    },
+  },
+  {
+    ...stopped.entries[0]!,
+    id: 'stopped-outcome',
+    ordinal: 3,
+    kind: 'outcome',
+    text: { text: 'interrupted', complete: true },
+    error: {
+      code: 'PROCESS_STOPPED',
+      message: 'The agent process stopped while its outcome was not recorded.',
+    },
+  },
+];
+export const StoppedProcessNotice: Story = {
+  tags: ['contract'],
+  args: { owner: 'stopped-notice-story', api: fixtureApi(stopped) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(/sent output that SpecFlow does not support/),
+    ).toBeVisible();
+    await expect(canvas.getByText('Błąd SpecFlow.')).toBeInTheDocument();
+    await expect(canvas.getByLabelText('Wiadomość')).toBeEnabled();
+  },
+};
+
+/** The Session's saved work mode does not run its model (Claude auto + Haiku 4.5): said before
+ * sending, and Send stays off until another model or mode is picked. */
+const pairProvider = providerFixture();
+pairProvider.providerModes = pairProvider.providerModes!.map((mode) =>
+  mode.modeId === 'default' ? { ...mode, modelIds: ['mock-standard'] } : mode,
+);
+const pairSnapshot = sessionFixture();
+pairSnapshot.session = { ...pairSnapshot.session, modelId: 'mock-fast', providerModeId: 'default' };
+export const ModeModelUnsupported: Story = {
+  tags: ['contract'],
+  args: {
+    owner: 'mode-model-story',
+    api: {
+      ...fixtureApi(pairSnapshot),
+      providers: () => Promise.resolve({ items: [pairProvider] }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(await canvas.findByLabelText('Wiadomość'), 'Sprawdź specyfikację');
+    await expect(await canvas.findByText(/nie obsługuje modelu Fast/)).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Wyślij' })).toBeDisabled();
+  },
+};
+
+/** A Send whose answer was lost: Retry confirms the same request, and checking the Session frees
+ * the message when it did not arrive. */
+export const SendUnconfirmed: Story = {
+  tags: ['contract'],
+  args: {
+    owner: 'send-unconfirmed-story',
+    api: { ...fixtureApi(sessionFixture()), start: () => Promise.reject(new Error('Lost')) },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByLabelText('Wiadomość');
+    await userEvent.type(editor, 'Sprawdź specyfikację');
+    await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Sprawdź sesję' }));
+    await waitFor(() => expect(editor).toBeEnabled());
     await expect(editor).toHaveValue('Sprawdź specyfikację');
   },
 };

@@ -104,11 +104,17 @@ export function ModelEffortPicker({
   onChange,
   disabled = false,
   compact = false,
+  modelIds,
 }: {
   provider: ModelEffortProvider | undefined;
   value: ModelEffortValue | undefined;
   onChange: (modelId: string, effort?: string) => void;
   disabled?: boolean;
+  /**
+   * The models the selected work mode runs (its catalogue `modelIds`); absent: all. Any other
+   * model is listed disabled, saying the mode does not run it, so no refused pair can be picked.
+   */
+  modelIds?: readonly string[];
   /**
    * Narrows the trigger's max width for a layout with less room (`ManagedSession.tsx` passes
    * `!supportsSplit`, the same measured-width signal it already uses for the Context header
@@ -196,6 +202,12 @@ export function ModelEffortPicker({
             <MenuRadioItem
               key={item.modelId}
               value={item.modelId}
+              disabled={modelIds !== undefined && !modelIds.includes(item.modelId)}
+              description={
+                modelIds !== undefined && !modelIds.includes(item.modelId)
+                  ? t('managedSession.model.modeUnsupported')
+                  : undefined
+              }
               onSelect={(event) => {
                 const nextEffort = item.hasEfforts
                   ? value?.effort && item.efforts.includes(value.effort)

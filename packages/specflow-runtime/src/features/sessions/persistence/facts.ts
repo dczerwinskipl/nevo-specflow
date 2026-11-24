@@ -51,6 +51,8 @@ interface FactDependencies extends Pick<StoreDatabase, 'get' | 'run'> {
     workId?: string,
     existing?: string,
     digest?: WorkDigest,
+    error?: ConversationEntry['error'],
+    notice?: ConversationEntry['notice'],
   ): ConversationEntry;
   reviseWorkDigest(this: void, session: StoredSession, turn: StoredTurn): void;
 }
@@ -393,6 +395,9 @@ export function createProviderFacts({
           preview(ref),
           undefined,
           entryId,
+          undefined,
+          undefined,
+          f.notice ? { severity: f.notice } : undefined,
         ).id;
         if (f.channel === 'answer') {
           t.summary.finalAnswer = preview(ref);

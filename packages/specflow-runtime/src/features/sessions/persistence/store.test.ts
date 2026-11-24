@@ -337,7 +337,7 @@ describe('durable Session store', () => {
       ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
     }
   });
-  it('does not replay an unconfirmed native dispatch and never silently rebinds correlation', async () => {
+  it('never resumes or rebinds an unconfirmed native dispatch; once its Turn settled, the next Turn starts a new context', async () => {
     const { sessionId } = await create('claude');
     const nativeWorkspace = join(directory, 'workspace');
     const start = await store!.call<StartAdmission>({
@@ -363,6 +363,17 @@ describe('durable Session store', () => {
         fact: { kind: 'correlation', providerSessionId: randomUUID() },
       }),
     ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    const next = {
+      op: 'start' as const,
+      actor: 'user',
+      sessionId,
+      nativeWorkspace,
+      nativeScope: 'account',
+    };
+    // While the dispatched Turn is unsettled its process may run: no second Turn.
+    await expect(
+      store!.call({ ...next, input: { requestId: randomUUID(), message: 'Too early' } }),
+    ).rejects.toMatchObject({ code: 'TURN_CONFLICT' });
     await store!.call({
       op: 'fact',
       sessionId,
@@ -370,16 +381,50 @@ describe('durable Session store', () => {
       driverSeq: 1,
       fact: { kind: 'outcome', outcome: 'failed' },
     });
-    await expect(
-      store!.call({
-        op: 'start',
-        actor: 'user',
-        sessionId,
-        nativeWorkspace,
-        nativeScope: 'account',
-        input: { requestId: randomUUID(), message: 'Unsafe replay' },
+    const second = await store!.call<StartAdmission>({
+      ...next,
+      input: { requestId: randomUUID(), message: 'Next message' },
+    });
+    expect(second.providerContext).toMatchObject({ resume: false, scope: 'account' });
+    expect(second.providerContext!.nativeSessionId).not.toBe(
+      start.providerContext!.nativeSessionId,
+    );
+  });
+  it('marks commentary SpecFlow wrote as a notice and refuses a notice on any other channel', async () => {
+    const { sessionId } = await create();
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Notice' },
+    });
+    const facts: DriverFact[] = [
+      { kind: 'text', key: 'agent', channel: 'commentary', text: 'Agent words.' },
+      {
+        kind: 'text',
+        key: 'provider-error',
+        channel: 'commentary',
+        text: 'SpecFlow stopped the process.',
+        notice: 'error',
+      },
+    ];
+    for (const [index, fact] of facts.entries()) {
+      validateDriverFact(fact);
+      await store!.call({ op: 'fact', sessionId, ...start, driverSeq: index + 1, fact });
+    }
+
+    const entries = (await snap(sessionId)).entries.filter((entry) => entry.kind === 'commentary');
+    expect(entries.map((entry) => entry.notice)).toEqual([undefined, { severity: 'error' }]);
+    expect(sessionValidators.snapshot(await snap(sessionId))).toBe(true);
+    expect(() =>
+      validateDriverFact({
+        kind: 'text',
+        key: 'answer',
+        channel: 'answer',
+        text: 'Not a notice.',
+        notice: 'info',
       }),
-    ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    ).toThrow('Only commentary');
   });
   it('checks single-selection answers before durable admission and expires native-cancelled questions', async () => {
     const { sessionId } = await create();

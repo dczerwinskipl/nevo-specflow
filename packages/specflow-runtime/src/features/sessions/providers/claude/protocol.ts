@@ -93,6 +93,7 @@ export function createClaudeProtocol(
     key: string,
     channel: Extract<DriverFact, { kind: 'text' }>['channel'],
     value: string,
+    notice?: Extract<DriverFact, { kind: 'text' }>['notice'],
   ) {
     const bytes = Buffer.from(value);
     for (let start = 0; start < bytes.length;) {
@@ -101,7 +102,13 @@ export function createClaudeProtocol(
         end--;
       }
 
-      await emit({ kind: 'text', key, channel, text: bytes.subarray(start, end).toString('utf8') });
+      await emit({
+        kind: 'text',
+        key,
+        channel,
+        text: bytes.subarray(start, end).toString('utf8'),
+        ...(notice ? { notice } : {}),
+      });
       start = end;
     }
   }
@@ -659,7 +666,7 @@ export function createClaudeProtocol(
 
       await flushCommentary();
       if (reason) {
-        await text('provider-error', 'commentary', reason);
+        await text('provider-error', 'commentary', reason, 'error');
       }
 
       await emit({

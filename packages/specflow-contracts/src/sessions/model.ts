@@ -242,6 +242,12 @@ export const WorkDigestSchema = Type.Object(
   },
   closed,
 );
+/** How serious a notice SpecFlow writes into a conversation is. */
+export const NoticeSeveritySchema = Type.Union([
+  Type.Literal('error'),
+  Type.Literal('warning'),
+  Type.Literal('info'),
+]);
 export const TurnErrorSchema = Type.Object({ code: text(64), message: text(2048) }, closed);
 export const ConversationEntrySchema = Type.Object(
   {
@@ -264,6 +270,12 @@ export const ConversationEntrySchema = Type.Object(
     /** An `outcome` entry of a Turn that ended with an error: the Turn's safe reason (`code` lets a
      * client say why and what to do). */
     error: Type.Optional(TurnErrorSchema),
+    /**
+     * Only on a `commentary` entry SpecFlow wrote itself (a provider error it relays, a process it
+     * stopped, a recovery it made), never on the agent's own words: a client shows it as a notice
+     * of this severity, apart from the agent's commentary.
+     */
+    notice: Type.Optional(Type.Object({ severity: NoticeSeveritySchema }, closed)),
     createdAt: text(40),
   },
   closed,
@@ -488,6 +500,7 @@ export const SessionChangeSchema = Type.Union([
 export type SessionInfo = Static<typeof SessionInfoSchema>;
 export type SessionSnapshot = Static<typeof SessionSnapshotSchema>;
 export type ConversationEntry = Static<typeof ConversationEntrySchema>;
+export type NoticeSeverity = Static<typeof NoticeSeveritySchema>;
 export type TextPreview = Static<typeof TextPreviewSchema>;
 export type ContentRef = Static<typeof ContentRefSchema>;
 export type ContentPage = Static<typeof ContentPageSchema>;

@@ -12,6 +12,11 @@ export interface WorkModeOption {
    * is the catalogue's own explanation when it gives one. */
   disabled?: boolean;
   reason?: string;
+  /**
+   * Disabled because this mode does not run the selected model (the catalogue's
+   * `providerModes[].modelIds`): the picker says so, and picking another model enables it.
+   */
+  modelUnsupported?: true;
 }
 
 /** The command fields a work-mode pick sets on the next Turn (`StartTurn.mode`/`providerModeId`). */
@@ -28,6 +33,7 @@ export type WorkModeCommand = Required<Pick<StartTurn, 'mode' | 'providerModeId'
 export function runtimeWorkModes(
   provider: ProviderDescriptor | undefined,
   currentId?: string,
+  modelId?: string,
 ): WorkModeOption[] {
   return (provider?.providerModes ?? []).flatMap((mode) => {
     const disabled =
@@ -38,15 +44,34 @@ export function runtimeWorkModes(
       return [];
     }
 
+    // A usable mode that does not run the selected model stays listed, disabled with why: picking
+    // another model is the way to it (the Runtime would refuse the pair with MODEL_UNSUPPORTED).
+    const modelUnsupported = !disabled && !modeRunsModel(provider, mode.modeId, modelId);
+
     return [
       {
         id: mode.modeId,
         title: mode.title,
-        ...(disabled ? { disabled } : {}),
+        ...(disabled || modelUnsupported ? { disabled: true } : {}),
         ...(disabled && mode.reason ? { reason: mode.reason } : {}),
+        ...(modelUnsupported ? { modelUnsupported: true as const } : {}),
       },
     ];
   });
+}
+
+/**
+ * Whether provider mode `modeId` runs `modelId`: a mode without `modelIds` runs every model, and no
+ * chosen model (the provider's own default) is never refused.
+ */
+export function modeRunsModel(
+  provider: ProviderDescriptor | undefined,
+  modeId: string | undefined,
+  modelId: string | undefined,
+): boolean {
+  const modelIds = provider?.providerModes?.find((mode) => mode.modeId === modeId)?.modelIds;
+
+  return !modelIds || modelId === undefined || modelIds.includes(modelId);
 }
 
 /**

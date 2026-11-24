@@ -39,6 +39,7 @@ import {
 } from './discovery';
 import { claudeMode, claudeModes } from './modes';
 import { createProviderAuthentication } from '../authentication';
+import { claudeRegistryPolicy } from './registry';
 
 /** How long a probe's answer is kept while the installation's identity stays the same. */
 export const CLAUDE_PROBE_REFRESH_MS = 15 * 60_000;
@@ -198,6 +199,7 @@ export function createClaudeDriver(
     if (refreshOptions.recheck) {
       if (!discovery) {
         locator.forget();
+        claudeRegistryPolicy.forget();
         checkedAt = 0;
       }
 

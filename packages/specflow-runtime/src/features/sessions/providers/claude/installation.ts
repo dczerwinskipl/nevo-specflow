@@ -5,7 +5,7 @@ import type { ProviderEnvironment } from '../process';
 import { SessionError } from '../../errors';
 
 import { claudeExecutableHash } from './identity-hash';
-import { inspectClaudeRegistryPolicy } from './registry';
+import { claudeRegistryPolicy } from './registry';
 
 interface Files {
   stat(path: string): Promise<{
@@ -202,15 +202,8 @@ export async function inspectClaudeInstallation(
         unavailable();
       }
     } else {
-      const policy = await inspectClaudeRegistryPolicy(options.environment);
-      if (policy === 'unavailable') {
-        throw new SessionError(
-          'PROVIDER_UNAVAILABLE',
-          'Claude machine policy inspection could not complete.',
-        );
-      }
-
-      if (policy !== 'absent') {
+      // Cached with the executable's identity; a transient failure is retried (registry.ts).
+      if ((await claudeRegistryPolicy.read(options.environment, sha256)) !== 'absent') {
         unavailable();
       }
     }

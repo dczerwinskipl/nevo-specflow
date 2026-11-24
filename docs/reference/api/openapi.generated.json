@@ -4560,6 +4560,12 @@
                                   {
                                     "type": "string",
                                     "enum": [
+                                      "owner-work-uncommitted"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
                                       "project-busy"
                                     ]
                                   },
@@ -5075,6 +5081,12 @@
                                   {
                                     "type": "string",
                                     "enum": [
+                                      "owner-work-uncommitted"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
                                       "project-busy"
                                     ]
                                   },
@@ -5525,6 +5537,18 @@
                         ]
                       },
                       "takenOverFrom": {
+                        "type": "object",
+                        "required": [
+                          "attempt"
+                        ],
+                        "properties": {
+                          "attempt": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        }
+                      },
+                      "handedOverFrom": {
                         "type": "object",
                         "required": [
                           "attempt"
@@ -7363,6 +7387,12 @@
                                   {
                                     "type": "string",
                                     "enum": [
+                                      "owner-work-uncommitted"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
                                       "project-busy"
                                     ]
                                   },
@@ -8515,6 +8545,292 @@
                       }
                     },
                     "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "handToAgent": {
+                "type": "object",
+                "required": [
+                  "step",
+                  "attempt",
+                  "agent"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "attempt": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "agent": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "required": [
+                          "kind",
+                          "launch"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "available"
+                            ]
+                          },
+                          "launch": {
+                            "type": "object",
+                            "required": [
+                              "archetype",
+                              "provider",
+                              "model",
+                              "session"
+                            ],
+                            "properties": {
+                              "archetype": {
+                                "type": "string"
+                              },
+                              "provider": {
+                                "type": "string"
+                              },
+                              "model": {
+                                "type": "string"
+                              },
+                              "effort": {
+                                "type": "string"
+                              },
+                              "session": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "mode"
+                                    ],
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "enum": [
+                                          "fresh"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "mode",
+                                      "sessionId"
+                                    ],
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "enum": [
+                                          "reuse"
+                                        ]
+                                      },
+                                      "sessionId": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "independent": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "baseline": {
+                            "type": "string",
+                            "enum": [
+                              "unchecked"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "kind",
+                          "reason"
+                        ],
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "unavailable"
+                            ]
+                          },
+                          "reason": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "not-an-executor"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "archetype-missing"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "provider-not-chosen"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "model-missing"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "session-unavailable"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "provider-not-ready"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "dirty-baseline"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "baseline-changed"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "owner-work-uncommitted"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "project-busy"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "demo"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "attempt-commit-pending"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "attempt-commit-failed"
+                                ]
+                              }
+                            ]
+                          },
+                          "detail": {
+                            "type": "string"
+                          },
+                          "paths": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "maxItems": 1000
+                          },
+                          "count": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "launch": {
+                            "type": "object",
+                            "required": [
+                              "archetype",
+                              "provider",
+                              "model",
+                              "session"
+                            ],
+                            "properties": {
+                              "archetype": {
+                                "type": "string"
+                              },
+                              "provider": {
+                                "type": "string"
+                              },
+                              "model": {
+                                "type": "string"
+                              },
+                              "effort": {
+                                "type": "string"
+                              },
+                              "session": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "mode"
+                                    ],
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "enum": [
+                                          "fresh"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "object",
+                                    "required": [
+                                      "mode",
+                                      "sessionId"
+                                    ],
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "enum": [
+                                          "reuse"
+                                        ]
+                                      },
+                                      "sessionId": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          "independent": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          }
+                        }
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false
@@ -11924,6 +12240,12 @@
                           {
                             "type": "string",
                             "enum": [
+                              "owner-work-uncommitted"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
                               "project-busy"
                             ]
                           },
@@ -12610,6 +12932,12 @@
               {
                 "type": "string",
                 "enum": [
+                  "WORKFLOW_OWNER_WORK_UNCOMMITTED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "WORKFLOW_AGENT_UNAVAILABLE"
                 ]
               },
@@ -12861,6 +13189,12 @@
                 "type": "string",
                 "enum": [
                   "WORKFLOW_NESTED_REPOSITORY"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "WORKFLOW_OWNER_WORK_UNCOMMITTED"
                 ]
               },
               {
@@ -13546,6 +13880,12 @@
                           {
                             "type": "string",
                             "enum": [
+                              "owner-work-uncommitted"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
                               "project-busy"
                             ]
                           },
@@ -14146,6 +14486,18 @@
                             }
                           }
                         },
+                        "handedOverFrom": {
+                          "type": "object",
+                          "required": [
+                            "attempt"
+                          ],
+                          "properties": {
+                            "attempt": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          }
+                        },
                         "returnRequest": {
                           "type": "object",
                           "required": [
@@ -14273,6 +14625,12 @@
                                     "type": "string",
                                     "enum": [
                                       "started"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "handed-over"
                                     ]
                                   },
                                   {
@@ -45938,7 +46296,7 @@
     "/api/specs/{specId}/tasks/{taskId}/workflow/agent-execution": {
       "post": {
         "operationId": "postSpecsBySpecIdTasksByTaskIdWorkflowAgentExecution",
-        "summary": "Start agent step execution of the next step of a Task, or continue its attempt",
+        "summary": "Start agent step execution of the next step of a Task, continue its attempt, or hand the owner's attempt to an agent",
         "tags": [
           "Workflow"
         ],
@@ -45971,6 +46329,12 @@
                       "attempt": {
                         "type": "integer",
                         "minimum": 1
+                      },
+                      "handOver": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
                       }
                     },
                     "additionalProperties": false
@@ -46307,6 +46671,12 @@
                         "attempt": {
                           "type": "integer",
                           "minimum": 1
+                        },
+                        "handOver": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
                         }
                       },
                       "additionalProperties": false
@@ -46460,6 +46830,12 @@
                                   "type": "string",
                                   "enum": [
                                     "baseline-changed"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "owner-work-uncommitted"
                                   ]
                                 },
                                 {
@@ -53305,7 +53681,7 @@
     "/api/specs/{specId}/workflow/agent-execution": {
       "post": {
         "operationId": "postSpecsBySpecIdWorkflowAgentExecution",
-        "summary": "Start agent step execution of the next step of a Specification, or continue its attempt",
+        "summary": "Start agent step execution of the next step of a Specification, continue its attempt, or hand the owner's attempt to an agent",
         "tags": [
           "Workflow"
         ],
@@ -53338,6 +53714,12 @@
                       "attempt": {
                         "type": "integer",
                         "minimum": 1
+                      },
+                      "handOver": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
                       }
                     },
                     "additionalProperties": false
@@ -53658,6 +54040,12 @@
                         "attempt": {
                           "type": "integer",
                           "minimum": 1
+                        },
+                        "handOver": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
                         }
                       },
                       "additionalProperties": false
@@ -53811,6 +54199,12 @@
                                   "type": "string",
                                   "enum": [
                                     "baseline-changed"
+                                  ]
+                                },
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "owner-work-uncommitted"
                                   ]
                                 },
                                 {

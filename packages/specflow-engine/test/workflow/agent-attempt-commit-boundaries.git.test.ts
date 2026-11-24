@@ -4,14 +4,23 @@
 // its commit policy set explicitly; each runs a real attempt (start, the Turn's writes under its
 // claim, proposal, finalize) on a Specification of its own.
 import { randomUUID } from 'node:crypto';
-import { cp, lstat, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import {
+  cp,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest';
 
 import { sha256Hex } from '../../src/hash';
-import { GIT_INSTANCE_SENTINEL_FILE } from '../../src/project/git-instance';
 import {
   abandonSpecification,
   admitWorkspaceExecution,
@@ -27,6 +36,7 @@ import {
   inspectActions,
   installProjectDefinitions,
   manualCommit,
+  openSpecFlowEngine,
   markWorkspaceExecutionDispatched,
   openAgentAttempts,
   openWorkflow,
@@ -48,14 +58,19 @@ import {
 } from '../../src/testing';
 import { commitExecutionState } from '../../src/specs/documents/execution-state-commit';
 import { readLedgerRecord } from '../../src/specs/durable';
+import { previewPublicCloseOperation } from '../../src/specs/operations/api';
 import { ledgerAuthorsOf } from '../../src/specs/durable/ledger/model';
 import { commitStaged, createGitTestProject, git } from '../support/git-project';
 import { setLocalAutoCommit } from '../support/document-writes';
 
 const owner = { class: 'human', details: { actorId: 'local:owner', trust: 'local' } } as const;
 
-/** The initialised project every case copies: Git on, definitions installed, `src/app.ts`. */
+/**
+ * The designated project every case copies: Git on, definitions installed, `src/app.ts` and a
+ * committed Specification that never started (`siblingSpecId`, which a Close may archive).
+ */
 let template: string;
+let siblingSpecId: string;
 /** The case's own checkout (the project's primary one, or the case's linked worktree). */
 let root: string;
 let engine: SpecFlowEngine;
@@ -236,21 +251,57 @@ beforeAll(async () => {
     'runtime: {}\ngit:\n  enabled: true\n',
   );
   git(template, 'checkout', '-q', '-b', 'feature/work');
-  await installProjectDefinitions(await bootstrapProjectHome(template));
+  const designated = await bootstrapProjectHome(template);
+  await installProjectDefinitions(designated);
   await mkdir(join(template, 'src'), { recursive: true });
   await writeFile(join(template, 'src', 'app.ts'), 'export const app = 1;\n');
+  siblingSpecId = (
+    await createSpecificationForTesting(designated, {
+      operationId: randomUUID(),
+      title: 'Sibling',
+      created: '2026-11-23',
+      archetype: { id: 'minimal', version: 1 },
+      target: { kind: 'existing', workspaceId: designated.workspace.workspaceId },
+    })
+  ).specId;
   git(template, 'add', '-A');
   commitStaged(template, 'fixture');
-  // Each copy is a Project Home of its own: the template's local state and Git instance claim go.
-  await rm(join(template, '.nevo', 'local'), { recursive: true, force: true });
-  await rm(join(template, '.git', GIT_INSTANCE_SENTINEL_FILE), { force: true });
 }, 600_000);
+
+/**
+ * The template's Project Home moved to `root`: its local state names the template's checkout by
+ * path (the marker's home root and Git directory, the registry's roots), so those paths are
+ * rewritten; the identities (project, Git instance, workspaces) stay, one copy per case.
+ */
+async function moveProjectHome(): Promise<void> {
+  const spellings = (path: string) => [
+    JSON.stringify(path).slice(1, -1),
+    path.replaceAll('\\', '/'),
+  ];
+  const [from, to] = [spellings(template), spellings(root)];
+  const local = join(root, '.nevo', 'local');
+  for (const entry of await readdir(local, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) {
+      continue;
+    }
+
+    const path = join(entry.parentPath, entry.name);
+    let text = await readFile(path, 'utf8');
+    from.forEach((spelling, index) => (text = text.replaceAll(spelling, to[index]!)));
+    if (text.includes(basename(template))) {
+      throw new Error(`The template's path is left in ${path}.`);
+    }
+
+    await writeFile(path, text);
+  }
+}
 
 beforeEach(async () => {
   root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-attempt-case-')));
   cleanup.push(root);
   await cp(template, root, { recursive: true });
-  engine = await bootstrapProjectHome(root);
+  await moveProjectHome();
+  engine = await openSpecFlowEngine({ cwd: root });
 }, 600_000);
 
 afterEach(async () => {
@@ -588,10 +639,18 @@ async function refusedUntilRetried(
     next: { agent: { kind: 'unavailable', reason } },
   });
 
-  // The owner's start of the next step and a new agent attempt are refused before anything is written.
+  // The owner's start of the next step, Abandon and a new agent attempt are refused before
+  // anything is written.
   const run = join(root, spec.directory, '.execution', 'specification.yaml');
   const before = { dirty: dirty(), run: await readFile(run, 'utf8') };
   await expect(ownerStep(spec)).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED' });
+  await expect(
+    abandonSpecification(await openWorkflow(engine), {
+      specId: spec.specId,
+      reason: 'Not needed any more.',
+      actor: owner,
+    }),
+  ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED' });
   await expect(
     startAgentAttempt(attempt.agent, {
       subject: spec.subject,
@@ -814,17 +873,15 @@ async function ownerSave(spec: Spec, path: string, content: string) {
 }
 
 /**
- * An agent attempt of the requirements step whose commit waits: it saved the overview, created
- * `notes.md` and changed `src/app.ts`. `failed` (the default): an outside edit of its declared file
- * before the commit ran; `pending`: a crash before the commit ran.
+ * An agent attempt of the requirements step whose commit failed (an outside edit of its declared
+ * file before the commit ran): it saved the overview, created `notes.md` and changed `src/app.ts`.
  */
 async function failedAttemptWithDocuments(
   spec: Spec,
   agentContent: string,
-  options: { readonly fault?: 'failed' | 'pending'; readonly workspaceId?: string } = {},
+  options: { readonly workspaceId?: string } = {},
 ) {
   const overview = `${spec.directory}/overview.md`;
-  const pending = options.fault === 'pending';
   const attempt = await agentAttempt(spec, {
     step: 'requirements',
     archetype: 'spec-writer',
@@ -846,29 +903,75 @@ async function failedAttemptWithDocuments(
       await put('src/app.ts', agentContent);
     },
     faults: async (boundary) => {
-      if (boundary !== 'post-actions-pending') {
-        return;
+      if (boundary === 'post-actions-pending') {
+        await put('src/app.ts', 'export const app = "outside";\n');
       }
-
-      if (pending) {
-        throw new Error('Crash at post-actions-pending.');
-      }
-
-      await put('src/app.ts', 'export const app = "outside";\n');
     },
   });
-  if (pending) {
-    await expect(attempt.finalize(attempt.faulty)).rejects.toThrow(
-      'Crash at post-actions-pending.',
-    );
-  } else {
-    expect(await attempt.finalize(attempt.faulty)).toMatchObject({
-      kind: 'finished',
-      postActions: [{ action: 'attempt-commit', status: 'failed', code: 'MANUAL_COMMIT_CONFLICT' }],
-    });
-  }
+  expect(await attempt.finalize(attempt.faulty)).toMatchObject({
+    kind: 'finished',
+    postActions: [{ action: 'attempt-commit', status: 'failed', code: 'MANUAL_COMMIT_CONFLICT' }],
+  });
 
   return attempt;
+}
+
+/** Pins Close's integration target to the case's branch (`feature/work`), committed. */
+async function pinIntegrationTarget(): Promise<void> {
+  await writeFile(
+    join(root, '.nevo', 'config.yaml'),
+    'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: feature/work\n',
+  );
+  git(root, 'add', '.nevo/config.yaml');
+  commitStaged(root, 'pin the integration target');
+}
+
+/** What a refused Close or Abandon must leave as it was: HEAD, the checkout and the agent's files. */
+async function untouched(spec: Spec, others: readonly string[] = []) {
+  const files = ['src/app.ts', `${spec.directory}/overview.md`, `${spec.directory}/notes.md`];
+
+  return {
+    head: git(root, 'rev-parse', 'HEAD'),
+    dirty: dirty(),
+    files: await Promise.all(files.map((path) => readFile(join(root, path), 'utf8'))),
+    locations: await Promise.all(
+      [spec.specId, ...others].map(
+        async (specId) => (await readWorkspaceSpecification(root, specId)).location,
+      ),
+    ),
+  };
+}
+
+/** The refusal of a Close while the attempt commit failed: the attempt named with its paths. */
+function waitingCloseRefusal(attemptId: string) {
+  return {
+    code: 'DOCUMENT_COMMITS_PENDING',
+    details: { uncommitted: { attempts: [expect.objectContaining({ attemptId }) as object] } },
+  };
+}
+
+const agentPaths = (spec: Spec) => [
+  'src/app.ts',
+  `${spec.directory}/overview.md`,
+  `${spec.directory}/notes.md`,
+];
+
+/** The owner's Retry commit of the attempt (the agent's content of its declared file again). */
+async function retryCommit(
+  attempt: Awaited<ReturnType<typeof agentAttempt>>,
+  spec: Spec,
+  agentContent: string,
+): Promise<void> {
+  await put('src/app.ts', agentContent);
+  const [retried] = (
+    await retryAgentAttemptCommit(attempt.agent, {
+      subject: spec.subject,
+      step: 'requirements',
+      attempt: 1,
+      actor: owner,
+    })
+  ).postActions;
+  expect(retried).toMatchObject({ action: 'attempt-commit', status: 'completed' });
 }
 
 /** Every owner write to a document the failed attempt commit holds is refused, nothing written. */
@@ -923,16 +1026,41 @@ async function ownerWritesOfHeldDocumentsRefused(spec: Spec, attemptId: string) 
   expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
 }
 
-it('refuses the owner’s writes to the documents a failed attempt commit holds, not to the others, until Retry commit', async () => {
+it('refuses the owner’s writes to the documents a failed attempt commit holds, not to the others, and Close and Abandon, until Retry commit', async () => {
   await autoCommitDocuments(false);
+  await pinIntegrationTarget();
   const spec = await newSpecification('Owner waits to edit');
   await put(`${spec.directory}/other.md`, 'Owner notes.\n');
   git(root, 'add', '-A');
   commitStaged(root, 'other document');
+  const head = git(root, 'rev-parse', 'HEAD');
   const agentContent = 'export const app = "agent";\n';
   const attempt = await failedAttemptWithDocuments(spec, agentContent);
 
   await ownerWritesOfHeldDocumentsRefused(spec, attempt.attemptId);
+
+  // The attempt's own Specification cannot end while its commit waits: its exit gate refuses Close.
+  // A Close the gate admits meets the agent's files and names the attempt; Abandon waits too.
+  const before = await untouched(spec, [siblingSpecId]);
+  expect(before.locations).toEqual(['active', 'active']);
+  const ownClose = { operationId: randomUUID(), specId: spec.specId };
+  await expect(closeSpecification(engine, ownClose)).rejects.toMatchObject({
+    code: 'CLOSE_BLOCKED',
+    blockers: expect.arrayContaining([
+      expect.objectContaining({ kind: 'specification-run' }),
+    ]) as object[],
+  });
+  // The sibling's Close may otherwise archive: never started, nothing unfinished (D07).
+  const siblingClose = { operationId: randomUUID(), specId: siblingSpecId };
+  await expect(closeSpecification(engine, siblingClose)).rejects.toMatchObject(
+    waitingCloseRefusal(attempt.attemptId),
+  );
+  const abandon = { specId: spec.specId, reason: 'Not needed any more.', actor: owner };
+  await expect(abandonSpecification(await openWorkflow(engine), abandon)).rejects.toMatchObject({
+    code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
+  });
+  // Nothing was archived, committed, written or discarded for the refused operations.
+  expect(await untouched(spec, [siblingSpecId])).toEqual(before);
   // Another document of the Specification stays editable.
   expect((await treeDocument(spec, 'other.md')).document.actions.save).toEqual({
     available: true,
@@ -972,6 +1100,19 @@ it('refuses the owner’s writes to the documents a failed attempt commit holds,
     message: 'docs: owner edits',
   });
   expect(dirty()).toEqual([]);
+
+  // The same Close and Abandon again apply; the agent's code is in its attempt commit only.
+  await expect(closeSpecification(engine, siblingClose)).resolves.toMatchObject({
+    status: 'completed',
+  });
+  await abandonSpecification(await openWorkflow(engine), abandon);
+  for (const commit of commitsSince(head).filter((commit) => commit !== sha)) {
+    expect(filesOf(commit)).not.toContain('src/app.ts');
+  }
+
+  expect(git(root, 'show', 'HEAD:src/app.ts')).toBe(agentContent.trim());
+  // Only the Abandon's execution state waits (automatic commits off), for the owner's Close.
+  expect(dirty().every((path) => path.startsWith(`${spec.directory}/.execution/`))).toBe(true);
 }, 600_000);
 
 it('with automatic commits on, commits an attempt’s documents and code as its one attempt commit', async () => {
@@ -1132,202 +1273,75 @@ it('never commits an edit made after a crash at the step publication as the agen
   expect(dirty()).toEqual(expect.arrayContaining(agents));
 }, 600_000);
 
-/** Pins Close's integration target to the case's branch (`feature/work`), committed. */
-async function pinIntegrationTarget(): Promise<void> {
-  await writeFile(
-    join(root, '.nevo', 'config.yaml'),
-    'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: feature/work\n',
-  );
-  git(root, 'add', '.nevo/config.yaml');
-  commitStaged(root, 'pin the integration target');
-}
-
-/** What a refused Close or Abandon must leave as it was: HEAD, the checkout and the agent's files. */
-async function untouched(spec: Spec, others: readonly string[] = []) {
-  const files = ['src/app.ts', `${spec.directory}/overview.md`, `${spec.directory}/notes.md`];
-
-  return {
-    head: git(root, 'rev-parse', 'HEAD'),
-    dirty: dirty(),
-    files: await Promise.all(files.map((path) => readFile(join(root, path), 'utf8'))),
-    locations: await Promise.all(
-      [spec.specId, ...others].map(
-        async (specId) => (await readWorkspaceSpecification(root, specId)).location,
-      ),
-    ),
+it('refuses worktree Close and Abandon while the attempt commit failed in the worktree, then admits the Close after Retry commit', async () => {
+  await autoCommitDocuments(false);
+  await pinIntegrationTarget();
+  const primary = root;
+  const created = await createSpecificationForTesting(engine, {
+    operationId: randomUUID(),
+    title: 'Worktree waits',
+    created: '2026-11-23',
+    archetype: { id: 'feature', version: 1 },
+    target: { kind: 'new-worktree', baseRef: 'HEAD' },
+  });
+  expect(dirname(created.workspaceRoot)).not.toBe(dirname(primary));
+  cleanup.push(dirname(created.workspaceRoot));
+  // From here on the case's checkout is the Specification's worktree.
+  root = created.workspaceRoot;
+  git(root, 'add', '-A');
+  commitStaged(root, 'Specification source');
+  const branch = git(root, 'symbolic-ref', '--short', 'HEAD');
+  const spec: Spec = {
+    specId: created.specId,
+    directory: 'specs/active/' + created.slug,
+    subject: { kind: 'specification', specId: created.specId },
   };
-}
+  const agentContent = 'export const app = "worktree";\n';
+  const attempt = await failedAttemptWithDocuments(spec, agentContent, {
+    workspaceId: created.workspaceId,
+  });
 
-/** The refusal of a Close while the attempt commit waits: a failed one is named with its paths. */
-function waitingCloseRefusal(fault: 'failed' | 'pending', attemptId: string) {
-  return fault === 'failed'
-    ? {
-        code: 'DOCUMENT_COMMITS_PENDING',
-        details: { uncommitted: { attempts: [expect.objectContaining({ attemptId }) as object] } },
-      }
-    : { code: 'DOCUMENT_COMMITS_PENDING' };
-}
+  const state = async () => ({
+    checkout: await untouched(spec),
+    primary: git(primary, 'rev-parse', 'HEAD'),
+    branch: git(primary, 'rev-parse', branch),
+    worktree: (await lstat(root)).isDirectory(),
+    binding: (await engine.readRegistry()).specBindings.find(
+      (binding) => binding.specId === spec.specId,
+    ),
+  });
+  const before = await state();
+  expect(before.binding).toMatchObject({ workspaceId: created.workspaceId });
+  expect(before.checkout.dirty).toEqual(expect.arrayContaining(agentPaths(spec)));
 
-const agentPaths = (spec: Spec) => [
-  'src/app.ts',
-  `${spec.directory}/overview.md`,
-  `${spec.directory}/notes.md`,
-];
-
-/** The owner's Retry commit of the attempt (the agent's content of its declared file again). */
-async function retryCommit(
-  attempt: Awaited<ReturnType<typeof agentAttempt>>,
-  spec: Spec,
-  agentContent: string,
-): Promise<void> {
-  await put('src/app.ts', agentContent);
-  const [retried] = (
-    await retryAgentAttemptCommit(attempt.agent, {
-      subject: spec.subject,
-      step: 'requirements',
-      attempt: 1,
+  const close = { operationId: randomUUID(), specId: spec.specId };
+  await expect(closeWorktree(engine, close)).rejects.toMatchObject(
+    waitingCloseRefusal(attempt.attemptId),
+  );
+  await expect(
+    abandonSpecification(await openWorkflow(engine), {
+      specId: spec.specId,
+      reason: 'Not needed any more.',
       actor: owner,
-    })
-  ).postActions;
-  expect(retried).toMatchObject({ action: 'attempt-commit', status: 'completed' });
-}
+    }),
+  ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED' });
+  // No checkout removed, no branch closed or merged, the agent's files as it left them.
+  expect(await state()).toEqual(before);
 
-for (const fault of ['failed', 'pending'] as const) {
-  it(`refuses Specification Close and Abandon while the attempt commit is ${fault}, then both apply after Retry commit`, async () => {
-    await autoCommitDocuments(false);
-    await pinIntegrationTarget();
-    const spec = await newSpecification(`Close waits (${fault})`);
-    // A Specification Close may otherwise archive: never started, nothing unfinished (D07).
-    const sibling = await createSpecificationForTesting(engine, {
-      operationId: randomUUID(),
-      title: `Sibling (${fault})`,
-      created: '2026-11-23',
-      archetype: { id: 'minimal', version: 1 },
-      target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
-    });
-    git(root, 'add', '-A');
-    commitStaged(root, 'sibling Specification');
-    const head = git(root, 'rev-parse', 'HEAD');
-    const agentContent = `export const app = "agent ${fault}";\n`;
-    const attempt = await failedAttemptWithDocuments(spec, agentContent, { fault });
-    const before = await untouched(spec, [sibling.specId]);
-    expect(before.dirty).toEqual(expect.arrayContaining(agentPaths(spec)));
-    expect(before.locations).toEqual(['active', 'active']);
+  await retryCommit(attempt, spec, agentContent);
+  expect(dirty()).toEqual([]);
 
-    // The attempt's own Specification cannot end while its commit waits: the exit gate refuses.
-    const ownClose = { operationId: randomUUID(), specId: spec.specId };
-    await expect(closeSpecification(engine, ownClose)).rejects.toMatchObject({
-      code: 'CLOSE_BLOCKED',
-      blockers: expect.arrayContaining([
-        expect.objectContaining({ kind: 'specification-run' }),
-      ]) as object[],
-    });
-    // A Close the gate admits meets the agent's files in the checkout and refuses on them.
-    const siblingClose = { operationId: randomUUID(), specId: sibling.specId };
-    await expect(closeSpecification(engine, siblingClose)).rejects.toMatchObject(
-      waitingCloseRefusal(fault, attempt.attemptId),
-    );
-    const abandon = { specId: spec.specId, reason: 'Not needed any more.', actor: owner };
-    await expect(abandonSpecification(await openWorkflow(engine), abandon)).rejects.toMatchObject({
-      code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
-    });
-    // Nothing was archived, committed, written or discarded for the refused operations.
-    expect(await untouched(spec, [sibling.specId])).toEqual(before);
-    expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
-
-    await retryCommit(attempt, spec, agentContent);
-
-    // The same operations again: the sibling archives, the owner abandons, then Close archives.
-    await expect(closeSpecification(engine, siblingClose)).resolves.toMatchObject({
-      status: 'completed',
-    });
-    await abandonSpecification(await openWorkflow(engine), abandon);
-    await expect(closeSpecification(engine, ownClose)).resolves.toMatchObject({
-      status: 'completed',
-    });
-
-    // The agent's work is in its one attempt commit, and in no other commit.
-    const [attemptCommit, ...others] = attemptCommits(attempt.attemptId);
-    expect(others).toEqual([]);
-    expect(filesOf(attemptCommit!)).toEqual(expect.arrayContaining(agentPaths(spec)));
-    for (const sha of commitsSince(head).filter((commit) => commit !== attemptCommit)) {
-      expect(filesOf(sha)).not.toContain('src/app.ts');
-    }
-
-    const archived = spec.directory.replace('specs/active/', 'specs/archive/');
-    expect(git(root, 'show', 'HEAD:src/app.ts')).toBe(agentContent.trim());
-    expect(git(root, 'show', `HEAD:${archived}/overview.md`)).toBe('# Requirements by the agent');
-    expect(git(root, 'show', `HEAD:${archived}/notes.md`)).toBe('Notes by the agent.');
-    expect(dirty()).toEqual([]);
-  }, 600_000);
-
-  it(`refuses worktree Close and Abandon while the attempt commit is ${fault} in the worktree, then Close integrates it after Retry commit`, async () => {
-    await autoCommitDocuments(false);
-    await pinIntegrationTarget();
-    const primary = root;
-    const created = await createSpecificationForTesting(engine, {
-      operationId: randomUUID(),
-      title: `Worktree waits (${fault})`,
-      created: '2026-11-23',
-      archetype: { id: 'feature', version: 1 },
-      target: { kind: 'new-worktree', baseRef: 'HEAD' },
-    });
-    expect(dirname(created.workspaceRoot)).not.toBe(dirname(primary));
-    cleanup.push(dirname(created.workspaceRoot));
-    // From here on the case's checkout is the Specification's worktree.
-    root = created.workspaceRoot;
-    git(root, 'add', '-A');
-    commitStaged(root, 'Specification source');
-    const branch = git(root, 'symbolic-ref', '--short', 'HEAD');
-    const spec: Spec = {
-      specId: created.specId,
-      directory: 'specs/active/' + created.slug,
-      subject: { kind: 'specification', specId: created.specId },
-    };
-    const agentContent = `export const app = "worktree ${fault}";\n`;
-    const attempt = await failedAttemptWithDocuments(spec, agentContent, {
-      fault,
-      workspaceId: created.workspaceId,
-    });
-
-    const state = async () => ({
-      checkout: await untouched(spec),
-      primary: git(primary, 'rev-parse', 'HEAD'),
-      branch: git(primary, 'rev-parse', branch),
-      worktree: (await lstat(root)).isDirectory(),
-      binding: (await engine.readRegistry()).specBindings.find(
-        (binding) => binding.specId === spec.specId,
-      ),
-    });
-    const before = await state();
-    expect(before.binding).toMatchObject({ workspaceId: created.workspaceId });
-    expect(before.checkout.dirty).toEqual(expect.arrayContaining(agentPaths(spec)));
-
-    const close = { operationId: randomUUID(), specId: spec.specId };
-    await expect(closeWorktree(engine, close)).rejects.toMatchObject(
-      waitingCloseRefusal(fault, attempt.attemptId),
-    );
-    await expect(
-      abandonSpecification(await openWorkflow(engine), {
-        specId: spec.specId,
-        reason: 'Not needed any more.',
-        actor: owner,
-      }),
-    ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED' });
-    // No checkout removed, no branch closed or merged, the agent's files as it left them.
-    expect(await state()).toEqual(before);
-
-    await retryCommit(attempt, spec, agentContent);
-    expect(dirty()).toEqual([]);
-
-    // The same Close again: it integrates the branch, the agent's work in its one attempt commit.
-    await expect(closeWorktree(engine, close)).resolves.toMatchObject({ status: 'completed' });
-    root = primary;
-    await expect(lstat(created.workspaceRoot)).rejects.toMatchObject({ code: 'ENOENT' });
-    const [attemptCommit, ...others] = attemptCommits(attempt.attemptId);
-    expect(others).toEqual([]);
-    expect(filesOf(attemptCommit!)).toEqual(expect.arrayContaining(agentPaths(spec)));
-    expect(git(root, 'show', 'HEAD:src/app.ts')).toBe(agentContent.trim());
-    expect(dirty()).toEqual([]);
-  }, 600_000);
-}
+  // The agent's work is in its one attempt commit on the worktree's branch, and the same Close is
+  // admitted now: its preview runs the checks that refused it and would integrate the branch (the
+  // integration itself is Close's own, covered by the lifecycle tests).
+  const [attemptCommit, ...others] = attemptCommits(attempt.attemptId);
+  expect(others).toEqual([]);
+  expect(filesOf(attemptCommit!)).toEqual(expect.arrayContaining(agentPaths(spec)));
+  expect(git(root, 'show', 'HEAD:src/app.ts')).toBe(agentContent.trim());
+  const preview = await previewPublicCloseOperation(engine, { kind: 'worktree-close', ...close });
+  expect(preview.merge).toMatchObject({
+    status: 'integrates',
+    sourceBranch: branch,
+    targetBranch: 'feature/work',
+  });
+}, 600_000);

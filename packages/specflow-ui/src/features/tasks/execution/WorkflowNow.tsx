@@ -142,9 +142,13 @@ export function WorkflowNow({
   // never offers a retry for an attempt nobody worked on.
   const [finishFor, setFinishFor] = useState<string>();
   const finishOpen = dialog === 'finish' && finishFor === attemptKey;
-  // Not after this dialog's own finish succeeded: the refresh may land before the dialog closes.
+  // Not while or after this dialog's own finish runs: the refresh it triggers may land before the
+  // finish settles and the dialog closes. A refused finish (isError) still says so.
   const finishMovedOn =
-    dialog === 'finish' && finishFor !== attemptKey && !commands.finish.isSuccess;
+    dialog === 'finish' &&
+    finishFor !== attemptKey &&
+    !commands.finish.isPending &&
+    !commands.finish.isSuccess;
   const [storedDraft, setDraft] = useState<FinishDraft>();
   // A draft of another attempt (the run moved on) is not this attempt's draft.
   const draft =

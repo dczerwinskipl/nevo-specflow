@@ -550,7 +550,8 @@ describe('manual workflow execution', () => {
 
     // The refreshed projection is the next attempt: the dialog of the finished one is gone.
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByRole('status').textContent).toBe(
+    // Said once the lost finish settles, not while it still runs.
+    expect((await screen.findByRole('status')).textContent).toBe(
       'This step was already finished. What you can do now is shown below.',
     );
     expect(finish).toHaveBeenCalledTimes(1);

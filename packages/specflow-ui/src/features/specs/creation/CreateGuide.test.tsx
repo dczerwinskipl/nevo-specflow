@@ -156,6 +156,12 @@ describe('a blocked Create on a project Runtime', () => {
     fireEvent.focus(nameField());
     fireEvent.blur(nameField());
     expect(nameField().getAttribute('aria-invalid')).toBeNull();
+    // Nor is a phone keyboard's input event that leaves the field blank.
+    fireEvent.focus(nameField());
+    fireEvent.change(nameField(), { target: { value: ' ' } });
+    fireEvent.blur(nameField());
+    expect(nameField().getAttribute('aria-invalid')).toBeNull();
+    fireEvent.change(nameField(), { target: { value: '' } });
 
     fireEvent.click(submit);
 
@@ -163,9 +169,9 @@ describe('a blocked Create on a project Runtime', () => {
     expect(nameField().getAttribute('aria-invalid')).toBe('true');
     const errorId = nameField().getAttribute('aria-describedby')!;
     expect(document.getElementById(errorId.split(' ').at(-1)!)?.textContent).toBe(
-      'Enter a specification name.',
+      'Enter a name to create the specification.',
     );
-    expect(liveRegion()).toContain('Enter a specification name.');
+    expect(liveRegion()).toContain('Enter a name to create the specification.');
     // Nothing was prepared, stored or sent.
     expect(create).not.toHaveBeenCalled();
     expect(onProjectStarted).not.toHaveBeenCalled();
@@ -204,12 +210,12 @@ describe('a blocked Create on a project Runtime', () => {
     expect(onProjectStarted).not.toHaveBeenCalled();
   });
 
-  it('the footer names the reason and offers "Go to the field", which does the same', async () => {
+  it('the footer names the reason and offers "Enter the name", which does the same', async () => {
     renderProject();
     await formReady();
     const footer = document.querySelector('footer')!;
-    expect(within(footer).getByText('Enter a specification name.')).toBeTruthy();
-    fireEvent.click(within(footer).getByRole('button', { name: 'Go to the field' }));
+    expect(within(footer).getByText('Enter a name to create the specification.')).toBeTruthy();
+    fireEvent.click(within(footer).getByRole('button', { name: 'Enter the name' }));
     await waitFor(() => expect(document.activeElement).toBe(nameField()));
   });
 
@@ -264,7 +270,7 @@ describe('a blocked Create in the demo', () => {
     fireEvent.submit(nameField().form!);
     await waitFor(() => expect(document.activeElement).toBe(nameField()));
     submit.focus();
-    fireEvent.click(screen.getByRole('button', { name: 'Go to the field' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Enter the name' }));
     await waitFor(() => expect(document.activeElement).toBe(nameField()));
 
     expect(create).not.toHaveBeenCalled();
@@ -289,7 +295,7 @@ it('explains missing definitions only at Archetype and associates the unavailabl
   await waitFor(() =>
     expect(screen.getByText('This project has no available archetypes.')).toBeTruthy(),
   );
-  expect(footer.textContent).not.toContain('Enter a specification name');
+  expect(footer.textContent).not.toContain('Enter a name to create');
   expect(within(footer).queryByRole('button', { name: 'Go to the field' })).toBeNull();
   fireEvent.click(createButton());
   expect(create).not.toHaveBeenCalled();

@@ -396,6 +396,7 @@ export function CreateDemoForm({
           submitDisabled={submitDisabled}
           submitBlocked={submitBlocked}
           onGuide={problemField && reason && !locked ? guide : undefined}
+          {...(problemField === 'name' ? { guideLabel: t('create.guide.enterName') } : {})}
         />
       }
     >

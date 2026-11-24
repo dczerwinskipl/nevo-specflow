@@ -538,7 +538,7 @@
       "workspaceError": "Nie udało się wczytać opcji środowiska pracy.",
       "forbidden": "Nie masz uprawnień do tworzenia specyfikacji.",
       "refreshConfiguration": "Odśwież konfigurację przed utworzeniem.",
-      "title": "Podaj nazwę specyfikacji.",
+      "title": "Wpisz nazwę, aby utworzyć specyfikację.",
       "provider": "Wybierz dostępnego agenta.",
       "model": "Wybierz model.",
       "effort": "Wybierz wysiłek, który obsługuje ten model.",
@@ -1078,7 +1078,8 @@
       "kind": "Tworzenie specyfikacji"
     },
     "guide": {
-      "goToField": "Przejdź do pola"
+      "goToField": "Przejdź do pola",
+      "enterName": "Wpisz nazwę"
     }
   },
   "documents": {

@@ -1672,7 +1672,7 @@ export const BlockedCreateLeadsToTheFirstFaultyFieldAndSendsNothing: Story = {
     await waitFor(() => expect(name).toHaveFocus());
     await expect(name).toHaveAttribute('aria-invalid', 'true');
     await expect(
-      canvas.getByText('Podaj nazwę specyfikacji.', { selector: '.field-error' }),
+      canvas.getByText('Wpisz nazwę, aby utworzyć specyfikację.', { selector: '.field-error' }),
     ).toBeVisible();
     // With the name typed, Enter in it leads on to the next problem: an emptied branch name.
     await userEvent.type(name, 'Nowa obsługa płatności');

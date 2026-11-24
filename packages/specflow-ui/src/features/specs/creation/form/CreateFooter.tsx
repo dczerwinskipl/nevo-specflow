@@ -21,6 +21,7 @@ export function CreateFooter({
   submitDisabled,
   submitBlocked = false,
   onGuide,
+  guideLabel,
   blockedDescriptionId,
 }: {
   submitRef?: RefObject<HTMLButtonElement | null>;
@@ -33,6 +34,8 @@ export function CreateFooter({
   submitBlocked?: boolean;
   /** Leads to the field that holds `prerequisite`; absent when no field can fix it. */
   onGuide?: () => void;
+  /** Names what the lead does when it is concrete ("Enter the name"); else "Go to the field". */
+  guideLabel?: string;
   blockedDescriptionId?: string;
 }) {
   const { t } = useTranslation();
@@ -56,7 +59,7 @@ export function CreateFooter({
             </InlineNote>
             {onGuide ? (
               <Button variant="ghost" size="sm" onClick={onGuide}>
-                {t('create.guide.goToField')}
+                {guideLabel ?? t('create.guide.goToField')}
               </Button>
             ) : null}
           </>

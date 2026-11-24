@@ -324,6 +324,7 @@ export function CreateProjectForm({
           submitDisabled={locked}
           submitBlocked={!canSubmit}
           onGuide={problemField && !locked ? guide : undefined}
+          {...(problemField === 'name' ? { guideLabel: t('create.guide.enterName') } : {})}
         />
       }
     >
@@ -349,7 +350,12 @@ export function CreateProjectForm({
                   onChange={(event) => {
                     setUnprepared(false);
                     setNameRefused(false);
-                    nameEdited.current = true;
+                    // Only a name once typed is a name left empty: a keyboard's empty input
+                    // events (composition, autocorrect) on a fresh field are not.
+                    if (event.target.value.trim()) {
+                      nameEdited.current = true;
+                    }
+
                     setTitle(event.target.value);
                   }}
                   onBlur={() => setNameLeft(nameEdited.current)}

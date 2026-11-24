@@ -538,7 +538,7 @@
       "workspaceError": "Unable to load the workspace options.",
       "forbidden": "You do not have permission to create specifications.",
       "refreshConfiguration": "Refresh the configuration before creating.",
-      "title": "Enter a specification name.",
+      "title": "Enter a name to create the specification.",
       "provider": "Choose an available agent.",
       "model": "Choose a model.",
       "effort": "Choose an effort this model supports.",
@@ -1078,7 +1078,8 @@
       "kind": "Creating a specification"
     },
     "guide": {
-      "goToField": "Go to the field"
+      "goToField": "Go to the field",
+      "enterName": "Enter the name"
     }
   },
   "documents": {

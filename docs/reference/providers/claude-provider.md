@@ -52,9 +52,23 @@ sessions:
 
 Disabled Claude (not allowed by the project, or turned off on this machine) inspects no login and
 launches no process. An unsupported installation leaves the
-provider unavailable; Runtime and other providers stay usable. Startup warms discovery; ordinary
-snapshots launch no subprocess. Discovery and caching follow
-[provider compatibility](compatibility.md).
+provider unavailable; Runtime and other providers stay usable. Ordinary snapshots launch no
+subprocess. Discovery and caching follow [provider compatibility](compatibility.md), with this probe
+policy:
+
+- **Once at start.** The Runtime starts the first discovery when it starts, in the background; it
+  does not wait for it. Only a catalogue read (`GET /api/session-providers`) that comes before that
+  discovery ended waits for it.
+- **Every later read answers at once** with the last known descriptor, never waiting for a probe.
+  At most every 30 s a read starts a background check of the installation (the executable's hash is
+  cached by its real path, size and modification time, so an unchanged ~300 MB binary is hashed
+  once; the login fingerprint is derived off the event loop). The CLI probes run again, in the
+  background, only when that identity changed (a new or updated binary, another login or policy),
+  when the last probe is older than 15 minutes, or when the descriptor was invalidated (a Turn's
+  launch found the login rejected, the installation changed or the protocol unsupported).
+- **Check again** (`?recheck=true`, the owner's explicit recheck) probes now and is awaited.
+- **A Turn never runs on a stale answer**: validation and launch read the installation again and
+  probe again first when its identity differs from the one probed.
 
 ## Supported installation and login
 
@@ -89,10 +103,12 @@ currently verified login is protected.
 
 `acceptEdits` is the default writable mode when managed execution is available: a writable Turn
 without a native mode (agent step execution) runs in it. Each mode is probed and can be unavailable
-independently. `auto` offers only the models native initialization marks `supportsAutoMode`; Claude
-would run any other model in `default`, so such a choice is refused before launch
-(`MODEL_UNSUPPORTED` with `details.reason: mode-model-unsupported`), and the catalogue lists the
-models `auto` runs as its `providerModes[].modelIds` so a client offers no such pair. `bypassPermissions` is not admitted. Model IDs, titles and
+independently. When native initialization reports `supportsAutoMode` (Claude 2.1.312 and later),
+`auto` offers only the models it marks; Claude would run any other model in `default`, so such a
+choice is refused before launch (`MODEL_UNSUPPORTED` with `details.reason: mode-model-unsupported`),
+and the catalogue lists the models `auto` runs as its `providerModes[].modelIds` so a client offers
+no such pair. An older CLI that reports the field for no model keeps every model in `auto`; a silent
+fallback to `default` is still refused by the `system/status` frame check. `bypassPermissions` is not admitted. Model IDs, titles and
 per-model effort lists come from native initialization, never a static list; an effort outside the
 model's list is rejected before dispatch.
 

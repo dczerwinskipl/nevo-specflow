@@ -202,8 +202,10 @@ export function createSessionsFeature(
         await coordinator.recoverEffects();
       }
 
+      // The first probe of each provider starts now, in the background: startup does not wait for
+      // it, and the first catalogue read waits only for what is still running of it.
       if (coordinator && (claude?.enabled || codex?.enabled || antigravity?.enabled)) {
-        await coordinator.providers();
+        void coordinator.providers().catch(() => undefined);
       }
 
       registerSessionRoutes(app, {

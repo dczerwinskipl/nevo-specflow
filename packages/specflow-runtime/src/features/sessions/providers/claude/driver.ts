@@ -40,6 +40,11 @@ import {
 import { claudeMode, claudeModes } from './modes';
 import { createProviderAuthentication } from '../authentication';
 
+/** How long a probe's answer is kept while the installation's identity stays the same. */
+export const CLAUDE_PROBE_REFRESH_MS = 15 * 60_000;
+/** How often a catalogue read starts a background check of the installation's identity. */
+export const CLAUDE_REVALIDATE_MS = 30_000;
+
 export function createClaudeDriver(
   options: {
     workspace: string;
@@ -53,8 +58,11 @@ export function createClaudeDriver(
       signal: AbortSignal,
     ) => Promise<Awaited<ReturnType<typeof inspectClaudeInstallation>>>;
     probe?: typeof probeClaude;
+    /** Test seam: the clock the probe's age is judged by. */
+    now?: () => number;
   } = {},
 ): SessionDriver {
+  const now = dependencies.now ?? Date.now;
   const baseEnvironment = options.environment ?? projectProviderEnvironment({ host: process.env });
   const environment: ProviderEnvironment = {
     values: Object.freeze({ ...baseEnvironment.values, CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1' }),
@@ -81,6 +89,10 @@ export function createClaudeDriver(
   let checkedAt = 0;
   let scope = '';
   let discovery: Promise<ProviderDescriptor> | undefined;
+  /** A discovery ran to its end once (ready or not): later reads serve its result at once. */
+  let discovered = false;
+  /** When the last background revalidation started (it reads the installation, never awaited). */
+  let revalidatedAt = 0;
   const locator = createExecutableLocator(claudeExecutable, {
     ...(options.executable !== undefined ? { configured: options.executable } : {}),
     environment,
@@ -170,15 +182,43 @@ export function createClaudeDriver(
     throw error;
   }
 
+  /**
+   * The catalogue read (probe policy, see the provider reference): the first read after start
+   * waits for the first discovery (the Runtime starts it eagerly); every later read returns the last
+   * known descriptor at once and, at most every {@link CLAUDE_REVALIDATE_MS}, revalidates in the
+   * background: the installation is read again (its executable hash is cached by identity) and the
+   * CLI is probed again only when that identity changed, the last probe is older than
+   * {@link CLAUDE_PROBE_REFRESH_MS}, or the descriptor was invalidated (a Turn launch found the
+   * installation changed or broken). `recheck` (the owner's Check again) probes now and is awaited.
+   */
   async function refresh(
     signal: AbortSignal,
     refreshOptions: { recheck?: boolean } = {},
   ): Promise<ProviderDescriptor> {
-    if (refreshOptions.recheck && !discovery) {
-      locator.forget();
-      checkedAt = 0;
+    if (refreshOptions.recheck) {
+      if (!discovery) {
+        locator.forget();
+        checkedAt = 0;
+      }
+
+      return discover(signal);
     }
 
+    if (!discovered) {
+      return discover(signal);
+    }
+
+    if (!discovery && (checkedAt === 0 || now() - revalidatedAt >= CLAUDE_REVALIDATE_MS)) {
+      revalidatedAt = now();
+      // Never awaited: its outcome is the next read's descriptor.
+      void discover(AbortSignal.timeout(ProviderTimeouts.discoveryMs)).catch(() => undefined);
+    }
+
+    return structuredClone(descriptor);
+  }
+
+  /** One discovery at a time; a caller during one waits for it. */
+  async function discover(signal: AbortSignal): Promise<ProviderDescriptor> {
     discovery ??= (async () => {
       const boundedSignal = AbortSignal.any([
         signal,
@@ -191,7 +231,10 @@ export function createClaudeDriver(
           const installation = await inspect(boundedSignal);
           inspectedAuthentication = installation.authenticationFingerprint;
           requireAuthentication(installation.authenticationFingerprint);
-          if (installation.fingerprint === checkedFingerprint && Date.now() - checkedAt < 30000) {
+          if (
+            installation.fingerprint === checkedFingerprint &&
+            now() - checkedAt < CLAUDE_PROBE_REFRESH_MS
+          ) {
             return structuredClone(descriptor);
           }
 
@@ -338,7 +381,7 @@ export function createClaudeDriver(
           delete descriptor.reasonCode;
           checkedFingerprint = installation.fingerprint;
           authentication.verified(installation.authenticationFingerprint);
-          checkedAt = Date.now();
+          checkedAt = now();
           scope = installation.accountScope;
 
           return structuredClone(descriptor);
@@ -354,16 +397,28 @@ export function createClaudeDriver(
         return structuredClone(descriptor);
       }
     })();
+    const running = discovery;
     try {
-      return await discovery;
+      return await running;
     } finally {
-      discovery = undefined;
+      discovered = true;
+      if (discovery === running) {
+        discovery = undefined;
+      }
     }
   }
 
   async function readyInstallation(signal: AbortSignal) {
     for (let attempt = 0; attempt < 2; attempt++) {
-      await refresh(signal);
+      // A Turn never runs on a stale answer: the first attempt checks (a fresh probe is reused),
+      // the second, after the installation changed, probes again.
+      if (attempt === 0) {
+        await discover(signal);
+      } else {
+        checkedAt = 0;
+        await discover(signal);
+      }
+
       if (descriptor.readiness !== 'ready') {
         throw new SessionError(
           descriptor.readiness === 'authenticationRequired'

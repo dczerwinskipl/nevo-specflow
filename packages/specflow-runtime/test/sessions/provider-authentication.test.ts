@@ -117,24 +117,27 @@ it.each(['claude', 'codex'] as const)(
 
     const old = await launch();
     login = 'login-b';
-    expect((await driver.refresh!(signal)).readiness).toBe('ready');
+    expect((await driver.refresh!(signal, { recheck: true })).readiness).toBe('ready');
     const rejection = {
       kind: 'outcome' as const,
       outcome: 'failed' as const,
       error: { code: 'PROVIDER_AUTH_REQUIRED', message: 'Synthetic login rejected' },
     };
     await old.emit(rejection);
-    expect((await driver.refresh!(signal)).readiness).toBe('ready');
+    expect((await driver.refresh!(signal, { recheck: true })).readiness).toBe('ready');
     const current = await launch();
     await current.emit(rejection);
     await old.emit(rejection); // A late second rejection cannot erase B's rejection.
-    expect((await driver.refresh!(signal)).readiness).toBe('authenticationRequired');
+    expect((await driver.refresh!(signal, { recheck: true })).readiness).toBe(
+      'authenticationRequired',
+    );
     await expect(driver.validate(selection, signal)).rejects.toMatchObject({
       code: 'PROVIDER_AUTH_REQUIRED',
     });
     expect(native.operations).toHaveLength(2);
     login = 'login-c';
-    expect((await driver.refresh!(signal)).readiness).toBe('ready');
+    // A catalogue read serves the last answer; the owner's Check again reads the new login now.
+    expect((await driver.refresh!(signal, { recheck: true })).readiness).toBe('ready');
     expect(driver.contextScope!()).toBe('stable-account');
     const preInput = await launch(false);
     inspect.mockRejectedValueOnce(
@@ -142,15 +145,19 @@ it.each(['claude', 'codex'] as const)(
     );
     await expect(preInput.verifyInput!()).rejects.toMatchObject({ code: 'PROVIDER_AUTH_REQUIRED' });
     await preInput.emit(rejection);
-    expect((await driver.refresh!(signal)).readiness).toBe('ready');
+    expect((await driver.refresh!(signal, { recheck: true })).readiness).toBe('ready');
     expect(driver.contextScope!()).toBe('stable-account');
     expect(native.operations).toHaveLength(3); // Rechecking never starts another Turn.
     login = 'login-d';
     probe.mockRejectedValueOnce(new SessionError('PROVIDER_AUTH_REQUIRED', 'New login rejected'));
-    expect((await driver.refresh!(signal)).readiness).toBe('authenticationRequired');
-    expect((await driver.refresh!(signal)).readiness).toBe('authenticationRequired');
+    expect((await driver.refresh!(signal, { recheck: true })).readiness).toBe(
+      'authenticationRequired',
+    );
+    expect((await driver.refresh!(signal, { recheck: true })).readiness).toBe(
+      'authenticationRequired',
+    );
     login = 'login-e';
-    expect((await driver.refresh!(signal)).readiness).toBe('ready');
+    expect((await driver.refresh!(signal, { recheck: true })).readiness).toBe('ready');
     expect(native.operations).toHaveLength(3);
     login = 'login-f';
     const stillValid = await inspect();
@@ -159,8 +166,10 @@ it.each(['claude', 'codex'] as const)(
       .mockRejectedValueOnce(
         new SessionError('PROVIDER_AUTH_REQUIRED', 'Source temporarily unreadable after probe'),
       );
-    expect((await driver.refresh!(signal)).readiness).toBe('authenticationRequired');
-    expect((await driver.refresh!(signal)).readiness).toBe('ready');
+    expect((await driver.refresh!(signal, { recheck: true })).readiness).toBe(
+      'authenticationRequired',
+    );
+    expect((await driver.refresh!(signal, { recheck: true })).readiness).toBe('ready');
     expect(driver.contextScope!()).toBe('stable-account');
   },
 );

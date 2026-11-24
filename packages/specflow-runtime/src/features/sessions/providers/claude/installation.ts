@@ -1,10 +1,10 @@
-import { createReadStream } from 'node:fs';
 import { lstat, readFile } from 'node:fs/promises';
-import { createHash, scryptSync } from 'node:crypto';
+import { createHash, scrypt } from 'node:crypto';
 import { join, resolve, isAbsolute } from 'node:path';
 import type { ProviderEnvironment } from '../process';
 import { SessionError } from '../../errors';
 
+import { claudeExecutableHash } from './identity-hash';
 import { inspectClaudeRegistryPolicy } from './registry';
 
 interface Files {
@@ -15,26 +15,41 @@ interface Files {
     size: number;
   }>;
   read(path: string): Promise<Buffer>;
+  /** The executable's sha256; production caches it by the file's identity (`identity-hash.ts`). */
   hash(path: string): Promise<string>;
 }
 const files: Files = {
   stat: lstat,
   read: readFile,
-  async hash(path) {
-    const hash = createHash('sha256');
-    let bytes = 0;
-    for await (const chunk of createReadStream(path)) {
-      bytes += (chunk as Buffer).length;
-      if (bytes > 512 * 1024 * 1024) {
-        throw new Error('Executable exceeds certification budget.');
-      }
-
-      hash.update(chunk as Buffer);
-    }
-
-    return hash.digest('hex');
-  },
+  hash: claudeExecutableHash,
 };
+
+/** The last access token's fingerprint: scrypt is costly, so the same token is not derived again. */
+let lastFingerprint: { readonly token: string; readonly fingerprint: Promise<string> } | undefined;
+
+/** The authentication fingerprint of an access token: scrypt, off the event loop. */
+export function authenticationFingerprintOf(token: string): Promise<string> {
+  if (lastFingerprint?.token !== token) {
+    const fingerprint = new Promise<string>((resolve, reject) => {
+      scrypt(token, 'nevo:claude:auth-fingerprint', 32, (error, key) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(key.toString('hex'));
+        }
+      });
+    });
+    lastFingerprint = { token, fingerprint };
+    fingerprint.catch(() => {
+      if (lastFingerprint?.fingerprint === fingerprint) {
+        lastFingerprint = undefined;
+      }
+    });
+  }
+
+  return lastFingerprint.fingerprint;
+}
+
 function unavailable(): never {
   throw new SessionError(
     'PROVIDER_UNAVAILABLE',
@@ -234,11 +249,7 @@ export async function inspectClaudeInstallation(
     }
 
     options.signal.throwIfAborted();
-    const authenticationFingerprint = scryptSync(
-      credentials.accessToken,
-      'nevo:claude:auth-fingerprint',
-      32,
-    ).toString('hex');
+    const authenticationFingerprint = await authenticationFingerprintOf(credentials.accessToken);
 
     return {
       executable,

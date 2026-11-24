@@ -12,6 +12,7 @@ import type { ProductCliTrust } from './cli-path';
 import { claudeUserMessage } from './requests';
 import { prepareClaudeRequest } from './permissions';
 import { claudeMode, toolsForClaudeMode } from './modes';
+import { ClaudeRestrictionError } from './discovery';
 
 export type ClaudeProcess = Pick<
   Awaited<ReturnType<typeof launchOwnedProcess>>,
@@ -426,9 +427,11 @@ export function createClaudeOperation(
             ? claudeLoss.exited
             : failure instanceof ProviderProcessError
               ? claudeLoss.connection
-              : failure instanceof ClaudeProtocolError || failure instanceof SyntaxError
-                ? claudeLoss.rejected
-                : undefined,
+              : failure instanceof ClaudeRestrictionError
+                ? claudeLoss.rejected + ' ' + failure.message
+                : failure instanceof ClaudeProtocolError || failure instanceof SyntaxError
+                  ? claudeLoss.rejected
+                  : undefined,
         );
       }
     }

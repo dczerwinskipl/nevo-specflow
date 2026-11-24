@@ -18,8 +18,9 @@ export const claudeModes = [
 ] as const;
 export type ClaudeMode = (typeof claudeModes)[number];
 export function claudeMode(selection?: Invocation['selection']): ClaudeMode {
+  // A writable Turn without an explicit native mode (agent step execution) runs in acceptEdits.
   const id =
-    selection?.providerModeId ?? (selection?.mode === 'workspace-write' ? undefined : 'plan');
+    selection?.providerModeId ?? (selection?.mode === 'workspace-write' ? 'acceptEdits' : 'plan');
   const mode = claudeModes.find((mode) => mode.modeId === id);
   if (!mode || (selection && mode.mode !== selection.mode)) {
     throw new SessionError(

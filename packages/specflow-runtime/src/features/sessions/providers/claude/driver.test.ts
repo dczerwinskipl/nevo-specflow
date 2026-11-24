@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { claudeArguments, claudeModels, verifyClaudeInit } from './discovery';
+import { claudeArguments, claudeModels, verifyClaudeInit, verifyClaudeStatus } from './discovery';
+import { claudeMode } from './modes';
 
 describe('Claude native launch contract', () => {
   it('compares the manual CLI alias against its canonical default protocol mode without accepting escalation', () => {
@@ -131,5 +132,124 @@ describe('Claude native launch contract', () => {
     ]) {
       expect(() => verifyClaudeInit({ ...frame, ...changed }, workspace)).toThrow();
     }
+  });
+  describe('Claude Code 2.1.312 (captured frames, paths and ids redacted)', () => {
+    const workspace = resolve('workspace');
+    // The system/init of a Turn in acceptEdits, trimmed to the fields SpecFlow reads.
+    const init = {
+      type: 'system',
+      subtype: 'init',
+      cwd: workspace,
+      session_id: '00000000-0000-4000-8000-000000000001',
+      tools: ['AskUserQuestion', 'Bash', 'Edit', 'Glob', 'Grep', 'Read', 'Write'],
+      mcp_servers: [],
+      model: 'claude-haiku-4-5',
+      permissionMode: 'acceptEdits',
+      slash_commands: [],
+      apiKeySource: 'none',
+      claude_code_version: '2.1.312',
+      output_style: 'default',
+      agents: ['claude', 'Explore', 'general-purpose', 'Plan', 'web-fetch'],
+      skills: [],
+      plugins: [
+        { name: 'cc-plugin-agents-md', path: 'builtin', source: 'cc-plugin-agents-md@builtin' },
+        { name: 'cc-plugin-telemetry', path: 'builtin', source: 'cc-plugin-telemetry@builtin' },
+        {
+          name: 'cc-plugin-plugin-authoring',
+          path: 'builtin',
+          source: 'cc-plugin-plugin-authoring@builtin',
+        },
+      ],
+      original_cwd: workspace,
+      additional_directories: [workspace],
+    };
+    const acceptEdits = {
+      providerId: 'claude',
+      mode: 'workspace-write',
+      providerModeId: 'acceptEdits',
+    } as const;
+    const auto = { ...acceptEdits, providerModeId: 'auto' } as const;
+
+    it('accepts its system/init as the restricted profile', () => {
+      expect(() => verifyClaudeInit(init, workspace, '2.1.312', acceptEdits)).not.toThrow();
+      expect(() =>
+        verifyClaudeInit(
+          { ...init, permissionMode: 'plan', tools: ['AskUserQuestion', 'Glob', 'Grep', 'Read'] },
+          workspace,
+          '2.1.312',
+        ),
+      ).not.toThrow();
+    });
+
+    it('runs a writable Turn without a native mode (agent step execution) in acceptEdits', () => {
+      expect(claudeMode({ providerId: 'claude', mode: 'workspace-write' }).modeId).toBe(
+        'acceptEdits',
+      );
+      expect(() =>
+        verifyClaudeInit(init, workspace, '2.1.312', {
+          providerId: 'claude',
+          mode: 'workspace-write',
+        }),
+      ).not.toThrow();
+    });
+
+    it('names the field and version a refused init fails on', () => {
+      const refused =
+        (changed: Record<string, unknown>, version = '2.1.312') =>
+        () =>
+          verifyClaudeInit({ ...init, ...changed }, workspace, version, acceptEdits);
+      expect(refused({ permissionMode: 'default' })).toThrow(
+        'Claude 2.1.312 started in permission mode default instead of acceptEdits.',
+      );
+      expect(refused({}, '2.1.311')).toThrow(
+        'Claude reported version 2.1.312 at init but 2.1.311 at initialize.',
+      );
+      expect(refused({ cwd: resolve('elsewhere') })).toThrow('another working directory');
+      expect(refused({ tools: [...init.tools, 'WebFetch'] })).toThrow('not allowed WebFetch');
+      expect(refused({ tools: ['Read'] })).toThrow('missing Glob, Grep, AskUserQuestion');
+      expect(refused({ mcp_servers: [{}] })).toThrow('MCP servers');
+      expect(refused({ plugins: [{ name: 'x', path: 'builtin', source: 'x@builtin' }] })).toThrow(
+        'the plugin x',
+      );
+      expect(refused({ type: 'assistant', subtype: undefined })).toThrow(
+        'sent assistant output before its system/init frame',
+      );
+    });
+
+    it('refuses the silent fallback from auto to default its system/status reports', () => {
+      // Sent before system/init when the model has no auto mode (claude-haiku-4-5-20251001).
+      const status = {
+        type: 'system',
+        subtype: 'status',
+        status: null,
+        permissionMode: 'default',
+        session_id: '00000000-0000-4000-8000-000000000001',
+      };
+      expect(() => verifyClaudeStatus(status, auto, '2.1.312')).toThrow(
+        'Claude 2.1.312 switched to permission mode default instead of auto.',
+      );
+      expect(() =>
+        verifyClaudeStatus({ ...status, permissionMode: 'auto' }, auto, '2.1.312'),
+      ).not.toThrow();
+      expect(() =>
+        verifyClaudeStatus({ ...status, permissionMode: undefined }, auto),
+      ).not.toThrow();
+    });
+
+    it('offers in auto mode only the models Claude marks supportsAutoMode', () => {
+      const payload = {
+        claude_code_version: '2.1.312',
+        models: [
+          { value: 'haiku', displayName: 'Haiku', supportsAutoMode: true },
+          { value: 'claude-haiku-4-5-20251001', displayName: 'Haiku 4.5' },
+        ],
+      };
+      expect(claudeModels(payload).map((model) => model.modelId)).toEqual([
+        'haiku',
+        'claude-haiku-4-5-20251001',
+      ]);
+      expect(claudeModels(payload, 'acceptEdits')).toHaveLength(2);
+      expect(claudeModels(payload, 'auto').map((model) => model.modelId)).toEqual(['haiku']);
+    });
   });
 });

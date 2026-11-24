@@ -29,7 +29,14 @@ import {
   type ExecutableResolution,
 } from '../executable';
 import { claudeExecutable } from './executable';
-import { claudeArguments, claudeModels, verifyClaudeInit, claudeVersion } from './discovery';
+import {
+  ClaudeRestrictionError,
+  claudeArguments,
+  claudeModels,
+  verifyClaudeInit,
+  verifyClaudeStatus,
+  claudeVersion,
+} from './discovery';
 import { claudeMode, claudeModes } from './modes';
 import { createProviderAuthentication } from '../authentication';
 
@@ -393,6 +400,17 @@ export function createClaudeDriver(
     }
 
     const model = models.find((model) => model.modelId === (selection.modelId ?? 'default'));
+    if (
+      !model &&
+      profile.modeId === 'auto' &&
+      modeModels.get('plan')?.some((entry) => entry.modelId === (selection.modelId ?? 'default'))
+    ) {
+      throw new SessionError(
+        'MODEL_UNSUPPORTED',
+        'The installed Claude has no auto mode for this model; choose another model or mode.',
+      );
+    }
+
     if (!model) {
       throw new SessionError('MODEL_UNSUPPORTED', 'Requested Claude model is unavailable.');
     }
@@ -474,7 +492,7 @@ export function createClaudeDriver(
         async (fact) => {
           if (
             // A frame this adapter refused says nothing about Claude's availability.
-            (fact.kind === 'lost' && fact.message !== claudeLoss.rejected) ||
+            (fact.kind === 'lost' && !fact.message.startsWith(claudeLoss.rejected)) ||
             (fact.kind === 'outcome' &&
               fact.error &&
               [
@@ -531,7 +549,7 @@ export function createClaudeDriver(
             });
           },
           async initialize(payload) {
-            const actual = claudeModels(payload);
+            const actual = claudeModels(payload, claudeMode(invocation.selection).modeId);
             const model =
               invocation.selection.modelId ?? (invocation.selection.effort ? 'default' : undefined);
             if (
@@ -571,14 +589,24 @@ export function createClaudeDriver(
             workspace,
           }),
           verifyFrame(frame) {
+            const status = frame.type === 'system' && frame.subtype === 'status';
             if (!verified) {
               try {
+                if (status) {
+                  // Claude may report its permission mode before system/init.
+                  verifyClaudeStatus(frame, invocation.selection, expectedVersion);
+
+                  return;
+                }
+
                 verifyClaudeInit(frame, workspace, expectedVersion, invocation.selection);
               } catch (error) {
                 invalidate(
                   new ProviderUnavailableError(
                     'RESTRICTION_UNSUPPORTED',
-                    'Claude invocation does not satisfy the restricted protocol profile.',
+                    error instanceof ClaudeRestrictionError
+                      ? error.message
+                      : 'Claude invocation does not satisfy the restricted protocol profile.',
                   ),
                 );
 
@@ -586,6 +614,8 @@ export function createClaudeDriver(
               }
 
               verified = true;
+            } else if (status) {
+              verifyClaudeStatus(frame, invocation.selection, expectedVersion);
             } else if (frame.type === 'system' && frame.subtype === 'init') {
               verifyClaudeInit(frame, workspace, expectedVersion, invocation.selection);
             }

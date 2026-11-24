@@ -87,8 +87,10 @@ currently verified login is protected.
 | `dontAsk`     | `dontAsk`     | `workspace-write` | as above (Bash is refused rather than asked)         |
 | `plan`        | `plan`        | `read-only`       | Read, Glob, Grep, AskUserQuestion                    |
 
-`acceptEdits` is the default writable mode when managed execution is available; each mode is probed
-and can be unavailable independently. `bypassPermissions` is not admitted. Model IDs, titles and
+`acceptEdits` is the default writable mode when managed execution is available: a writable Turn
+without a native mode (agent step execution) runs in it. Each mode is probed and can be unavailable
+independently. `auto` offers only the models native initialization marks `supportsAutoMode`; Claude
+would run any other model in `default`, so such a choice is refused before launch. `bypassPermissions` is not admitted. Model IDs, titles and
 per-model effort lists come from native initialization, never a static list; an effort outside the
 model's list is rejected before dispatch.
 
@@ -101,6 +103,9 @@ model's list is rejected before dispatch.
 - User frames are `client_composed: true`, suppressing path-mention and slash-command
   interpretation.
 - Native `system/init` must report the expected version, cwd, mode, tool inventory and no MCP.
+  A `system/status` frame (also before init) must report the selected mode when it reports one;
+  a silent fallback to another mode is refused. A refusal names the failing field and Claude
+  version; it becomes the provider's unavailable reason and is appended to the Turn's loss message.
   Only the builtin `agents-md`, `telemetry` and `plugin-authoring` plugins with exact builtin
   source are accepted; any other plugin is refused. The telemetry plugin can perform auxiliary
   network activity; the guarantee concerns restricted workspace effects, and native private
@@ -138,8 +143,8 @@ Native `api_error` results (including HTTP 429) become safe structured failures;
 is excluded. Loss without an authoritative outcome stays unknown. Provider-supplied thinking text is
 reasoning content; numeric `system/thinking_tokens` frames, foreground `tool_progress` metadata
 (including the 30-second heartbeat whose parent is the open tool call itself) and
-`system/permission_denied` for an open tool call (its error tool result follows) are validated and
-ignored, and final native usage remains authoritative.
+`system/permission_denied` for an open tool call (its error tool result follows) and the
+`system/post_turn_summary` Claude sends before its result (2.1.312) are validated and ignored, and final native usage remains authoritative.
 
 ## Limits
 

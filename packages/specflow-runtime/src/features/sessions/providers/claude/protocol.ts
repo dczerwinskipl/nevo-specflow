@@ -151,9 +151,15 @@ export function createClaudeProtocol(
       }
 
       if (
-        !['init', 'status', 'compact_boundary', 'api_retry', 'session_state_changed'].includes(
-          string(frame.subtype),
-        )
+        ![
+          'init',
+          'status',
+          'compact_boundary',
+          'api_retry',
+          'session_state_changed',
+          // Claude's own one-line summary of the finished Turn (2.1.312); it carries no effect.
+          'post_turn_summary',
+        ].includes(string(frame.subtype))
       ) {
         throw new ClaudeProtocolError();
       }

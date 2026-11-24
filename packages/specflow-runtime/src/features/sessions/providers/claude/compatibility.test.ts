@@ -82,6 +82,31 @@ it('discovers native writable modes independently and uses the native default mo
   ).rejects.toThrow('matching effect authority');
   expect(f.probe).toHaveBeenCalledTimes(5);
 });
+it('refuses before launch a model that has no native auto mode, and defaults a writable Turn to acceptEdits', async () => {
+  const f = fixture(true);
+  f.probe.mockImplementation((options) =>
+    Promise.resolve({
+      models:
+        options.selection?.providerModeId === 'auto'
+          ? [{ modelId: 'haiku', title: 'Haiku', efforts: [] }]
+          : [
+              { modelId: 'haiku', title: 'Haiku', efforts: [] },
+              { modelId: 'claude-haiku-4-5-20251001', title: 'Haiku 4.5', efforts: [] },
+            ],
+      version: '2.1.312',
+    }),
+  );
+  const auto = { providerId: 'claude', mode: 'workspace-write', providerModeId: 'auto' } as const;
+  await f.driver.validate({ ...auto, modelId: 'haiku' });
+  await expect(
+    f.driver.validate({ ...auto, modelId: 'claude-haiku-4-5-20251001' }),
+  ).rejects.toThrow('no auto mode for this model');
+  await f.driver.validate({
+    providerId: 'claude',
+    mode: 'workspace-write',
+    modelId: 'claude-haiku-4-5-20251001',
+  });
+});
 it('requires external login when a writable-mode probe rejects authentication after Plan initialized', async () => {
   const f = fixture(true);
   f.probe.mockImplementation(({ selection }) =>

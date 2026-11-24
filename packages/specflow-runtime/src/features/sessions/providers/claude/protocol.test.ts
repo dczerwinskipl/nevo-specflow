@@ -38,6 +38,22 @@ function fixture(allowedTools?: readonly string[], freshContext = false) {
 }
 
 describe('Claude full-message protocol', () => {
+  it('ignores the post-turn summary Claude Code 2.1.312 sends before its result', async () => {
+    const f = fixture();
+    await f.accept({
+      type: 'system',
+      subtype: 'post_turn_summary',
+      summarizes_uuid: '00000000-0000-4000-8000-000000000002',
+      status_category: 'completed',
+      status_detail: 'replied as requested',
+      needs_action: '',
+      uuid: '00000000-0000-4000-8000-000000000003',
+      session_id: sessionId,
+    });
+    await f.result({ result: 'ok' });
+    expect(f.protocol.terminal).toBe(true);
+    expect(JSON.stringify(f.facts)).not.toContain('replied as requested');
+  });
   it('maps documented Claude account quota fractions without inferring consumption from status', async () => {
     const f = fixture();
     for (const rateLimitType of ['five_hour', 'seven_day']) {

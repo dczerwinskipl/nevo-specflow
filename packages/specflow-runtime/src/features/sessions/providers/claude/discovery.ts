@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import type { Invocation } from '../driver';
 import { object, ClaudeProtocolError } from './protocol';
 import { partitionAgentPermissionRules } from '@nevo/specflow-contracts/documents';
-import { claudeMode, toolsForClaudeMode } from './modes';
+import { claudeMode, toolsForClaudeMode, type ClaudeMode } from './modes';
 
 /**
  * The `--settings` of a Turn. Setting sources are off (`--setting-sources ''`), so no owner or
@@ -62,12 +62,22 @@ export function claudeArguments(
   ];
 }
 
-export function claudeModels(payload: Record<string, unknown>): ProviderDescriptor['models'] {
+/**
+ * The models of a native mode. For `auto` only models Claude marks `supportsAutoMode`: Claude would
+ * run any other model in `default` instead, so the choice is refused before dispatch.
+ */
+export function claudeModels(
+  payload: Record<string, unknown>,
+  modeId?: ClaudeMode['modeId'],
+): ProviderDescriptor['models'] {
   if (!Array.isArray(payload.models) || payload.models.length > 64) {
     throw new ClaudeProtocolError();
   }
 
-  const models = payload.models.map((entry) => {
+  const entries = payload.models.filter(
+    (entry) => modeId !== 'auto' || object(entry).supportsAutoMode === true,
+  );
+  const models = entries.map((entry) => {
     const model = object(entry);
     if (
       typeof model.value !== 'string' ||
@@ -99,6 +109,41 @@ export function claudeModels(payload: Record<string, unknown>): ProviderDescript
   return models;
 }
 
+/**
+ * A launch the restricted profile refuses, naming the field that failed. Still a protocol error (the
+ * process is stopped and the Turn is lost as rejected); its message becomes the provider's reason.
+ */
+export class ClaudeRestrictionError extends ClaudeProtocolError {
+  constructor(reason: string) {
+    super();
+    this.name = 'ClaudeRestrictionError';
+    this.message = reason;
+  }
+}
+
+const builtinPlugins = ['cc-plugin-agents-md', 'cc-plugin-telemetry', 'cc-plugin-plugin-authoring'];
+/** Native values in a reason are short identifiers only, never free native prose. */
+const shown = (value: unknown) =>
+  typeof value === 'string' && /^[A-Za-z0-9_.:@/-]{1,64}$/.test(value) ? value : 'an unknown value';
+
+/**
+ * Claude reports the permission mode it applies in `system/status`, also before `system/init`. It
+ * falls back silently to another mode (2.1.312: `default` for a model without auto mode); a Turn
+ * never runs in a mode other than the admitted one.
+ */
+export function verifyClaudeStatus(
+  frame: Record<string, unknown>,
+  selection?: Invocation['selection'],
+  version = 'of an unknown version',
+) {
+  const mode = claudeMode(selection);
+  if (frame.permissionMode !== undefined && frame.permissionMode !== mode.nativeMode) {
+    throw new ClaudeRestrictionError(
+      `Claude ${version} switched to permission mode ${shown(frame.permissionMode)} instead of ${mode.nativeMode}.`,
+    );
+  }
+}
+
 export function verifyClaudeInit(
   frame: Record<string, unknown>,
   workspace: string,
@@ -107,36 +152,70 @@ export function verifyClaudeInit(
 ) {
   const mode = claudeMode(selection);
   const requiredTools = toolsForClaudeMode(mode);
-  const tools = frame.tools;
-  if (
-    frame.type !== 'system' ||
-    frame.subtype !== 'init' ||
-    (expectedVersion !== undefined && claudeVersion(frame) !== expectedVersion) ||
-    typeof frame.cwd !== 'string' ||
-    resolve(frame.cwd) !== resolve(workspace) ||
-    frame.permissionMode !== mode.nativeMode ||
-    !Array.isArray(tools) ||
-    requiredTools.some((tool) => !tools.includes(tool)) ||
-    tools.some(
-      (tool) => typeof tool !== 'string' || ![...requiredTools, 'EndConversation'].includes(tool),
-    ) ||
-    !Array.isArray(frame.mcp_servers) ||
-    frame.mcp_servers.length !== 0 ||
-    (frame.plugins !== undefined &&
-      (!Array.isArray(frame.plugins) ||
-        frame.plugins.some((value) => {
-          const plugin = object(value);
+  const version = claudeVersion(frame) ?? 'of an unknown version';
+  if (frame.type !== 'system' || frame.subtype !== 'init') {
+    throw new ClaudeRestrictionError(
+      `Claude ${version} sent ${shown(frame.type)} output before its system/init frame.`,
+    );
+  }
 
-          return (
-            !['cc-plugin-agents-md', 'cc-plugin-telemetry', 'cc-plugin-plugin-authoring'].includes(
-              String(plugin.name),
-            ) ||
-            plugin.path !== 'builtin' ||
-            plugin.source !== String(plugin.name) + '@builtin'
-          );
-        })))
-  ) {
-    throw new ClaudeProtocolError();
+  if (expectedVersion !== undefined && claudeVersion(frame) !== expectedVersion) {
+    throw new ClaudeRestrictionError(
+      `Claude reported version ${version} at init but ${expectedVersion} at initialize.`,
+    );
+  }
+
+  if (typeof frame.cwd !== 'string' || resolve(frame.cwd) !== resolve(workspace)) {
+    throw new ClaudeRestrictionError(
+      `Claude ${version} started in another working directory than the Turn's workspace.`,
+    );
+  }
+
+  if (frame.permissionMode !== mode.nativeMode) {
+    throw new ClaudeRestrictionError(
+      `Claude ${version} started in permission mode ${shown(frame.permissionMode)} instead of ${mode.nativeMode}.`,
+    );
+  }
+
+  const tools: unknown[] = Array.isArray(frame.tools) ? frame.tools : [];
+  const missing = requiredTools.filter((tool) => !tools.includes(tool));
+  const extra = tools.filter(
+    (tool) => typeof tool !== 'string' || ![...requiredTools, 'EndConversation'].includes(tool),
+  );
+  if (!Array.isArray(frame.tools) || missing.length || extra.length) {
+    throw new ClaudeRestrictionError(
+      `Claude ${version} reported other tools than the restricted set` +
+        (missing.length ? `; missing ${missing.join(', ')}` : '') +
+        (extra.length ? `; not allowed ${extra.slice(0, 8).map(shown).join(', ')}` : '') +
+        '.',
+    );
+  }
+
+  if (!Array.isArray(frame.mcp_servers) || frame.mcp_servers.length !== 0) {
+    throw new ClaudeRestrictionError(
+      `Claude ${version} reported MCP servers, but the restricted profile allows none.`,
+    );
+  }
+
+  if (frame.plugins === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(frame.plugins)) {
+    throw new ClaudeRestrictionError(`Claude ${version} reported its plugins in an unknown form.`);
+  }
+
+  for (const value of frame.plugins as unknown[]) {
+    const plugin = object(value);
+    if (
+      !builtinPlugins.includes(String(plugin.name)) ||
+      plugin.path !== 'builtin' ||
+      plugin.source !== String(plugin.name) + '@builtin'
+    ) {
+      throw new ClaudeRestrictionError(
+        `Claude ${version} loaded the plugin ${shown(plugin.name)}, which is not allowed.`,
+      );
+    }
   }
 }
 

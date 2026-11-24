@@ -40,11 +40,14 @@ permissions:
 jobs:
   lifecycle-full-unix:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ci:full-platform')
-    name: engine filesystem full (${{ matrix.os }})
+    name: engine filesystem full (${{ matrix.os }} ${{ matrix.suite }})
     strategy:
       fail-fast: false
+      # The Engine, Runtime and CLI suites run as parallel jobs: one job running all three took
+      # 95 of 100 minutes on macOS.
       matrix:
         os: [ubuntu-latest, macos-latest]
+        suite: [engine, runtime, cli]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 100
     steps:
@@ -60,14 +63,19 @@ jobs:
           node --version
           pnpm --version
       - name: Build Engine workspace dependencies
+        if: matrix.suite == 'engine'
         run: pnpm exec turbo run build --filter=@nevo/specflow-engine^...
       - name: Full real filesystem and lifecycle regression
+        if: matrix.suite == 'engine'
         run: pnpm --filter @nevo/specflow-engine test:filesystem:full
       - name: Build CLI and Runtime dependencies
+        if: matrix.suite != 'engine'
         run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
       - name: Runtime full adapter regression
+        if: matrix.suite == 'runtime'
         run: pnpm --filter @nevo/specflow-runtime exec vitest run --maxWorkers=1 --no-file-parallelism --testTimeout=60000
       - name: CLI full adapter regression
+        if: matrix.suite == 'cli'
         run: pnpm --filter @nevo/specflow exec vitest run --maxWorkers=1 --no-file-parallelism --testTimeout=60000
 
   windows-engine-full:

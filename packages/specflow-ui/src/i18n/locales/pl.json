@@ -2514,8 +2514,9 @@
       "readRetry": "Spróbuj ponownie",
       "youAct": "Ten krok wykonujesz Ty: wykonaj pracę, a potem zakończ krok.",
       "youActCanHand": "Ten krok wykonujesz Ty: wykonaj pracę i zakończ krok albo przekaż go agentowi, żeby go kontynuował.",
-      "youActTakenOver": "Przejąłeś ten krok od agenta, więc teraz należy do Ciebie: dokończ pracę sam i zakończ krok. Agent nie może przejąć tej próby z powrotem.",
+      "youActTakenOver": "Przejąłeś ten krok od agenta, więc teraz należy do Ciebie: dokończ pracę sam i zakończ krok.",
       "youActTakenOverCanHand": "Przejąłeś ten krok od agenta, więc teraz należy do Ciebie: dokończ pracę sam i zakończ krok albo przekaż go z powrotem agentowi w nowej próbie.",
+      "handUnavailable": "Przekazanie agentowi nie jest teraz możliwe: {{why}}.",
       "personActs": "Ten krok wykonuje {{actor}}; możesz śledzić go tutaj."
     },
     "blocker": {

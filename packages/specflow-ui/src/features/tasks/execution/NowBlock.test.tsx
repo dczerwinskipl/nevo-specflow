@@ -166,9 +166,25 @@ describe('the Specification Now block', () => {
     } as WorkflowActionProjection;
     const view = renderNow(<OverviewNow projection={taken} />);
 
-    expect(screen.getByText(/^You took this step over from the agent/)).toBeTruthy();
-    expect(screen.getByText(/The agent cannot take this attempt back\.$/)).toBeTruthy();
+    expect(screen.getByText(/^You took this step over from the agent.*finish it\.$/)).toBeTruthy();
     view.unmount();
+
+    // Hand to agent is offered: the line says so, and why it cannot run now when it cannot.
+    const handable = {
+      ...taken,
+      actions: {
+        ...taken.actions,
+        handToAgent: {
+          step: 'breakdown',
+          attempt: 3,
+          agent: { kind: 'unavailable', reason: 'provider-not-chosen' },
+        },
+      },
+    } as WorkflowActionProjection;
+    const handView = renderNow(<OverviewNow projection={handable} />);
+    expect(screen.getByText(/or hand it back to the agent in a new attempt\./)).toBeTruthy();
+    expect(screen.getByText(/Hand to agent cannot run now: No agent is chosen for/)).toBeTruthy();
+    handView.unmount();
 
     renderNow(<OverviewNow projection={breakdown(2)} />);
     expect(screen.getByText('dominik is doing this step; you can follow it here.')).toBeTruthy();

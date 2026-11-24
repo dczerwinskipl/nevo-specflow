@@ -27,6 +27,30 @@ function CheckoutPath({ specId }: { readonly specId: string }) {
   );
 }
 
+/** The blocker an unavailable agent option is explained by (`workflowExecution.agent.blocker.*`). */
+export function blockerKeyOf(option: UnavailableAgent): string {
+  if (option.reason === 'dirty-baseline') {
+    return 'dirty';
+  }
+
+  if (option.reason === 'owner-work-uncommitted') {
+    return 'ownerWork';
+  }
+
+  if ((NO_AGENT_REASONS as readonly string[]).includes(option.reason)) {
+    return 'noAgent';
+  }
+
+  const keys: Partial<Record<UnavailableAgent['reason'], string>> = {
+    'provider-not-ready': 'providerNotReady',
+    'session-unavailable': 'sessionUnavailable',
+    'project-busy': 'projectBusy',
+    demo: 'demo',
+  };
+
+  return keys[option.reason] ?? 'other';
+}
+
 export function Paths({ option }: { readonly option: UnavailableAgent }) {
   const { t } = useTranslation();
   const paths = option.paths ?? [];

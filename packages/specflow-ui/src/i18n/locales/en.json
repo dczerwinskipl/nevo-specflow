@@ -2514,8 +2514,9 @@
       "readRetry": "Try again",
       "youAct": "You are doing this step: do the work, then finish it.",
       "youActCanHand": "You are doing this step: do the work and finish it, or hand it to the agent to go on.",
-      "youActTakenOver": "You took this step over from the agent, so it is yours now: do the rest yourself and finish it. The agent cannot take this attempt back.",
+      "youActTakenOver": "You took this step over from the agent, so it is yours now: do the rest yourself and finish it.",
       "youActTakenOverCanHand": "You took this step over from the agent, so it is yours now: do the rest yourself and finish it, or hand it back to the agent in a new attempt.",
+      "handUnavailable": "Hand to agent cannot run now: {{why}}.",
       "personActs": "{{actor}} is doing this step; you can follow it here."
     },
     "blocker": {

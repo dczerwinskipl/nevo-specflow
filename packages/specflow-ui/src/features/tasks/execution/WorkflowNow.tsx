@@ -22,6 +22,7 @@ import { closableInFinishDialog } from './FinishTasksOpen';
 import type { GateAction } from './GateList';
 import { NowBlock } from './NowBlock';
 import { AgentStartDialog } from './agent/AgentStartDialog';
+import { blockerKeyOf } from './agent/AgentBlocker';
 import { useAgentAttemptNow } from './agent/AgentAttemptNow';
 import { ProjectHoldNote } from './agent/ProjectHoldNote';
 import { offersAgent } from './agent/agentOption';
@@ -578,11 +579,27 @@ export function WorkflowNow({
               : 'workflowExecution.now.youActTakenOver',
           )
         : t(hand ? 'workflowExecution.now.youActCanHand' : 'workflowExecution.now.youAct');
+  // Hand to agent cannot run now: the line says why, before the click (its dialog says the rest).
+  const handBlocked =
+    whoActs !== undefined &&
+    actorName === t('workflowExecution.actor.you') &&
+    hand?.agent.kind === 'unavailable'
+      ? t('workflowExecution.now.handUnavailable', {
+          why: t(
+            `workflowExecution.agent.blocker.${blockerKeyOf(hand.agent)}.title` as 'workflowExecution.agent.blocker.dirty.title',
+            {
+              step: step ? step.title || step.id : '',
+              role: t('workflowExecution.agent.roleFallback'),
+            },
+          ),
+        })
+      : undefined;
   const note = (
     <>
       {whoActs ? (
         <Typography as="p" variant="body-sm" className="text-content-secondary" data-now-who="">
           {whoActs}
+          {handBlocked ? ` ${handBlocked}` : null}
         </Typography>
       ) : null}
       {projectHold ? (

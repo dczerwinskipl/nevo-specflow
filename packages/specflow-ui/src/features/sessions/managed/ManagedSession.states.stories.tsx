@@ -699,3 +699,24 @@ export const ContextLoadingToReady: Story = {
     await expect(Math.abs(after - before)).toBeLessThanOrEqual(0.5);
   },
 };
+
+/**
+ * A Send the Runtime has not answered yet (it may take minutes): the Composer shows it at once,
+ * the message stays in the read-only editor and Send cannot run twice.
+ */
+export const SendPending: Story = {
+  tags: ['contract'],
+  args: {
+    owner: 'send-pending-story',
+    api: { ...fixtureApi(sessionFixture()), start: () => new Promise<never>(() => undefined) },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByLabelText('Wiadomość');
+    await userEvent.type(editor, 'Sprawdź specyfikację');
+    await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
+    await expect(await canvas.findByRole('status', { name: 'Wysyłanie…' })).toBeVisible();
+    await expect(editor).toBeDisabled();
+    await expect(editor).toHaveValue('Sprawdź specyfikację');
+  },
+};

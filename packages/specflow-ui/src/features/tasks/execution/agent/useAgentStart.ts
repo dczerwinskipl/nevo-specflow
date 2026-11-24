@@ -8,6 +8,7 @@ import { useAppServices } from '../../../../app/useAppServices';
 import { invalidateAfterTaskChange } from '../../authoring/queries';
 import type { WorkflowSubjectRef } from '../api';
 import { workflowRefusalOf } from '../refusal';
+import { newId } from '../../../../shared/ids/newId';
 
 /** What the owner chose for a fresh Session; a continued Session names nothing. */
 export type AgentChoice = Pick<AgentStepExecutionRequest, 'provider' | 'model' | 'effort'>;
@@ -87,7 +88,7 @@ export function useAgentStart(subject: WorkflowSubjectRef, stepId: string, open:
       }
 
       const request: AgentStepExecutionRequest = {
-        requestId: crypto.randomUUID(),
+        requestId: newId(),
         expected: {
           step: stepId,
           ...(position?.step === stepId && position.attempt !== undefined

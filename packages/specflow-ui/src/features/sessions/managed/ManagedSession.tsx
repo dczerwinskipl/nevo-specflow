@@ -82,6 +82,7 @@ import { outcomeReason } from './outcomeReason';
 import { conversationItems, liveActivity } from './workBlockModel';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import type { ManagedSessionsApi } from './api';
+import { newId } from '../../../shared/ids/newId';
 
 function browserStorage() {
   try {
@@ -513,6 +514,8 @@ function ManagedSessionConversation({
       onComposerFocused();
     }
   }, [composerFocusRequested, archived, onComposerFocused]);
+  // A Send in flight (not a Stop or another command): the Composer says so at once.
+  const sending = state.commandBusy && !!state.pending && !canCancel;
   const sendActionLabelKey = canCancel
     ? 'managedSession.cancel'
     : state.pending
@@ -571,7 +574,7 @@ function ManagedSessionConversation({
     setAttachments((current) => [
       ...current,
       ...Array.from(files).map((file) => ({
-        id: crypto.randomUUID(),
+        id: newId(),
         name: file.name,
         size: file.size,
       })),
@@ -813,9 +816,12 @@ function ManagedSessionConversation({
                         </Button>
                       </Alert>
                     ) : (
-                      state.commandError && (
+                      state.commandError &&
+                      (state.sendFailure ? (
+                        <Alert tone="attention" title={t(sendFailureKey(state.sendFailure))} />
+                      ) : (
                         <Alert tone="attention" title={t('managedSession.commandFailed')} />
-                      )
+                      ))
                     )}
                     {/* Archived in another view: said here until the `session` change brings the
                         archived bar (full-session.md "Session actions"). */}
@@ -1011,35 +1017,43 @@ function ManagedSessionConversation({
                                   disabled={state.commandBusy || !!state.pending}
                                   compact={!isSplit}
                                 />
-                                <TooltipProvider delayDuration={400}>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <IconButton
-                                        aria-label={t(sendActionLabelKey)}
-                                        disabled={canCancel ? state.commandBusy : !canSend}
-                                        icon={canCancel ? Square : Send}
-                                        size="sm"
-                                        type={canCancel ? 'button' : 'submit'}
-                                        // Stop interrupts the agent's work: the semantic `destructive`
-                                        // action with a filled stop glyph (an outline square read as
-                                        // an icon that failed to load). Bold `primary` only while Send
-                                        // is actually actionable: the disabled `opacity-50` treatment
-                                        // alone reads too close to "primary" at full saturation, so a
-                                        // disabled Send falls back to the muted `secondary`.
-                                        className={canCancel ? '[&_svg]:fill-current' : undefined}
-                                        variant={
-                                          canCancel
-                                            ? 'destructive'
-                                            : canSend
-                                              ? 'primary'
-                                              : 'secondary'
-                                        }
-                                        onClick={canCancel ? () => void feed.cancel() : undefined}
-                                      />
-                                    </TooltipTrigger>
-                                    <TooltipContent>{t(sendActionLabelKey)}</TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                                {sending ? (
+                                  // Shown at once, whatever the Runtime takes to answer: the
+                                  // message stays in the read-only editor until it is accepted.
+                                  <span className="inline-flex size-control-height-compact items-center justify-center">
+                                    <Spinner size="sm" label={t('managedSession.sending')} />
+                                  </span>
+                                ) : (
+                                  <TooltipProvider delayDuration={400}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <IconButton
+                                          aria-label={t(sendActionLabelKey)}
+                                          disabled={canCancel ? state.commandBusy : !canSend}
+                                          icon={canCancel ? Square : Send}
+                                          size="sm"
+                                          type={canCancel ? 'button' : 'submit'}
+                                          // Stop interrupts the agent's work: the semantic `destructive`
+                                          // action with a filled stop glyph (an outline square read as
+                                          // an icon that failed to load). Bold `primary` only while Send
+                                          // is actually actionable: the disabled `opacity-50` treatment
+                                          // alone reads too close to "primary" at full saturation, so a
+                                          // disabled Send falls back to the muted `secondary`.
+                                          className={canCancel ? '[&_svg]:fill-current' : undefined}
+                                          variant={
+                                            canCancel
+                                              ? 'destructive'
+                                              : canSend
+                                                ? 'primary'
+                                                : 'secondary'
+                                          }
+                                          onClick={canCancel ? () => void feed.cancel() : undefined}
+                                        />
+                                      </TooltipTrigger>
+                                      <TooltipContent>{t(sendActionLabelKey)}</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
                               </div>
                             </MessageComposer.Toolbar>
                           </MessageComposer>
@@ -1068,6 +1082,26 @@ function ManagedSessionConversation({
       )}
     </AppContent>
   );
+}
+
+/** The Runtime refusals of a Send the Composer explains in its own words; others are `refused`. */
+const explainedSendFailures = [
+  'unconfirmed',
+  'too-long',
+  'TURN_CONFLICT',
+  'PROVIDER_UNAVAILABLE',
+  'PROVIDER_AUTH_REQUIRED',
+  'MODEL_UNSUPPORTED',
+  'CAPABILITY_UNSUPPORTED',
+  'SESSION_RECOVERY_REQUIRED',
+] as const;
+
+function sendFailureKey(failure: string) {
+  const known = (explainedSendFailures as readonly string[]).includes(failure)
+    ? (failure as (typeof explainedSendFailures)[number])
+    : 'refused';
+
+  return `managedSession.sendFailure.${known}` as const;
 }
 
 /** A Session the route passes no Context for: no Specification and no note. */

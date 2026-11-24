@@ -4,6 +4,7 @@ import { isApiError } from '../../../../api';
 import { writeOutcomeUnknown } from '../../../../shared/http/apiErrorCode';
 import type { ManagedSessionsApi } from '../api';
 import type { TelemetrySignal } from '../feed';
+import { newId } from '../../../../shared/ids/newId';
 
 /** The provider-limits refresh command as the control shows it (full-session.md "Context"). */
 export interface LimitsRefreshState {
@@ -235,7 +236,7 @@ export function createSessionTelemetryStore(
       return 'ignored';
     }
 
-    const requestId = (pendingRequestId ??= crypto.randomUUID());
+    const requestId = (pendingRequestId ??= newId());
     setRefresh({ sending: true, unconfirmed: false, rejected: false });
     try {
       const receipt = await api.refreshTelemetry(sessionId, { requestId, groups: ['limits'] });

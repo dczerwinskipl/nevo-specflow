@@ -11,6 +11,7 @@ import { writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { sendRetained, type RequestAttempt } from '../../../shared/operations/retainedRequest';
 import { sessionErrorCode, type ManagedSessionsApi } from './api';
 import { applySessionEvent, conversationWindow, mergeEntries, prependHistory } from './model';
+import { newId } from '../../../shared/ids/newId';
 
 /** An interaction answer without its idempotency key, which the feed retains. */
 export type RespondAnswer = RespondInteraction extends infer T
@@ -25,6 +26,13 @@ export interface FeedState {
   historyError: boolean;
   commandBusy: boolean;
   commandError: boolean;
+  /**
+   * Why the last Send was not delivered, said in the Composer: `unconfirmed` while the exact
+   * request is kept (its answer was lost or timed out; the server may still run it, a retry with
+   * the same request id runs it at most once), `too-long` for a message over the limit, otherwise
+   * the Runtime's refusal code (a definite refusal: the request is released, the draft kept).
+   */
+  sendFailure?: string;
   /** The reader has scrolled away from the bottom (drives the "Jump to latest" pill). */
   away: boolean;
   /**
@@ -219,6 +227,12 @@ export function createSessionFeed(
   let controller: AbortController | undefined,
     generation = 0;
   const notify = (next: FeedState) => {
+    // A Send's failure reason belongs to the error it explains; a cleared error clears it too.
+    if (!next.commandError && next.sendFailure !== undefined) {
+      next = { ...next };
+      delete next.sendFailure;
+    }
+
     state = next;
     for (const listener of listeners) {
       listener();
@@ -414,7 +428,7 @@ export function createSessionFeed(
     const request =
       state.pending ??
       ({
-        requestId: crypto.randomUUID(),
+        requestId: newId(),
         message: state.draft,
         ...(state.modelOverride ? { modelId: state.modelOverride } : {}),
         ...(state.effortOverride ? { effort: state.effortOverride } : {}),
@@ -425,7 +439,7 @@ export function createSessionFeed(
     }
 
     if (utf8Bytes(request.message) > SessionLimits.messageBytes) {
-      notify({ ...state, commandError: true });
+      notify({ ...state, commandError: true, sendFailure: 'too-long' });
 
       return;
     }
@@ -446,7 +460,7 @@ export function createSessionFeed(
         throw new Error('Pending command retention could not be confirmed.');
       }
     } catch {
-      notify({ ...state, pending: request, commandError: true });
+      notify({ ...state, pending: request, commandError: true, sendFailure: 'unconfirmed' });
 
       return;
     }
@@ -476,7 +490,8 @@ export function createSessionFeed(
       // A definite refusal (the server saw the command and said no) could never succeed when
       // replayed, so the Composer is released: the draft and overrides stay editable, the error
       // stays visible. Any answer that leaves the outcome open keeps the exact command.
-      const archived = sessionErrorCode(error) === 'SESSION_ARCHIVED';
+      const code = sessionErrorCode(error);
+      const archived = code === 'SESSION_ARCHIVED';
       const next: FeedState = {
         ...state,
         commandBusy: false,
@@ -484,8 +499,13 @@ export function createSessionFeed(
         commandError: !archived,
         archivedRefusal: archived || state.archivedRefusal,
       };
-      if (!writeOutcomeUnknown(error) && releaseRetained(JSON.stringify(request))) {
+      const released = !writeOutcomeUnknown(error) && releaseRetained(JSON.stringify(request));
+      if (released) {
         delete next.pending;
+      }
+
+      if (!archived) {
+        next.sendFailure = released ? (code ?? 'refused') : 'unconfirmed';
       }
 
       notify(next);
@@ -666,7 +686,7 @@ export function createSessionFeed(
 
       notify({ ...state, commandBusy: true, commandError: false });
       try {
-        await api.cancel(sessionId, turnId, crypto.randomUUID());
+        await api.cancel(sessionId, turnId, newId());
         notify({ ...state, commandBusy: false });
       } catch {
         notify({ ...state, commandBusy: false, commandError: true });
@@ -722,7 +742,7 @@ export function createSessionFeed(
 
       const turnId = turn.turnId;
       if (reconcileAttempt?.turnId !== turnId) {
-        reconcileAttempt = { turnId, requestId: crypto.randomUUID() };
+        reconcileAttempt = { turnId, requestId: newId() };
       }
 
       const attempt = reconcileAttempt;

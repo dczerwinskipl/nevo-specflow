@@ -1698,6 +1698,18 @@
     "failed": "Could not load this part of the session.",
     "historyFailed": "Older messages could not be loaded.",
     "commandFailed": "The request was not confirmed. Retry with the same request.",
+    "sending": "Sending…",
+    "sendFailure": {
+      "unconfirmed": "SpecFlow did not confirm that the message arrived; it may still start. Retry sends the same message, and it will not run twice.",
+      "too-long": "The message is too long. Shorten it and send again.",
+      "TURN_CONFLICT": "An agent or a specification change is writing to this project right now. Your message is kept; send it again when that work finishes.",
+      "PROVIDER_UNAVAILABLE": "The agent's provider is not available right now. Your message is kept; send it again once the provider is available.",
+      "PROVIDER_AUTH_REQUIRED": "The provider needs you to sign in again (for Claude, in the Claude CLI). Your message is kept; send it again after signing in.",
+      "MODEL_UNSUPPORTED": "The chosen model is not available. Pick another model and send again.",
+      "CAPABILITY_UNSUPPORTED": "This Session cannot run in the chosen work mode. Pick another work mode and send again.",
+      "SESSION_RECOVERY_REQUIRED": "The outcome of the last Turn must be checked first. Check it above, then send again.",
+      "refused": "The message was not sent. Your message is kept; try again, or change the model or work mode."
+    },
     "savedRequestUnreadable": "Saved request can't be read",
     "savedRequestUnreadableBody": "This browser kept a request that could not be read. It may already have been applied. Discarding it lets you send a new one.",
     "discardSavedRequest": "Discard saved request",

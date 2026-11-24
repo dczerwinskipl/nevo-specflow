@@ -1698,6 +1698,18 @@
     "failed": "Nie udało się wczytać tej części sesji.",
     "historyFailed": "Nie udało się wczytać starszych wiadomości.",
     "commandFailed": "Nie potwierdzono żądania. Ponów je z tym samym kluczem.",
+    "sending": "Wysyłanie…",
+    "sendFailure": {
+      "unconfirmed": "SpecFlow nie potwierdził, że wiadomość dotarła; może jeszcze ruszyć. Ponowienie wyśle tę samą wiadomość i nie uruchomi jej dwa razy.",
+      "too-long": "Wiadomość jest za długa. Skróć ją i wyślij ponownie.",
+      "TURN_CONFLICT": "Agent albo zmiana specyfikacji zapisuje teraz w tym projekcie. Wiadomość zostaje; wyślij ją, gdy ta praca się skończy.",
+      "PROVIDER_UNAVAILABLE": "Dostawca agenta jest teraz niedostępny. Wiadomość zostaje; wyślij ją, gdy dostawca będzie dostępny.",
+      "PROVIDER_AUTH_REQUIRED": "Dostawca wymaga ponownego zalogowania (dla Claude w Claude CLI). Wiadomość zostaje; wyślij ją po zalogowaniu.",
+      "MODEL_UNSUPPORTED": "Wybrany model jest niedostępny. Wybierz inny model i wyślij ponownie.",
+      "CAPABILITY_UNSUPPORTED": "Ta sesja nie może działać w wybranym trybie pracy. Wybierz inny tryb i wyślij ponownie.",
+      "SESSION_RECOVERY_REQUIRED": "Najpierw trzeba sprawdzić, jak skończyła się ostatnia tura. Sprawdź to powyżej, a potem wyślij ponownie.",
+      "refused": "Wiadomość nie została wysłana. Wiadomość zostaje; spróbuj ponownie albo zmień model lub tryb pracy."
+    },
     "savedRequestUnreadable": "Nie można odczytać zapisanego żądania",
     "savedRequestUnreadableBody": "Ta przeglądarka zachowała żądanie, którego nie da się odczytać. Mogło już zostać zastosowane. Odrzucenie go pozwala wysłać nowe.",
     "discardSavedRequest": "Odrzuć zapisane żądanie",

@@ -4,6 +4,7 @@ import { useAppServices } from '../../../../app/useAppServices';
 import { invalidateAfterTaskChange } from '../../authoring/queries';
 import type { WorkflowSubjectRef } from '../api';
 import { workflowRefusalOf } from '../refusal';
+import { newId } from '../../../../shared/ids/newId';
 
 /**
  * One idempotency key per request, tied to its payload. A request whose answer was lost is sent
@@ -20,9 +21,7 @@ export function useRequestKey() {
       const shape = JSON.stringify(payload);
       const earlier = sent.current;
       sent.current =
-        lost.current && earlier?.payload === shape
-          ? earlier
-          : { key: crypto.randomUUID(), payload: shape };
+        lost.current && earlier?.payload === shape ? earlier : { key: newId(), payload: shape };
 
       return sent.current.key;
     },

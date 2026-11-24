@@ -116,6 +116,21 @@ export const specflowUiBoundaries = [
     plugins: { 'specflow-i18n': i18nCopy },
     rules: { 'specflow-i18n/no-hardcoded-copy': 'error' },
   },
+  // `crypto.randomUUID` exists only in secure contexts; a Runtime opened over plain http on a LAN
+  // or Tailscale host has none, and a command that throws before it is sent shows nothing.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/shared/ids/newId.ts', 'src/**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "MemberExpression[property.name='randomUUID']",
+          message: 'Use newId() (src/shared/ids/newId.ts): randomUUID is missing over plain http.',
+        },
+      ],
+    },
+  },
 ];
 
 /**

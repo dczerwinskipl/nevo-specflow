@@ -81,7 +81,31 @@ export function AgentStartDialog({
   const { t } = useTranslation();
   const { managedSessionsApi, specificationApi } = useAppServices();
   const { check, start } = useAgentStart(subject, step.id, open, handOver);
-  const copy = handOver ? 'workflowExecution.agent.hand' : 'workflowExecution.agent';
+  // Literal keys (not a prefix) so the catalogue check sees every key the dialog uses.
+  const copy = handOver
+    ? {
+        title: t('workflowExecution.agent.hand.title', { step: step.title || step.id }),
+        description:
+          subject.taskId === undefined
+            ? t('workflowExecution.agent.hand.descriptionSpecification', {
+                attempt: handOver.attempt,
+              })
+            : t('workflowExecution.agent.hand.descriptionTask', {
+                task: subject.taskId,
+                attempt: handOver.attempt,
+              }),
+        submit: t('workflowExecution.agent.hand.submit'),
+        submitting: t('workflowExecution.agent.hand.submitting'),
+      }
+    : {
+        title: t('workflowExecution.agent.title', { step: step.title || step.id }),
+        description:
+          subject.taskId === undefined
+            ? t('workflowExecution.agent.descriptionSpecification')
+            : t('workflowExecution.agent.descriptionTask', { task: subject.taskId }),
+        submit: t('workflowExecution.agent.submit'),
+        submitting: t('workflowExecution.agent.submitting'),
+      };
   const workspace = useSpecificationWorkspace(subject.specId, specificationApi).data;
   const [chosen, setChosen] = useState<FreshChoice>();
 
@@ -178,22 +202,8 @@ export function AgentStartDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent closeLabel={t('common.close')} onOpenAutoFocus={focusInitial}>
         <DialogHeader>
-          <DialogTitle>
-            {t(`${copy}.title` as 'workflowExecution.agent.title', { step: step.title || step.id })}
-          </DialogTitle>
-          <DialogDescription>
-            {subject.taskId === undefined
-              ? t(
-                  `${copy}.descriptionSpecification` as 'workflowExecution.agent.descriptionSpecification',
-                  {
-                    attempt: handOver?.attempt,
-                  },
-                )
-              : t(`${copy}.descriptionTask` as 'workflowExecution.agent.descriptionTask', {
-                  task: subject.taskId,
-                  attempt: handOver?.attempt,
-                })}
-          </DialogDescription>
+          <DialogTitle>{copy.title}</DialogTitle>
+          <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
         <DialogBody>
           <div className="grid gap-6" aria-busy={check.isPending}>
@@ -276,9 +286,7 @@ export function AgentStartDialog({
             disabled={!canStart}
             aria-busy={start.isPending}
           >
-            {start.isPending
-              ? t(`${copy}.submitting` as 'workflowExecution.agent.submitting')
-              : t(`${copy}.submit` as 'workflowExecution.agent.submit')}
+            {start.isPending ? copy.submitting : copy.submit}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -120,7 +120,11 @@ export type DriverFact =
             'interactionId' | 'turnId' | 'workId' | 'revision'
           >;
     }
-  | { kind: 'outcome'; outcome: TurnOutcome; error?: { code: string; message: string } }
+  | {
+      kind: 'outcome';
+      outcome: TurnOutcome;
+      error?: { code: string; message: string; reason?: string };
+    }
   | { kind: 'lost'; message: string };
 
 export type StoreCommand =

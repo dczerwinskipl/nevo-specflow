@@ -324,10 +324,19 @@ export function createManagedInvocation(options: {
       }
 
       if (!driverInvoked && claim) {
+        // A refusal that names its reason (e.g. the Claude policy check) says it, so the client
+        // can word it; any other stays the generic "could not start".
+        const named = error instanceof SessionError && error.details?.reason ? error : undefined;
         const result: Outcome = {
           kind: 'outcome',
           outcome: options.signal.aborted ? 'cancelled' : 'failed',
-          error: { code: 'PROVIDER_UNAVAILABLE', message: 'Agent execution could not start.' },
+          error: named
+            ? {
+                code: 'PROVIDER_UNAVAILABLE',
+                message: named.message,
+                reason: named.details!.reason!,
+              }
+            : { code: 'PROVIDER_UNAVAILABLE', message: 'Agent execution could not start.' },
         };
         try {
           // This Runtime has not called the driver: the stopped/not-started

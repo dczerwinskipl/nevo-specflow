@@ -841,6 +841,10 @@ export function createSessionCoordinator(
                         error instanceof SessionError
                           ? error.message
                           : 'Provider operation failed.',
+                      // A stable reason the client can word itself (e.g. the policy check).
+                      ...(error instanceof SessionError && error.details?.reason
+                        ? { reason: error.details.reason }
+                        : {}),
                     },
                   }),
             });

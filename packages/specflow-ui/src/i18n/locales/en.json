@@ -1976,6 +1976,7 @@
       "actionsAtLeast_many": "at least {{count}} tool actions"
     },
     "outcomeReason": {
+      "claude-policy-check-failed": "SpecFlow could not check Claude's settings on this computer. Try again; if it keeps failing, restart the Runtime.",
       "TURN_CONFLICT": "Another agent or a specification change is still writing to this project. Wait until it finishes, or check the outcome of a Turn whose outcome is unknown, then send the message again.",
       "PROCESS_STOPPED": "The agent stopped while SpecFlow could not record its result. Review the changes in the workspace before you continue."
     },

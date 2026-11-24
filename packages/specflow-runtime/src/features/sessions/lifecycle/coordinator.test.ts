@@ -203,6 +203,26 @@ describe('Session coordinator', () => {
     });
     expect(work.items.map((item) => item.state)).not.toContain('completed');
   });
+  it('keeps the stable reason of a launch refusal on the Turn error', async () => {
+    const driver: SessionDriver = {
+      ...createMockDriver(),
+      validate: () => undefined,
+      start() {
+        throw new SessionError('PROVIDER_UNAVAILABLE', 'Could not check the settings.', {
+          reason: 'claude-policy-check-failed',
+        });
+      },
+    };
+    const { sessionId } = await setup(undefined, driver);
+    await runtime!.start('actor', sessionId, { requestId: randomUUID(), message: 'Start' });
+    await vi.waitFor(async () =>
+      expect((await runtime!.snapshot(sessionId, 'actor')).entries.at(-1)?.error).toEqual({
+        code: 'PROVIDER_FAILED',
+        message: 'Could not check the settings.',
+        reason: 'claude-policy-check-failed',
+      }),
+    );
+  });
   it('refuses a selection its driver rejects before any Turn or dispatch is recorded', async () => {
     const commands: string[] = [];
     const refusal = new SessionError('MODEL_UNSUPPORTED', 'No auto mode for this model.', {

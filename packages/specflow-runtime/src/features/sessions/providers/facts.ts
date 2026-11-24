@@ -159,7 +159,12 @@ const schema = Type.Union([
     {
       kind: Type.Literal('outcome'),
       outcome: TurnOutcomeSchema,
-      error: Type.Optional(Type.Object({ code: text(64), message: text(2048) }, closed)),
+      error: Type.Optional(
+        Type.Object(
+          { code: text(64), message: text(2048), reason: Type.Optional(text(128)) },
+          closed,
+        ),
+      ),
     },
     closed,
   ),

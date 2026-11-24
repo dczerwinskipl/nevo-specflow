@@ -1976,6 +1976,7 @@
       }
     },
     "outcomeReason": {
+      "claude-policy-check-failed": "SpecFlow nie mógł sprawdzić ustawień Claude na tym komputerze. Spróbuj ponownie; jeśli to się powtarza, uruchom Runtime ponownie.",
       "TURN_CONFLICT": "Inny agent lub zmiana specyfikacji wciąż zapisuje w tym projekcie. Poczekaj, aż się zakończy, albo sprawdź wynik tury o nieznanym wyniku, a potem wyślij wiadomość ponownie.",
       "PROCESS_STOPPED": "Agent zatrzymał się, gdy SpecFlow nie mógł zapisać jego wyniku. Przejrzyj zmiany w obszarze roboczym, zanim przejdziesz dalej."
     },

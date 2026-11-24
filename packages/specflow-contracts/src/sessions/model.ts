@@ -254,7 +254,16 @@ export const NoticeSeveritySchema = Type.Union([
   Type.Literal('warning'),
   Type.Literal('info'),
 ]);
-export const TurnErrorSchema = Type.Object({ code: text(64), message: text(2048) }, closed);
+export const TurnErrorSchema = Type.Object(
+  {
+    code: text(64),
+    message: text(2048),
+    /** A stable reason a client words itself (e.g. `claude-policy-check-failed`); `message` is the
+     * Runtime's English fallback for a reason the client does not know. */
+    reason: Type.Optional(text(128)),
+  },
+  closed,
+);
 export const ConversationEntrySchema = Type.Object(
   {
     id: SessionUuidSchema,

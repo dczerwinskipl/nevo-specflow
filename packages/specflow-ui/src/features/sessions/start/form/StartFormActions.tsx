@@ -1,9 +1,9 @@
 import { Button, Typography } from '@nevo/ui';
 
 /**
- * The form's last row (not a page footer): the note at the start, naming the one thing still
- * missing (or what Start will do), and **Start session** at the end. On a narrow form the note
- * wraps above the button.
+ * The form's last row (not a page footer): a note at the start only when there is something the
+ * form does not already show (the one thing still missing, a kept request), and **Start session**
+ * at the end. On a narrow form the note wraps above the button.
  */
 export function StartFormActions({
   noteId,
@@ -13,7 +13,7 @@ export function StartFormActions({
   pending,
 }: {
   noteId: string;
-  note: string;
+  note?: string;
   label: string;
   /** Start cannot be pressed: a prerequisite is missing or the form is locked. */
   disabled: boolean;
@@ -22,20 +22,22 @@ export function StartFormActions({
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-      <Typography
-        as="p"
-        variant="body-sm"
-        id={noteId}
-        className="min-w-0 flex-1 basis-48 text-content-secondary"
-      >
-        {note}
-      </Typography>
+      {note ? (
+        <Typography
+          as="p"
+          variant="body-sm"
+          id={noteId}
+          className="min-w-0 flex-1 basis-48 text-content-secondary"
+        >
+          {note}
+        </Typography>
+      ) : null}
       <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
         <Button
           type="submit"
           disabled={disabled}
           aria-busy={pending || undefined}
-          aria-describedby={noteId}
+          aria-describedby={note ? noteId : undefined}
         >
           {label}
         </Button>

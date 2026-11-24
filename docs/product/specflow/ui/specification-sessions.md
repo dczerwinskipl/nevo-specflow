@@ -75,13 +75,13 @@ The row status comes from the row's effective `readiness` alone (the single-Sess
 projection, applied by the list read). `activeTurn.state` adds no row state and Engine attempt facts
 never colour a row ([AI session UX](ai-session-ux.md#session-status-ownership-accepted-2026-11-08)).
 
-| `readiness`              | Status                           | Tone and icon                    |
-| ------------------------ | -------------------------------- | -------------------------------- |
-| `ready`                  | none                             | none                             |
-| `busy`                   | **Active**                       | info, spinning `loader` icon     |
-| `requiresAttention`      | **Requires attention**           | attention, `triangle-alert` icon |
-| `authenticationRequired` | **{provider}: sign-in required** | muted, no icon                   |
-| `unavailable`            | **Session state unknown**        | muted, no icon                   |
+| `readiness`              | Status                                                                               | Tone and icon                    |
+| ------------------------ | ------------------------------------------------------------------------------------ | -------------------------------- |
+| `ready`                  | none                                                                                 | none                             |
+| `busy`                   | **Active**                                                                           | info, spinning `loader` icon     |
+| `requiresAttention`      | **Requires attention**                                                               | attention, `triangle-alert` icon |
+| `authenticationRequired` | **{provider}: sign-in required**                                                     | muted, no icon                   |
+| `unavailable`            | **SpecFlow has not confirmed that {provider} can run it; open the session to check** | muted, no icon                   |
 
 A sign-in is provider-wide and resolved in the provider's CLI, so it names the provider and stays
 muted. Status is always text; colour and icon only repeat it.

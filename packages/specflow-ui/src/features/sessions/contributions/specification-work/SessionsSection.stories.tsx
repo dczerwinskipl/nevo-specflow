@@ -76,6 +76,8 @@ export const ContinueSessionRow: Story = {
     await expect(factTexts(canvasElement)).toEqual(['5 minut temu', 'Opus 4.1', '3 zadania']);
     await expect(canvas.getByText('Claude, model Opus 4.1')).toBeInTheDocument();
     await expect(canvas.getByText('Wymaga uwagi')).toBeVisible();
+    // New session is visible beside the rows, like the Tasks section's New task.
+    await expect(canvas.getByRole('button', { name: 'Nowa sesja' })).toBeVisible();
     // Wide: the status is the last inline item, on the facts' line box.
     const age = canvasElement.querySelector('[data-inline-fact]')!.getBoundingClientRect();
     const status = canvasElement.querySelector('[data-inline-status]')!.getBoundingClientRect();
@@ -101,6 +103,27 @@ export const ContinueSessionSignInRequired: Story = {
     const status = await canvas.findByText('Claude: wymagane ponowne logowanie');
     await expect(status.closest('.text-content-muted')).not.toBeNull();
     await expect(factTexts(canvasElement)).toEqual(['5 minut temu', 'Opus 4.1']);
+  },
+};
+
+/** A provider SpecFlow has not confirmed: says so and that opening the Session checks it. */
+export const ContinueSessionUnconfirmedProvider: Story = {
+  args: {
+    sessions: [
+      {
+        ...attention,
+        navigationStatus: 'unknown',
+        activityCode: undefined,
+        activity: undefined,
+        taskCount: 0,
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const status = await canvas.findByText(
+      'SpecFlow nie potwierdził, że Claude może ją prowadzić; otwórz sesję, aby to sprawdzić',
+    );
+    await expect(status.closest('.text-content-muted')).not.toBeNull();
   },
 };
 

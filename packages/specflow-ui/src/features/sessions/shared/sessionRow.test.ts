@@ -77,7 +77,7 @@ describe('Session row status', () => {
       textClassName: 'text-content-muted',
     });
     expect(sessionRowStatus('unavailable', claude, pl)).toEqual({
-      text: 'Stan sesji nieznany',
+      text: 'SpecFlow nie potwierdził, że Claude może ją prowadzić; otwórz sesję, aby to sprawdzić',
       textClassName: 'text-content-muted',
     });
   });

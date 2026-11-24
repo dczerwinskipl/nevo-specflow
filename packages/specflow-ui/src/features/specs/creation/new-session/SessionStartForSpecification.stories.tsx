@@ -170,9 +170,7 @@ export const ClaudeModelChosen: Story = {
     // The provider's default mode is preselected.
     await expect(canvas.getByRole('radio', { name: 'Accept edits' })).toBeChecked();
     await expect(startButton(canvas)).toBeEnabled();
-    await expect(
-      canvas.getByText('Sesja otworzy się bez wiadomości. Nazwę możesz nadać później.'),
-    ).toBeVisible();
+    await expect(canvas.queryByText(/bez wiadomości/)).toBeNull();
     // Context mirrors the choice (field value and executor row); the Composer stays inactive.
     await expect(inContext(canvas, 'claude model A')).toBe(true);
     await expect(composer(canvas)).toBeDisabled();
@@ -417,16 +415,14 @@ export const OwnName: Story = {
     const field = canvas.getByRole('textbox', { name: /Nazwa sesji/ });
     await expect(field).toHaveAttribute('maxlength', '256');
     await expect(field).toHaveAttribute('placeholder', 'Nowa sesja');
-    await expect(canvas.getByText(/Nazwę możesz nadać później/)).toBeVisible();
+    await expect(canvas.queryByText(/Nazwę możesz nadać później/)).toBeNull();
     // Whitespace is not an own name: Start stays possible and the Session stays unnamed.
     await userEvent.type(field, '   ');
     await expect(startButton(canvas)).toBeEnabled();
-    await expect(canvas.getByText(/Nazwę możesz nadać później/)).toBeVisible();
+    await expect(canvas.queryByText(/Nazwę możesz nadać później/)).toBeNull();
     await userEvent.clear(field);
     await userEvent.type(field, 'Przegląd SSO — błędy');
-    await expect(
-      canvas.getByText('Sesja otworzy się bez wiadomości, z Twoją nazwą.'),
-    ).toBeVisible();
+    await expect(canvas.queryByText(/z Twoją nazwą/)).toBeNull();
     await expect(startButton(canvas)).toBeEnabled();
     // Enter in the name field starts the Session; the own name is the title at once.
     await userEvent.type(field, '{Enter}');

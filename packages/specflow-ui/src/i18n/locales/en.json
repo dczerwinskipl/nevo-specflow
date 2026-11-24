@@ -148,7 +148,6 @@
     "prReviewLink": "Review PR",
     "gitRefreshFailed": "Failed to refresh repository status",
     "gitStaleData": "Stale data · last checked 30 min ago",
-    "sessionActions": "Session actions",
     "openSessionAction": "Open session",
     "allSessionsLink": "All sessions",
     "activityHistoryLink": "Activity history",
@@ -1567,7 +1566,7 @@
       "emptyArchive": "No archived sessions",
       "failed": "Couldn’t load sessions.",
       "forbiddenSpecification": "You don’t have access to this specification’s sessions.",
-      "statusUnknown": "Session state unknown",
+      "statusUnknown": "SpecFlow has not confirmed that {{provider}} can run it; open the session to check",
       "statusAttention": "Requires attention",
       "statusActive": "Active",
       "statusAuthentication": "{{provider}}: sign-in required",
@@ -1984,10 +1983,6 @@
     },
     "prerequisite": {
       "noProvider": "No agent is available right now."
-    },
-    "footer": {
-      "nameLater": "The session opens without a message. You can name it later.",
-      "ready": "The session opens without a message, with your name."
     },
     "submit": {
       "start": "Start session"

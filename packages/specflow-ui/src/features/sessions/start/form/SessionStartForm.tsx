@@ -77,13 +77,12 @@ export function SessionStartForm({
     agent,
     configurationUnavailable,
   });
+  // Only a state the form does not show itself gets a note: a kept request or what blocks Start.
   const note = pending
     ? t('create.footer.operationKept')
     : prerequisite
       ? text(prerequisite)
-      : name.mode === 'unnamed'
-        ? t('sessionStart.footer.nameLater')
-        : t('sessionStart.footer.ready');
+      : undefined;
   const label =
     status === 'starting'
       ? t('sessionStart.form.starting')

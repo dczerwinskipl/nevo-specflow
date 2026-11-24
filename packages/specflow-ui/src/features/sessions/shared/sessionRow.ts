@@ -125,7 +125,11 @@ export function sessionRowStatus(
         textClassName: 'text-content-muted',
       };
     case 'unavailable':
-      return { text: t('sessions.list.statusUnknown'), textClassName: 'text-content-muted' };
+      // Unconfirmed provider (not checked yet, or not running): says so and the way on.
+      return {
+        text: t('sessions.list.statusUnknown', { provider: sessionProviderName(agent) }),
+        textClassName: 'text-content-muted',
+      };
     default: {
       const unhandled: never = readiness;
 

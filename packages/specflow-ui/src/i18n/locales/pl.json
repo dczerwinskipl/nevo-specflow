@@ -148,7 +148,6 @@
     "prReviewLink": "Przegląd PR",
     "gitRefreshFailed": "Nie udało się odświeżyć stanu repozytorium",
     "gitStaleData": "Dane nieaktualne · ostatnie sprawdzenie 30 min temu",
-    "sessionActions": "Akcje sesji",
     "openSessionAction": "Otwórz sesję",
     "allSessionsLink": "Wszystkie sesje",
     "activityHistoryLink": "Historia aktywności",
@@ -1567,7 +1566,7 @@
       "emptyArchive": "Brak zarchiwizowanych sesji",
       "failed": "Nie udało się wczytać sesji.",
       "forbiddenSpecification": "Nie masz dostępu do sesji tej specyfikacji.",
-      "statusUnknown": "Stan sesji nieznany",
+      "statusUnknown": "SpecFlow nie potwierdził, że {{provider}} może ją prowadzić; otwórz sesję, aby to sprawdzić",
       "statusAttention": "Wymaga uwagi",
       "statusActive": "Aktywna",
       "statusAuthentication": "{{provider}}: wymagane ponowne logowanie",
@@ -1984,10 +1983,6 @@
     },
     "prerequisite": {
       "noProvider": "Żaden agent nie jest teraz dostępny."
-    },
-    "footer": {
-      "nameLater": "Sesja otworzy się bez wiadomości. Nazwę możesz nadać później.",
-      "ready": "Sesja otworzy się bez wiadomości, z Twoją nazwą."
     },
     "submit": {
       "start": "Rozpocznij sesję"

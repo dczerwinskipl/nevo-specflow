@@ -496,6 +496,17 @@ async function verifyWorkBlocks(canvasElement: HTMLElement) {
     await expect(block.querySelectorAll('button, a, [tabindex]')).toHaveLength(1);
     const button = block.querySelector('button')!;
     await expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth + 1);
+    // The first text line and the chevron are centred on the icon tile, in every state.
+    const centre = (rect: DOMRect) => rect.top + rect.height / 2;
+    const tile = centre(button.firstElementChild!.getBoundingClientRect());
+    const first = block.querySelector('[data-work-block-text] > :not(.sr-only)')!;
+    const lineHeight = parseFloat(getComputedStyle(first).lineHeight);
+    await expect(
+      Math.abs(first.getBoundingClientRect().top + lineHeight / 2 - tile),
+    ).toBeLessThanOrEqual(1);
+    await expect(
+      Math.abs(centre(button.lastElementChild!.getBoundingClientRect()) - tile),
+    ).toBeLessThanOrEqual(1);
   }
 
   await expect(canvas.getAllByText('Tura przerwana')).toHaveLength(1);

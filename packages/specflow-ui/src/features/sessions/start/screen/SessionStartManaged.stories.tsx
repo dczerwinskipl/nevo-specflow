@@ -513,13 +513,9 @@ export const ManagedStartFlow: Story = {
     await pick(canvas, 'Model', 'Claude Sonnet');
     await pick(canvas, 'Effort', 'high');
     await userEvent.click(canvas.getByRole('radio', { name: 'Plan' }));
-    await expect(
-      canvas.getByText('Sesja otworzy się bez wiadomości. Nazwę możesz nadać później.'),
-    ).toBeVisible();
+    // Nothing blocks Start, so no note restates the form.
+    await expect(canvas.queryByText(/bez wiadomości/)).toBeNull();
     await userEvent.type(canvas.getByRole('textbox', { name: /Nazwa sesji/ }), 'Przegląd SSO');
-    await expect(
-      canvas.getByText('Sesja otworzy się bez wiadomości, z Twoją nazwą.'),
-    ).toBeVisible();
     await userEvent.click(startButton(canvas));
     await waitFor(() =>
       expect(creates).toEqual([
@@ -654,9 +650,7 @@ export const ManagedLongNameAndStatusEn: Story = {
     await expect(canvas.getByText("Check didn't finish")).toBeVisible();
     await expect(canvas.getByText('Unavailable: Codex and Antigravity')).toBeVisible();
     await expect(canvas.getByRole('textbox', { name: /Session name/ })).toHaveValue(longName);
-    await expect(
-      canvas.getByText('The session opens without a message, with your name.'),
-    ).toBeVisible();
+    await expect(canvas.queryByText(/without a message/)).toBeNull();
     for (const card of within(canvas.getByRole('radiogroup', { name: 'Agent' })).getAllByRole(
       'radio',
     )) {

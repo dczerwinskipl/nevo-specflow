@@ -50,7 +50,16 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
             <Icon name={Wrench} size="sm" />
           )}
         </span>
-        <span className="grid min-w-0 flex-1 gap-1 pt-1 [overflow-wrap:anywhere]">
+        {/* The first line is centred on the 28px tile, like the chevron: a `body-md` summary
+            (20px line) sits 4px down, a `body-sm` first line (16px: live, failed or outcome
+            without a summary) 6px down. */}
+        <span
+          data-work-block-text=""
+          className={cn(
+            'grid min-w-0 flex-1 gap-1 [overflow-wrap:anywhere]',
+            text.summary ? 'pt-1' : 'pt-1.5',
+          )}
+        >
           {/* `body-md` (14px, the conversation's own reading size) for the aggregate itself, one
               step quieter in colour than the answer; the exception/live lines below stay
               `body-sm` supporting text. Tones come from the shared state vocabulary

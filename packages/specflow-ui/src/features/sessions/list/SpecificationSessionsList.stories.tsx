@@ -301,7 +301,7 @@ export const CurrentSessions: Story = {
     const signIn = canvas.getByText('Claude: wymagane ponowne logowanie');
     await expect(signIn).toBeVisible();
     await expect(signIn.closest('.text-content-muted')).not.toBeNull();
-    await expect(canvas.queryByText('Stan sesji nieznany')).toBeNull();
+    await expect(canvas.queryByText(/SpecFlow nie potwierdził/)).toBeNull();
     await expect(canvas.getByRole('button', { name: 'Sesja bez nazwy' })).toBeVisible();
     // The quiet Antigravity row: no status at all.
     await expect(rowParts(canvasElement, 'd').status).toBeNull();

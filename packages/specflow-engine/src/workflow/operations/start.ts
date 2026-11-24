@@ -1,6 +1,6 @@
 import { ANY_TASK_TYPE } from '@nevo/specflow-contracts/documents';
 
-import { decide, findStep, newRun } from '@nevo/workflow';
+import { activeAttempt, decide, findStep, newRun } from '@nevo/workflow';
 import { resolveSpecificationExecution } from '../definitions/catalogue';
 import { WorkflowError } from '../errors';
 import { entryGatesOf } from '../gates/evaluate';
@@ -58,11 +58,14 @@ export interface StartOptions {
 
 /**
  * The step a start works on and, for a resume, its active attempt. Without `attempt` the start must
- * activate a new attempt of `step`; with it, `step#attempt` must be the active attempt.
+ * activate a new attempt of `step`; with it, `step#attempt` must be the active attempt. With
+ * `handOver` (Hand to agent), `step#attempt` must be the owner's active attempt: it ends handed to
+ * the agent (`taken-over`) and the start activates the step's next attempt for the agent.
  */
 export interface ExpectedPosition {
   readonly step: string;
   readonly attempt?: number;
+  readonly handOver?: true;
 }
 
 function assertExpectedPosition(loaded: LoadedSubject, expected: ExpectedPosition): void {
@@ -107,6 +110,9 @@ async function startSubject(
   const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
   if (options.expected) {
     assertExpectedPosition(loaded, options.expected);
+    if (options.expected.handOver === true) {
+      return handOverSubject(dependencies, snapshot, loaded, options);
+    }
   }
 
   if (loaded.run.position.state === 'terminal') {
@@ -176,6 +182,79 @@ async function startSubject(
       definition: loaded.definition,
       step,
       attempt: intent.attempt,
+      catalogue: dependencies.catalogue,
+      ...(loaded.task ? { task: loaded.task } : {}),
+      allowedTaskTypes: snapshot.specification?.value.taskTypes ?? [ANY_TASK_TYPE],
+      ...executionTasks(dependencies.catalogue, snapshot),
+    }),
+  };
+}
+
+/**
+ * Hand to agent: the owner's active attempt (`expected`, checked by the caller) ends `taken-over`
+ * and the step's next attempt starts for `options.actor`, an agent, in one change, as the core's
+ * take-over decides it. The step started already, so the Task's readiness, its context and the
+ * entry gates are not judged again (as for a resume or a Take over); `admit` runs before anything is
+ * written, and its `attemptData` is recorded with the new attempt.
+ */
+async function handOverSubject(
+  dependencies: WorkflowDependencies,
+  snapshot: ExecutionSnapshot,
+  loaded: LoadedSubject,
+  options: StartOptions,
+): Promise<StartResult> {
+  const { subject, run: current } = loaded;
+  const position = current.position;
+  const active = activeAttempt(current);
+  if (options.actor.class !== 'agent') {
+    throw new WorkflowError('WORKFLOW_EXECUTOR_NOT_ALLOWED', 'Only an agent is handed a step.');
+  }
+
+  if (position.state !== 'active' || active?.actor?.class !== 'human') {
+    throw new WorkflowError(
+      'WORKFLOW_ATTEMPT_MISMATCH',
+      `The active attempt${ofSubject(subject)} is not a person's; only the owner's attempt is handed to the agent.`,
+    );
+  }
+
+  const at = isoNow(dependencies);
+  const command = {
+    kind: 'take-over',
+    at,
+    step: position.step,
+    attempt: position.attempt,
+    actor: options.actor,
+  } as const;
+  // The core judges the hand (the step's executors include an agent) before the admission.
+  const decision = decide(loaded.definition, current, command);
+  const step = findStep(loaded.definition, position.step);
+  if (decision.intent.kind !== 'execute' || step?.kind !== 'work') {
+    throw new WorkflowError(
+      'WORKFLOW_STATE_CORRUPT',
+      'A hand to the agent activated no work step.',
+    );
+  }
+
+  const attemptData = (await options.admit?.())?.attemptData;
+  const run =
+    attemptData !== undefined
+      ? decide(loaded.definition, current, { ...command, hostData: attemptData }).nextRun
+      : decision.nextRun;
+  const attempt = decision.intent.attempt;
+  await dependencies.store.apply(subject.specId, {
+    ...changeFor(snapshot, loaded, run, loaded.revision),
+    summary: `hand step ${step.id}${ofSubject(subject)} to an agent (attempt ${String(position.attempt)} → ${String(attempt)})`,
+  });
+
+  return {
+    kind: 'started',
+    subject,
+    context: compileStepContext({
+      subject,
+      run,
+      definition: loaded.definition,
+      step,
+      attempt,
       catalogue: dependencies.catalogue,
       ...(loaded.task ? { task: loaded.task } : {}),
       allowedTaskTypes: snapshot.specification?.value.taskTypes ?? [ANY_TASK_TYPE],

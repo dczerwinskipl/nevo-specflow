@@ -41,8 +41,10 @@ export interface StartAgentAttemptInput {
   /** From the trusted Runtime binding; the attempt is worked on and resumed only by its Session. */
   readonly actor: AgentActor;
   /**
-   * The position the owner asked the agent to work on: a new attempt of `step`, or (Continue) the
-   * active attempt `step#attempt`. A stale one refuses before anything is written.
+   * The position the owner asked the agent to work on: a new attempt of `step`, (Continue) the
+   * active attempt `step#attempt`, or (Hand to agent, `handOver`) a new attempt after the owner's
+   * active attempt `step#attempt`, which ends handed to the agent. A stale one refuses before
+   * anything is written.
    */
   readonly expected: ExpectedPosition;
   /** The registered checkout the attempt works in. */
@@ -114,6 +116,12 @@ function assertBindingInput(input: StartAgentAttemptInput): void {
  * Turn's binding. A crash between the two leaves an active attempt with no process and no Turn; the
  * same Session continues it, which records the journal then.
  *
+ * Hand to agent (`expected.handOver`) is the same start of a new attempt from the owner's active
+ * attempt `step#attempt`: the core's take-over ends it `taken-over` and activates the agent's attempt
+ * in one change. Before the owner's commit, anything uncommitted besides the owner's workflow state
+ * refuses `WORKFLOW_OWNER_WORK_UNCOMMITTED` (the agent's attempt would take the owner's work as its
+ * own), so a refused hand writes and commits nothing.
+ *
  * Every write is refused while an agent execution claim is unsettled, the previous Turn's included,
  * so a Turn is bound only once the one before it settled.
  */
@@ -131,7 +139,9 @@ export async function startAgentAttempt(
     store: dependencies.attributedStore(input.turn.invocationId),
   };
 
-  const fresh = input.expected.attempt === undefined;
+  // A new attempt: a start, or Hand to agent (the owner's attempt ends, the agent's starts).
+  const handOver = input.expected.handOver === true;
+  const fresh = input.expected.attempt === undefined || handOver;
   const runStart = (options: Omit<StartOptions, 'actor' | 'expected'>) => {
     const common = { actor: input.actor, expected: input.expected, ...options };
     if (subject.kind === 'task') {
@@ -167,7 +177,19 @@ export async function startAgentAttempt(
     await workflow
       .serialize(() =>
         runStart({
-          admit: () => Promise.reject(new StartChecked()),
+          // Hand to agent: the owner's own work in the step is refused here, before the owner's
+          // commit (`WORKFLOW_OWNER_WORK_UNCOMMITTED`): nothing is committed for a refused hand.
+          admit: async () => {
+            if (handOver) {
+              await admitAgentTurn(dependencies, {
+                subject,
+                workspaceId: input.workspaceId,
+                expected: input.expected,
+              });
+            }
+
+            throw new StartChecked();
+          },
         }),
       )
       .catch((error: unknown) => {
@@ -177,7 +199,9 @@ export async function startAgentAttempt(
       });
     await dependencies.workflow.postActions?.afterOwnerChange?.({
       subject,
-      phrase: `save the workflow state before an agent runs ${input.expected.step}${ofSubject(subject)}`,
+      phrase: handOver
+        ? `save the workflow state before ${input.expected.step}${ofSubject(subject)} is handed to an agent`
+        : `save the workflow state before an agent runs ${input.expected.step}${ofSubject(subject)}`,
     });
   }
 

@@ -485,6 +485,12 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_UNDECLARED_CHANGES',
   'WORKFLOW_NESTED_REPOSITORY',
   /**
+   * Hand to agent: the checkout has uncommitted changes besides the owner's workflow state the hand
+   * commits (the owner's own work in the step, or what an earlier attempt left); the agent's attempt
+   * would take them as its own. `details.attribution` names them: commit or undo them first.
+   */
+  'WORKFLOW_OWNER_WORK_UNCOMMITTED',
+  /**
    * Agent step execution cannot start or continue now; `details.agent` is the unavailable agent option with its
    * reason (the projection's `agent`, or `agentAttempt.continue`), so the form can explain it.
    */
@@ -683,7 +689,9 @@ export type WorkflowError = Static<typeof WorkflowErrorSchema>;
 /**
  * Agent step execution (D12, D18): an agent attempt of the step the owner was shown. Without `expected.attempt`
  * a new attempt of `expected.step`; with it (Continue) a new Turn of that active agent attempt in
- * its own Session. `provider`, `model` and `effort` choose the agent of a fresh Session only (the
+ * its own Session. With `expected.handOver` (Hand to agent, `actions.handToAgent`), `expected.attempt`
+ * is the owner's active attempt: it ends handed to the agent and the agent's next attempt of the
+ * step starts, like a new attempt (a fresh Session unless the step continues one). `provider`, `model` and `effort` choose the agent of a fresh Session only (the
  * projection's `agent.launch` is the default); a continued Session keeps its own, and naming them
  * then is refused. `message` is the owner's note to the agent, after the brief. The actor is the
  * authenticated caller; the agent's actor comes from the Session, never from the body.
@@ -693,7 +701,11 @@ export const AgentStepExecutionRequestSchema = Type.Object(
     /** The idempotency key of this request: a repeat returns the same attempt and Turn. */
     requestId: RequestIdSchema,
     expected: Type.Object(
-      { step: StepId, attempt: Type.Optional(Type.Integer({ minimum: 1 })) },
+      {
+        step: StepId,
+        attempt: Type.Optional(Type.Integer({ minimum: 1 })),
+        handOver: Type.Optional(Type.Literal(true)),
+      },
       { additionalProperties: false },
     ),
     provider: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
@@ -747,12 +759,17 @@ export type StopAgentStepExecutionResult = Static<typeof StopAgentStepExecutionR
  * `GET .../workflow/agent-execution/check`: whether an agent can run the step now, with every reason
  * the start would refuse with, the checkout's baseline included (explain before action: the dialog
  * calls it when it opens). `position` is what a start would work on: the next step (a new attempt),
- * or the active agent attempt (Continue, with `attempt`).
+ * the active agent attempt (Continue, with `attempt`), or the owner's active attempt the agent would
+ * be handed (Hand to agent, with `attempt` and `handOver`); send it back as `expected`.
  */
 export const AgentStepExecutionCheckSchema = Type.Object(
   {
     position: Type.Object(
-      { step: StepId, attempt: Type.Optional(Type.Integer({ minimum: 1 })) },
+      {
+        step: StepId,
+        attempt: Type.Optional(Type.Integer({ minimum: 1 })),
+        handOver: Type.Optional(Type.Literal(true)),
+      },
       { additionalProperties: false },
     ),
     agent: AgentOptionSchema,
@@ -813,6 +830,8 @@ const AttemptOutcomeSchema = Type.Union([
 
 export const AGENT_ATTEMPT_EVENT_KINDS = [
   'started',
+  /** The attempt started when the owner handed their attempt of the step to the agent. */
+  'handed-over',
   'turn-started',
   'turn-ended',
   'proposal-refused',
@@ -841,6 +860,8 @@ export const AgentAttemptHistorySchema = Type.Object({
   turns: Type.Integer({ minimum: 0 }),
   ended: literals(['active', 'finished', 'returned', 'taken-over', 'abandoned'] as const),
   takenOverBy: Type.Optional(Type.Object({ attempt: Type.Integer({ minimum: 1 }) })),
+  /** The owner's attempt that handed the step to the agent (Hand to agent). */
+  handedOverFrom: Type.Optional(Type.Object({ attempt: Type.Integer({ minimum: 1 }) })),
   returnRequest: Type.Optional(
     Type.Object({
       to: Type.String(),

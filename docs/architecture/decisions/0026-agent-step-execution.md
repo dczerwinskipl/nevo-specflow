@@ -284,6 +284,19 @@ declared code changes stay uncommitted until the owner commits them, listed by C
 Return that lands after a Turn was bound but before its claim was admitted refuses that Turn's
 admission. A late proposal of a returned or taken-over attempt is `WORKFLOW_ATTEMPT_MISMATCH`.
 
+**Hand to agent** (owner decision 2026-11-24) is the reverse, a separate owner action rather than a
+Return or Restart with a reason: from the owner's own active attempt of a step whose executors
+include `agent`, it ends that attempt with the core `take-over` (outcome `taken-over`) and starts the
+agent's next attempt of the same step in the same change. It is the agent start itself
+(`startAgentAttempt` with `expected.handOver`, the Runtime's `agent-execution` route): the same
+preconditions (no attempt commit waits, the project not held, the provider's pre-attempt
+validation, the owner's workflow state committed first by the owner's commit) and the same journal
+and Turn binding. The owner's own work is never handed over: before anything is written or
+committed, anything uncommitted in the checkout besides the owner's workflow state of the
+Specification refuses `WORKFLOW_OWNER_WORK_UNCOMMITTED` with the paths, since the agent's attempt
+commit would otherwise take it as the agent's work. The owner commits or undoes it first. No reason
+is asked; the owner's note to the agent is optional, as for Run with agent.
+
 ### D20 — Permission allowlist
 
 An agent attempt Turn starts with the archetype's per-provider `permissions.allow`, else the

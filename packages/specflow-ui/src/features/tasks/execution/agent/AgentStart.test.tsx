@@ -14,7 +14,7 @@ import type { WorkflowExecutionApi } from '../api';
 import { SPEC, TASK, taskWorkflowProjection } from '../projections.stories-support';
 import { refusal } from '../ProjectWorkflowExecution.stories-support';
 import { ApiError } from '../../../../api';
-import { agentOptions } from './agentStart.stories-support';
+import { agentOptions, ownerWorkOption } from './agentStart.stories-support';
 import { WorkflowNow } from '../WorkflowNow';
 
 afterEach(cleanup);
@@ -29,6 +29,7 @@ function renderNow(
   projected: AgentOption,
   api: Pick<WorkflowExecutionApi, 'checkAgentExecution' | 'startAgentExecution'>,
   claudeReady = true,
+  scenario: 'ready-agent' | 'hand-agent' = 'ready-agent',
 ) {
   stubLayoutApis();
   const defaults = createSpecFlowAppServices();
@@ -72,7 +73,7 @@ function renderNow(
         <LocalizationProvider instance={createSpecFlowI18n('en')}>
           <WorkflowNow
             subject={{ specId: SPEC, taskId: TASK }}
-            projection={taskWorkflowProjection('ready-agent', { agent: projected })}
+            projection={taskWorkflowProjection(scenario, { agent: projected })}
             headingId="now"
             links={{}}
             artifactOptions={[]}
@@ -390,5 +391,69 @@ describe('Run with agent dialog', () => {
     expect(within(alert).getByText('SpecFlow could not check the agent')).toBeTruthy();
     expect(within(alert).getByRole('button', { name: 'Check again' })).toBeTruthy();
     expect((footerOf(dialog)[1] as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe('Hand to agent', () => {
+  const handCheck = (agent: AgentOption): AgentStepExecutionCheck => ({
+    position: { step: 'implement', attempt: 2, handOver: true },
+    agent,
+  });
+  const renderHand = (
+    projected: AgentOption,
+    api: Pick<WorkflowExecutionApi, 'checkAgentExecution' | 'startAgentExecution'>,
+  ) => renderNow(projected, api, true, 'hand-agent');
+
+  it("is the secondary beside Finish step on the owner's attempt, and the who-acts line says so", () => {
+    renderHand(agentOptions.fresh, { checkAgentExecution: never, startAgentExecution: never });
+
+    const actions = screen
+      .getAllByRole('button')
+      .map((button) => button.textContent)
+      .filter((label) => label === 'Finish step' || label === 'Hand to agent');
+    expect(actions).toEqual(['Finish step', 'Hand to agent']);
+    expect(screen.getByText(/or hand it to the agent to go on/)).toBeTruthy();
+  });
+
+  it("ends the owner's attempt it was opened for and starts the agent's", async () => {
+    const startAgent = vi.fn(never);
+    renderHand(agentOptions.fresh, {
+      checkAgentExecution: () => Promise.resolve(handCheck(agentOptions.fresh)),
+      startAgentExecution: startAgent,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hand to agent' }));
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() => expect(within(dialog).queryByText(/Checking whether/)).toBeNull());
+    expect(within(dialog).getByText('Hand to agent: Implementation')).toBeTruthy();
+    expect(within(dialog).getByText(/Your attempt 2 of this step/)).toBeTruthy();
+    expect(footerOf(dialog).map((button) => button.textContent)).toEqual([
+      'Cancel',
+      'Hand to agent',
+    ]);
+    await within(dialog).findByRole('radio', { name: /Claude/ });
+
+    fireEvent.click(footerOf(dialog)[1]!);
+    await waitFor(() => expect(startAgent).toHaveBeenCalledTimes(1));
+    const body = (startAgent.mock.calls[0] as unknown as [unknown, Record<string, unknown>])[1];
+    expect(body).toMatchObject({
+      expected: { step: 'implement', attempt: 2, handOver: true },
+      provider: 'claude',
+    });
+  });
+
+  it("names the owner's uncommitted work before anything is sent", async () => {
+    const startAgent = vi.fn(never);
+    renderHand(agentOptions.fresh, {
+      checkAgentExecution: () => Promise.resolve(handCheck(ownerWorkOption)),
+      startAgentExecution: startAgent,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hand to agent' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByText('Commit or undo your changes first')).toBeTruthy();
+    expect(within(dialog).getByText('src/auth/refresh.ts')).toBeTruthy();
+    expect((footerOf(dialog)[1] as HTMLButtonElement).disabled).toBe(true);
+    expect(startAgent).not.toHaveBeenCalled();
   });
 });

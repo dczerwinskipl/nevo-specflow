@@ -147,6 +147,7 @@ export const RUNTIME_AGENT_UNAVAILABLE_REASONS = [
   'provider-not-ready',
   'dirty-baseline',
   'baseline-changed',
+  'owner-work-uncommitted',
   'project-busy',
   'demo',
 ] as const;
@@ -185,7 +186,7 @@ export type AgentOption =
       readonly reason: AgentUnavailableReason;
       /** Runtime reasons: what precisely blocks it (the provider's readiness, the holder). */
       readonly detail?: string;
-      /** `dirty-baseline`, `baseline-changed`: the first paths of `count`. */
+      /** `dirty-baseline`, `baseline-changed`, `owner-work-uncommitted`: the first paths of `count`. */
       readonly paths?: readonly string[];
       readonly count?: number;
       /** The launch once the blocker is resolved (a Runtime reason over a resolved launch). */
@@ -314,8 +315,10 @@ export type ActionPosition =
         readonly number: number;
         readonly startedAt: string;
         readonly actor: WorkflowActor;
-        /** The attempt started by taking over the step's previous attempt (Take over, F17). */
+        /** The owner's attempt started by taking over the step's previous agent attempt (Take over, F17). */
         readonly takenOverFrom?: { readonly attempt: number };
+        /** The agent's attempt started by the owner handing their attempt to it (Hand to agent). */
+        readonly handedOverFrom?: { readonly attempt: number };
       };
       /**
        * What finishes the step, read for everyone whoever runs the attempt: each result with where
@@ -485,6 +488,18 @@ export interface WorkflowActions {
     readonly attempt: number;
     readonly unavailable?: AttemptCommitWait;
   };
+  /**
+   * Hand to agent: the active attempt is the owner's and the step's executors include an agent. It
+   * ends the owner's attempt and starts the agent's next attempt of the step (agent step execution,
+   * `expected.handOver`). `agent` is the agent that would run, or why none can, as for a start; the
+   * projection never reads the checkout (`baseline: unchecked`), so the owner's uncommitted work
+   * (`owner-work-uncommitted`) is known from the explicit check and the hand itself.
+   */
+  readonly handToAgent?: {
+    readonly step: string;
+    readonly attempt: number;
+    readonly agent: AgentOption;
+  };
   /** Declared returns to steps the run reached. */
   readonly return?: {
     readonly targets: readonly {
@@ -626,26 +641,31 @@ export function withAttemptCommitWait<P extends ActionProjection>(
   };
   const { actions, position } = projection;
   const held = <T extends object>(action: T): T => ({ ...action, unavailable: waiting });
+  // An available agent waits for the commit too: a start and a hand to the agent are refused.
+  const heldOption = (agent: AgentOption): AgentOption =>
+    agent.kind === 'available'
+      ? {
+          kind: 'unavailable',
+          reason: waiting.reason,
+          ...(waiting.code !== undefined ? { detail: waiting.code } : {}),
+          launch: agent.launch,
+          ...(agent.independent ? { independent: true as const } : {}),
+        }
+      : agent;
   const heldActions: WorkflowActions = {
     ...(actions.start ? { start: held(actions.start) } : {}),
     ...(actions.finish ? { finish: held(actions.finish) } : {}),
     ...(actions.confirm ? { confirm: held(actions.confirm) } : {}),
     ...(actions.reject ? { reject: held(actions.reject) } : {}),
     ...(actions.return ? { return: held(actions.return) } : {}),
+    ...(actions.handToAgent
+      ? { handToAgent: { ...actions.handToAgent, agent: heldOption(actions.handToAgent.agent) } }
+      : {}),
   };
-  const heldAgent = (next: StartableStep): StartableStep =>
-    next.agent.kind === 'available'
-      ? {
-          ...next,
-          agent: {
-            kind: 'unavailable',
-            reason: wait.reason,
-            ...(wait.code !== undefined ? { detail: wait.code } : {}),
-            launch: next.agent.launch,
-            ...(next.agent.independent ? { independent: true as const } : {}),
-          },
-        }
-      : next;
+  const heldAgent = (next: StartableStep): StartableStep => ({
+    ...next,
+    agent: heldOption(next.agent),
+  });
   const heldPosition: ActionPosition =
     position.kind === 'not-started' || position.kind === 'ready'
       ? { ...position, next: heldAgent(position.next) }
@@ -1215,6 +1235,10 @@ async function runProjection(
   }
 
   const exits = await stepExits(input, step);
+  // The attempt this one followed, when it was taken over (Take over, or Hand to agent).
+  const previous = run.attempts.find(
+    (record) => record.step === attempt.step && record.attempt === attempt.attempt - 1,
+  );
 
   return {
     ...common,
@@ -1225,18 +1249,31 @@ async function runProjection(
         number: attempt.attempt,
         startedAt: attempt.startedAt,
         actor: attempt.actor,
-        ...(run.attempts.some(
-          (record) =>
-            record.step === attempt.step &&
-            record.attempt === attempt.attempt - 1 &&
-            record.outcome?.kind === 'taken-over',
-        )
-          ? { takenOverFrom: { attempt: attempt.attempt - 1 } }
+        ...(previous?.outcome?.kind === 'taken-over'
+          ? attempt.actor.class === 'human'
+            ? { takenOverFrom: { attempt: previous.attempt } }
+            : { handedOverFrom: { attempt: previous.attempt } }
           : {}),
       },
       exits,
     },
     actions: {
+      // Hand to agent: only from the owner's attempt of a step an agent may do.
+      ...(attempt.actor.class === 'human' && step.executors.includes('agent')
+        ? {
+            handToAgent: {
+              step: step.id,
+              attempt: attempt.attempt,
+              agent: agentOptionOf(
+                resolveContinuation({
+                  next: step,
+                  archetypes: (id) => input.catalogue.archetype(id),
+                }),
+                input.catalogue,
+              ),
+            },
+          }
+        : {}),
       // A person never finishes an agent's attempt (the core refuses it).
       ...(attempt.actor.class === 'human'
         ? {

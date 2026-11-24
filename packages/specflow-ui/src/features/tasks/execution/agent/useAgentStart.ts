@@ -30,9 +30,15 @@ function sameChoice(request: AgentStepExecutionRequest, choice: AgentChoice): bo
 /**
  * Run with agent for one subject: the check the dialog reads when it opens (the Runtime's answer
  * about the checkout and the agent, never cached) and the start. A refusal refreshes the subject too:
- * it usually means the position moved.
+ * it usually means the position moved. `handOver` (Hand to agent): the owner's attempt the start
+ * ends; the agent's next attempt of the step starts.
  */
-export function useAgentStart(subject: WorkflowSubjectRef, stepId: string, open: boolean) {
+export function useAgentStart(
+  subject: WorkflowSubjectRef,
+  stepId: string,
+  open: boolean,
+  handOver?: { readonly attempt: number },
+) {
   const { workflowExecutionApi } = useAppServices();
   const queryClient = useQueryClient();
   const { specId, taskId } = subject;
@@ -78,10 +84,12 @@ export function useAgentStart(subject: WorkflowSubjectRef, stepId: string, open:
         const reread = await check.refetch({ throwOnError: true });
         lost.current = undefined;
         position = reread.data?.position;
+        // A new attempt (a start, or a hand to the agent) that was made shows as the agent's attempt.
         if (
-          earlier.expected.attempt === undefined &&
+          (earlier.expected.attempt === undefined || earlier.expected.handOver === true) &&
           position?.step === stepId &&
-          position.attempt !== undefined
+          position.attempt !== undefined &&
+          position.handOver !== true
         ) {
           return { kind: 'earlier-attempt' };
         }
@@ -91,9 +99,12 @@ export function useAgentStart(subject: WorkflowSubjectRef, stepId: string, open:
         requestId: newId(),
         expected: {
           step: stepId,
-          ...(position?.step === stepId && position.attempt !== undefined
-            ? { attempt: position.attempt }
-            : {}),
+          // Hand to agent names the owner's attempt it was opened for; a moved run is refused.
+          ...(handOver
+            ? { attempt: handOver.attempt, handOver: true as const }
+            : position?.step === stepId && position.attempt !== undefined
+              ? { attempt: position.attempt }
+              : {}),
         },
         ...choice,
       };

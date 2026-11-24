@@ -26,6 +26,18 @@ export function stepOfAgentCase(agentCase: AgentCase): { id: string; title: stri
 export type AgentCase =
   'fresh' | 'reuse' | 'independent' | 'dirty' | 'no-agent' | 'provider-not-ready' | 'session-gone';
 
+/**
+ * Hand to agent from the owner's own attempt while the owner's changes are not committed: the check
+ * names them (the projection, which reads no Git, offers the fresh agent).
+ */
+export const ownerWorkOption: AgentOption = {
+  kind: 'unavailable',
+  reason: 'owner-work-uncommitted',
+  paths: ['src/auth/refresh.ts', 'src/auth/refresh.test.ts'],
+  count: 2,
+  launch: fresh,
+};
+
 export const agentOptions: Record<AgentCase, AgentOption> = {
   fresh: { kind: 'available', launch: fresh, baseline: 'unchecked' },
   reuse: {

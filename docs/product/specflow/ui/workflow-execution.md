@@ -591,6 +591,30 @@ The attempt is finished and committed before the owner decides.
   longer exists").
 - Then Now is a person's attempt: "Attempt 3 · in progress since <time> · started by you · taken
   over from the agent", with Finish step.
+
+### Hand to agent
+
+- On the owner's own attempt of a step whose executors include an agent (after Start step or Take
+  over), the action row holds **Finish step** (main) and **Hand to agent** (Polish "Przekaż
+  agentowi", the one secondary, `bot` icon). When the row already has another secondary (an unmet
+  gate's fix beside Finish step), Hand to agent is in the ⋯ menu instead: never three buttons. A step
+  the agent does not do never offers it.
+- The who-acts line says it: "You are doing this step: do the work and finish it, or hand it to the
+  agent to go on." (after Take over: "… do the rest yourself and finish it, or hand it back to the
+  agent in a new attempt.").
+- It opens the Run with agent dialog with its own words: "Hand to agent: <step>", "Your attempt N of
+  this step ends here, and the agent goes on with the step in a new attempt: …", the primary **Hand
+  to agent** ("Handing over…"). Everything else is Run with agent's: the check when it opens, the
+  blockers, the Session and the commit note. No reason is asked.
+- **Commit or undo your changes first**: the checkout has uncommitted changes besides SpecFlow's own
+  workflow state (the owner's work in the step, a document not committed yet). The agent's attempt
+  would count them as its own work, so they are named before anything is sent (five paths, then "and
+  N more", the checkout's folder with **Copy path**), "Commit your work, or undo what you do not
+  need, then check again. The agent then goes on from what you committed.", and the primary is
+  disabled.
+- After the hand, Now is the agent's attempt as for Run with agent. The Task history shows the
+  owner's attempt with the line "Handed to the agent"; the agent's attempt lists "Handed to the
+  agent" as its first event instead of "Started".
 - **Task history** and the Specification's **Activity history** show the agent's attempt as an
   ordinary entry (step, result line) with the quiet line "<start> – <end> · <provider> · <model> ·
   Attempt N" and, above it, the agent's detail: how it ended when the entry's own result does not
@@ -599,7 +623,7 @@ The attempt is finished and committed before the owner decides.
   ("Its work:", or "Its work, kept and not committed:" for an attempt that did not finish):
   Documents (links), Tasks (drafts as links, or none), Files (the changed paths), the commit note
   (committed, or failed with **Retry commit**) and its Session as a link. **Show what happened** /
-  **Hide what happened** lists the attempt's events oldest first in plain words (started, the agent
+  **Hide what happened** lists the attempt's events oldest first in plain words (started or handed to the agent, the agent
   started working, the agent stopped, result not accepted, return requested, finished with a result,
   work committed, commit failed with its reason and code, taken over, abandoned, waiting for
   confirmation, result confirmed, result rejected).

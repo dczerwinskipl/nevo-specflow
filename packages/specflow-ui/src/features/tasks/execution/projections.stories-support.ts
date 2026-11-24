@@ -89,6 +89,7 @@ export type TaskWorkflowScenario =
   | 'implement-gate'
   | 'review-agent'
   | 'ready-agent'
+  | 'hand-agent'
   | 'spike-gate'
   | 'spike-gate-met';
 
@@ -154,6 +155,32 @@ function taskFixture(
   const subject = { kind: 'task' as const, specId: SPEC, taskId: TASK };
   if (scenario === 'ready-agent') {
     return readyForAgent(options.agent ?? unavailable('provider-not-chosen'));
+  }
+
+  if (scenario === 'hand-agent') {
+    // The owner's own rework attempt of a step an agent may do: Hand to agent is offered.
+    const rework = taskFixture('rework', options);
+    const position = rework.position as Omit<ActivePosition, 'exits'>;
+
+    return {
+      ...rework,
+      // The viewer's own attempt (the trusted local owner), so Now says "you".
+      position: {
+        ...position,
+        attempt: {
+          ...position.attempt,
+          actor: { class: 'human', details: { actorId: 'runtime:trusted-local', trust: 'local' } },
+        },
+      },
+      actions: {
+        ...rework.actions,
+        handToAgent: {
+          step: 'implement',
+          attempt: 2,
+          agent: options.agent ?? unavailable('provider-not-chosen'),
+        },
+      },
+    };
   }
 
   if (scenario === 'review-agent') {

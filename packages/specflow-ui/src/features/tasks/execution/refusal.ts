@@ -34,7 +34,10 @@ export interface WorkflowRefusal {
   readonly openTasks: readonly OpenTask[];
   /** `WORKFLOW_AGENT_UNAVAILABLE`: why an agent cannot do the step now (`details.agent`). */
   readonly agent?: AgentOption;
-  /** `WORKFLOW_DIRTY_BASELINE`: the changes SpecFlow cannot attribute (`details.attribution`). */
+  /**
+   * `WORKFLOW_DIRTY_BASELINE`: the changes SpecFlow cannot attribute; `WORKFLOW_OWNER_WORK_UNCOMMITTED`:
+   * the owner's uncommitted work a hand to the agent would give away (`details.attribution`).
+   */
   readonly attribution?: NonNullable<Details['attribution']>;
   /** The answer was lost: the request may have been applied. */
   readonly outcomeUnknown: boolean;
@@ -103,6 +106,7 @@ export function workflowRefusalKey(refusal: WorkflowRefusal) {
       return 'workflowExecution.refusal.attemptCommitRequired';
     case 'WORKFLOW_AGENT_UNAVAILABLE':
     case 'WORKFLOW_BASELINE_CHANGED':
+    case 'WORKFLOW_OWNER_WORK_UNCOMMITTED':
       return 'workflowExecution.refusal.agentUnavailable';
     case 'WORKFLOW_GATE_UNSATISFIED':
       return 'workflowExecution.refusal.gateUnsatisfied';

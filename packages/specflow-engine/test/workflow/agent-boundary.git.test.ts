@@ -9,6 +9,7 @@ import {
   assertBaselineUnchanged,
   assertCleanBaseline,
   assertFinishAttribution,
+  assertNoOwnerWork,
   type AttributionFacts,
   type EngineWriteFact,
 } from '../../src/workflow/agent/boundary/attribution';
@@ -231,6 +232,28 @@ describe('agent attempt attribution on a Git checkout', () => {
         code: 'WORKFLOW_UNDECLARED_CHANGES',
         attribution: { paths: [], count: 0, incomplete: true },
       }) as Error,
+    );
+  });
+});
+
+describe('Hand to agent on a Git checkout', () => {
+  it("allows only the owner's workflow state the hand commits, and names the owner's work", async () => {
+    const state = `${SPEC}/.execution/run.yaml`;
+    await put(state, 'run: 1\n');
+    const onlyState = await facts(engineWrote({ [state]: 'run: 1\n' }));
+    expect(() => assertNoOwnerWork(onlyState, [state])).not.toThrow();
+
+    await put('src/a.ts', 'export const a = 2;\n');
+    await put(`${SPEC}/overview.md`, '# Demo, saved by the owner\n');
+    const withWork = await facts(
+      engineWrote({ [state]: 'run: 1\n', [`${SPEC}/overview.md`]: '# Demo, saved by the owner\n' }),
+    );
+
+    expect(() => assertNoOwnerWork(withWork, [state])).toThrow(
+      expect.objectContaining({
+        code: 'WORKFLOW_OWNER_WORK_UNCOMMITTED',
+        attribution: { paths: [`${SPEC}/overview.md`, 'src/a.ts'], count: 2 },
+      }),
     );
   });
 });

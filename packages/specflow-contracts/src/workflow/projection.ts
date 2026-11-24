@@ -129,6 +129,9 @@ export const PinPreviewSchema = Type.Object({
  * - `dirty-baseline`: the checkout has changes SpecFlow cannot attribute (`paths`, `count`); an agent
  *   starts only from a committed checkout;
  * - `baseline-changed`: Continue only: files changed since the agent's last Turn ended (`paths`);
+ * - `owner-work-uncommitted`: Hand to agent only: the checkout has uncommitted changes besides the
+ *   owner's workflow state (`paths`, `count`); the agent's attempt would take them as its own, so the
+ *   owner commits or undoes them first;
  * - `project-busy`: another writer (an agent Turn, a Create or Close) holds the project (`detail`);
  * - `demo`: the demo Runtime runs no agent.
  *
@@ -145,6 +148,7 @@ export const AGENT_UNAVAILABLE_REASONS = [
   'provider-not-ready',
   'dirty-baseline',
   'baseline-changed',
+  'owner-work-uncommitted',
   'project-busy',
   'demo',
   'attempt-commit-pending',
@@ -186,7 +190,10 @@ export const AgentOptionSchema = Type.Union([
     reason: literals(AGENT_UNAVAILABLE_REASONS),
     /** What precisely blocks it, in plain words (the provider's readiness, the holder). */
     detail: Type.Optional(Type.String()),
-    /** `dirty-baseline`, `baseline-changed`: the paths (the first of `count`), checkout-relative. */
+    /**
+     * `dirty-baseline`, `baseline-changed`, `owner-work-uncommitted`: the paths (the first of
+     * `count`), checkout-relative.
+     */
     paths: Type.Optional(array(Type.String())),
     count: Type.Optional(Type.Integer({ minimum: 0 })),
     /** The launch that would be used once the blocker is resolved, when one resolves. */
@@ -658,8 +665,10 @@ export const WorkflowPositionSchema = Type.Union([
       number: Type.Integer({ minimum: 1 }),
       startedAt: Type.String(),
       actor: WorkflowActorSchema,
-      /** The attempt started by taking over the step's previous (agent) attempt (Take over). */
+      /** The owner's attempt started by taking over the step's previous agent attempt (Take over). */
       takenOverFrom: Type.Optional(Type.Object({ attempt: Type.Integer({ minimum: 1 }) })),
+      /** The agent's attempt started by the owner handing their attempt to it (Hand to agent). */
+      handedOverFrom: Type.Optional(Type.Object({ attempt: Type.Integer({ minimum: 1 }) })),
     }),
     /**
      * What finishes the step, for everyone whoever runs the attempt: each result with where it
@@ -892,6 +901,19 @@ export const WorkflowActionsSchema = Type.Object({
    * exactly as for `confirm` (Reject is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` meanwhile).
    */
   reject: Type.Optional(AgentResultDecisionSchema),
+  /**
+   * Hand to agent: the active attempt is the owner's and the step's executors include an agent.
+   * `POST .../workflow/agent-execution` with `expected: { step, attempt, handOver: true }` ends the
+   * owner's attempt and starts the agent's next attempt of the step. `agent` is the agent that would
+   * run, or why none can, as for a start (`baseline: unchecked`: the owner's uncommitted work,
+   * `owner-work-uncommitted`, is answered by `GET .../agent-execution/check`).
+   */
+  handToAgent: Type.Optional(
+    Type.Object(
+      { step: StepIdSchema, attempt: Type.Integer({ minimum: 1 }), agent: AgentOptionSchema },
+      { additionalProperties: false },
+    ),
+  ),
   return: Type.Optional(
     Type.Object({
       targets: array(

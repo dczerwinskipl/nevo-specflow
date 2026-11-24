@@ -43,6 +43,7 @@ import {
   SESSION_ID,
   SESSION_TITLE,
   agentOptions,
+  ownerWorkOption,
   stepOfAgentCase,
   type AgentCase,
 } from './agent/agentStart.stories-support';
@@ -106,6 +107,12 @@ export type AttemptStoryScenario = `attempt-${AttemptCase}`;
 export type FinishedStoryScenario =
   'finished-committed' | 'finished-commit-failed' | 'finished-commit-pending';
 
+/**
+ * The owner's own rework attempt of Implementation, which they hand to the agent: the agent can run
+ * (`hand-fresh`), or the owner's changes are not committed (`hand-owner-work`).
+ */
+export type HandStoryScenario = 'hand-fresh' | 'hand-owner-work';
+
 /** The Task whose Implementation the owner took over from the agent, with its history. */
 export type HistoryStoryScenario = 'history-taken-over';
 
@@ -113,6 +120,7 @@ export type HistoryStoryScenario = 'history-taken-over';
 export type HoldStoryScenario = 'hold-outcome-unknown' | 'hold-working';
 
 export type WorkflowStoryScenario =
+  | HandStoryScenario
   | HistoryStoryScenario
   | HoldStoryScenario
   | FinishedStoryScenario
@@ -524,18 +532,21 @@ const projectedAgent = (agentCase: AgentCase) =>
 function services(scenario: WorkflowStoryScenario, confirmationCommit?: ConfirmationCommit) {
   const state = { version: 4, findings: false };
   const agentCase = agentCaseOf(scenario);
+  const handOver = scenario === 'hand-fresh' || scenario === 'hand-owner-work';
   const taskScenario = (): TaskWorkflowScenario =>
-    agentCase
-      ? 'ready-agent'
-      : scenario === 'history-taken-over' || scenario === 'hold-working'
-        ? 'rework'
-        : scenario === 'start-drift'
-          ? 'first-start'
-          : scenario === 'spike-gate-round-trip'
-            ? state.findings
-              ? 'spike-gate-met'
-              : 'spike-gate'
-            : (scenario as TaskWorkflowScenario);
+    handOver
+      ? 'hand-agent'
+      : agentCase
+        ? 'ready-agent'
+        : scenario === 'history-taken-over' || scenario === 'hold-working'
+          ? 'rework'
+          : scenario === 'start-drift'
+            ? 'first-start'
+            : scenario === 'spike-gate-round-trip'
+              ? state.findings
+                ? 'spike-gate-met'
+                : 'spike-gate'
+              : (scenario as TaskWorkflowScenario);
   const finished =
     scenario === 'finished-committed' ||
     scenario === 'finished-commit-failed' ||
@@ -560,6 +571,7 @@ function services(scenario: WorkflowStoryScenario, confirmationCommit?: Confirma
           : taskWorkflowProjection(taskScenario(), {
               version: state.version,
               ...(agentCase ? { agent: projectedAgent(agentCase) } : {}),
+              ...(handOver ? { agent: agentOptions.fresh } : {}),
             });
   const authoring = authoringApi('started');
   const workflowExecutionApi: WorkflowExecutionApi = {
@@ -579,12 +591,17 @@ function services(scenario: WorkflowStoryScenario, confirmationCommit?: Confirma
     abandon: never,
     // The check reads the checkout too, so a dirty one shows up here and not in the projection.
     checkAgentExecution: () =>
-      agentCase
+      handOver
         ? Promise.resolve({
-            position: { step: stepOfAgentCase(agentCase).id },
-            agent: agentOptions[agentCase],
+            position: { step: 'implement', attempt: 2, handOver: true as const },
+            agent: scenario === 'hand-owner-work' ? ownerWorkOption : agentOptions.fresh,
           })
-        : never(),
+        : agentCase
+          ? Promise.resolve({
+              position: { step: stepOfAgentCase(agentCase).id },
+              agent: agentOptions[agentCase],
+            })
+          : never(),
     startAgentExecution: () =>
       scenario === 'agent-refused'
         ? Promise.reject(
@@ -840,6 +857,7 @@ async function specificationWorkspace(
   // Run with agent reads the branch the commit lands on and the title of the Session it continues.
   const base: SpecificationWorkspaceResponse =
     agentCaseOf(scenario) ||
+    scenario.startsWith('hand-') ||
     scenario.startsWith('attempt-') ||
     scenario.startsWith('finished-') ||
     scenario.startsWith('hold-') ||

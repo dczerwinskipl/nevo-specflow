@@ -138,7 +138,7 @@ export function WorkflowNow({
   const agentNow = useAgentAttemptNow({ subject, projection, links, headingId });
   const finish = actions.finish;
   const attemptKey = finish ? attemptKeyOf(finish) : '';
-  const [dialog, setDialog] = useState<'start' | 'finish' | 'return' | 'agent'>();
+  const [dialog, setDialog] = useState<'start' | 'finish' | 'return' | 'agent' | 'hand'>();
   // The attempt the Finish dialog was opened for. When the projection moves on (the finish was
   // recorded although its answer was lost, or someone else finished it), the dialog closes and
   // never offers a retry for an attempt nobody worked on.
@@ -378,6 +378,24 @@ export function WorkflowNow({
       </Button>
     ) : undefined;
   const finishIsSecondary = secondary?.kind === 'finish';
+  // Hand to agent: from the owner's own attempt of a step an agent may do. An unavailable agent
+  // stays offered; its dialog explains why before anything is sent. It is the row's one secondary,
+  // or a ⋯ operation when the row has another secondary already (never three buttons).
+  const hand =
+    actions.handToAgent && offersAgent(actions.handToAgent.agent) ? actions.handToAgent : undefined;
+  const handInRow =
+    hand !== undefined && secondaryButton === undefined && primaryAction === undefined;
+  const handButton = handInRow ? (
+    <Button
+      key="hand-to-agent"
+      variant="secondary"
+      leadingIcon={Bot}
+      onClick={() => setDialog('hand')}
+      disabled={busy}
+    >
+      {t('workflowExecution.now.handToAgent')}
+    </Button>
+  ) : undefined;
 
   const offeredActions =
     (waitAttempt ? (
@@ -419,14 +437,14 @@ export function WorkflowNow({
         <Button key="finish" onClick={openFinish} disabled={busy}>
           {t('workflowExecution.now.finish')}
         </Button>
-        {secondaryButton}
+        {secondaryButton ?? handButton}
       </>
     ) : mainGateAction ? (
       <>
         <Button key="gate" onClick={mainGateAction.onSelect}>
           {mainGateAction.label}
         </Button>
-        {secondaryButton}
+        {secondaryButton ?? handButton}
         {quietNewTask}
       </>
     ) : plan.newTask === 'primary' && onNewTask ? (
@@ -461,6 +479,16 @@ export function WorkflowNow({
   const menu = (
     <NowOperationsMenu
       operations={[
+        ...(hand && !handInRow
+          ? [
+              {
+                id: 'hand-to-agent',
+                label: t('workflowExecution.now.handToAgent'),
+                onSelect: () => setDialog('hand'),
+                disabled: busy,
+              },
+            ]
+          : []),
         ...(actions.return
           ? [
               {
@@ -544,8 +572,12 @@ export function WorkflowNow({
     : actorName !== t('workflowExecution.actor.you')
       ? t('workflowExecution.now.personActs', { actor: actorName })
       : position.kind === 'active' && position.attempt.takenOverFrom
-        ? t('workflowExecution.now.youActTakenOver')
-        : t('workflowExecution.now.youAct');
+        ? t(
+            hand
+              ? 'workflowExecution.now.youActTakenOverCanHand'
+              : 'workflowExecution.now.youActTakenOver',
+          )
+        : t(hand ? 'workflowExecution.now.youActCanHand' : 'workflowExecution.now.youAct');
   const note = (
     <>
       {whoActs ? (
@@ -672,6 +704,16 @@ export function WorkflowNow({
           subject={subject}
           step={{ id: next.step.id, title: next.step.title }}
           archetype={next.agent.launch?.archetype}
+          open
+          onOpenChange={(open) => !open && setDialog(undefined)}
+        />
+      ) : null}
+      {hand && step && dialog === 'hand' ? (
+        <AgentStartDialog
+          subject={subject}
+          step={{ id: step.id, title: step.title }}
+          archetype={hand.agent.launch?.archetype}
+          handOver={{ attempt: hand.attempt }}
           open
           onOpenChange={(open) => !open && setDialog(undefined)}
         />

@@ -109,6 +109,15 @@ export interface AgentBrief {
   readonly text: string;
 }
 
+/** The baseline refusals of a Turn's start, as the agent option's reason. */
+const BASELINE_REASONS: Partial<
+  Record<string, NonNullable<AgentRuntimeFacts['baseline']>['reason']>
+> = {
+  WORKFLOW_DIRTY_BASELINE: 'dirty-baseline',
+  WORKFLOW_BASELINE_CHANGED: 'baseline-changed',
+  WORKFLOW_OWNER_WORK_UNCOMMITTED: 'owner-work-uncommitted',
+};
+
 /** The production port over an opened Engine. */
 export function createAgentStepEngine(dependencies: {
   readonly engine: SpecFlowEngine;
@@ -208,13 +217,11 @@ export function createAgentStepEngine(dependencies: {
 
         return undefined;
       } catch (error) {
-        if (
-          error instanceof AttributionRefusalError &&
-          (error.code === 'WORKFLOW_DIRTY_BASELINE' || error.code === 'WORKFLOW_BASELINE_CHANGED')
-        ) {
+        const reason =
+          error instanceof AttributionRefusalError ? BASELINE_REASONS[error.code] : undefined;
+        if (error instanceof AttributionRefusalError && reason !== undefined) {
           return {
-            reason:
-              error.code === 'WORKFLOW_DIRTY_BASELINE' ? 'dirty-baseline' : 'baseline-changed',
+            reason,
             paths: [...error.attribution.paths],
             count: error.attribution.count,
           };

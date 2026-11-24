@@ -13,9 +13,12 @@ export interface AgentRuntimeFacts {
   readonly provider?: { readonly ready: boolean; readonly detail?: string };
   /** Another writer holds the project (an unsettled agent Turn, a Create or Close). */
   readonly busy?: { readonly detail: string };
-  /** The checkout's baseline refuses the Turn, with the paths it names. */
+  /**
+   * The checkout's baseline refuses the Turn, with the paths it names (`owner-work-uncommitted`:
+   * Hand to agent, the owner's uncommitted work).
+   */
   readonly baseline?: {
-    readonly reason: 'dirty-baseline' | 'baseline-changed';
+    readonly reason: 'dirty-baseline' | 'baseline-changed' | 'owner-work-uncommitted';
     readonly paths: readonly string[];
     readonly count: number;
   };

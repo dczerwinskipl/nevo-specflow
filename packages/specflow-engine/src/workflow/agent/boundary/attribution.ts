@@ -77,6 +77,7 @@ type AttributionCode = Extract<
   | 'WORKFLOW_ENGINE_FILE_EDITED'
   | 'WORKFLOW_UNDECLARED_CHANGES'
   | 'WORKFLOW_NESTED_REPOSITORY'
+  | 'WORKFLOW_OWNER_WORK_UNCOMMITTED'
 >;
 
 /** An attribution refusal: what it refuses is in `code`, the paths in `attribution`. */
@@ -143,6 +144,38 @@ export function assertCleanBaseline(facts: AttributionFacts): void {
       `The checkout has ${String(foreign.length)} uncommitted change(s) SpecFlow cannot attribute: ` +
         `${listed(foreign)}. Commit or revert them, then ask the agent again.`,
       details(foreign),
+    );
+  }
+}
+
+/**
+ * Hand to agent: the owner's attempt ends and the agent's starts from the checkout as it is, so
+ * nothing uncommitted may be there but the owner's workflow state of the Specification
+ * (`ownerState`), which the hand commits first. Anything else dirty (a file the owner changed in the
+ * step, a document they saved without its commit, what an earlier attempt left) would be taken by
+ * the agent's attempt commit as the agent's work, or lost from the owner's attempt: refused
+ * `WORKFLOW_OWNER_WORK_UNCOMMITTED`, naming the paths, before anything is written. Facts that cannot
+ * be read in full refuse too.
+ */
+export function assertNoOwnerWork(facts: AttributionFacts, ownerState: readonly string[]): void {
+  const remedy =
+    'Commit your work (or undo it), then hand the step to the agent; the agent then starts from it.';
+  if (facts.incomplete) {
+    throw new AttributionRefusalError(
+      'WORKFLOW_OWNER_WORK_UNCOMMITTED',
+      `${CANNOT_READ} ${remedy}`,
+      INCOMPLETE,
+    );
+  }
+
+  const committedByHand = new Set(ownerState);
+  const work = facts.paths.map((fact) => fact.path).filter((path) => !committedByHand.has(path));
+  if (work.length > 0) {
+    throw new AttributionRefusalError(
+      'WORKFLOW_OWNER_WORK_UNCOMMITTED',
+      `The checkout has ${String(work.length)} uncommitted change(s): ${listed(work)}. The agent's ` +
+        `attempt would take them as its own work. ${remedy}`,
+      details(work),
     );
   }
 }

@@ -264,12 +264,27 @@ written; nothing else applies. The attempt commit runs now, as for a finished at
   code changes stay uncommitted until the owner commits them, and Close lists them.
 - A Take over or Return that lands after a Turn was bound but before its claim was admitted refuses
   that Turn's admission (`WORKFLOW_ATTEMPT_MISMATCH`): it never runs.
+- **Hand to agent** (ADR 0026 D19): the owner's active attempt of a step whose executors include
+  `agent` exposes `actions.handToAgent` (`step`, `attempt`, and the agent option as for a start; the
+  projection never reads the checkout). `startAgentAttempt` with `expected: { step, attempt,
+handOver: true }` (Runtime: `POST .../workflow/agent-execution`; `GET .../agent-execution/check`
+  answers its position with `handOver`) is a new agent attempt: the core `take-over` ends the owner's
+  attempt `taken-over` and activates attempt n+1 for the agent with its binding, in one change
+  (summary `hand step <step> to an agent (attempt n → n+1)`); the Task's readiness, context and entry
+  gates are not judged again. Its checks are a start's (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`, the
+  project hold, the provider's validation) plus `admitAgentTurn`'s owner-work check, run in the
+  start's probe before the owner's commit: every dirty path but the owner's workflow state
+  (`ownerWorkflowState`) refuses `WORKFLOW_OWNER_WORK_UNCOMMITTED` (attribution paths; Runtime
+  reason `owner-work-uncommitted`), so a refused hand commits and writes nothing. The new attempt's
+  position carries `handedOverFrom`; its history detail `handedOverFrom` and its first event
+  `handed-over` instead of `started`. The CLI has no command: an agent attempt needs the Runtime's
+  Sessions.
 
 ### History
 
 `readWorkflowHistory` (route `GET .../workflow/history`) lists every attempt and return of the
 subject's run, newest first (at most 200), and for an agent attempt its provider, Session, Turns,
-how it ended, the proposal and return request, its step events (`started`, `turn-started`,
+how it ended, the proposal and return request, its step events (`started` or `handed-over`, `turn-started`,
 `turn-ended`, `proposal-refused`, `return-requested`, `returned`, `finished`, `committed`,
 `commit-failed`, `taken-over`, `abandoned`, `awaiting-confirmation`, `confirmed`, `rejected`) and
 the work it left (`readAgentAttemptWork`: uncommitted SpecFlow files only it wrote and those mixed

@@ -32,9 +32,16 @@ export const NO_AGENT_REASONS = [
   'model-missing',
 ] as const;
 
+/** The refusals whose attribution is the agent option's blocker (the paths it names). */
+const ATTRIBUTION_REASONS = {
+  WORKFLOW_DIRTY_BASELINE: 'dirty-baseline',
+  WORKFLOW_OWNER_WORK_UNCOMMITTED: 'owner-work-uncommitted',
+} as const satisfies Record<string, UnavailableAgent['reason']>;
+
 /**
  * The agent option a refused start leaves the dialog with: the refusal's own (`details.agent`), or
- * the dirty checkout its attribution names. Another refusal says nothing about the agent.
+ * the uncommitted changes its attribution names (a dirty checkout, or the owner's work a hand to the
+ * agent would give away). Another refusal says nothing about the agent.
  */
 export function optionOfRefusal(error: unknown): AgentOption | undefined {
   const refusal = workflowRefusalOf(error);
@@ -42,10 +49,14 @@ export function optionOfRefusal(error: unknown): AgentOption | undefined {
     return refusal.agent;
   }
 
-  if (refusal.code === 'WORKFLOW_DIRTY_BASELINE' && refusal.attribution) {
+  const reason =
+    refusal.code !== undefined && refusal.code in ATTRIBUTION_REASONS
+      ? ATTRIBUTION_REASONS[refusal.code as keyof typeof ATTRIBUTION_REASONS]
+      : undefined;
+  if (reason !== undefined && refusal.attribution) {
     return {
       kind: 'unavailable',
-      reason: 'dirty-baseline',
+      reason,
       paths: refusal.attribution.paths,
       count: refusal.attribution.count,
     };

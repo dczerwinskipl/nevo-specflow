@@ -7,6 +7,7 @@ import type { AgentAttemptDependencies } from '../dependencies';
 import {
   assertBaselineUnchanged,
   assertCleanBaseline,
+  assertNoOwnerWork,
   ownerStateUncommitted,
   assertDeclaredPathsShape,
   assertFinishAttribution,
@@ -29,7 +30,10 @@ export interface AgentDeclaredChanges {
 export interface AgentTurnAdmissionInput {
   readonly subject: WorkflowSubject;
   readonly workspaceId: string;
-  /** The position the Turn works on: a new attempt of `step`, or (Continue) `step#attempt`. */
+  /**
+   * The position the Turn works on: a new attempt of `step`, (Continue) `step#attempt`, or (Hand to
+   * agent, `handOver`) a new attempt after the owner's `step#attempt`.
+   */
   readonly expected: ExpectedPosition;
 }
 
@@ -38,7 +42,9 @@ export interface AgentTurnAdmissionInput {
  * none of whose Turns settled yet, the checkout must be clean but for the Engine's own uncommitted
  * writes (`WORKFLOW_DIRTY_BASELINE`); for Continue, nothing outside them may have changed since the
  * dirty set recorded when the previous Turn settled (`WORKFLOW_BASELINE_CHANGED`; no record while Git
- * is on refuses). With Git off nothing is checked. A position that is not the active attempt is left
+ * is on refuses). For Hand to agent, nothing may be dirty but the owner's workflow state the hand
+ * commits (`WORKFLOW_OWNER_WORK_UNCOMMITTED`, `assertNoOwnerWork`), then the clean baseline as for a
+ * new attempt. With Git off nothing is checked. A position that is not the active attempt is left
  * to the start, which refuses it.
  *
  * Read-only and lock-free: `startAgentAttempt` runs it inside its section before anything is
@@ -46,7 +52,10 @@ export interface AgentTurnAdmissionInput {
  * the provider process exists.
  */
 export async function admitAgentTurn(
-  dependencies: Pick<AgentAttemptDependencies, 'boundary' | 'journal' | 'workflow'>,
+  dependencies: Pick<
+    AgentAttemptDependencies,
+    'boundary' | 'journal' | 'workflow' | 'ownerWorkflowState'
+  >,
   input: AgentTurnAdmissionInput,
 ): Promise<AttributionFacts | undefined> {
   const facts = await dependencies.boundary.facts(input.workspaceId);
@@ -54,7 +63,14 @@ export async function admitAgentTurn(
     return undefined;
   }
 
-  if (input.expected.attempt === undefined) {
+  if (input.expected.handOver === true) {
+    assertNoOwnerWork(
+      facts,
+      await dependencies.ownerWorkflowState(input.workspaceId, input.subject.specId),
+    );
+  }
+
+  if (input.expected.attempt === undefined || input.expected.handOver === true) {
     assertCleanBaseline(facts);
 
     return facts;

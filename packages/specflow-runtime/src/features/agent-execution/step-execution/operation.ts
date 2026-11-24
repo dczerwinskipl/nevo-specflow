@@ -84,6 +84,7 @@ export function requestDigestOf(request: AgentStepExecutionRequest): string {
     subject.kind === 'task' ? subject.taskId : null,
     expected.step,
     expected.attempt ?? null,
+    expected.handOver ?? null,
     request.provider ?? null,
     request.model ?? null,
     request.effort ?? null,
@@ -113,6 +114,30 @@ function nextOf(projection: ActionProjection) {
     : position.kind === 'blocked'
       ? position.next
       : undefined;
+}
+
+/**
+ * What a new attempt would work on: the next step, or (`handOver`) the owner's active attempt the
+ * agent is handed (`actions.handToAgent`), with the agent option the projection gives it.
+ */
+function newAttemptOf(
+  projection: ActionProjection,
+  handOver: boolean,
+): { readonly expected: ExpectedPosition; readonly agent: AgentOption } | undefined {
+  if (handOver) {
+    const hand = projection.actions.handToAgent;
+
+    return (
+      hand && {
+        expected: { step: hand.step, attempt: hand.attempt, handOver: true },
+        agent: hand.agent,
+      }
+    );
+  }
+
+  const next = nextOf(projection);
+
+  return next && { expected: { step: next.step.id }, agent: next.agent };
 }
 
 /** How a Continue launches: the attempt's own agent in its own Session. */
@@ -412,6 +437,19 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       return { ...projection, position: { ...position, next: { ...next, agent } } };
     }
 
+    const hand = projection.actions.handToAgent;
+    if (position.kind === 'active' && hand) {
+      // The owner's attempt: Hand to agent says which agent would run, or why none can.
+      const agent = await judged(
+        hand.agent,
+        subject,
+        { step: hand.step, attempt: hand.attempt, handOver: true },
+        false,
+      );
+
+      return { ...projection, actions: { ...projection.actions, handToAgent: { ...hand, agent } } };
+    }
+
     if (position.kind === 'active' && position.attempt.actor.class === 'agent') {
       const active = await engine.activeAttempt(subject);
 
@@ -436,10 +474,19 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     if (position.kind === 'active') {
       const active = await engine.activeAttempt(subject);
       if (!active) {
-        throw new WorkflowError(
-          'WORKFLOW_POSITION_INVALID',
-          'A person works on the active step; an agent cannot continue it.',
-        );
+        // The owner's attempt: what Hand to agent would start, the owner's own work included.
+        const hand = newAttemptOf(projection, true);
+        if (!hand) {
+          throw new WorkflowError(
+            'WORKFLOW_POSITION_INVALID',
+            'A person works on the active step, and an agent cannot do it.',
+          );
+        }
+
+        return {
+          position: hand.expected,
+          agent: await judged(hand.agent, subject, hand.expected, true),
+        };
       }
 
       return {
@@ -640,7 +687,8 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     const invocationId = derivedId(request.requestId, 'invocation');
     const turnId = derivedId(request.requestId, 'turn');
     const requestDigest = requestDigestOf(request);
-    const continuing = expected.attempt !== undefined;
+    const handOver = expected.handOver === true;
+    const continuing = expected.attempt !== undefined && !handOver;
     const active = await engine.activeAttempt(subject);
     const bound = active?.journal.turns.find((turn) => turn.invocationId === invocationId);
     if (active && bound) {
@@ -702,11 +750,16 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
         });
       }
     } else {
-      const next = nextOf(await engine.actions(subject));
-      if (next?.step.id !== expected.step) {
+      const next = newAttemptOf(await engine.actions(subject), handOver);
+      if (
+        next?.expected.step !== expected.step ||
+        (handOver && next.expected.attempt !== expected.attempt)
+      ) {
         throw new WorkflowError(
           'WORKFLOW_ATTEMPT_MISMATCH',
-          `The run is not ready to start ${expected.step}.`,
+          handOver
+            ? `You do not hold attempt ${String(expected.attempt)} of ${expected.step} any more; it cannot be handed to an agent.`
+            : `The run is not ready to start ${expected.step}.`,
         );
       }
 
@@ -726,12 +779,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       }
 
       // Judged with the agent the owner chose, the checkout's baseline included.
-      const option = await judged(
-        { ...next.agent, launch: chosen },
-        subject,
-        { step: next.step.id },
-        true,
-      );
+      const option = await judged({ ...next.agent, launch: chosen }, subject, next.expected, true);
       if (option.kind === 'unavailable') {
         unavailable(option, 'An agent cannot do this step now.');
       }

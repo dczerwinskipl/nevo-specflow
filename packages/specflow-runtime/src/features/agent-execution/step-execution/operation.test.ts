@@ -43,6 +43,24 @@ const active: ActionProjection = {
   actions: {},
 } as unknown as ActionProjection;
 
+/** The owner holds attempt 1 of the step; Hand to agent is offered. */
+const ownerHolds: ActionProjection = {
+  subject,
+  position: {
+    kind: 'active',
+    step: { id: 'breakdown', title: 'Break it down' },
+    attempt: {
+      number: 1,
+      startedAt: 't',
+      actor: { class: 'human', details: { actorId: 'owner', trust: 'local' } },
+    },
+    exits: [],
+  },
+  actions: {
+    handToAgent: { step: 'breakdown', attempt: 1, agent: { kind: 'available', launch } },
+  },
+} as unknown as ActionProjection;
+
 /**
  * A fake Engine: `start` records the attempt the way the Engine's journal does (one Turn per
  * invocation), so a retry of the same request finds it.
@@ -55,6 +73,10 @@ function fakes(
     hold?: ProjectHold;
     /** The provider's reason refusing every selection. */
     refuseSelection?: string;
+    /** What the subject's projection is before an agent attempt exists (default: ready). */
+    before?: ActionProjection;
+    /** The checkout's baseline refusal. */
+    baseline?: Awaited<ReturnType<AgentStepEngine['baseline']>>;
   } = {},
 ) {
   const created = new Set<string>();
@@ -68,20 +90,22 @@ function fakes(
   const turns = new Set<string>();
   let failTurnStart = options.failFirstTurnStart === true;
   const engine: AgentStepEngine = {
-    actions: () => Promise.resolve(attempt ? active : ready),
+    actions: () => Promise.resolve(attempt ? active : (options.before ?? ready)),
     activeAttempt: () => Promise.resolve(attempt),
     claimPhase: () => Promise.resolve('settled'),
     busyWriter: () => Promise.resolve(undefined),
     projectHold: () => Promise.resolve(options.hold),
     archetypeAllowlist: () => Promise.resolve(undefined),
     workspaceIdOf: () => Promise.resolve(WORKSPACE),
-    baseline: () => {
-      calls.push('baseline');
+    baseline: (_subject, _workspaceId, expected) => {
+      calls.push(expected.handOver ? 'baseline hand-over' : 'baseline');
 
-      return Promise.resolve(undefined);
+      return Promise.resolve(options.baseline);
     },
     start(input) {
-      calls.push(`engine.start ${input.expected.attempt === undefined ? 'new' : 'continue'}`);
+      calls.push(
+        `engine.start ${input.expected.handOver ? 'hand-over' : input.expected.attempt === undefined ? 'new' : 'continue'}`,
+      );
       if (options.refuseStart) {
         return Promise.reject(new Error('refused'));
       }
@@ -440,5 +464,68 @@ describe('agent step execution', () => {
     expect(calls.at(-1)).toBe(
       `session.cancel ${derivedId('00000000-0000-4000-8000-000000000009', 'session')} ${turnId}`,
     );
+  });
+});
+
+describe('Hand to agent', () => {
+  const hand = (requestId: string) => ({
+    subject,
+    principal: 'owner',
+    requestId,
+    expected: { step: 'breakdown', attempt: 1, handOver: true as const },
+  });
+
+  it("checks the owner's attempt and starts the agent's next attempt in a fresh Session", async () => {
+    const { calls, execution } = fakes({ before: ownerHolds });
+    const id = '00000000-0000-4000-8000-0000000000e1';
+
+    expect(await execution.check(subject)).toEqual({
+      position: { step: 'breakdown', attempt: 1, handOver: true },
+      agent: { kind: 'available', launch },
+    });
+    const result = await execution.startAgentStepExecution(hand(id));
+
+    expect(calls).toEqual([
+      'baseline hand-over',
+      'baseline hand-over',
+      'session.validate controlled m',
+      'engine.start hand-over',
+      `session.create ${derivedId(ATTEMPT, 'session-request')}`,
+      `session.start ${derivedId(id, 'session')}`,
+    ]);
+    expect(result).toMatchObject({ kind: 'started', session: 'fresh' });
+  });
+
+  it("says the owner's uncommitted work blocks it before anything starts", async () => {
+    const baseline = {
+      reason: 'owner-work-uncommitted' as const,
+      paths: ['src/a.ts'],
+      count: 1,
+    };
+    const { calls, execution } = fakes({ before: ownerHolds, baseline });
+
+    expect((await execution.check(subject)).agent).toMatchObject({
+      kind: 'unavailable',
+      reason: 'owner-work-uncommitted',
+      paths: ['src/a.ts'],
+    });
+    await expect(
+      execution.startAgentStepExecution(hand('00000000-0000-4000-8000-0000000000e2')),
+    ).rejects.toMatchObject({
+      code: 'WORKFLOW_AGENT_UNAVAILABLE',
+      option: { reason: 'owner-work-uncommitted' },
+    });
+    expect(calls).not.toContain('engine.start hand-over');
+  });
+
+  it('refuses a stale attempt', async () => {
+    const { execution } = fakes({ before: ownerHolds });
+
+    await expect(
+      execution.startAgentStepExecution({
+        ...hand('00000000-0000-4000-8000-0000000000e3'),
+        expected: { step: 'breakdown', attempt: 2, handOver: true },
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
   });
 });

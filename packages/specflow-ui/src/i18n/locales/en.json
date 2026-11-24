@@ -1701,7 +1701,7 @@
     "commandFailed": "The request was not confirmed. Retry with the same request.",
     "sending": "Sending…",
     "sendFailure": {
-      "unconfirmed": "SpecFlow did not confirm that the message arrived; it may still start. Retry sends the same message, and it will not run twice.",
+      "unconfirmed": "SpecFlow got no answer, so it does not know whether the message arrived. Retry sends the same message; it will not run twice.",
       "too-long": "The message is too long. Shorten it and send again.",
       "TURN_CONFLICT": "An agent or a specification change is writing to this project right now. Your message is kept; send it again when that work finishes.",
       "PROVIDER_UNAVAILABLE": "The agent's provider is not available right now. Your message is kept; send it again once the provider is available.",
@@ -1709,11 +1709,22 @@
       "MODEL_UNSUPPORTED": "The chosen model is not available. Pick another model and send again.",
       "CAPABILITY_UNSUPPORTED": "This Session cannot run in the chosen work mode. Pick another work mode and send again.",
       "SESSION_RECOVERY_REQUIRED": "The outcome of the last Turn must be checked first. Check it above, then send again.",
+      "SESSION_RECOVERY_REQUIRED_SESSION": "SpecFlow cannot safely continue this Session's agent conversation. Start a new Session to go on; this one stays readable.",
+      "mode-model-unsupported": "The chosen work mode does not run this model. Pick another model or work mode and send again.",
       "refused": "The message was not sent. Your message is kept; try again, or change the model or work mode."
     },
     "savedRequestUnreadable": "Saved request can't be read",
     "savedRequestUnreadableBody": "This browser kept a request that could not be read. It may already have been applied. Discarding it lets you send a new one.",
     "discardSavedRequest": "Discard saved request",
+    "unconfirmedCheck": "Check the Session",
+    "unconfirmedCheckBody": "Or check the Session: if the message arrived, SpecFlow confirms it; if not, you can edit it and send again. If it still arrives later, it shows in the conversation.",
+    "modeModelUnsupported": "{{mode}} does not run {{model}}. Pick another model or work mode to send.",
+    "notice": {
+      "source": "SpecFlow:",
+      "error": "SpecFlow error.",
+      "warning": "SpecFlow warning.",
+      "info": "SpecFlow note."
+    },
     "responseRequired": "Response required",
     "selectionCount": "Selected {{count}} of at most {{max}}.",
     "commandDirectory": "Directory relative to the workspace: {{cwd}}",
@@ -1738,14 +1749,16 @@
       "default": "Default model",
       "triggerLabel": "Model: {{value}}",
       "sectionLabel": "Model",
-      "effortSectionLabel": "Reasoning effort"
+      "effortSectionLabel": "Reasoning effort",
+      "modeUnsupported": "Not in the selected work mode"
     },
     "intent": {
       "label": "Work mode — next Turn",
       "placeholder": "Select work mode",
       "triggerLabel": "Work mode: {{value}}",
       "sectionLabel": "Work mode",
-      "unavailable": "Unavailable"
+      "unavailable": "Unavailable",
+      "modelUnsupported": "Not for the selected model"
     },
     "attach": {
       "action": "Add attachment",
@@ -2358,6 +2371,11 @@
           "more": "and {{count}} more",
           "hint": "Commit them, or undo the ones you do not need, then check again."
         },
+        "ownerWork": {
+          "title": "Commit or undo your changes first",
+          "body": "These files have changes that are not committed. If the agent took the step over now, its attempt would count them as its own work and commit them as the agent’s.",
+          "hint": "Commit your work, or undo what you do not need, then check again. The agent then goes on from what you committed."
+        },
         "noAgent": {
           "title": "No agent is chosen for {{step}}",
           "body": "{{step}} is done by the {{role}}, and the project names no agent and model for it yet, so SpecFlow cannot tell which one to start.",
@@ -2406,7 +2424,14 @@
         "loadingAgents": "Loading the agents…"
       },
       "commit": "When the agent finishes, SpecFlow commits its work on <code>{{branch}}</code> as one commit; changes of others are never included.",
-      "commitNoBranch": "When the agent finishes, SpecFlow commits its work on the specification’s branch as one commit; changes of others are never included."
+      "commitNoBranch": "When the agent finishes, SpecFlow commits its work on the specification’s branch as one commit; changes of others are never included.",
+      "hand": {
+        "title": "Hand to agent: {{step}}",
+        "descriptionTask": "Your attempt {{attempt}} of this step of {{task}} ends here, and the agent goes on with the step in a new attempt: it reads the step, its documents and context, writes what the step needs and proposes a result. Decisions that need you stay with you.",
+        "descriptionSpecification": "Your attempt {{attempt}} of this step ends here, and the agent goes on with the step in a new attempt: it reads the step, its documents and context, writes what the step needs and proposes a result. Decisions that need you stay with you.",
+        "submit": "Hand to agent",
+        "submitting": "Handing over…"
+      }
     },
     "now": {
       "heading": "Now",
@@ -2483,11 +2508,14 @@
       "technical": "{{title}} rev {{version}}",
       "openDocument": "Open {{name}}",
       "runWithAgent": "Run with agent",
+      "handToAgent": "Hand to agent",
       "readFailed": "SpecFlow could not read what can be done in this step now.",
       "readStale": "SpecFlow could not refresh this step; it shows what was read last, which may be out of date.",
       "readRetry": "Try again",
       "youAct": "You are doing this step: do the work, then finish it.",
+      "youActCanHand": "You are doing this step: do the work and finish it, or hand it to the agent to go on.",
       "youActTakenOver": "You took this step over from the agent, so it is yours now: do the rest yourself and finish it. The agent cannot take this attempt back.",
+      "youActTakenOverCanHand": "You took this step over from the agent, so it is yours now: do the rest yourself and finish it, or hand it back to the agent in a new attempt.",
       "personActs": "{{actor}} is doing this step; you can follow it here."
     },
     "blocker": {
@@ -3026,7 +3054,8 @@
         "takenOver": "Taken over",
         "abandoned": "Abandoned",
         "returned": "Returned to {{step}}",
-        "active": "The agent is working on it"
+        "active": "The agent is working on it",
+        "handedToAgent": "Handed to the agent"
       },
       "work": {
         "lead": "Its work:",
@@ -3038,6 +3067,7 @@
       },
       "event": {
         "started": "Started",
+        "handed-over": "Handed to the agent",
         "turn-started": "The agent started working",
         "turn-ended": "The agent stopped",
         "proposal-refused": "Result not accepted",

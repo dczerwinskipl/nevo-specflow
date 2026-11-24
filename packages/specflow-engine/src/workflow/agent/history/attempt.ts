@@ -16,6 +16,8 @@ export type { AgentAttemptWork };
 
 export const AGENT_ATTEMPT_EVENT_KINDS = [
   'started',
+  /** The attempt started when the owner handed their attempt of the step to the agent. */
+  'handed-over',
   'turn-started',
   'turn-ended',
   'proposal-refused',
@@ -57,6 +59,8 @@ export interface AgentAttemptHistory {
   readonly ended: 'active' | 'finished' | 'returned' | 'taken-over' | 'abandoned';
   /** The owner's attempt that took it over. */
   readonly takenOverBy?: { readonly attempt: number };
+  /** The owner's attempt that handed the step to the agent (Hand to agent), when one did. */
+  readonly handedOverFrom?: { readonly attempt: number };
   /** The owner's return during the attempt, while it waits to apply or once it was refused. */
   readonly returnRequest?: {
     readonly to: string;
@@ -118,7 +122,22 @@ export async function readAgentAttemptHistory(
       ledgers.set(binding.workspaceId, ledger);
     }
 
-    found.set(keyOf(record), agentAttemptHistoryOf(record, journal, await ledger, input));
+    // The owner's attempt before it ended taken over by this one: the owner handed the step over.
+    const previous = input.attempts.find(
+      (candidate) => candidate.step === record.step && candidate.attempt === record.attempt - 1,
+    );
+    const handedOverFrom =
+      previous?.outcome?.kind === 'taken-over' &&
+      (previous.actor as WorkflowActor | undefined)?.class === 'human'
+        ? previous.attempt
+        : undefined;
+    found.set(
+      keyOf(record),
+      agentAttemptHistoryOf(record, journal, await ledger, {
+        ...input,
+        ...(handedOverFrom !== undefined ? { handedOverFrom } : {}),
+      }),
+    );
   }
 
   return found;
@@ -129,7 +148,10 @@ export function agentAttemptHistoryOf(
   record: AttemptRecord,
   journal: AgentAttemptJournal,
   ledger: readonly LedgerEntry[],
-  input: Pick<AgentHistoryInput, 'subject' | 'manifests'>,
+  input: Pick<AgentHistoryInput, 'subject' | 'manifests'> & {
+    /** The owner's attempt that handed the step to this one (Hand to agent). */
+    readonly handedOverFrom?: number;
+  },
 ): AgentAttemptHistory {
   const outcome = record.outcome;
   const ended: AgentAttemptHistory['ended'] =
@@ -145,6 +167,9 @@ export function agentAttemptHistoryOf(
     turns: journal.turns.length,
     ended,
     ...(takeOver ? { takenOverBy: { attempt: takeOver.attempt } } : {}),
+    ...(input.handedOverFrom !== undefined
+      ? { handedOverFrom: { attempt: input.handedOverFrom } }
+      : {}),
     ...(returnRequest
       ? {
           returnRequest: {
@@ -182,13 +207,19 @@ export function agentAttemptHistoryOf(
           },
         }
       : {}),
-    events: eventsOf(record, journal),
+    events: eventsOf(record, journal, input.handedOverFrom !== undefined),
     work: workOf(record, journal, ledger, input),
   };
 }
 
-function eventsOf(record: AttemptRecord, journal: AgentAttemptJournal): AgentAttemptEvent[] {
-  const events: AgentAttemptEvent[] = [{ kind: 'started', at: record.startedAt }];
+function eventsOf(
+  record: AttemptRecord,
+  journal: AgentAttemptJournal,
+  handedOver: boolean,
+): AgentAttemptEvent[] {
+  const events: AgentAttemptEvent[] = [
+    { kind: handedOver ? 'handed-over' : 'started', at: record.startedAt },
+  ];
   journal.turns.forEach((turn, index) => {
     const number = index + 1;
     events.push({ kind: 'turn-started', at: turn.boundAt, turn: number });

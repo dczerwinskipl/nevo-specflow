@@ -80,8 +80,8 @@ export function AgentBlocker({
   let extra: ReactNode = null;
   let detail = false;
   let needsCheck = true;
-  if (option.reason === 'dirty-baseline') {
-    key = 'dirty';
+  if (option.reason === 'dirty-baseline' || option.reason === 'owner-work-uncommitted') {
+    key = option.reason === 'dirty-baseline' ? 'dirty' : 'ownerWork';
     extra = (
       <>
         <Paths option={option} />

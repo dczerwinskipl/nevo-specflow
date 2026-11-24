@@ -78,6 +78,13 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_UNDECLARED_CHANGES',
   /** An untracked Git repository inside the attempt's checkout: nothing in it can be attributed. */
   'WORKFLOW_NESTED_REPOSITORY',
+  /**
+   * Hand to agent: the checkout has uncommitted changes besides the owner's workflow state the hand
+   * commits (the owner's own work in the step, or what an earlier attempt left), thrown as
+   * `AttributionRefusalError` naming them. The agent's attempt would take them as its own, so the
+   * owner commits or undoes them first.
+   */
+  'WORKFLOW_OWNER_WORK_UNCOMMITTED',
 ] as const;
 export type WorkflowErrorCode = (typeof WORKFLOW_ERROR_CODES)[number];
 

@@ -39,6 +39,11 @@ export interface AgentStartDialogProps {
   readonly step: { readonly id: string; readonly title: string };
   /** The agent role the projection names, when it does (an unavailable option may not). */
   readonly archetype?: string | undefined;
+  /**
+   * Hand to agent (`actions.handToAgent`): the owner's attempt that ends; the agent goes on with
+   * the step in the next attempt. Absent: Run with agent starts a new attempt of the ready step.
+   */
+  readonly handOver?: { readonly attempt: number } | undefined;
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }
@@ -59,7 +64,7 @@ function sessionModeOf(option: AgentOption): SessionMode {
 }
 
 /**
- * Run with agent: what happens, what blocks the start (read from the Runtime when the dialog opens,
+ * Run with agent (or Hand to agent, from the owner's own attempt): what happens, what blocks the start (read from the Runtime when the dialog opens,
  * before anything is sent), the Session the attempt runs in and the commit disclosure. The footer is
  * Cancel and the one primary action, disabled while anything blocks; Check again is inside the
  * blocker's alert. A refusal of the start that names the agent (or the dirty checkout) shows the same
@@ -69,12 +74,14 @@ export function AgentStartDialog({
   subject,
   step,
   archetype,
+  handOver,
   open,
   onOpenChange,
 }: AgentStartDialogProps) {
   const { t } = useTranslation();
   const { managedSessionsApi, specificationApi } = useAppServices();
-  const { check, start } = useAgentStart(subject, step.id, open);
+  const { check, start } = useAgentStart(subject, step.id, open, handOver);
+  const copy = handOver ? 'workflowExecution.agent.hand' : 'workflowExecution.agent';
   const workspace = useSpecificationWorkspace(subject.specId, specificationApi).data;
   const [chosen, setChosen] = useState<FreshChoice>();
 
@@ -172,12 +179,20 @@ export function AgentStartDialog({
       <DialogContent closeLabel={t('common.close')} onOpenAutoFocus={focusInitial}>
         <DialogHeader>
           <DialogTitle>
-            {t('workflowExecution.agent.title', { step: step.title || step.id })}
+            {t(`${copy}.title` as 'workflowExecution.agent.title', { step: step.title || step.id })}
           </DialogTitle>
           <DialogDescription>
             {subject.taskId === undefined
-              ? t('workflowExecution.agent.descriptionSpecification')
-              : t('workflowExecution.agent.descriptionTask', { task: subject.taskId })}
+              ? t(
+                  `${copy}.descriptionSpecification` as 'workflowExecution.agent.descriptionSpecification',
+                  {
+                    attempt: handOver?.attempt,
+                  },
+                )
+              : t(`${copy}.descriptionTask` as 'workflowExecution.agent.descriptionTask', {
+                  task: subject.taskId,
+                  attempt: handOver?.attempt,
+                })}
           </DialogDescription>
         </DialogHeader>
         <DialogBody>
@@ -262,8 +277,8 @@ export function AgentStartDialog({
             aria-busy={start.isPending}
           >
             {start.isPending
-              ? t('workflowExecution.agent.submitting')
-              : t('workflowExecution.agent.submit')}
+              ? t(`${copy}.submitting` as 'workflowExecution.agent.submitting')
+              : t(`${copy}.submit` as 'workflowExecution.agent.submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

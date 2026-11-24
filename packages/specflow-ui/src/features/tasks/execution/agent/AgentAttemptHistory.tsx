@@ -42,6 +42,18 @@ export function agentAttemptOf(
   );
 }
 
+/**
+ * Whether the owner's attempt `step#attempt` ended handed to the agent (Hand to agent): the step's
+ * next attempt is the agent's and names it as the attempt that handed the step over.
+ */
+export function handedToAgent(
+  history: WorkflowHistory | undefined,
+  step: string,
+  attempt: number,
+): boolean {
+  return agentAttemptOf(history, step, attempt + 1)?.agent.handedOverFrom?.attempt === attempt;
+}
+
 /** What the attempt's work was committed as, from the history: the same note the Now block shows. */
 function commitOf(item: AgentHistoryItem): AttemptCommitView | undefined {
   const { work } = item.agent;

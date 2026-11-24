@@ -16,6 +16,7 @@ import {
   AgentAttemptHistory,
   AgentAttemptMeta,
   agentAttemptOf,
+  handedToAgent,
 } from '../../execution/agent/AgentAttemptHistory';
 import { useWorkflowHistory } from '../../execution/agent/useWorkflowHistory';
 
@@ -142,6 +143,11 @@ export function TaskHistory({
                           </span>
                           {entry.result}
                         </>
+                      ) : handedToAgent(workflow.data, entry.step.id, entry.key.attempt) ? (
+                        // The owner's attempt ended when they handed the step to the agent.
+                        <span data-history-handed="">
+                          {t('workflowExecution.attemptHistory.outcome.handedToAgent')}
+                        </span>
                       ) : null
                     ) : (
                       <span className="text-status-info">{t('taskDetails.historyInProgress')}</span>

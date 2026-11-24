@@ -114,7 +114,8 @@ function refusing<Request, Result>(
 
 /**
  * The agent step execution owner routes of a Specification and of a Task: start an agent attempt of the step
- * the owner was shown or continue the active one (`agent-execution`), and stop its running agent
+ * the owner was shown, continue the active one, or hand the owner's attempt to an agent
+ * (`agent-execution`, `expected.handOver`), and stop its running agent
  * (`agent-execution/stop`), and take the stopped attempt over (`agent-execution/take-over`). They
  * drive a run, so they need `Manage`; the caller is the owner, the agent's actor comes only from the
  * Session the Runtime binds.
@@ -176,7 +177,7 @@ export const agentStepExecutionEndpoint: FastifyPluginCallback<AgentStepExecutio
         bodyLimit: BODY_LIMIT_BYTES,
         schema: {
           tags,
-          summary: `Start agent step execution of the next step of a ${label}, or continue its attempt`,
+          summary: `Start agent step execution of the next step of a ${label}, continue its attempt, or hand the owner's attempt to an agent`,
           params,
           body: AgentStepExecutionRequestSchema,
           response: { 200: AgentStepExecutionResultSchema, ...errors },
@@ -191,6 +192,7 @@ export const agentStepExecutionEndpoint: FastifyPluginCallback<AgentStepExecutio
           expected: {
             step: expected.step,
             ...(expected.attempt !== undefined ? { attempt: expected.attempt } : {}),
+            ...(expected.handOver === true ? { handOver: true as const } : {}),
           },
           ...(provider !== undefined ? { provider } : {}),
           ...(model !== undefined ? { model } : {}),

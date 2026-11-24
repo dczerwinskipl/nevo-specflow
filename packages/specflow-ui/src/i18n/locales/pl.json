@@ -1701,7 +1701,7 @@
     "commandFailed": "Nie potwierdzono żądania. Ponów je z tym samym kluczem.",
     "sending": "Wysyłanie…",
     "sendFailure": {
-      "unconfirmed": "SpecFlow nie potwierdził, że wiadomość dotarła; może jeszcze ruszyć. Ponowienie wyśle tę samą wiadomość i nie uruchomi jej dwa razy.",
+      "unconfirmed": "SpecFlow nie dostał odpowiedzi, więc nie wie, czy wiadomość dotarła. Ponów wysyła tę samą wiadomość; nie wykona się dwa razy.",
       "too-long": "Wiadomość jest za długa. Skróć ją i wyślij ponownie.",
       "TURN_CONFLICT": "Agent albo zmiana specyfikacji zapisuje teraz w tym projekcie. Wiadomość zostaje; wyślij ją, gdy ta praca się skończy.",
       "PROVIDER_UNAVAILABLE": "Dostawca agenta jest teraz niedostępny. Wiadomość zostaje; wyślij ją, gdy dostawca będzie dostępny.",
@@ -1709,11 +1709,22 @@
       "MODEL_UNSUPPORTED": "Wybrany model jest niedostępny. Wybierz inny model i wyślij ponownie.",
       "CAPABILITY_UNSUPPORTED": "Ta sesja nie może działać w wybranym trybie pracy. Wybierz inny tryb i wyślij ponownie.",
       "SESSION_RECOVERY_REQUIRED": "Najpierw trzeba sprawdzić, jak skończyła się ostatnia tura. Sprawdź to powyżej, a potem wyślij ponownie.",
+      "SESSION_RECOVERY_REQUIRED_SESSION": "SpecFlow nie może bezpiecznie kontynuować rozmowy agenta w tej sesji. Aby pracować dalej, rozpocznij nową sesję; tę nadal można czytać.",
+      "mode-model-unsupported": "Wybrany tryb pracy nie obsługuje tego modelu. Wybierz inny model lub tryb pracy i wyślij ponownie.",
       "refused": "Wiadomość nie została wysłana. Wiadomość zostaje; spróbuj ponownie albo zmień model lub tryb pracy."
     },
     "savedRequestUnreadable": "Nie można odczytać zapisanego żądania",
     "savedRequestUnreadableBody": "Ta przeglądarka zachowała żądanie, którego nie da się odczytać. Mogło już zostać zastosowane. Odrzucenie go pozwala wysłać nowe.",
     "discardSavedRequest": "Odrzuć zapisane żądanie",
+    "unconfirmedCheck": "Sprawdź sesję",
+    "unconfirmedCheckBody": "Możesz też sprawdzić sesję: jeśli wiadomość dotarła, SpecFlow to potwierdzi; jeśli nie, możesz ją poprawić i wysłać ponownie. Jeśli dotrze później, pojawi się w rozmowie.",
+    "modeModelUnsupported": "Tryb {{mode}} nie obsługuje modelu {{model}}. Aby wysłać, wybierz inny model lub tryb pracy.",
+    "notice": {
+      "source": "SpecFlow:",
+      "error": "Błąd SpecFlow.",
+      "warning": "Ostrzeżenie SpecFlow.",
+      "info": "Informacja SpecFlow."
+    },
     "responseRequired": "Wymagana odpowiedź",
     "selectionCount": "Wybrano {{count}} z maksymalnie {{max}}.",
     "commandDirectory": "Katalog względem workspace: {{cwd}}",
@@ -1738,14 +1749,16 @@
       "default": "Model domyślny",
       "triggerLabel": "Wybrany model: {{value}}",
       "sectionLabel": "Model",
-      "effortSectionLabel": "Effort"
+      "effortSectionLabel": "Effort",
+      "modeUnsupported": "Niedostępny w wybranym trybie pracy"
     },
     "intent": {
       "label": "Tryb pracy — następny Turn",
       "placeholder": "Wybierz tryb pracy",
       "triggerLabel": "Tryb pracy: {{value}}",
       "sectionLabel": "Tryb pracy",
-      "unavailable": "Niedostępny"
+      "unavailable": "Niedostępny",
+      "modelUnsupported": "Nie dla wybranego modelu"
     },
     "attach": {
       "action": "Dołącz załącznik",
@@ -2358,6 +2371,11 @@
           "more": "i jeszcze {{count}}",
           "hint": "Zacommituj je albo cofnij te, których nie potrzebujesz, i sprawdź ponownie."
         },
+        "ownerWork": {
+          "title": "Najpierw zacommituj lub cofnij swoje zmiany",
+          "body": "Te pliki mają niezacommitowane zmiany. Gdyby agent przejął teraz krok, jego próba uznałaby je za własną pracę i zacommitowała jako pracę agenta.",
+          "hint": "Zacommituj swoją pracę albo cofnij to, czego nie potrzebujesz, i sprawdź ponownie. Agent prowadzi wtedy krok dalej od tego, co zacommitowałeś."
+        },
         "noAgent": {
           "title": "Nie wybrano agenta dla kroku {{step}}",
           "body": "Krok {{step}} wykonuje rola: {{role}}, a projekt nie wskazuje dla niej agenta ani modelu, więc SpecFlow nie wie, którego uruchomić.",
@@ -2406,7 +2424,14 @@
         "loadingAgents": "Wczytywanie agentów…"
       },
       "commit": "Gdy agent skończy, SpecFlow zacommituje jego pracę na <code>{{branch}}</code> jako jeden commit; zmiany innych osób nigdy nie są dołączane.",
-      "commitNoBranch": "Gdy agent skończy, SpecFlow zacommituje jego pracę na gałęzi specyfikacji jako jeden commit; zmiany innych osób nigdy nie są dołączane."
+      "commitNoBranch": "Gdy agent skończy, SpecFlow zacommituje jego pracę na gałęzi specyfikacji jako jeden commit; zmiany innych osób nigdy nie są dołączane.",
+      "hand": {
+        "title": "Przekaż agentowi: {{step}}",
+        "descriptionTask": "Twoja próba {{attempt}} tego kroku zadania {{task}} kończy się tutaj, a agent prowadzi krok dalej w nowej próbie: czyta krok, jego dokumenty i kontekst, pisze to, czego krok wymaga, i proponuje wynik. Decyzje, które należą do Ciebie, zostają u Ciebie.",
+        "descriptionSpecification": "Twoja próba {{attempt}} tego kroku kończy się tutaj, a agent prowadzi krok dalej w nowej próbie: czyta krok, jego dokumenty i kontekst, pisze to, czego krok wymaga, i proponuje wynik. Decyzje, które należą do Ciebie, zostają u Ciebie.",
+        "submit": "Przekaż agentowi",
+        "submitting": "Przekazywanie…"
+      }
     },
     "now": {
       "heading": "Teraz",
@@ -2483,11 +2508,14 @@
       "technical": "{{title}} wersja {{version}}",
       "openDocument": "Otwórz {{name}}",
       "runWithAgent": "Uruchom z agentem",
+      "handToAgent": "Przekaż agentowi",
       "readFailed": "SpecFlow nie mógł odczytać, co można teraz zrobić w tym kroku.",
       "readStale": "SpecFlow nie mógł odświeżyć tego kroku; pokazuje ostatnio odczytany stan, który może być nieaktualny.",
       "readRetry": "Spróbuj ponownie",
       "youAct": "Ten krok wykonujesz Ty: wykonaj pracę, a potem zakończ krok.",
+      "youActCanHand": "Ten krok wykonujesz Ty: wykonaj pracę i zakończ krok albo przekaż go agentowi, żeby go kontynuował.",
       "youActTakenOver": "Przejąłeś ten krok od agenta, więc teraz należy do Ciebie: dokończ pracę sam i zakończ krok. Agent nie może przejąć tej próby z powrotem.",
+      "youActTakenOverCanHand": "Przejąłeś ten krok od agenta, więc teraz należy do Ciebie: dokończ pracę sam i zakończ krok albo przekaż go z powrotem agentowi w nowej próbie.",
       "personActs": "Ten krok wykonuje {{actor}}; możesz śledzić go tutaj."
     },
     "blocker": {
@@ -3026,7 +3054,8 @@
         "takenOver": "Przejęte",
         "abandoned": "Porzucone",
         "returned": "Cofnięte do kroku {{step}}",
-        "active": "Agent nad tym pracuje"
+        "active": "Agent nad tym pracuje",
+        "handedToAgent": "Przekazane agentowi"
       },
       "work": {
         "lead": "Jego praca:",
@@ -3038,6 +3067,7 @@
       },
       "event": {
         "started": "Start",
+        "handed-over": "Przekazano agentowi",
         "turn-started": "Agent zaczął pracować",
         "turn-ended": "Agent się zatrzymał",
         "proposal-refused": "Wynik nie został przyjęty",

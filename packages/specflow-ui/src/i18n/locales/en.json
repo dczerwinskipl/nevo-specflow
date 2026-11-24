@@ -1826,10 +1826,14 @@
       "other": "Tool call",
       "andMore": "{{label}} and {{count}} more"
     },
+    "failureReason": {
+      "outside-worktree": "Outside the worktree: agents can only write files inside the worktree."
+    },
     "permissionState": {
-      "allowed": "Allowed: {{label}}",
-      "denied": "Denied: {{label}}",
-      "waiting": "Waiting for you: {{label}}"
+      "allowed": "Allowed",
+      "denied": "Denied",
+      "waiting": "Waiting for you",
+      "answered": "Answered"
     },
     "workState": {
       "queued": "Queued",

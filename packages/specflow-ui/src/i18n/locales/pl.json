@@ -1826,10 +1826,14 @@
       "other": "Wywołanie narzędzia",
       "andMore": "{{label}} i {{count}} więcej"
     },
+    "failureReason": {
+      "outside-worktree": "Poza worktree: agenci mogą zapisywać pliki tylko wewnątrz worktree."
+    },
     "permissionState": {
-      "allowed": "Zezwolono: {{label}}",
-      "denied": "Odmówiono: {{label}}",
-      "waiting": "Czeka na Ciebie: {{label}}"
+      "allowed": "Zezwolono",
+      "denied": "Odmówiono",
+      "waiting": "Czeka na Ciebie",
+      "answered": "Odpowiedziano"
     },
     "workState": {
       "queued": "W kolejce",

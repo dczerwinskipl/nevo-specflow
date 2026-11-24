@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { claudeToolError, claudeToolSubject, firstLine, workspacePath } from './subjects';
+import {
+  claudeToolError,
+  claudeToolFailureReason,
+  claudeToolSubject,
+  firstLine,
+  workspacePath,
+} from './subjects';
 
 const workspace = String.raw`C:\Users\owner\project\worktree`;
 
@@ -54,5 +60,12 @@ describe('Claude tool subjects', () => {
     ).toBe(
       String.raw`\tmp\dummy-job\job.sh is outside .; --restricted confines the file tools to the working directory.`,
     );
+    // ...and names its stable reason, so the client says it in plain words.
+    expect(
+      claudeToolFailureReason(
+        'x is outside C:\\w; --restricted confines the file tools to the working directory.',
+      ),
+    ).toBe('outside-worktree');
+    expect(claudeToolFailureReason('File has not been read yet.')).toBeUndefined();
   });
 });

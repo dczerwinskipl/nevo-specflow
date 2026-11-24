@@ -25437,6 +25437,10 @@
                               "message": {
                                 "type": "string",
                                 "maxLength": 1024
+                              },
+                              "reason": {
+                                "type": "string",
+                                "maxLength": 128
                               }
                             },
                             "additionalProperties": false

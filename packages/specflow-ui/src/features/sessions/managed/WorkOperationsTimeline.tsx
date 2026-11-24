@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import type { WorkSummary } from '@nevo/specflow-contracts/sessions';
 import { Collapsible, Timeline, Typography, cn } from '@nevo/ui';
 import { historyEntry } from './pagedHistoryAnchor';
@@ -14,13 +15,38 @@ import {
 } from './workInspectorStore';
 import { workStateTextClassName, workStateTone } from './workStatus';
 import { WorkRowContent, useWorkRowMeta } from './WorkRow';
-import { workFailureText, workItemTitle } from './toolLabels';
+import { workFailureText, workItemTitle, workItemTitleParts } from './toolLabels';
 
 type OpenActions = (workId: string, title: string) => void;
 
+/**
+ * A Work row's title: the label emphasised ("Ran command", "Allowed"), the subject under it as an
+ * identifier — the mono, regular-weight secondary text the Specification key uses — at most two
+ * lines.
+ */
+function WorkTitle({ item }: { item: WorkSummary }) {
+  const { t } = useTranslation();
+  const { label, subject } = workItemTitleParts(t, item);
+
+  return (
+    <>
+      {label}
+      {subject && (
+        <span
+          className="mt-0.5 line-clamp-2 block font-mono text-body-sm font-normal text-content-secondary [overflow-wrap:anywhere]"
+          data-work-subject=""
+        >
+          <span className="sr-only"> · </span>
+          {subject}
+        </span>
+      )}
+    </>
+  );
+}
+
 /** A failed tool Work's meta line, then what failed and why, so the row says it unopened. */
-function withFailure(meta: ReactNode, item: WorkSummary): ReactNode {
-  const failure = workFailureText(item);
+function withFailure(meta: ReactNode, item: WorkSummary, t: TFunction): ReactNode {
+  const failure = workFailureText(t, item);
 
   return failure ? (
     <>
@@ -56,7 +82,7 @@ function InteractionTimelineItem({ item }: { item: WorkSummary }) {
           <WorkRowContent
             title={
               <>
-                {title || kind}
+                {title ? <WorkTitle item={item} /> : kind}
                 {srStatus}
               </>
             }
@@ -94,11 +120,11 @@ function ToolTimelineItem({
             bleed="rail"
             title={
               <>
-                {title}
+                <WorkTitle item={item} />
                 {srStatus}
               </>
             }
-            meta={withFailure(meta, item)}
+            meta={withFailure(meta, item, t)}
             onOpen={item.actionCount ? () => onOpenActions(item.workId, title) : undefined}
           />
         }
@@ -126,7 +152,7 @@ function GroupedToolRow({
     <WorkRowContent
       title={
         <Typography as="span" variant="body-md" className="text-content-primary">
-          {title}
+          <WorkTitle item={item} />
           {srStatus}
         </Typography>
       }

@@ -85,8 +85,8 @@ export type DriverFact =
       kind: 'action-update';
       key: string;
       state: WorkSummary['state'];
-      /** A failed action: the provider's own short reason. */
-      error?: { code: string; message: string };
+      /** A failed action: the provider's own short reason, and a stable one when known. */
+      error?: { code: string; message: string; reason?: string };
     }
   | {
       kind: 'usage';

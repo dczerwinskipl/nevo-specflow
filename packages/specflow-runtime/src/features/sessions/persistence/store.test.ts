@@ -597,6 +597,61 @@ describe('durable Session store', () => {
     });
     expect(actions.items.map((item) => item.subject)).toEqual(['dummy/job.sh', 'dummy/test.sh']);
   });
+  it('infers an old permission decision from its tool call, never from nothing', async () => {
+    const { sessionId } = await create('claude');
+    const workspace = join(directory, 'workspace');
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      nativeWorkspace: workspace,
+      nativeScope: 'account',
+      input: { requestId: randomUUID(), message: 'Old permission' },
+    });
+    let driverSeq = 0;
+    const emit = (fact: DriverFact) =>
+      store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
+    await emit({ kind: 'work-open', key: 'tools', workKind: 'tool', title: 'Claude tools' });
+    await emit({ kind: 'action-open', key: 'a', parentKey: 'tools', title: 'Bash' });
+    await emit({
+      kind: 'text',
+      key: 'a',
+      channel: 'tool-input',
+      text: JSON.stringify({ command: 'mkdir -p scratch' }),
+    });
+    await emit({
+      kind: 'work-open',
+      key: 'ask',
+      workKind: 'interaction',
+      title: 'Claude permission',
+    });
+    await emit({
+      kind: 'interaction',
+      key: 'ask',
+      interaction: {
+        kind: 'permission',
+        prompt: 'Allow?',
+        actionSummary: ['Run command:', 'mkdir -p scratch'].join(String.fromCharCode(10)),
+      },
+    });
+    const read = async () =>
+      (
+        await store!.call<WorkPage>({
+          op: 'work',
+          sessionId,
+          turnId: start.turnId,
+          actor: 'user',
+          limit: 40,
+        })
+      ).items[1]!;
+    // Still pending: waiting, no decision invented.
+    expect((await read()).decision).toBeUndefined();
+    await emit({ kind: 'work-update', key: 'ask', state: 'completed' });
+    expect((await read()).decision).toBeUndefined();
+    // The same call ran to completion: it was allowed.
+    await emit({ kind: 'action-update', key: 'a', state: 'completed' });
+    expect(await read()).toMatchObject({ decision: 'allowed', subject: 'mkdir -p scratch' });
+  });
   it('checks single-selection answers before durable admission and expires native-cancelled questions', async () => {
     const { sessionId } = await create();
     const start = await store!.call<StartAdmission>({

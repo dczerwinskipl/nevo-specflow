@@ -345,6 +345,7 @@ export function createProviderFacts({
         w.failure = {
           ...(action.subject ? { subject: action.subject } : {}),
           message: f.error.message,
+          ...(f.error.reason ? { reason: f.error.reason } : {}),
         };
       }
 

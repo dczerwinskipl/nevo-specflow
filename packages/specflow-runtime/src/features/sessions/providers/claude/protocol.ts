@@ -4,7 +4,7 @@ import type { EmitFact } from '../driver';
 import { claudeReadTools } from './modes';
 import { nativeDecimal } from '../decimal';
 import { nativeToolOperation, type NativeToolOperations } from '../tool-operations';
-import { claudeToolError, claudeToolSubject, firstLine } from './subjects';
+import { claudeToolError, claudeToolFailureReason, claudeToolSubject, firstLine } from './subjects';
 
 /** Claude Code's own tool names. Glob finds files by pattern and Grep searches file contents. */
 export const claudeToolOperations: NativeToolOperations = {
@@ -386,7 +386,15 @@ export function createClaudeProtocol(
           key: tool.key,
           state: block.is_error ? 'failed' : 'completed',
           ...(block.is_error
-            ? { error: { code: 'TOOL_FAILED', message: claudeToolError(output, workspace) } }
+            ? {
+                error: {
+                  code: 'TOOL_FAILED',
+                  message: claudeToolError(output, workspace),
+                  ...(claudeToolFailureReason(output)
+                    ? { reason: claudeToolFailureReason(output)! }
+                    : {}),
+                },
+              }
             : {}),
         });
         tools.delete(toolId);

@@ -113,6 +113,16 @@ export function claudeToolSubject(
 }
 
 /**
+ * A stable reason for a failed tool call the client words itself: `outside-worktree` when
+ * Claude's restricted file tools refused a path outside the Turn's working directory.
+ */
+export function claudeToolFailureReason(output: string): string | undefined {
+  return /is outside .*confines the file tools to the working directory/s.test(output)
+    ? 'outside-worktree'
+    : undefined;
+}
+
+/**
  * The short reason of a failed tool call from its result: Claude's `<tool_use_error>` wrapper
  * removed, workspace paths made relative, the first line only.
  */

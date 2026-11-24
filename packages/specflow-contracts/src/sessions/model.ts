@@ -382,7 +382,15 @@ export const WorkSummarySchema = Type.Object(
     subject: Type.Optional(ToolSubjectSchema),
     /** Tool Work with a failed ToolAction: the first one's subject and the provider's reason. */
     failure: Type.Optional(
-      Type.Object({ subject: Type.Optional(ToolSubjectSchema), message: text(1024) }, closed),
+      Type.Object(
+        {
+          subject: Type.Optional(ToolSubjectSchema),
+          message: text(1024),
+          /** A stable reason a client words itself (`outside-worktree`); `message` stays raw. */
+          reason: Type.Optional(text(128)),
+        },
+        closed,
+      ),
     ),
     /** A permission the person answered: what they decided. */
     decision: Type.Optional(Type.Union([Type.Literal('allowed'), Type.Literal('denied')])),

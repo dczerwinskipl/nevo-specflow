@@ -40,36 +40,77 @@ export function toolActionHeading(
   };
 }
 
+/** A Work row's title in two parts: the emphasised label, then the subject it acted on. */
+export interface WorkTitleParts {
+  /** "Ran command", "Wrote file and 2 more", "Allowed", "Waiting for you". */
+  label: string;
+  /** The command, path or pattern: shown as an identifier, never emphasised. */
+  subject?: string;
+}
+
 /**
- * The title of a Work row on the Work history rail. Tool Work: its first action's label, and how
- * many more it holds. A permission: its decision (or that it waits for the person) before the
- * operation it is for. Work without a subject keeps the Runtime's own title.
+ * The title of a Work row on the Work history rail. Tool Work: what its first action did, and how
+ * many more it holds. A permission: what the person decided (or that it waits for them, or only
+ * that it was answered when the decision was not kept). Then the subject. Work without one keeps
+ * the Runtime's own title.
  */
-export function workItemTitle(t: TFunction, item: WorkSummary): string {
+export function workItemTitleParts(t: TFunction, item: WorkSummary): WorkTitleParts {
+  const subject = item.subject ? { subject: item.subject } : {};
   if (item.kind === 'tool' && (item.operation || item.subject)) {
-    const label = toolLabel(t, item.operation, item.title.text, item.subject);
+    const verb = toolVerb(t, item.operation, item.title.text);
     const more = (item.actionCount ?? 0) - 1;
 
-    return more > 0 ? t('managedSession.toolVerb.andMore', { label, count: more }) : label;
+    return {
+      label: more > 0 ? t('managedSession.toolVerb.andMore', { label: verb, count: more }) : verb,
+      ...subject,
+    };
   }
 
   if (item.kind === 'interaction' && (item.operation || item.subject)) {
-    const label = toolLabel(t, item.operation, item.title.text, item.subject);
     const state =
       item.decision ??
-      (['queued', 'active', 'waiting'].includes(item.state) ? 'waiting' : undefined);
+      (['queued', 'active', 'waiting'].includes(item.state)
+        ? 'waiting'
+        : item.state === 'completed'
+          ? 'answered'
+          : undefined);
 
-    return state ? t(`managedSession.permissionState.${state}`, { label }) : label;
+    return {
+      label: state
+        ? t(`managedSession.permissionState.${state}`)
+        : toolVerb(t, item.operation, item.title.text),
+      ...subject,
+    };
   }
 
-  return item.title.text;
+  return { label: item.title.text };
 }
 
-/** The failure line of a tool Work row: what failed, then why. */
-export function workFailureText(item: WorkSummary): string | undefined {
-  return item.failure
-    ? item.failure.subject
-      ? `${item.failure.subject}: ${item.failure.message}`
-      : item.failure.message
-    : undefined;
+/** The same title as one line of text (search, the actions screen's heading). */
+export function workItemTitle(t: TFunction, item: WorkSummary): string {
+  const { label, subject } = workItemTitleParts(t, item);
+
+  return subject ? `${label} · ${subject}` : label;
 }
+
+/**
+ * The failure line of a tool Work row: a reason the UI knows in its own words (the raw text stays
+ * in the detail), else the provider's reason; the file is already the row's subject.
+ */
+export function workFailureText(t: TFunction, item: WorkSummary): string | undefined {
+  if (!item.failure) {
+    return undefined;
+  }
+
+  if (item.failure.reason && (knownFailures as readonly string[]).includes(item.failure.reason)) {
+    return t(
+      `managedSession.failureReason.${item.failure.reason as (typeof knownFailures)[number]}`,
+    );
+  }
+
+  return item.failure.subject && item.failure.subject !== item.subject
+    ? `${item.failure.subject}: ${item.failure.message}`
+    : item.failure.message;
+}
+
+const knownFailures = ['outside-worktree'] as const;

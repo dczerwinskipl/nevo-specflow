@@ -488,16 +488,20 @@ export const ClaudeTurn: Story = {
     const canvas = within(canvasElement);
     await openWork(canvasElement);
 
-    await expect(
-      await canvas.findByText(
-        'Uruchomiono polecenie · mkdir -p /tmp/dummy-job && cd /tmp/dummy-job && ./hello.sh …',
-      ),
-    ).toBeVisible();
-    await expect(
-      canvas.getByText(
-        'Zezwolono: Uruchomiono polecenie · mkdir -p /tmp/dummy-job && cd /tmp/dummy-job && ./hello.sh …',
-      ),
-    ).toBeVisible();
+    // Only the action is emphasised; the subject reads as an identifier (mono, regular weight).
+    const subjects = await canvas.findAllByText(
+      'mkdir -p /tmp/dummy-job && cd /tmp/dummy-job && ./hello.sh …',
+    );
+    await expect(subjects).toHaveLength(2);
+    for (const subject of subjects) {
+      await expect(subject).toHaveAttribute('data-work-subject');
+      await expect(getComputedStyle(subject).fontWeight).toBe('400');
+    }
+
+    await expect(canvas.getAllByText('Uruchomiono polecenie')[0]).toBeVisible();
+    // A permission says what the owner decided, never the tool's own wording.
+    await expect(canvas.getByText('Zezwolono')).toBeVisible();
+    await expect(canvas.getByText('Czeka na Ciebie')).toBeVisible();
     await expect(
       canvas.getByText(
         'dummy-scratch/test.sh: File has not been read yet. Read it first before writing to it.',
@@ -508,15 +512,10 @@ export const ClaudeTurn: Story = {
         "The file tools can only write inside the worktree, so I'll use a scratch directory there and delete it afterwards.",
       ),
     ).toBeVisible();
-    await expect(
-      canvas.getByText(
-        'Czeka na Ciebie: Uruchomiono polecenie · rm -rf dummy-scratch /tmp/dummy-job',
-      ),
-    ).toBeVisible();
     await expect(canvas.queryByText(/Claude (tools|permission|commentary)/)).toBeNull();
 
     await userEvent.click(
-      canvas.getByRole('button', { name: /Zapisano plik · dummy-scratch\/job\.sh i 2 więcej/ }),
+      canvas.getByRole('button', { name: /Zapisano plik i 2 więcej · dummy-scratch\/job\.sh/ }),
     );
     await expect((await canvas.findAllByText('Zapisano plik')).length).toBeGreaterThan(0);
     await expect((await canvas.findAllByRole('textbox', { name: 'Treść' })).length).toBe(3);

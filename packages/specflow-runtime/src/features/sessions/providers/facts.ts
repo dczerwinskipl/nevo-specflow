@@ -133,7 +133,12 @@ const schema = Type.Union([
       kind: Type.Literal('action-update'),
       key,
       state: WorkStateSchema,
-      error: Type.Optional(Type.Object({ code: text(64), message: text(1024) }, closed)),
+      error: Type.Optional(
+        Type.Object(
+          { code: text(64), message: text(1024), reason: Type.Optional(text(128)) },
+          closed,
+        ),
+      ),
     },
     closed,
   ),

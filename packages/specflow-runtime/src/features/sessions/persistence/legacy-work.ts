@@ -10,6 +10,7 @@ import { decode } from './encoding';
 import { claudeToolOperations } from '../providers/claude/protocol';
 import {
   claudeToolError,
+  claudeToolFailureReason,
   claudeToolSubject,
   firstLine,
   workspacePath,
@@ -118,6 +119,9 @@ export function createLegacyWork(
               failure: {
                 ...(failedSubject ? { subject: failedSubject } : {}),
                 message: failed.error?.message ?? claudeToolError(output ?? '', workspace),
+                ...(claudeToolFailureReason(output ?? '')
+                  ? { reason: claudeToolFailureReason(output ?? '')! }
+                  : {}),
               },
             }
           : {}),
@@ -137,28 +141,66 @@ export function createLegacyWork(
 
       const [head = '', ...rest] = interaction.actionSummary.split('\n');
       const file = /^(Write|Edit) file: (.+)$/.exec(head);
-      if (head === 'Run command:') {
-        const subject = firstLine(rest.join('\n'));
+      const named: WorkSummary | undefined =
+        head === 'Run command:'
+          ? {
+              ...item,
+              title: { text: 'Bash', complete: true },
+              operation: 'command',
+              ...(firstLine(rest.join('\n')) ? { subject: firstLine(rest.join('\n'))! } : {}),
+            }
+          : file
+            ? {
+                ...item,
+                title: { text: file[1]!, complete: true },
+                operation: file[1] === 'Write' ? 'write' : 'edit',
+                subject: workspacePath(file[2]!, workspace),
+              }
+            : undefined;
 
-        return {
-          ...item,
-          title: { text: 'Bash', complete: true },
-          operation: 'command',
-          ...(subject ? { subject } : {}),
-        };
-      }
-
-      if (file) {
-        return {
-          ...item,
-          title: { text: file[1]!, complete: true },
-          operation: file[1] === 'Write' ? 'write' : 'edit',
-          subject: workspacePath(file[2]!, workspace),
-        };
-      }
+      return named ? { ...named, ...decisionOf(sessionId, named, workspace) } : item;
     }
 
     return item;
+  }
+
+  /**
+   * The decision of an answered permission recorded before decisions were kept: the decision itself
+   * was never stored, but its tool call was. Allowed when the same call (tool and subject) in the
+   * Turn ran to completion, denied when it failed as refused; otherwise unknown (the client says
+   * only that it was answered).
+   */
+  function decisionOf(
+    sessionId: string,
+    item: WorkSummary,
+    workspace: string | undefined,
+  ): Pick<WorkSummary, 'decision'> {
+    if (item.decision || item.state !== 'completed') {
+      return {};
+    }
+
+    const turn = get('SELECT turn FROM work WHERE id=?', item.workId)?.turn;
+    const calls = all(
+      'SELECT data FROM actions WHERE session=? AND turn=? LIMIT 500',
+      sessionId,
+      String(turn),
+    )
+      .map((row) => decode<ToolActionSummary>(row))
+      .filter(
+        (entry) =>
+          entry.title.text === item.title.text &&
+          (entry.subject ?? action(entry, workspace).subject) === item.subject,
+      );
+    if (calls.some((entry) => entry.state === 'completed')) {
+      return { decision: 'allowed' };
+    }
+
+    const refused = calls.find(
+      (entry) =>
+        entry.state === 'failed' && /denied|rejected|not allowed/i.test(text(entry.output) ?? ''),
+    );
+
+    return refused ? { decision: 'denied' } : {};
   }
 
   return {

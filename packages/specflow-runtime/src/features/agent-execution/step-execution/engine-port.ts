@@ -8,6 +8,7 @@ import {
   listUnsettledWorkspaceExecutions,
   readAgentAttemptWork,
   readAgentTurnContext,
+  readExecutionSnapshotForRead,
   resolveSpecificationForRead,
   returnDuringAgentAttempt,
   startAgentAttempt,
@@ -122,7 +123,7 @@ export function createAgentStepEngine(dependencies: {
     subject: WorkflowSubject,
   ): Promise<string> {
     if (subject.kind === 'task') {
-      const snapshot = await attempts.workflow.store.read(subject.specId);
+      const snapshot = await readExecutionSnapshotForRead(attempts.workflow, subject.specId);
 
       return (
         snapshot.manifests.find((entry) => entry.value.id === subject.taskId)?.value.title ??

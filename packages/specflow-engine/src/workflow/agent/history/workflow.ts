@@ -1,5 +1,6 @@
 import { findStep, historyOf, isReturnRecord, type AttemptOutcome } from '@nevo/workflow';
 
+import { runReadRequest } from '../../../project/request-verification-memo';
 import {
   loadSubject,
   loadTask,
@@ -52,12 +53,21 @@ export const WORKFLOW_HISTORY_LIMIT = 200;
 /**
  * The Workflow history of a subject: every attempt and return of its run, newest first, an agent
  * attempt with its step events and the work it left (`agent`, when `agent` sources are given; the
- * demo Runtime has none). Read-only and lock-free; bounded by the run record.
+ * demo Runtime has none). Read-only and lock-free; bounded by the run record. An Engine read request:
+ * its reads verify the Project Home and checkouts from on-disk evidence and spawn no Git process.
  */
-export async function readWorkflowHistory(
+export function readWorkflowHistory(
   workflow: Pick<WorkflowDependencies, 'catalogue' | 'store'>,
   subject: WorkflowSubject,
   agent?: AgentHistorySources,
+): Promise<WorkflowHistory> {
+  return runReadRequest(() => historyOfSubject(workflow, subject, agent));
+}
+
+async function historyOfSubject(
+  workflow: Pick<WorkflowDependencies, 'catalogue' | 'store'>,
+  subject: WorkflowSubject,
+  agent: AgentHistorySources | undefined,
 ): Promise<WorkflowHistory> {
   const snapshot = await workflow.store.read(subject.specId);
   const started =

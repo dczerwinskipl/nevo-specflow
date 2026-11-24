@@ -5,6 +5,7 @@ export {
   inspectActionsForRead,
   openWorkflow,
   readExecutionForRead,
+  readExecutionSnapshotForRead,
   readTaskProgressForRead,
   type OpenWorkflowOptions,
   type ProjectDocumentHit,

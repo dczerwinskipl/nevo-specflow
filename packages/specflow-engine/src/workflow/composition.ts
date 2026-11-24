@@ -322,6 +322,11 @@ export const readTaskProgressForRead = asReadRequest(readTaskProgress);
 /** {@link inspectActions} without Git (the workflow `actions` read). */
 export const inspectActionsForRead = asReadRequest(inspectActions);
 
+/** A Specification's execution snapshot without Git (a presentation read of its Task manifests). */
+export const readExecutionSnapshotForRead = asReadRequest(
+  (workflow: Pick<WorkflowDependencies, 'store'>, specId: string) => workflow.store.read(specId),
+);
+
 /**
  * The post actions of an opened Engine (`operations/post-actions.ts`): after a step's finish, and
  * after an owner's change that finishes no step (Reject, Return) or before an agent's new attempt,

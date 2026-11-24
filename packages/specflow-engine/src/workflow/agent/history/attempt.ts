@@ -1,5 +1,6 @@
 import type { AttemptRecord } from '@nevo/workflow';
 
+import { runReadRequest } from '../../../project/request-verification-memo';
 import type { LedgerEntry } from '../../../specs/durable/ledger/model';
 import type { TaskManifest } from '../../../tasks/resource/model';
 import { agentAttemptBindingOf, type WorkflowActor, type WorkflowSubject } from '../../state/model';
@@ -252,9 +253,18 @@ function eventsOf(record: AttemptRecord, journal: AgentAttemptJournal): AgentAtt
 
 /**
  * What an agent attempt left, for the projection: its run record from one snapshot read, its journal,
- * and only its Specification's ledger record. Git-free and lock-free.
+ * and only its Specification's ledger record. Git-free and lock-free: an Engine read request, whose
+ * reads verify the Project Home and checkout from on-disk evidence.
  */
-export async function readAgentAttemptWork(
+export function readAgentAttemptWork(
+  workflow: Pick<WorkflowDependencies, 'catalogue' | 'store'>,
+  sources: Pick<AgentHistorySources, 'ledger'>,
+  journal: AgentAttemptJournal,
+): Promise<AgentAttemptWork> {
+  return runReadRequest(() => attemptWorkOf(workflow, sources, journal));
+}
+
+async function attemptWorkOf(
   workflow: Pick<WorkflowDependencies, 'catalogue' | 'store'>,
   sources: Pick<AgentHistorySources, 'ledger'>,
   journal: AgentAttemptJournal,

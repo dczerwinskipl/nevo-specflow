@@ -1,5 +1,6 @@
 import { activeAttempt, findStep } from '@nevo/workflow';
 
+import { runReadRequest } from '../../../project/request-verification-memo';
 import { loadSubject, type WorkflowDependencies } from '../../operations/loaded-execution';
 import {
   agentAttemptBindingOf,
@@ -44,9 +45,11 @@ export async function agentAttemptScope(
 
 /**
  * The agent attempt the subject's active step is in (started by agent step execution), or `undefined` when no
- * step is active or its attempt is a person's. Read-only and lock-free.
+ * step is active or its attempt is a person's. Read-only and lock-free, and an Engine read request:
+ * the snapshot read verifies the Project Home and checkout from on-disk evidence and spawns no Git
+ * process (a projection reads it on every request).
  */
-export async function activeAgentAttempt(
+export function activeAgentAttempt(
   workflow: Pick<WorkflowDependencies, 'catalogue' | 'store'>,
   subject: WorkflowSubject,
 ): Promise<
@@ -59,18 +62,20 @@ export async function activeAgentAttempt(
     }
   | undefined
 > {
-  const snapshot = await workflow.store.read(subject.specId);
-  const run = loadSubject(workflow.catalogue, snapshot, subject).run;
-  const active = activeAttempt(run);
-  const binding = agentAttemptBindingOf(active);
+  return runReadRequest(async () => {
+    const snapshot = await workflow.store.read(subject.specId);
+    const run = loadSubject(workflow.catalogue, snapshot, subject).run;
+    const active = activeAttempt(run);
+    const binding = agentAttemptBindingOf(active);
 
-  return active && binding && run.position.state === 'active'
-    ? {
-        attemptId: binding.attemptId,
-        workspaceId: binding.workspaceId,
-        step: active.step,
-        attempt: active.attempt,
-        ...(binding.launch !== undefined ? { launch: binding.launch } : {}),
-      }
-    : undefined;
+    return active && binding && run.position.state === 'active'
+      ? {
+          attemptId: binding.attemptId,
+          workspaceId: binding.workspaceId,
+          step: active.step,
+          attempt: active.attempt,
+          ...(binding.launch !== undefined ? { launch: binding.launch } : {}),
+        }
+      : undefined;
+  });
 }

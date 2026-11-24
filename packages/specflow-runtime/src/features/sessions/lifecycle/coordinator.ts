@@ -498,6 +498,26 @@ export function createSessionCoordinator(
         }),
       );
     },
+    /**
+     * Refuses a selection the provider cannot run now, with the provider's own reason, before
+     * anything else exists (agent step execution checks this before the Engine starts an attempt).
+     * `create` and `start` check the same again.
+     */
+    async validate(
+      selection: Invocation['selection'],
+      association?: { readonly specId: string },
+    ): Promise<void> {
+      accepting();
+      if (!available) {
+        throw new SessionError('PROVIDER_UNAVAILABLE', 'No Session provider is enabled.');
+      }
+
+      const driver = driverFor(selection.providerId);
+      await validate(driver, selection);
+      if (association && checkoutBound(driver) && (await inSeparateWorktree(association.specId))) {
+        throw worktreeProviderUnsupported();
+      }
+    },
     /** `association` is written verbatim; only a Turn start reads it (execution workspace). */
     /** `options.sessionId` is in-process only (agent step execution): the Session's chosen id. */
     async create(

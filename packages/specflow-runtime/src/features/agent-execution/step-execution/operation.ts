@@ -33,6 +33,7 @@ export type AgentStepSessions = Pick<
   SessionCoordinator,
   | 'available'
   | 'provider'
+  | 'validate'
   | 'create'
   | 'start'
   | 'cancel'
@@ -506,6 +507,59 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     );
   }
 
+  /**
+   * Prevent at the boundary: the provider refuses the Turn's provider, mode and model before the
+   * Engine starts an attempt, so a refusal leaves no attempt without a Session. A fresh Session is
+   * checked with what it would be created with; a reused one with its own selection.
+   */
+  async function refuseUnrunnable(
+    sessions: AgentStepSessions,
+    turn: {
+      readonly launch: AgentLaunch;
+      readonly actor: AgentActor;
+      readonly subject: WorkflowSubject;
+      readonly fresh: boolean;
+    },
+  ): Promise<void> {
+    const { launch, actor, subject, fresh } = turn;
+    const sessionId = actor.details.sessionId ?? '';
+    let selection: Parameters<AgentStepSessions['validate']>[0] | undefined;
+    if (fresh) {
+      selection = {
+        providerId: launch.provider,
+        mode: 'workspace-write',
+        ...(launch.model ? { modelId: launch.model } : {}),
+        ...(launch.effort !== undefined ? { effort: launch.effort } : {}),
+      };
+    } else if (sessionId && (await sessions.hasSession(sessionId))) {
+      const { session } = await sessions.snapshot(sessionId, RUNTIME_ACTOR);
+      selection = {
+        providerId: session.providerId,
+        mode: 'workspace-write',
+        ...(session.providerModeId ? { providerModeId: session.providerModeId } : {}),
+        ...(session.modelId ? { modelId: session.modelId } : {}),
+        ...(session.effort ? { effort: session.effort } : {}),
+      };
+    }
+
+    if (!selection) {
+      return;
+    }
+
+    try {
+      await sessions.validate(selection, { specId: subject.specId });
+    } catch (error) {
+      if (!(error instanceof SessionError)) {
+        throw error;
+      }
+
+      unavailable(
+        { kind: 'unavailable', reason: 'provider-not-ready', launch, detail: error.message },
+        error.message,
+      );
+    }
+  }
+
   /** Creates the fresh Session, joins a Task, and dispatches the Turn unless it exists already. */
   async function dispatch(
     sessions: AgentStepSessions,
@@ -704,12 +758,13 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       );
     }
 
+    const fresh = launch.session.mode === 'fresh' && !continuing;
+    await refuseUnrunnable(sessions, { launch, actor, subject, fresh });
     const workspaceId = await engine.workspaceIdOf(subject.specId);
     if (workspaceId === undefined) {
       throw new WorkflowError('WORKFLOW_SUBJECT_NOT_FOUND', 'The Specification is not available.');
     }
 
-    const fresh = launch.session.mode === 'fresh' && !continuing;
     // Nothing exists yet: a refusal here leaves no attempt, no Session and no Turn.
     const { attemptId, brief } = await engine.start({
       subject,

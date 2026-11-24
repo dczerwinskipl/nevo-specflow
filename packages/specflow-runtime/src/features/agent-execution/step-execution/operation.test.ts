@@ -7,6 +7,7 @@ import type {
 import { describe, expect, it } from 'vitest';
 
 import type { ActiveAgentAttempt, AgentStepEngine } from './engine-port';
+import { SessionError } from '../../sessions';
 import { createAgentStepExecution, derivedId, type AgentStepSessions } from './operation';
 
 const SPEC = 'spec-1';
@@ -52,6 +53,8 @@ function fakes(
     refuseStart?: boolean;
     failFirstCreate?: boolean;
     hold?: ProjectHold;
+    /** The provider's reason refusing every selection. */
+    refuseSelection?: string;
   } = {},
 ) {
   const created = new Set<string>();
@@ -147,6 +150,13 @@ function fakes(
   const sessions: AgentStepSessions = {
     available: () => true,
     provider: () => undefined,
+    validate(selection) {
+      calls.push(`session.validate ${selection.providerId} ${selection.modelId ?? ''}`);
+
+      return options.refuseSelection
+        ? Promise.reject(new SessionError('MODEL_UNSUPPORTED', options.refuseSelection))
+        : Promise.resolve();
+    },
     create(_actor, input, _association, chosen) {
       calls.push(`session.create ${input.requestId}`);
       if (failCreate) {
@@ -177,7 +187,11 @@ function fakes(
 
       return Promise.resolve({ turnId });
     },
-    snapshot: () => Promise.resolve({ activeTurn: undefined } as never),
+    snapshot: () =>
+      Promise.resolve({
+        activeTurn: undefined,
+        session: { providerId: 'controlled', mode: 'workspace-write', modelId: 'm' },
+      } as never),
     associateTasks: () => Promise.resolve(),
     hasSession: (sessionId) => Promise.resolve(created.has(sessionId)),
     hasTurn: (_sessionId, turnId) => Promise.resolve(turns.has(turnId)),
@@ -211,6 +225,7 @@ describe('agent step execution', () => {
 
     expect(calls).toEqual([
       'baseline',
+      'session.validate controlled m',
       'engine.start new',
       `session.create ${derivedId(ATTEMPT, 'session-request')}`,
       `session.start ${derivedId(id, 'session')}`,
@@ -224,13 +239,43 @@ describe('agent step execution', () => {
     expect(attempt()?.launch).toEqual({ session: 'fresh' });
   });
 
+  it('refuses a selection the provider cannot run before the Engine starts an attempt', async () => {
+    const reason =
+      'The installed Claude has no auto mode for this model; choose another model or mode.';
+    const { calls, execution, attempt } = fakes({ refuseSelection: reason });
+
+    await expect(
+      execution.startAgentStepExecution(request('00000000-0000-4000-8000-00000000000c')),
+    ).rejects.toMatchObject({
+      code: 'WORKFLOW_AGENT_UNAVAILABLE',
+      message: reason,
+      option: { kind: 'unavailable', reason: 'provider-not-ready', detail: reason },
+    });
+    expect(calls).toEqual(['baseline', 'session.validate controlled m']);
+    expect(attempt()).toBeUndefined();
+  });
+
+  it('checks a Continue with the Session it reuses before binding another Turn', async () => {
+    const { calls, execution } = fakes();
+    await execution.startAgentStepExecution(request('00000000-0000-4000-8000-00000000000d'));
+    calls.length = 0;
+
+    await execution.startAgentStepExecution(
+      request('00000000-0000-4000-8000-00000000000e', { attempt: 1 }),
+    );
+
+    expect(calls.indexOf('session.validate controlled m')).toBeLessThan(
+      calls.indexOf('engine.start continue'),
+    );
+  });
+
   it('leaves no Session when the Engine refuses the start', async () => {
     const { calls, execution } = fakes({ refuseStart: true });
 
     await expect(
       execution.startAgentStepExecution(request('00000000-0000-4000-8000-000000000002')),
     ).rejects.toThrow('refused');
-    expect(calls.filter((call) => call.startsWith('session.'))).toEqual([]);
+    expect(calls.filter((call) => /^session.(create|start)/.test(call))).toEqual([]);
   });
 
   it('completes a retried start without a second attempt, Session or Turn', async () => {
@@ -369,6 +414,7 @@ describe('agent step execution', () => {
     expect(calls).toEqual([
       'baseline',
       `session.create ${derivedId(ATTEMPT, 'session-request')}`,
+      'session.validate controlled m',
       'engine.start continue',
       `session.start ${derivedId('00000000-0000-4000-8000-000000000007', 'session')}`,
     ]);

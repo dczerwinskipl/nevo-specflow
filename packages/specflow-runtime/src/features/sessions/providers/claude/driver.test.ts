@@ -236,7 +236,7 @@ describe('Claude native launch contract', () => {
       ).not.toThrow();
     });
 
-    it('offers in auto mode only the models Claude marks supportsAutoMode', () => {
+    it('offers in auto mode only the models Claude marks supportsAutoMode, when it reports the field', () => {
       const payload = {
         claude_code_version: '2.1.312',
         models: [
@@ -250,6 +250,12 @@ describe('Claude native launch contract', () => {
       ]);
       expect(claudeModels(payload, 'acceptEdits')).toHaveLength(2);
       expect(claudeModels(payload, 'auto').map((model) => model.modelId)).toEqual(['haiku']);
+      // A Claude that reports the field for no model (older versions) keeps every model in auto.
+      const unreported = {
+        ...payload,
+        models: payload.models.map(({ value, displayName }) => ({ value, displayName })),
+      };
+      expect(claudeModels(unreported, 'auto')).toHaveLength(2);
     });
   });
 });

@@ -63,8 +63,10 @@ export function claudeArguments(
 }
 
 /**
- * The models of a native mode. For `auto` only models Claude marks `supportsAutoMode`: Claude would
- * run any other model in `default` instead, so the choice is refused before dispatch.
+ * The models of a native mode. For `auto`, when Claude reports `supportsAutoMode` (2.1.312), only
+ * the models it marks: Claude would run any other model in `default` instead, so the choice is
+ * refused before dispatch. A Claude that reports the field for no model keeps every model; a
+ * fallback there is still refused by its `system/status` frame (`verifyClaudeStatus`).
  */
 export function claudeModels(
   payload: Record<string, unknown>,
@@ -74,8 +76,9 @@ export function claudeModels(
     throw new ClaudeProtocolError();
   }
 
+  const reported = payload.models.some((entry) => 'supportsAutoMode' in object(entry));
   const entries = payload.models.filter(
-    (entry) => modeId !== 'auto' || object(entry).supportsAutoMode === true,
+    (entry) => modeId !== 'auto' || !reported || object(entry).supportsAutoMode === true,
   );
   const models = entries.map((entry) => {
     const model = object(entry);

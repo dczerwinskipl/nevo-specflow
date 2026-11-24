@@ -18350,6 +18350,10 @@
                               "message": {
                                 "type": "string",
                                 "maxLength": 2048
+                              },
+                              "reason": {
+                                "type": "string",
+                                "maxLength": 128
                               }
                             },
                             "additionalProperties": false
@@ -19864,6 +19868,10 @@
                               "message": {
                                 "type": "string",
                                 "maxLength": 2048
+                              },
+                              "reason": {
+                                "type": "string",
+                                "maxLength": 128
                               }
                             },
                             "additionalProperties": false
@@ -24719,6 +24727,10 @@
                                 "message": {
                                   "type": "string",
                                   "maxLength": 2048
+                                },
+                                "reason": {
+                                  "type": "string",
+                                  "maxLength": 128
                                 }
                               },
                               "additionalProperties": false
@@ -25036,6 +25048,10 @@
                                 "message": {
                                   "type": "string",
                                   "maxLength": 2048
+                                },
+                                "reason": {
+                                  "type": "string",
+                                  "maxLength": 128
                                 }
                               },
                               "additionalProperties": false
@@ -26176,6 +26192,10 @@
                               "message": {
                                 "type": "string",
                                 "maxLength": 2048
+                              },
+                              "reason": {
+                                "type": "string",
+                                "maxLength": 128
                               }
                             },
                             "additionalProperties": false

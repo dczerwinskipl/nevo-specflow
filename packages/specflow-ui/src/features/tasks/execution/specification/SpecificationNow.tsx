@@ -1,6 +1,7 @@
 import { useId, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Alert,
   Button,
   InlineNote,
   Link,
@@ -70,9 +71,25 @@ export function SpecificationNow({
     return fallback;
   }
 
+  const readFailure = workflow.readFailed ? (
+    <Alert
+      tone="attention"
+      role={projection ? 'status' : 'alert'}
+      title={t(projection ? 'workflowExecution.now.readStale' : 'workflowExecution.now.readFailed')}
+    >
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={workflow.retrying}
+        onClick={workflow.retryRead}
+      >
+        {t('workflowExecution.now.readRetry')}
+      </Button>
+    </Alert>
+  ) : null;
   if (!projection) {
-    // Loading or unavailable: the block appears once the projection is read.
-    return null;
+    // Loading: the block appears once the projection is read. A failed read says so, with Retry.
+    return readFailure;
   }
 
   const { position } = projection;
@@ -172,7 +189,7 @@ export function SpecificationNow({
     };
   };
 
-  return (
+  const block = (
     <WorkflowNow
       subject={{ specId: workflow.specId }}
       projection={projection}
@@ -216,5 +233,15 @@ export function SpecificationNow({
           : {}),
       }}
     />
+  );
+
+  // A failed refresh keeps the last projection, so Stop, Take over and Return stay reachable.
+  return readFailure ? (
+    <div className="grid gap-3">
+      {readFailure}
+      {block}
+    </div>
+  ) : (
+    block
   );
 }

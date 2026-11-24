@@ -2481,7 +2481,10 @@
       "technicalStep": "Step {{step}} · {{title}} rev {{version}}",
       "technical": "{{title}} rev {{version}}",
       "openDocument": "Open {{name}}",
-      "runWithAgent": "Run with agent"
+      "runWithAgent": "Run with agent",
+      "readFailed": "SpecFlow could not read what can be done in this step now.",
+      "readStale": "SpecFlow could not refresh this step; it shows what was read last, which may be out of date.",
+      "readRetry": "Try again"
     },
     "blocker": {
       "dependencies_one": "Waiting for {{count}} dependency",

@@ -2481,7 +2481,10 @@
       "technicalStep": "Krok {{step}} · {{title}} wersja {{version}}",
       "technical": "{{title}} wersja {{version}}",
       "openDocument": "Otwórz {{name}}",
-      "runWithAgent": "Uruchom z agentem"
+      "runWithAgent": "Uruchom z agentem",
+      "readFailed": "SpecFlow nie mógł odczytać, co można teraz zrobić w tym kroku.",
+      "readStale": "SpecFlow nie mógł odświeżyć tego kroku; pokazuje ostatnio odczytany stan, który może być nieaktualny.",
+      "readRetry": "Spróbuj ponownie"
     },
     "blocker": {
       "dependencies_one": "Czeka na {{count}} zależność",

@@ -38,17 +38,20 @@ export function ToolDetailCode({
   language,
   label,
   lineNumbers,
+  wrap = false,
 }: {
   text: string;
   language: CodeLanguage;
   label: string;
   /** Number the lines: only for text the product formatted itself (pretty-printed JSON). */
   lineNumbers: boolean;
+  /** Wrap long lines to the block's width (only vertical scrolling then). */
+  wrap?: boolean;
 }) {
   return (
     <ScrollArea
       className={cn('min-w-0 overflow-hidden', codeSurfaceClassName)}
-      direction="both"
+      direction={wrap ? 'vertical' : 'both'}
       startEdge="hidden"
       indicatorColor="var(--color-canvas)"
       style={{ '--scroll-edge-size': '3rem' } as CSSProperties}
@@ -60,10 +63,10 @@ export function ToolDetailCode({
         language={language}
         label={label}
         readOnly
-        wrapLines={false}
+        wrapLines={wrap}
         activeLine={false}
         lineNumbers={lineNumbers}
-        scrolling="container"
+        scrolling={wrap ? 'own' : 'container'}
         setup={readOnlyNavigation}
       />
     </ScrollArea>

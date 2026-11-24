@@ -103,6 +103,14 @@ and Context's Work row for the same Turn open the same tab; another Turn opens o
 Live updates never open, switch or reset Work history.
 
 - **Chronology** runs oldest to newest, newest at the bottom; older pages load at the top.
+- **Rows say what was done, on what.** A tool row reads "Ran command · mkdir -p …", "Wrote file ·
+  dummy/job.sh and 2 more" (the UI's verb for the Runtime's `operation`, then its
+  workspace-relative `subject`; never the provider's name or an absolute path). A permission row
+  leads with the decision or **Waiting for you:**. A failed tool row names the file and the reason
+  under its state. The same wording heads the ToolAction detail ("Wrote file", the path under it),
+  followed by the readable input (a command wrapped, a written file's content, an edit's text before
+  and after), the response with workspace paths relative, and **Raw parameters** collapsed. Every
+  code block has **Wrap lines** (one remembered choice, on by default on a narrow screen) and Copy.
 - **Commentary structures the operations.** Each Commentary starts a chapter; the operations that
   follow are its chronological rows until the next Commentary. Operations render on the DS
   `Timeline`, **one Timeline per run between narration**: the rail resets at every Commentary or

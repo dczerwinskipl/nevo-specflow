@@ -216,6 +216,12 @@ export const ToolOperationSchema = Type.Union([
   Type.Literal('web'),
   Type.Literal('other'),
 ]);
+/**
+ * What a tool operation acts on, language-neutral and short: a path relative to the Session's
+ * workspace for a file tool, the first line of a command, a search pattern, a URL. The client
+ * names the operation in its own words before it.
+ */
+export const ToolSubjectSchema = text(1024);
 const operationCounts = Type.Object(
   {
     read: Type.Optional(SessionSequenceSchema),
@@ -362,6 +368,15 @@ export const WorkSummarySchema = Type.Object(
     title: TextPreviewSchema,
     content: Type.Optional(ContentRefSchema),
     actionCount: Type.Optional(SessionSequenceSchema),
+    /** Tool Work: its first ToolAction's operation and subject; a permission: what it asks for. */
+    operation: Type.Optional(ToolOperationSchema),
+    subject: Type.Optional(ToolSubjectSchema),
+    /** Tool Work with a failed ToolAction: the first one's subject and the provider's reason. */
+    failure: Type.Optional(
+      Type.Object({ subject: Type.Optional(ToolSubjectSchema), message: text(1024) }, closed),
+    ),
+    /** A permission the person answered: what they decided. */
+    decision: Type.Optional(Type.Union([Type.Literal('allowed'), Type.Literal('denied')])),
     createdAt: text(40),
     updatedAt: text(40),
   },
@@ -375,6 +390,7 @@ export const ToolActionSummarySchema = Type.Object(
     state: WorkStateSchema,
     title: TextPreviewSchema,
     operation: Type.Optional(ToolOperationSchema),
+    subject: Type.Optional(ToolSubjectSchema),
     input: Type.Optional(ContentRefSchema),
     output: Type.Optional(ContentRefSchema),
     error: Type.Optional(TurnErrorSchema),

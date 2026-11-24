@@ -7,12 +7,20 @@ import type { EmitFact, Invocation, ProviderOperation } from '../driver';
 import { ProviderTimeouts } from '../driver';
 import type { launchOwnedProcess } from '../process';
 import { ProviderProcessError } from '../process';
-import { createClaudeProtocol, ClaudeProtocolError, identifier, object } from './protocol';
+import {
+  createClaudeProtocol,
+  ClaudeProtocolError,
+  claudeToolOperations,
+  identifier,
+  object,
+} from './protocol';
 import type { ProductCliTrust } from './cli-path';
 import { claudeUserMessage } from './requests';
 import { prepareClaudeRequest } from './permissions';
 import { claudeMode, toolsForClaudeMode } from './modes';
 import { ClaudeRestrictionError } from './discovery';
+import { claudeToolSubject } from './subjects';
+import { nativeToolOperation } from '../tool-operations';
 
 export type ClaudeProcess = Pick<
   Awaited<ReturnType<typeof launchOwnedProcess>>,
@@ -158,6 +166,9 @@ export function createClaudeOperation(
     context.nativeSessionId,
     toolsForClaudeMode(claudeMode(invocation.selection)),
     !context.resume,
+    invocation.executionContext.kind === 'no-effects'
+      ? undefined
+      : invocation.executionContext.workspace,
   );
   async function outcome(fact: Extract<DriverFact, { kind: 'outcome' }>) {
     // Safe adapter messages must survive reload through the normal bounded conversation,
@@ -348,14 +359,28 @@ export function createClaudeOperation(
           groups.set(requestId, request);
           for (const [index, question] of request.questions.entries()) {
             pending.set(question.key, { group: request, index, live: true });
+            const tool = 'tool' in request ? request.tool : undefined;
+            const subject = tool
+              ? claudeToolSubject(
+                  tool.name,
+                  tool.input,
+                  invocation.executionContext.kind === 'no-effects'
+                    ? undefined
+                    : invocation.executionContext.workspace,
+                )
+              : undefined;
             await publish({
               kind: 'work-open',
               key: question.key,
               workKind: 'interaction',
-              title:
-                question.interaction.kind === 'permission'
-                  ? 'Claude permission'
-                  : 'Claude question',
+              // A permission is named by the tool call it is for; the client says its state.
+              title: tool
+                ? tool.name
+                : question.interaction.kind === 'permission'
+                  ? 'Permission'
+                  : 'Question',
+              ...(tool ? { operation: nativeToolOperation(claudeToolOperations, tool.name) } : {}),
+              ...(subject ? { subject } : {}),
             });
             await publish({ kind: 'interaction', ...question });
           }

@@ -1814,6 +1814,23 @@
       "interaction": "Interakcja z użytkownikiem",
       "tool": "Narzędzie"
     },
+    "toolVerb": {
+      "read": "Odczytano plik",
+      "edit": "Zmieniono plik",
+      "write": "Zapisano plik",
+      "list": "Wylistowano pliki",
+      "search": "Przeszukano",
+      "command": "Uruchomiono polecenie",
+      "test": "Uruchomiono testy",
+      "web": "Pobrano z sieci",
+      "other": "Wywołanie narzędzia",
+      "andMore": "{{label}} i {{count}} więcej"
+    },
+    "permissionState": {
+      "allowed": "Zezwolono: {{label}}",
+      "denied": "Odmówiono: {{label}}",
+      "waiting": "Czeka na Ciebie: {{label}}"
+    },
     "workState": {
       "queued": "W kolejce",
       "active": "W toku",
@@ -1825,6 +1842,16 @@
       "expired": "Wygasło"
     },
     "workInspector": {
+      "command": "Polecenie",
+      "fileContent": "Treść",
+      "before": "Przed",
+      "after": "Po",
+      "rawParameters": "Surowe parametry",
+      "copyCommand": "Kopiuj polecenie",
+      "copyContent": "Kopiuj treść",
+      "copyBefore": "Kopiuj tekst przed zmianą",
+      "copyAfter": "Kopiuj tekst po zmianie",
+      "wrapLines": "Zawijaj wiersze",
       "copy": "Kopiuj",
       "copyInput": "Kopiuj parametry",
       "copyOutput": "Kopiuj odpowiedź narzędzia",

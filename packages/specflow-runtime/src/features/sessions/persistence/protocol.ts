@@ -61,7 +61,15 @@ export type DriverFact =
   | MeasurementFact
   | { kind: 'interaction-expired'; key: string }
   | { kind: 'correlation'; providerSessionId: string }
-  | { kind: 'work-open'; key: string; workKind: WorkSummary['kind']; title: string }
+  | {
+      kind: 'work-open';
+      key: string;
+      workKind: WorkSummary['kind'];
+      title: string;
+      /** A permission: the operation it asks for and its subject (`WorkSummary.subject`). */
+      operation?: ToolOperation;
+      subject?: string;
+    }
   | { kind: 'work-update'; key: string; state: WorkSummary['state'] }
   | {
       kind: 'action-open';
@@ -70,8 +78,16 @@ export type DriverFact =
       title: string;
       /** Only from the provider's own tool identity; Runtime records `other` when absent. */
       operation?: ToolOperation;
+      /** What it acts on (`ToolActionSummary.subject`): workspace-relative, never absolute. */
+      subject?: string;
     }
-  | { kind: 'action-update'; key: string; state: WorkSummary['state'] }
+  | {
+      kind: 'action-update';
+      key: string;
+      state: WorkSummary['state'];
+      /** A failed action: the provider's own short reason. */
+      error?: { code: string; message: string };
+    }
   | {
       kind: 'usage';
       sampleId: string;

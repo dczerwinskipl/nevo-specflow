@@ -39,9 +39,12 @@ export const codeViewTheme = EditorView.theme(
       padding: '0 var(--spacing-control-padding-default) 0 var(--spacing-control-padding-compact)',
     },
     // The line numbers are a quiet band of their own (a slightly different surface), so
-    // the text column starts where that band ends; no hairline between them.
+    // the text column starts where that band ends; no hairline between them. The band is opaque
+    // (its tint over the field fill over the page): text scrolled sideways passes under the
+    // pinned numbers instead of showing through them.
     '.cm-gutters': {
-      backgroundColor: 'var(--color-surface-subtle)',
+      background:
+        'linear-gradient(var(--color-surface-subtle), var(--color-surface-subtle)), linear-gradient(var(--color-surface-control), var(--color-surface-control)), var(--color-canvas)',
       color: 'var(--color-content-muted)',
       border: 'none',
     },

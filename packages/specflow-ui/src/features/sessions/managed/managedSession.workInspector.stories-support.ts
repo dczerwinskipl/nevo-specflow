@@ -421,3 +421,129 @@ export function createWorkInspectorFixtureApi(
 }
 
 export { actionsWorkId, longReadWorkId };
+
+export const claudeWriteWorkId = '00000000-0000-4000-8000-000000000013';
+const worktree = 'C:/Users/owner/nevo-verify/dogfood/worktree';
+
+/**
+ * A realistic Claude Turn as the Runtime now records it: tool Work named by its first action's
+ * operation and workspace-relative subject, a permission with the person's decision, a write Work
+ * whose third file failed (named on its row), the agent's own note heading the next phase, and a
+ * permission still waiting.
+ */
+export function claudeTurnWorkItems(): WorkSummary[] {
+  return [
+    workItem({
+      kind: 'tool',
+      title: { text: 'Bash', complete: true },
+      operation: 'command',
+      subject: 'mkdir -p /tmp/dummy-job && cd /tmp/dummy-job && ./hello.sh …',
+      actionCount: 1,
+      createdAt: '2026-11-24T19:10:00.000Z',
+      updatedAt: '2026-11-24T19:10:25.300Z',
+    }),
+    workItem({
+      kind: 'interaction',
+      title: { text: 'Bash', complete: true },
+      operation: 'command',
+      subject: 'mkdir -p /tmp/dummy-job && cd /tmp/dummy-job && ./hello.sh …',
+      decision: 'allowed',
+      createdAt: '2026-11-24T19:10:01.000Z',
+      updatedAt: '2026-11-24T19:10:12.400Z',
+    }),
+    workItem({
+      workId: claudeWriteWorkId,
+      kind: 'tool',
+      state: 'failed',
+      title: { text: 'Write', complete: true },
+      operation: 'write',
+      subject: 'dummy-scratch/job.sh',
+      actionCount: 3,
+      failure: {
+        subject: 'dummy-scratch/test.sh',
+        message: 'File has not been read yet. Read it first before writing to it.',
+      },
+      createdAt: '2026-11-24T19:10:30.000Z',
+      updatedAt: '2026-11-24T19:10:54.800Z',
+    }),
+    workItem({
+      kind: 'commentary',
+      title: {
+        text: "The file tools can only write inside the worktree, so I'll use a scratch directory there and delete it afterwards.",
+        complete: true,
+      },
+    }),
+    workItem({
+      kind: 'tool',
+      title: { text: 'Edit', complete: true },
+      operation: 'edit',
+      subject: 'dummy-scratch/job.sh',
+      actionCount: 1,
+      createdAt: '2026-11-24T19:11:00.000Z',
+      updatedAt: '2026-11-24T19:11:00.031Z',
+    }),
+    workItem({
+      kind: 'interaction',
+      state: 'active',
+      title: { text: 'Bash', complete: true },
+      operation: 'command',
+      subject: 'rm -rf dummy-scratch /tmp/dummy-job',
+    }),
+  ];
+}
+
+/** The write Work's three actions: two created files and the one Claude refused. */
+export function claudeWriteActions(): ToolActionSummary[] {
+  const write = (
+    ordinal: number,
+    name: string,
+    content: string,
+    failed = false,
+  ): ToolActionSummary => ({
+    actionId: `00000000-0000-4000-8000-00000000002${ordinal}`,
+    ordinal,
+    revision: 1,
+    state: failed ? ('failed' as const) : ('completed' as const),
+    title: { text: 'Write', complete: true },
+    operation: 'write' as const,
+    subject: `dummy-scratch/${name}`,
+    input: fixtureContentRef(
+      JSON.stringify({ file_path: `${worktree}/dummy-scratch/${name}`, content }),
+    ),
+    output: fixtureContentRef(
+      failed
+        ? '<tool_use_error>File has not been read yet. Read it first before writing to it.</tool_use_error>'
+        : `File created successfully at: ${worktree}/dummy-scratch/${name}`,
+    ),
+    ...(failed
+      ? {
+          error: {
+            code: 'TOOL_FAILED',
+            message: 'File has not been read yet. Read it first before writing to it.',
+          },
+        }
+      : {}),
+    createdAt: '2026-11-24T19:10:30.000Z',
+    updatedAt: '2026-11-24T19:10:30.026Z',
+  });
+
+  return [
+    write(
+      1,
+      'job.sh',
+      [
+        '#!/bin/bash',
+        '# Dummy job: prints a greeting for a name.',
+        'name="${1:-World}"',
+        'echo "Hello, ${name}!"',
+      ].join('\n'),
+    ),
+    write(2, 'hello.sh', ['#!/bin/bash', 'echo "Hello, World! (2)"'].join('\n')),
+    write(
+      3,
+      'test.sh',
+      ['#!/bin/bash', 'set -e', '[ "$(./job.sh)" = "Hello, World!" ]'].join('\n'),
+      true,
+    ),
+  ];
+}

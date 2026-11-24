@@ -6,6 +6,7 @@ import type { ContentRef, ToolActionSummary } from '@nevo/specflow-contracts/ses
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import type { ManagedSessionsApi } from './api';
 import { SingleToolActionDetail, SingleToolActionHeader } from './ToolActionDetails';
+import { resetCodeWrapPreference } from './codeWrapPreference';
 
 const rawInput = '{"pattern":"admission","path":"src","limit":3}';
 const rawOutput = 'src/admission.mjs:42: export function admission() {\n  return true;\n}';
@@ -32,8 +33,11 @@ const action: ToolActionSummary = {
   output: outputRef,
 };
 
-function renderDetail(item: ToolActionSummary = action, withHeader = true) {
-  const bodies: Record<string, string> = { 'content-in': rawInput, 'content-out': rawOutput };
+function renderDetail(
+  item: ToolActionSummary = action,
+  withHeader = true,
+  bodies: Record<string, string> = { 'content-in': rawInput, 'content-out': rawOutput },
+) {
   const api = {
     content: (_sessionId: string, ref: ContentRef, offset: number) =>
       Promise.resolve({
@@ -195,5 +199,64 @@ describe('ToolAction details', () => {
       await Promise.resolve();
     });
     expect(writeText).toHaveBeenCalledWith(rawInput);
+  });
+
+  it('reads a written file: verb and workspace-relative name, its content, a relative response', async () => {
+    const root = 'C:/Users/owner/worktree';
+    renderDetail(
+      {
+        ...action,
+        title: { text: 'Write', complete: true },
+        operation: 'write',
+        subject: 'dummy/job.sh',
+      },
+      true,
+      {
+        'content-in': JSON.stringify({
+          file_path: root + '/dummy/job.sh',
+          content: ['#!/bin/bash', 'echo "Hello, $1"'].join(String.fromCharCode(10)),
+        }),
+        'content-out': 'File created successfully at: ' + root + '/dummy/job.sh',
+      },
+    );
+    const content = await screen.findByRole('textbox', { name: 'Content' });
+
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Wrote file');
+    expect(document.querySelector('[data-tool-action-subject]')!.textContent).toBe('dummy/job.sh');
+    expect(content.textContent).toContain('echo "Hello, $1"');
+    const response = screen.getByRole('textbox', { name: 'Tool response' });
+    expect(response.textContent).toBe('File created successfully at: dummy/job.sh');
+    // The raw parameters stay one click away.
+    const raw = screen.getByRole('button', { name: 'Raw parameters' });
+    expect(raw.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(raw);
+    expect(raw.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('wraps every block once Wrap lines is pressed, and remembers it', async () => {
+    resetCodeWrapPreference();
+    localStorage.clear();
+    renderDetail(
+      { ...action, title: { text: 'Bash', complete: true }, operation: 'command' },
+      true,
+      {
+        'content-in': JSON.stringify({ command: 'mkdir -p /tmp/job && cd /tmp/job && ./job.sh' }),
+        'content-out': rawOutput,
+      },
+    );
+    await screen.findByRole('textbox', { name: 'Command' });
+    const toggles = screen.getAllByRole('button', { name: 'Wrap lines' });
+    expect(toggles.every((toggle) => toggle.getAttribute('aria-pressed') === 'false')).toBe(true);
+
+    fireEvent.click(toggles[0]!);
+
+    expect(
+      screen
+        .getAllByRole('button', { name: 'Wrap lines' })
+        .every((toggle) => toggle.getAttribute('aria-pressed') === 'true'),
+    ).toBe(true);
+    expect(localStorage.getItem('nevo:tool-detail:wrap-lines')).toBe('true');
+    expect(document.querySelector('.cm-lineWrapping')).not.toBeNull();
+    resetCodeWrapPreference();
   });
 });

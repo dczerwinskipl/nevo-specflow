@@ -119,6 +119,8 @@ export function prepareClaudeRequest(frame: unknown, writable: boolean) {
     kind: 'questions' as const,
     requestId,
     toolId,
+    /** The tool call the permission is for, so the Work history can name it. */
+    tool: { name: String(request.tool_name), input },
     questions: [question],
     respond(index: number, response: RespondInteraction) {
       if (index !== 0 || answered) {

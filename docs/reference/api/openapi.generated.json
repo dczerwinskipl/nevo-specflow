@@ -25346,6 +25346,101 @@
                             "minimum": 0,
                             "maximum": 9007199254740991
                           },
+                          "operation": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "read"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "edit"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "write"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "list"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "search"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "command"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "test"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "web"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "other"
+                                ]
+                              }
+                            ]
+                          },
+                          "subject": {
+                            "type": "string",
+                            "maxLength": 1024
+                          },
+                          "failure": {
+                            "type": "object",
+                            "required": [
+                              "message"
+                            ],
+                            "properties": {
+                              "subject": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "message": {
+                                "type": "string",
+                                "maxLength": 1024
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "decision": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "allowed"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "denied"
+                                ]
+                              }
+                            ]
+                          },
                           "createdAt": {
                             "type": "string",
                             "maxLength": 40
@@ -26016,6 +26111,10 @@
                                 ]
                               }
                             ]
+                          },
+                          "subject": {
+                            "type": "string",
+                            "maxLength": 1024
                           },
                           "input": {
                             "type": "object",

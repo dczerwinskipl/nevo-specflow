@@ -293,7 +293,16 @@ describe('Claude full-message protocol', () => {
       },
     });
     await f.result({ result: 'Done' });
-    expect(f.facts).toContainEqual({ kind: 'action-update', key: 'tool:tool-1', state: 'failed' });
+    // The failure names its reason, and the action what it acts on.
+    expect(f.facts).toContainEqual({
+      kind: 'action-update',
+      key: 'tool:tool-1',
+      state: 'failed',
+      error: { code: 'TOOL_FAILED', message: expect.any(String) as string },
+    });
+    expect(f.facts).toContainEqual(
+      expect.objectContaining({ kind: 'action-open', title: 'Write', subject: '…/Temp/t1.md' }),
+    );
     expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
   });
   it.each([{ tool_use_id: 'tool-2' }, { tool_name: 'Edit' }, { tool_use_id: undefined }])(

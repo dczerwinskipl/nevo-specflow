@@ -4,6 +4,7 @@ import type { EmitFact } from '../driver';
 import { claudeReadTools } from './modes';
 import { nativeDecimal } from '../decimal';
 import { nativeToolOperation, type NativeToolOperations } from '../tool-operations';
+import { claudeToolError, claudeToolSubject, firstLine } from './subjects';
 
 /** Claude Code's own tool names. Glob finds files by pattern and Grep searches file contents. */
 export const claudeToolOperations: NativeToolOperations = {
@@ -78,6 +79,8 @@ export function createClaudeProtocol(
   expectedSessionId: string,
   allowedTools: readonly string[] = claudeReadTools,
   freshContext = false,
+  /** The Turn's workspace: subjects and reasons name paths relative to it. */
+  workspace?: string,
 ) {
   identifier(expectedSessionId);
   const seen = new Map<string, string>();
@@ -118,11 +121,12 @@ export function createClaudeProtocol(
       return;
     }
 
+    // Named by its own first line, so the Work history heads its phase with what the agent said.
     await emit({
       kind: 'work-open',
       key: pending.key,
       workKind: 'commentary',
-      title: 'Claude commentary',
+      title: firstLine(pending.text, 200) ?? 'Commentary',
     });
     await text(pending.key, 'commentary', pending.text);
     await emit({ kind: 'work-update', key: pending.key, state: 'completed' });
@@ -314,7 +318,13 @@ export function createClaudeProtocol(
         }
 
         groups.set(parent, { remaining: toolBlocks.length, failed: false });
-        await emit({ kind: 'work-open', key: parent, workKind: 'tool', title: 'Claude tools' });
+        // Named by its first tool (its subject follows from that ToolAction).
+        await emit({
+          kind: 'work-open',
+          key: parent,
+          workKind: 'tool',
+          title: identifier(toolBlocks[0]!.name),
+        });
         for (const block of toolBlocks) {
           const toolId = identifier(block.id);
           const key = 'tool:' + toolId;
@@ -336,12 +346,14 @@ export function createClaudeProtocol(
           }
 
           tools.set(toolId, { parent, key, name });
+          const subject = claudeToolSubject(name, input, workspace);
           await emit({
             kind: 'action-open',
             key,
             parentKey: parent,
             title: name,
             operation: nativeToolOperation(claudeToolOperations, name),
+            ...(subject ? { subject } : {}),
           });
           await text(key, 'tool-input', JSON.stringify(input));
         }
@@ -373,6 +385,9 @@ export function createClaudeProtocol(
           kind: 'action-update',
           key: tool.key,
           state: block.is_error ? 'failed' : 'completed',
+          ...(block.is_error
+            ? { error: { code: 'TOOL_FAILED', message: claudeToolError(output, workspace) } }
+            : {}),
         });
         tools.delete(toolId);
         const group = groups.get(tool.parent)!;

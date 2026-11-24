@@ -3,6 +3,9 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { ManagedSessionsApi } from './api';
 import {
   actionsWorkId,
+  claudeTurnWorkItems,
+  claudeWriteActions,
+  claudeWriteWorkId,
   longReadActions,
   longReadWorkId,
   createWorkInspectorFixtureApi,
@@ -465,5 +468,77 @@ export const FailedRefreshKeepsLoadedWork: Story = {
     await expect(
       canvas.queryByText('Nie udało się wczytać tej części sesji.'),
     ).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * A realistic Claude Turn (owner dogfood, 2026-11-24): every row says what it did and on what, in
+ * the UI's words, with no provider name; a permission says what the person decided or that it
+ * waits; the failed write names the file and the reason on its row; the agent's note heads the
+ * next phase. Opening the write shows a readable header, the written content, a relative
+ * response, and the raw parameters one click away.
+ */
+export const ClaudeTurn: Story = {
+  args: {
+    api: createWorkInspectorFixtureApi(claudeTurnWorkItems(), {
+      [claudeWriteWorkId]: claudeWriteActions(),
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await openWork(canvasElement);
+
+    await expect(
+      await canvas.findByText(
+        'Uruchomiono polecenie · mkdir -p /tmp/dummy-job && cd /tmp/dummy-job && ./hello.sh …',
+      ),
+    ).toBeVisible();
+    await expect(
+      canvas.getByText(
+        'Zezwolono: Uruchomiono polecenie · mkdir -p /tmp/dummy-job && cd /tmp/dummy-job && ./hello.sh …',
+      ),
+    ).toBeVisible();
+    await expect(
+      canvas.getByText(
+        'dummy-scratch/test.sh: File has not been read yet. Read it first before writing to it.',
+      ),
+    ).toBeVisible();
+    await expect(
+      canvas.getByText(
+        "The file tools can only write inside the worktree, so I'll use a scratch directory there and delete it afterwards.",
+      ),
+    ).toBeVisible();
+    await expect(
+      canvas.getByText(
+        'Czeka na Ciebie: Uruchomiono polecenie · rm -rf dummy-scratch /tmp/dummy-job',
+      ),
+    ).toBeVisible();
+    await expect(canvas.queryByText(/Claude (tools|permission|commentary)/)).toBeNull();
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: /Zapisano plik · dummy-scratch\/job\.sh i 2 więcej/ }),
+    );
+    await expect((await canvas.findAllByText('Zapisano plik')).length).toBeGreaterThan(0);
+    await expect((await canvas.findAllByRole('textbox', { name: 'Treść' })).length).toBe(3);
+    await expect(
+      await canvas.findByText('File created successfully at: dummy-scratch/job.sh'),
+    ).toBeInTheDocument();
+    // The headers and responses name files relative to the worktree (the raw parameters keep
+    // the tool's own absolute paths).
+    for (const response of canvas.getAllByRole('textbox', { name: 'Odpowiedź narzędzia' })) {
+      await expect(response.textContent).not.toContain('C:/Users');
+    }
+
+    await expect(canvas.getAllByRole('button', { name: 'Surowe parametry' })[0]).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    // One Wrap lines choice for every block, pressed state announced.
+    const toggles = () => canvas.getAllByRole('button', { name: 'Zawijaj wiersze' });
+    const before = toggles()[0]!.getAttribute('aria-pressed');
+    await userEvent.click(toggles()[0]!);
+    for (const toggle of toggles()) {
+      await expect(toggle).toHaveAttribute('aria-pressed', before === 'true' ? 'false' : 'true');
+    }
   },
 };

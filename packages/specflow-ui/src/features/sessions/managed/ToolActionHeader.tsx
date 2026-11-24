@@ -5,6 +5,7 @@ import { Icon, Spinner, Typography } from '@nevo/ui';
 import { useWorkClockRangeLabel, useWorkDurationLabel } from './WorkRow';
 import { workItemDurationMs } from './workGrouping';
 import { workStateTextClassName, workStateTone, type WorkStateTone } from './workStatus';
+import { toolActionHeading } from './toolLabels';
 
 /**
  * From this duration on the wall-clock start–end is shown in the header itself: start and end then
@@ -32,7 +33,7 @@ function StatusGlyph({ tone }: { tone: WorkStateTone }) {
 
 /**
  * The status line under a ToolAction's title: its real state, then its duration. Typed data only —
- * the contract has no tool kind or subject, so nothing is parsed out of the title or the output.
+ * nothing is parsed out of the title or the output.
  *
  * - Completed: a discreet success icon; the state word is for assistive technology only (a visible
  *   "Zakończono" on every action said nothing), the duration is the visible fact.
@@ -99,8 +100,10 @@ function ToolActionStatus({ item, glyph }: { item: ToolActionSummary; glyph: boo
 }
 
 /**
- * A ToolAction's header: its full title (the contract's only name for it — never shortened or
- * re-derived), then the status line. `asHeading`: the single-action screen's own heading.
+ * A ToolAction's header: what it did in the UI's words ("Ran command", the shared `toolLabels`
+ * wording the Work history rows use too), what it acted on under it (the Runtime's
+ * workspace-relative subject, wrapped, never an absolute path), then the status line.
+ * `asHeading`: the single-action screen's own heading.
  */
 export function ToolActionHeader({
   item,
@@ -109,6 +112,9 @@ export function ToolActionHeader({
   item: ToolActionSummary;
   asHeading: boolean;
 }) {
+  const { t } = useTranslation();
+  const { heading, subject } = toolActionHeading(t, item);
+
   return (
     <div className="grid min-w-0 gap-1">
       {asHeading ? (
@@ -117,12 +123,20 @@ export function ToolActionHeader({
           variant="title-sm"
           className="min-w-0 text-content-primary [overflow-wrap:anywhere]"
         >
-          {item.title.text}
+          {heading}
         </Typography>
       ) : (
-        <span className="min-w-0 text-content-primary [overflow-wrap:anywhere]">
-          {item.title.text}
-        </span>
+        <span className="min-w-0 text-content-primary [overflow-wrap:anywhere]">{heading}</span>
+      )}
+      {subject && (
+        <Typography
+          as="p"
+          variant="body-sm"
+          className="min-w-0 font-mono text-content-secondary [overflow-wrap:anywhere]"
+          data-tool-action-subject=""
+        >
+          {subject}
+        </Typography>
       )}
       <ToolActionStatus item={item} glyph={asHeading} />
     </div>

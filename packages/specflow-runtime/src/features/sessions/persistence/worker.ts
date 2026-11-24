@@ -1209,6 +1209,10 @@ export async function runSessionWorker(): Promise<void> {
         }
 
         w.state = 'waiting';
+        if (c.input.kind === 'permission') {
+          w.decision = c.input.decision === 'allow' ? 'allowed' : 'denied';
+        }
+
         w.revision++;
         w.updatedAt = now();
         run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);

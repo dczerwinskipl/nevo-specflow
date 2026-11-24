@@ -204,6 +204,8 @@ export function createProviderFacts({
         kind: f.workKind,
         state: 'active',
         title: { text: f.title, complete: true },
+        ...(f.operation ? { operation: f.operation } : {}),
+        ...(f.subject ? { subject: f.subject } : {}),
         createdAt: now(),
         updatedAt: now(),
       };
@@ -277,6 +279,7 @@ export function createProviderFacts({
         state: 'active',
         title: { text: f.title, complete: true },
         operation: f.operation ?? 'other',
+        ...(f.subject ? { subject: f.subject } : {}),
         createdAt: now(),
         updatedAt: now(),
       };
@@ -291,6 +294,14 @@ export function createProviderFacts({
         JSON.stringify(action),
       );
       w.actionCount = (w.actionCount ?? 0) + 1;
+      // The Work is named by its first ToolAction.
+      if (w.actionCount === 1) {
+        w.operation = action.operation;
+        if (action.subject) {
+          w.subject = action.subject;
+        }
+      }
+
       w.revision++;
       w.updatedAt = now();
       run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
@@ -319,12 +330,24 @@ export function createProviderFacts({
         }
 
         action.state = f.state;
+        if (f.state === 'failed' && f.error) {
+          action.error = f.error;
+        }
+
         action.revision++;
         action.updatedAt = now();
         run('UPDATE actions SET data=? WHERE id=?', JSON.stringify(action), action.actionId);
       }
 
       const w = decode<WorkSummary>(get('SELECT data FROM work WHERE id=?', String(row!.work)));
+      // The Work's first failure names what failed and why, so its row can say it.
+      if (action.state === 'failed' && f.error && !w.failure) {
+        w.failure = {
+          ...(action.subject ? { subject: action.subject } : {}),
+          message: f.error.message,
+        };
+      }
+
       w.revision++;
       w.updatedAt = now();
       run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
@@ -381,6 +404,11 @@ export function createProviderFacts({
         }
 
         w.content = ref;
+        // Narration Work reads as its own words (Work history shows its title), never a kind.
+        if (w.kind === 'commentary' || w.kind === 'reasoning') {
+          w.title = preview(ref);
+        }
+
         w.revision++;
         w.updatedAt = now();
         run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);

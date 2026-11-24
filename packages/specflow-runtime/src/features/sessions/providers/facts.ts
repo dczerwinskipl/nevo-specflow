@@ -11,6 +11,7 @@ import {
   CommandPermissionActionSchema,
   ToolOperationSchema,
   NoticeSeveritySchema,
+  ToolSubjectSchema,
 } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
 import type { DriverFact } from '../persistence/protocol';
@@ -105,7 +106,14 @@ const schema = Type.Union([
   Type.Object({ kind: Type.Literal('interaction-expired'), key }, closed),
   Type.Object({ kind: Type.Literal('correlation'), providerSessionId: key }, closed),
   Type.Object(
-    { kind: Type.Literal('work-open'), key, workKind: WorkKindSchema, title: text(2048) },
+    {
+      kind: Type.Literal('work-open'),
+      key,
+      workKind: WorkKindSchema,
+      title: text(2048),
+      operation: Type.Optional(ToolOperationSchema),
+      subject: Type.Optional(ToolSubjectSchema),
+    },
     closed,
   ),
   Type.Object({ kind: Type.Literal('work-update'), key, state: WorkStateSchema }, closed),
@@ -116,10 +124,19 @@ const schema = Type.Union([
       parentKey: key,
       title: text(2048),
       operation: Type.Optional(ToolOperationSchema),
+      subject: Type.Optional(ToolSubjectSchema),
     },
     closed,
   ),
-  Type.Object({ kind: Type.Literal('action-update'), key, state: WorkStateSchema }, closed),
+  Type.Object(
+    {
+      kind: Type.Literal('action-update'),
+      key,
+      state: WorkStateSchema,
+      error: Type.Optional(Type.Object({ code: text(64), message: text(1024) }, closed)),
+    },
+    closed,
+  ),
   Type.Object(
     {
       kind: Type.Literal('text'),

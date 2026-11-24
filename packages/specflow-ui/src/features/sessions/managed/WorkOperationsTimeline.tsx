@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { WorkSummary } from '@nevo/specflow-contracts/sessions';
-import { Collapsible, Timeline, Typography } from '@nevo/ui';
+import { Collapsible, Timeline, Typography, cn } from '@nevo/ui';
 import { historyEntry } from './pagedHistoryAnchor';
 import { useGroupKeys } from './stableGroupKeys';
 import type { ChapterEntry, ToolBurstEntry } from './workGrouping';
@@ -11,10 +12,25 @@ import {
   type ViewStore,
   type WorkViewState,
 } from './workInspectorStore';
-import { workStateTone } from './workStatus';
+import { workStateTextClassName, workStateTone } from './workStatus';
 import { WorkRowContent, useWorkRowMeta } from './WorkRow';
+import { workFailureText, workItemTitle } from './toolLabels';
 
 type OpenActions = (workId: string, title: string) => void;
+
+/** A failed tool Work's meta line, then what failed and why, so the row says it unopened. */
+function withFailure(meta: ReactNode, item: WorkSummary): ReactNode {
+  const failure = workFailureText(item);
+
+  return failure ? (
+    <>
+      {meta}
+      <span className={cn('mt-0.5 block', workStateTextClassName('danger'))}>{failure}</span>
+    </>
+  ) : (
+    meta
+  );
+}
 
 /** The Work ids an entry of a run holds: a tool group's members, or the one item. */
 export const chapterEntryMembers = (entry: ChapterEntry): string[] =>
@@ -30,6 +46,7 @@ function InteractionTimelineItem({ item }: { item: WorkSummary }) {
   // interaction showed only the generic kind name, losing what was actually asked — with its kind
   // leading the meta line under it.
   const { meta, srStatus } = useWorkRowMeta(item, { leading: item.title.text ? kind : undefined });
+  const title = workItemTitle(t, item);
 
   return (
     <Timeline.Item {...historyEntry(item.workId)}>
@@ -39,7 +56,7 @@ function InteractionTimelineItem({ item }: { item: WorkSummary }) {
           <WorkRowContent
             title={
               <>
-                {item.title.text || kind}
+                {title || kind}
                 {srStatus}
               </>
             }
@@ -64,7 +81,9 @@ function ToolTimelineItem({
   item: WorkSummary;
   onOpenActions: OpenActions;
 }) {
+  const { t } = useTranslation();
   const { meta, srStatus } = useWorkRowMeta(item, { actionCount: item.actionCount });
+  const title = workItemTitle(t, item);
 
   return (
     <Timeline.Item {...historyEntry(item.workId)}>
@@ -75,14 +94,12 @@ function ToolTimelineItem({
             bleed="rail"
             title={
               <>
-                {item.title.text}
+                {title}
                 {srStatus}
               </>
             }
-            meta={meta}
-            onOpen={
-              item.actionCount ? () => onOpenActions(item.workId, item.title.text) : undefined
-            }
+            meta={withFailure(meta, item)}
+            onOpen={item.actionCount ? () => onOpenActions(item.workId, title) : undefined}
           />
         }
       />
@@ -101,18 +118,20 @@ function GroupedToolRow({
   item: WorkSummary;
   onOpenActions: OpenActions;
 }) {
+  const { t } = useTranslation();
   const { meta, srStatus } = useWorkRowMeta(item, { actionCount: item.actionCount });
+  const title = workItemTitle(t, item);
 
   return (
     <WorkRowContent
       title={
         <Typography as="span" variant="body-md" className="text-content-primary">
-          {item.title.text}
+          {title}
           {srStatus}
         </Typography>
       }
       meta={meta}
-      onOpen={item.actionCount ? () => onOpenActions(item.workId, item.title.text) : undefined}
+      onOpen={item.actionCount ? () => onOpenActions(item.workId, title) : undefined}
     />
   );
 }

@@ -1814,6 +1814,23 @@
       "interaction": "User interaction",
       "tool": "Tool"
     },
+    "toolVerb": {
+      "read": "Read file",
+      "edit": "Edited file",
+      "write": "Wrote file",
+      "list": "Listed files",
+      "search": "Searched",
+      "command": "Ran command",
+      "test": "Ran tests",
+      "web": "Fetched from the web",
+      "other": "Tool call",
+      "andMore": "{{label}} and {{count}} more"
+    },
+    "permissionState": {
+      "allowed": "Allowed: {{label}}",
+      "denied": "Denied: {{label}}",
+      "waiting": "Waiting for you: {{label}}"
+    },
     "workState": {
       "queued": "Queued",
       "active": "In progress",
@@ -1825,6 +1842,16 @@
       "expired": "Expired"
     },
     "workInspector": {
+      "command": "Command",
+      "fileContent": "Content",
+      "before": "Before",
+      "after": "After",
+      "rawParameters": "Raw parameters",
+      "copyCommand": "Copy command",
+      "copyContent": "Copy content",
+      "copyBefore": "Copy text before the edit",
+      "copyAfter": "Copy text after the edit",
+      "wrapLines": "Wrap lines",
       "copy": "Copy",
       "copyInput": "Copy parameters",
       "copyOutput": "Copy tool response",

@@ -1,8 +1,9 @@
 /**
- * The agent attempts whose commit failed (D15, D16), as Close reports them: their paths are listed
- * under the attempt, with the remedy "retry the attempt commit", instead of under the kind they
- * would otherwise fall in. The workflow supplies them through the opened Engine
- * (`SpecFlowEngine.failedAttemptCommits`); this module only shapes them for a refusal.
+ * The holds of the finished agent attempts whose own commit (D15) waits: the one source of truth
+ * every admission asks ({@link AttemptCommitHolds}). The workflow computes them from its attempt
+ * journals and the ledger (`workflow/agent/finalize/attempt-commit/holds.ts`) and supplies them
+ * through the opened Engine (`SpecFlowEngine.attemptCommitHolds`); this module holds their shape,
+ * the shapes the refusals list them in (D16) and the proof the attempt commit carries.
  */
 
 /**
@@ -11,7 +12,7 @@
  * the owner retries it). With Git on, every workflow write of the attempt's Specification (the
  * owner's Confirm and Reject included) is refused while it waits (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`),
  * so no owner change joins the agent's uncommitted work and the owner's commit never comes before it.
- * The workflow supplies it through the opened Engine (`SpecFlowEngine.attemptCommitWait`).
+ * Each {@link AttemptCommitPathHold} carries it.
  */
 export interface AttemptCommitWait {
   readonly reason: 'attempt-commit-pending' | 'attempt-commit-failed';
@@ -50,28 +51,55 @@ export function attemptCommitState(wait: SpecificationAttemptCommitWait): string
 /**
  * A finished agent attempt whose own commit (D15) waits (pending or failed), with the checkout paths
  * that commit takes: while it waits, no write but the attempt's own changes them (the document
- * writer refuses the others, `DOCUMENT_COMMITS_PENDING` with `cause: attempt-commit`), so the
- * attempt commit never meets another author's change in them.
+ * writer refuses the others, `DOCUMENT_COMMITS_PENDING` with `cause: attempt-commit`), no commit but
+ * the attempt's own takes them (the manual commit refuses the same way) and Close never accepts
+ * them into its archive commit, so the attempt commit never meets another author's change in them.
  */
 export interface AttemptCommitPathHold {
   readonly wait: SpecificationAttemptCommitWait;
   /** The Runtime invocations of the attempt's Turns: their writes are the attempt's own. */
   readonly invocations: ReadonlySet<string>;
-  /** Checkout-relative, sorted: its ledger entries (the mixed ones included) and declared files. */
+  /** Checkout-relative, sorted: the attempt's ledger entries, the mixed ones included. */
+  readonly ledger: readonly string[];
+  /** Checkout-relative, sorted: the files outside the ledger the agent declared. */
+  readonly declared: readonly string[];
+  /** Checkout-relative, sorted: `ledger` and `declared`, each once. */
   readonly paths: readonly string[];
 }
 
 /**
- * The waiting attempt commits of a checkout (none with Git off), or `readable: false` when an
- * attempt journal or a ledger record cannot be read: what such a journal holds is unknown, so every
- * caller fails closed.
+ * THE answer to "which uncommitted paths of a checkout does a finished agent attempt hold, and which
+ * operation may take them" (`SpecFlowEngine.attemptCommitHolds`, keyed by the checkout of the
+ * Specification): the waiting attempt commits (none with Git off), and `executions`, the Runtime
+ * invocations whose ledger entries an attempt commit still takes (the Turns of an attempt in
+ * progress, or of a held one), which the owner's commit of the execution state leaves out.
+ * `readable: false` when an attempt journal or a ledger record cannot be read (or a listing was cut
+ * short): what it holds is unknown, so every caller fails closed. Workflow admission, document
+ * admission, the manual commit, Close and the owner's commit of the execution state all ask it.
  */
-export type AttemptCommitPathHolds =
-  | { readonly readable: true; readonly holds: readonly AttemptCommitPathHold[] }
+export type AttemptCommitHolds =
+  | {
+      readonly readable: true;
+      readonly holds: readonly AttemptCommitPathHold[];
+      readonly executions: ReadonlySet<string>;
+    }
   | { readonly readable: false };
 
-/** A finished agent attempt whose commit failed, with every path that commit would hold. */
-export interface FailedAttemptCommit {
+/** The holds when every record could be read. */
+export type ReadableAttemptCommitHolds = Extract<AttemptCommitHolds, { readable: true }>;
+
+/** No attempt holds anything (no workflow composed, or Git off). */
+export const NO_ATTEMPT_COMMIT_HOLDS: AttemptCommitHolds = {
+  readable: true,
+  holds: [],
+  executions: new Set(),
+};
+
+/** What the code of an attempt whose commit has not run yet is, where a refusal lists it. */
+export const ATTEMPT_COMMIT_PENDING_CODE = 'ATTEMPT_COMMIT_PENDING';
+
+/** A finished agent attempt whose commit waits, as Close lists it, with every path it holds. */
+export interface WaitingAttemptCommit {
   readonly attemptId: string;
   readonly specId: string;
   /** The Task, for a Task's attempt. */
@@ -79,7 +107,7 @@ export interface FailedAttemptCommit {
   readonly step: string;
   readonly attempt: number;
   readonly stepTitle: string;
-  /** Why the commit failed (the post action's code). */
+  /** Why the commit failed (the post action's code), or {@link ATTEMPT_COMMIT_PENDING_CODE}. */
   readonly code: string;
   /** Checkout-relative, sorted: the attempt's ledger entries. */
   readonly paths: readonly string[];
@@ -87,8 +115,65 @@ export interface FailedAttemptCommit {
   readonly declared: readonly string[];
 }
 
-/** One failed attempt commit as a refusal names it: the first `named` of its `count` paths. */
-export interface UncommittedAttempt extends Omit<FailedAttemptCommit, 'paths' | 'declared'> {
+/** The holds as Close lists them (pending and failed alike). */
+export function waitingAttemptCommits(
+  holds: ReadableAttemptCommitHolds,
+): readonly WaitingAttemptCommit[] {
+  return holds.holds.map(({ wait, ledger, declared }) => ({
+    attemptId: wait.attemptId,
+    specId: wait.subject.specId,
+    ...(wait.subject.taskId !== undefined ? { taskId: wait.subject.taskId } : {}),
+    step: wait.step,
+    attempt: wait.attempt,
+    stepTitle: wait.stepTitle,
+    code:
+      wait.reason === 'attempt-commit-failed'
+        ? (wait.code ?? 'FAILED')
+        : ATTEMPT_COMMIT_PENDING_CODE,
+    paths: ledger,
+    declared,
+  }));
+}
+
+/** Every path the holds take (checkout-relative). */
+export function heldPaths(holds: ReadableAttemptCommitHolds): Set<string> {
+  return new Set(holds.holds.flatMap((hold) => hold.paths));
+}
+
+const authorities = new WeakSet<object>();
+
+/**
+ * The in-process proof that a manual commit IS the attempt commit of `attemptId` (D15): the one
+ * commit exempt from that attempt's own hold (no other attempt's). Minted only by the attempt commit
+ * runner (`workflow/agent/finalize/attempt-commit/run.ts`) for the attempt it commits; no transport
+ * can carry it (it is an object identity, never a field of a request), and a copy is no proof.
+ */
+export interface AttemptCommitAuthority {
+  readonly attemptId: string;
+}
+
+/** Mints the {@link AttemptCommitAuthority} of the attempt commit of `attemptId`. */
+export function mintAttemptCommitAuthority(attemptId: string): AttemptCommitAuthority {
+  const authority = Object.freeze({ attemptId });
+  authorities.add(authority);
+
+  return authority;
+}
+
+/** Whether `authority` proves the commit is the attempt commit of the attempt `hold` waits for. */
+export function isOwnAttemptCommit(
+  authority: AttemptCommitAuthority | undefined,
+  hold: Pick<AttemptCommitPathHold, 'wait'>,
+): boolean {
+  return (
+    authority !== undefined &&
+    authorities.has(authority) &&
+    authority.attemptId === hold.wait.attemptId
+  );
+}
+
+/** One waiting attempt commit as a refusal names it: the first `named` of its `count` paths. */
+export interface UncommittedAttempt extends Omit<WaitingAttemptCommit, 'paths' | 'declared'> {
   readonly count: number;
   readonly paths: readonly string[];
 }
@@ -97,11 +182,11 @@ export interface UncommittedAttempt extends Omit<FailedAttemptCommit, 'paths' | 
  * The attempts that hold some of `paths` (what a refusal reports), each with those of its paths
  * only (the first `named` of them), and the set of every path they take: the refusal lists those
  * under the attempt and leaves them out of its other kinds. `declared: 'always'` (the ledger hold,
- * which reads no Git) lists every declared file of an attempt whose commit failed as held too; else
+ * which reads no Git) lists every declared file of a waiting attempt as held too; else
  * only those of `paths`.
  */
 export function attemptsHolding(
-  attempts: readonly FailedAttemptCommit[],
+  attempts: readonly WaitingAttemptCommit[],
   paths: Iterable<string>,
   named: number,
   declared: 'always' | 'when-present' = 'when-present',

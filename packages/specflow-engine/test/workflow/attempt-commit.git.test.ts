@@ -10,6 +10,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import { sha256Hex } from '../../src/hash';
 import { recordLedgerEntries } from '../../src/specs/durable';
 import { ManualCommitInterrupted } from '../../src/specs/manual-commit';
+import { readableAttemptCommitHolds } from '../../src/specs/documents/attempt-commit-hold';
 import { readUncommittedHold } from '../../src/specs/uncommitted';
 import { commitAgentAttempt } from '../../src/workflow/agent/finalize/attempt-commit/run';
 import {
@@ -183,7 +184,13 @@ it('commits exactly the attempt, refuses a file edited after publication, and co
 
   // Close lists the attempt's files under the attempt (retry the attempt commit), its declared
   // files included, and the owner's apart.
-  const hold = await readUncommittedHold(engine, engine.workspace.workspaceId);
+  const workspaceId = engine.workspace.workspaceId;
+  const hold = await readUncommittedHold(
+    engine,
+    workspaceId,
+    undefined,
+    await readableAttemptCommitHolds(engine, workspaceId),
+  );
   expect(hold?.attempts).toEqual([
     expect.objectContaining({
       attemptId: ATTEMPT_ID,

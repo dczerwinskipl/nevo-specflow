@@ -1,6 +1,10 @@
+import type { SpecFlowEngine } from '../application';
+import { resolveSpecification } from '../specs/discovery';
 import {
   attemptCommitState,
   namedAttempt,
+  NO_ATTEMPT_COMMIT_HOLDS,
+  type AttemptCommitHolds,
   type SpecificationAttemptCommitWait,
 } from '../specs/uncommitted/attempts';
 import { WorkflowError } from './errors';
@@ -22,6 +26,52 @@ import type { ExecutionChange, WorkflowStore } from './state/store';
  * wait re-evaluation, abandon, Confirm, Reject, Task create, edit, removal and status, an agent's
  * start), and the owner decisions on an agent's result ask it before they plan.
  */
+
+/** The refusal while the holds cannot be read: whether an attempt's commit waits is unknown. */
+export function unreadableAttemptJournals(): WorkflowError {
+  return new WorkflowError(
+    'WORKFLOW_STATE_CORRUPT',
+    "An agent attempt's record cannot be read, so SpecFlow cannot tell whether the commit of its " +
+      "work still waits. Repair or remove the unreadable record under the project's local state, " +
+      'then try again.',
+  );
+}
+
+/**
+ * The workflow admission's view of the attempt commit holds of a checkout (the Engine's one answer,
+ * `SpecFlowEngine.attemptCommitHolds`): the oldest waiting attempt of the Specification `specId` (of
+ * the Specification itself or of one of its Tasks), or `undefined`. `WORKFLOW_STATE_CORRUPT` when
+ * the holds cannot be read. Pure.
+ */
+export function specificationWaitOf(
+  holds: AttemptCommitHolds,
+  specId: string,
+): SpecificationAttemptCommitWait | undefined {
+  if (!holds.readable) {
+    throw unreadableAttemptJournals();
+  }
+
+  return holds.holds.find((hold) => hold.wait.subject.specId === specId)?.wait;
+}
+
+/**
+ * {@link specificationWaitOf} of the holds of the Specification's own checkout (resolved here, so an
+ * Engine opened on another checkout asks the right one). `undefined` for a Specification whose
+ * source is unavailable: nothing of its workflow can be read or written then either.
+ */
+export async function specificationAttemptCommitWait(
+  engine: SpecFlowEngine,
+  specId: string,
+): Promise<SpecificationAttemptCommitWait | undefined> {
+  const found = await resolveSpecification(engine, specId);
+  if (found.status !== 'available') {
+    return undefined;
+  }
+
+  const holds = (await engine.attemptCommitHolds?.(found.workspaceId)) ?? NO_ATTEMPT_COMMIT_HOLDS;
+
+  return specificationWaitOf(holds, specId);
+}
 
 /** The refusal of a workflow write while `wait` holds the Specification. */
 export function attemptCommitRequired(wait: SpecificationAttemptCommitWait): WorkflowError {

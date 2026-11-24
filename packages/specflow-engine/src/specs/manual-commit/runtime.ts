@@ -146,6 +146,13 @@ export interface ManualCommitPorts {
    * holds them. Called under the control lock, at the reservation.
    */
   assertQuiet(target: ManualCommitTarget, paths: readonly string[]): Promise<void>;
+  /**
+   * Refuses (`DOCUMENT_COMMITS_PENDING`, `cause: attempt-commit`) when a finished agent attempt
+   * whose own commit (D15) waits holds any of the paths, unless this commit is that attempt's own;
+   * `COMMIT_BLOCKED` when the holds cannot be read. Called at the admission and again under the
+   * control lock, at the reservation.
+   */
+  assertNotHeld(target: ManualCommitTarget, paths: readonly string[]): Promise<void>;
 }
 
 /**

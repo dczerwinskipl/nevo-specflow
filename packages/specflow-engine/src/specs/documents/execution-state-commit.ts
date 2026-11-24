@@ -11,6 +11,7 @@ import { readLedgerRecord } from '../durable';
 import { ledgerAuthorsOf } from '../durable/ledger/model';
 import { EXECUTION_DIRECTORY, isExecutionStatePathOf } from '../execution-paths';
 import { pruneUncommitted } from '../uncommitted';
+import { NO_ATTEMPT_COMMIT_HOLDS } from '../uncommitted/attempts';
 import {
   closureOf,
   editedSince,
@@ -68,15 +69,6 @@ export interface ExecutionStateCommitChange {
   readonly phrase: string;
   /** Body lines, for example the step id and attempt. */
   readonly details?: readonly string[];
-  /**
-   * The agent executions (Runtime invocations) whose entries an attempt commit still takes: the
-   * Turns of an attempt in progress, or of a finished one whose attempt commit is pending or failed
-   * (the workflow supplies them). Their entries are held, never committed here. An entry of any
-   * other execution (an attempt that ended without an attempt commit: taken over, returned) is
-   * committed like the owner's own. Absent: they cannot be told, and every entry an execution wrote
-   * is held.
-   */
-  readonly attemptExecutions?: ReadonlySet<string>;
 }
 
 const messageText = (message: { subject: string; body: string }): string =>
@@ -103,15 +95,17 @@ const messageText = (message: { subject: string; body: string }): string =>
  * commit's (`MANUAL_COMMIT_CONFLICT` still, when a path is edited between this check and the commit).
  *
  * An entry an agent attempt's Turn wrote whose attempt commit still takes it (its durable authors
- * name one of `change.attemptExecutions`: the Task drafts and execution state of that attempt) is
+ * name one of the `executions` of the attempt commit holds of the Specification's own checkout,
+ * `SpecFlowEngine.attemptCommitHolds`: the Task drafts and execution state of an attempt in progress
+ * or waiting for its commit) is
  * never taken, nor anything that travels with it: it belongs to that attempt's own commit alone
  * (D15), so this owner's commit can never split the agent's work. An owner's change tied to it is
  * reported `held` with `attempt`, so the commit is never reported done while it stays behind. An
  * entry of an attempt that ended without its own commit (the owner took it over, or returned it) is
  * committed here, so no execution state is left uncommitted that no commit will ever take. An entry
  * an agent of such an attempt changed together with someone else is held with `attempt` too; without
- * `attemptExecutions` (the journals cannot all be read) the execution state agents wrote is held
- * `unattributable`. The caller reports neither as done.
+ * readable holds (an attempt journal or the ledger cannot be read) the execution state agents wrote
+ * is held `unattributable`. The caller reports neither as done.
  */
 export async function commitExecutionState(
   engine: SpecFlowEngine,
@@ -133,6 +127,9 @@ export async function commitExecutionState(
     return { kind: 'nothing-to-commit' };
   }
 
+  // The holds of the Specification's own checkout, which need not be the one the Engine opened.
+  const holds = (await engine.attemptCommitHolds?.(found.workspaceId)) ?? NO_ATTEMPT_COMMIT_HOLDS;
+  const pending = holds.readable ? holds.executions : undefined;
   const directory = containerDirectory(found.specification.slug, { kind: 'specification' });
   const index = `${directory}/${TASKS_FOLDER}/${TASK_INDEX_FILE}`;
   const unlinked = new Set([index]);
@@ -145,7 +142,6 @@ export async function commitExecutionState(
     const entries = scopeEntriesOf(record === undefined ? [] : [record]);
     // An entry an attempt's commit still takes (D15) is the agent's work, never this owner's
     // commit's: it is left out with everything that travels with it.
-    const pending = change.attemptExecutions;
     const state = (record?.entries ?? []).filter((entry) =>
       isExecutionStatePathOf(directory, entry.path),
     );

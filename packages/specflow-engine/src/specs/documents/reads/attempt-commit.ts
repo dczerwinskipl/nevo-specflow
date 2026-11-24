@@ -1,6 +1,6 @@
 import { ATTEMPT_COMMIT_PATHS_MAX } from '@nevo/specflow-contracts/documents';
 
-import type { AttemptCommitPathHolds } from '../../uncommitted/attempts';
+import type { AttemptCommitHolds } from '../../uncommitted/attempts';
 import type { TreeAttemptCommit } from '../projection';
 
 /**
@@ -11,7 +11,7 @@ import type { TreeAttemptCommit } from '../projection';
  * click what the write would be refused for. Pure.
  */
 export function treeAttemptCommitOf(
-  holds: AttemptCommitPathHolds | undefined,
+  holds: AttemptCommitHolds | undefined,
   directory: string,
 ): TreeAttemptCommit | undefined {
   if (holds === undefined) {

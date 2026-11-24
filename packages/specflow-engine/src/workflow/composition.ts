@@ -32,7 +32,7 @@ import {
 } from '../specs/durable';
 import { guardExecutionClaims } from './state/claim-guard';
 import { executionClaimAdmission } from './write-admission';
-import { guardAttemptCommits } from './attempt-commit-admission';
+import { guardAttemptCommits, specificationAttemptCommitWait } from './attempt-commit-admission';
 import type { RememberModelDependencies } from './definitions/remember-model';
 import type { TaskReferences } from './operations/task-references';
 import { readTaskDocuments } from '../specs/documents/task-document-reader';
@@ -222,7 +222,7 @@ function engineHolds(engine: SpecFlowEngine): ExecutionHolds {
         throw error;
       }
     },
-    attemptCommit: (specId) => engine.attemptCommitWait?.(specId) ?? Promise.resolve(undefined),
+    attemptCommit: (specId) => specificationAttemptCommitWait(engine, specId),
   };
 }
 
@@ -362,11 +362,7 @@ async function commitOwnerState(
 ): Promise<readonly PostActionResult[]> {
   const action = 'commit-execution-state';
   try {
-    const attemptExecutions = await engine.attemptCommitExecutions?.(engine.workspace.workspaceId);
-    const outcome = await commitExecutionState(engine, specId, {
-      ...change,
-      ...(attemptExecutions !== undefined ? { attemptExecutions } : {}),
-    });
+    const outcome = await commitExecutionState(engine, specId, change);
     const held =
       'held' in outcome && outcome.held
         ? { held: { edited: outcome.held.edited, paths: outcome.held.paths } }

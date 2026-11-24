@@ -48,6 +48,12 @@ import {
   type DeclaredCommitPath,
   type StoredMessage,
 } from '../manual-commit';
+import {
+  isOwnAttemptCommit,
+  NO_ATTEMPT_COMMIT_HOLDS,
+  type AttemptCommitAuthority,
+} from '../uncommitted/attempts';
+import { attemptCommitHeld } from './attempt-commit-hold';
 import type { DocumentChangeJournal } from './changes/journal/model';
 import { isBarrierStage, isPendingStage } from './changes/journal/stages';
 import { documentChangeError } from './changes/errors';
@@ -96,6 +102,12 @@ export interface ManualCommitCommandOptions extends ManualCommitOptions {
    */
   readonly canManageSpecification?: (specId: string) => boolean;
   readonly deps?: ManualCommitDependencies;
+  /**
+   * The proof that this commit is the attempt commit (D15) of one agent attempt, minted by the
+   * attempt commit runner for it: the only commit that takes the paths that attempt holds while its
+   * commit waits. Every other commit of a held path is refused. Never set by a transport.
+   */
+  readonly attemptCommit?: AttemptCommitAuthority;
   /** Seams of the flush of the document queue (tests). */
   readonly queue?: QueueDependencies;
 }
@@ -224,7 +236,10 @@ function journalsOfScope<T extends { readonly specId: string; readonly workspace
   );
 }
 
-/** The ports of the manual commit to the document queue and to the cross-slice claim check. */
+/**
+ * The ports of the manual commit to the document queue, to the cross-slice claim check and to the
+ * agent attempt commit holds (`SpecFlowEngine.attemptCommitHolds`).
+ */
 export function manualCommitPorts(
   engine: SpecFlowEngine,
   options: ManualCommitCommandOptions = {},
@@ -295,6 +310,17 @@ export function manualCommitPorts(
           'These documents are being committed; retry shortly.',
           { retryAfterMs: 1000 },
         );
+      }
+    },
+
+    async assertNotHeld(target, paths) {
+      const holds =
+        (await engine.attemptCommitHolds?.(target.checkout.workspaceId)) ?? NO_ATTEMPT_COMMIT_HOLDS;
+      const held = attemptCommitHeld(holds, paths, 'commit', (hold) =>
+        isOwnAttemptCommit(options.attemptCommit, hold),
+      );
+      if (held !== undefined) {
+        throw held;
       }
     },
   };

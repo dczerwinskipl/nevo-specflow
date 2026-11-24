@@ -1,11 +1,7 @@
 import { runReadRequest } from './project/request-verification-memo';
 import type { CheckoutQuiescence } from './specs/lifecycle/checkout-quiescence-port';
 import type { SpecificationExitGuard } from './specs/lifecycle/exit-guard';
-import type {
-  AttemptCommitPathHolds,
-  FailedAttemptCommit,
-  SpecificationAttemptCommitWait,
-} from './specs/uncommitted/attempts';
+import type { AttemptCommitHolds } from './specs/uncommitted/attempts';
 import {
   resolveProjectHome,
   type ResolveProjectHomeOptions,
@@ -33,33 +29,13 @@ export interface SpecFlowEngine {
    */
   readonly stepInProgress?: (specId: string) => Promise<boolean | undefined>;
   /**
-   * The finished agent attempts of a checkout whose commit failed, with the paths that commit holds
-   * (D15): Close lists them under "retry the attempt commit". Absent where no workflow is composed.
+   * The one answer to which uncommitted paths of the checkout `workspaceId` finished agent attempts
+   * hold while their own commit (D15) is pending or failed, and which agent executions an attempt
+   * commit still takes: workflow admission, document admission, the manual commit, Close and the
+   * owner's commit of the execution state all ask it, keyed by the checkout of the Specification
+   * they act on. Absent where no workflow is composed.
    */
-  readonly failedAttemptCommits?: (workspaceId: string) => Promise<readonly FailedAttemptCommit[]>;
-  /**
-   * With Git on, the finished agent attempt of the Specification whose own commit (D15) still waits:
-   * every workflow write of the Specification is refused meanwhile. `undefined` when none waits or
-   * with Git off. Absent where no workflow is composed.
-   */
-  readonly attemptCommitWait?: (
-    specId: string,
-  ) => Promise<SpecificationAttemptCommitWait | undefined>;
-  /**
-   * The agent executions of the checkout whose uncommitted entries an attempt commit (D15) still
-   * takes (an attempt in progress, or finished with its commit pending or failed): the owner's commit
-   * of the execution state leaves those out. `undefined` when it cannot be told. Absent where no
-   * workflow is composed.
-   */
-  readonly attemptCommitExecutions?: (
-    workspaceId: string,
-  ) => Promise<ReadonlySet<string> | undefined>;
-  /**
-   * With Git on, the finished agent attempts of the checkout whose own commit (D15) waits, with the
-   * paths that commit takes: the document writer refuses every other write to them and the document
-   * tree reports them. Absent where no workflow is composed.
-   */
-  readonly attemptCommitHolds?: (workspaceId: string) => Promise<AttemptCommitPathHolds>;
+  readonly attemptCommitHolds?: (workspaceId: string) => Promise<AttemptCommitHolds>;
   /**
    * Whether an agent can work in a checkout Close would remove, from the host process (the Runtime
    * or the CLI) through `withCheckoutQuiescence`. Absent, Close does not remove a checkout.
@@ -76,18 +52,9 @@ export interface EnginePorts {
   readonly stepInProgress?: (
     engine: SpecFlowEngine,
   ) => (specId: string) => Promise<boolean | undefined>;
-  readonly failedAttemptCommits?: (
-    engine: SpecFlowEngine,
-  ) => (workspaceId: string) => Promise<readonly FailedAttemptCommit[]>;
-  readonly attemptCommitWait?: (
-    engine: SpecFlowEngine,
-  ) => (specId: string) => Promise<SpecificationAttemptCommitWait | undefined>;
-  readonly attemptCommitExecutions?: (
-    engine: SpecFlowEngine,
-  ) => (workspaceId: string) => Promise<ReadonlySet<string> | undefined>;
   readonly attemptCommitHolds?: (
     engine: SpecFlowEngine,
-  ) => (workspaceId: string) => Promise<AttemptCommitPathHolds>;
+  ) => (workspaceId: string) => Promise<AttemptCommitHolds>;
 }
 
 /**
@@ -117,23 +84,6 @@ export async function openEngineBoundary(
     specificationExit: (specId) => ports.specificationExit(engine)(specId),
     ...(ports.stepInProgress
       ? { stepInProgress: (specId: string) => ports.stepInProgress!(engine)(specId) }
-      : {}),
-    ...(ports.failedAttemptCommits
-      ? {
-          failedAttemptCommits: (workspaceId: string) =>
-            ports.failedAttemptCommits!(engine)(workspaceId),
-        }
-      : {}),
-    ...(ports.attemptCommitWait
-      ? {
-          attemptCommitWait: (specId: string) => ports.attemptCommitWait!(engine)(specId),
-        }
-      : {}),
-    ...(ports.attemptCommitExecutions
-      ? {
-          attemptCommitExecutions: (workspaceId: string) =>
-            ports.attemptCommitExecutions!(engine)(workspaceId),
-        }
       : {}),
     ...(ports.attemptCommitHolds
       ? {

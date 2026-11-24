@@ -6,7 +6,13 @@ import { effectiveAutoCommit } from '../../version-control/worktrees/policy';
 import { resolveSpecificationForRead } from '../discovery';
 import { listLedgerRecords, type LedgerReason } from '../durable';
 import { isExecutionStatePath, isExecutionStatePathOf } from '../execution-paths';
-import { attemptsHolding, type UncommittedAttempt } from './attempts';
+import {
+  attemptsHolding,
+  heldPaths,
+  waitingAttemptCommits,
+  type ReadableAttemptCommitHolds,
+  type UncommittedAttempt,
+} from './attempts';
 
 /** How many paths of one owner a hold names; `count` is the total. */
 export const UNCOMMITTED_HOLD_PATHS_NAMED = UNCOMMITTED_HOLD_PATHS_MAX;
@@ -48,7 +54,7 @@ export interface UncommittedHold {
    * are the paths of `attempts`.
    */
   readonly owners: readonly UncommittedHoldOwner[];
-  /** Agent attempts whose commit failed, with their held paths (retry the attempt commit). */
+  /** Agent attempts whose commit waits (pending or failed), with their held paths (retry it). */
   readonly attempts?: readonly UncommittedAttempt[];
   /** Ledger records that cannot be read: they hold the checkout like entries. */
   readonly unreadable: number;
@@ -80,14 +86,18 @@ const isWorkflowState = (path: string): boolean => {
  * (`commit-uncommitted`), with whose paths they are and why they are uncommitted. Lock-free,
  * Git-free. With Git disabled nothing can be committed, so the ledger holds nothing back (an
  * unreadable policy is treated as Git enabled: fail closed). The entries `allowance` names do not
- * hold the checkout.
+ * hold the checkout, but never one a waiting agent attempt commit takes (`holds`, the attempt commit
+ * holds of the checkout, `SpecFlowEngine.attemptCommitHolds`): those are listed under their attempt.
  */
 export async function readUncommittedHold(
   engine: SpecFlowEngine,
   workspaceId: string,
-  allowance?: UncommittedAllowance,
+  allowance: UncommittedAllowance | undefined,
+  holds: ReadableAttemptCommitHolds,
 ): Promise<UncommittedHold | undefined> {
   const { records, unreadable } = await listLedgerRecords(engine.context, { workspaceId });
+  // A path a waiting attempt commit takes is never allowed: no archive commit takes it along (D15).
+  const taken = heldPaths(holds);
   const allowed = records.flatMap((record) => {
     const ownerId = record.owner.kind === 'specification' ? record.owner.id : undefined;
     const own =
@@ -95,14 +105,18 @@ export async function readUncommittedHold(
         ? allowance?.directories.find((entry) => entry.specId === ownerId)
         : undefined;
     const entries = record.entries.filter(
-      (entry) => own === undefined || !isExecutionStatePathOf(own.directory, entry.path),
+      (entry) =>
+        own === undefined ||
+        taken.has(entry.path) ||
+        !isExecutionStatePathOf(own.directory, entry.path),
     );
 
     return entries.length === 0 ? [] : [{ owner: record.owner, entries }];
   });
-  // A failed attempt commit's paths are listed under that attempt, not under their owner.
+  // A waiting attempt commit's paths (pending or failed) are listed under that attempt, not under
+  // their owner.
   const failed = attemptsHolding(
-    (await engine.failedAttemptCommits?.(workspaceId)) ?? [],
+    waitingAttemptCommits(holds),
     allowed.flatMap((record) => record.entries.map((entry) => entry.path)),
     UNCOMMITTED_HOLD_PATHS_NAMED,
     'always',

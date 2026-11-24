@@ -207,6 +207,9 @@ export async function admitManualCommit(
 
   const paths = [...selected.map((entry) => entry.path), ...declared.map((entry) => entry.path)];
 
+  // 5b. No finished agent attempt whose commit waits holds a path, unless this is its own commit.
+  await ports.assertNotHeld(target, paths);
+
   // 6. The branch.
   let branch: string;
   try {
@@ -298,7 +301,7 @@ export function snapshotEntriesOf(
 /**
  * ONE reservation under the Project Home control lock: the ledger is still what the request was
  * judged on, no Create or Close claims the checkout, no other manual commit holds it, no document
- * write or queue batch holds the paths, the snapshot and the message are durable and the journal is
+ * write, queue batch or waiting agent attempt commit (but its own) holds the paths, the snapshot and the message are durable and the journal is
  * published at `reserved`. Nothing is written outside the Project Home state.
  */
 export async function reserveManualCommit(
@@ -382,10 +385,10 @@ export async function reserveManualCommit(
           });
     }
 
-    await ports.assertQuiet(target, [
-      ...selected.map((entry) => entry.path),
-      ...declared.map((entry) => entry.path),
-    ]);
+    const paths = [...selected.map((entry) => entry.path), ...declared.map((entry) => entry.path)];
+    await ports.assertQuiet(target, paths);
+    // An attempt that finished between the admission and the lock holds its paths now.
+    await ports.assertNotHeld(target, paths);
 
     await writePayload(rt.context, MANUAL_COMMIT_JOURNAL_KIND, operationId, [
       { sha256: snapshot.sha256, content: snapshot.text },

@@ -12,6 +12,7 @@ import type { WorkspaceExecutionTarget } from '../../execution/operations';
 import { readWorkspaceRegistry } from '../../project/workspace/registry/registry';
 import { readLedgerRecord, type OwnedExecutionClaim } from '../../specs/durable';
 import type { LedgerEntry } from '../../specs/durable/ledger/model';
+import type { AttemptCommitHolds } from '../../specs/uncommitted/attempts';
 import { listUncleanPaths } from '../../specs/lifecycle/preflight';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { engineExecutionStore, openWorkflow, type OpenWorkflowOptions } from '../composition';
@@ -23,7 +24,7 @@ import { engineAgentContextSource } from './context/engine-source';
 import type { AgentContextSource } from './context/gather';
 import { dirtySetOf, type DirtySetFacts } from './boundary/dirty-set';
 import { engineAttributionFacts } from './boundary/engine-facts';
-import { attemptCommitExecutions } from './finalize/attempt-commit/close';
+import { readAttemptCommitHolds } from './finalize/attempt-commit/holds';
 import { attemptCommitRunner } from './finalize/attempt-commit/run';
 import { ownerStatePaths } from './boundary/owner-state';
 import { resolveSpecification } from '../../specs/discovery';
@@ -172,7 +173,7 @@ export async function openAgentAttempts(
       return ownerStatePaths(
         record?.entries ?? [],
         containerDirectory(found.specification.slug, { kind: 'specification' }),
-        await attemptCommitExecutions(engine, workspaceId),
+        executionsOf(await readAttemptCommitHolds(engine, workspaceId)),
       );
     },
     finalize: {
@@ -186,4 +187,9 @@ export async function openAgentAttempts(
       postActions: attemptCommitRunner(engine),
     },
   };
+}
+
+/** The agent executions an attempt commit still takes; `undefined` when the holds cannot be read. */
+function executionsOf(holds: AttemptCommitHolds): ReadonlySet<string> | undefined {
+  return holds.readable ? holds.executions : undefined;
 }

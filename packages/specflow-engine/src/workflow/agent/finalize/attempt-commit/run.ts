@@ -7,6 +7,7 @@ import {
 } from '../../../../specs/documents/manual-commit';
 import { resolveSpecification } from '../../../../specs/discovery';
 import { readLedgerRecord } from '../../../../specs/durable';
+import { mintAttemptCommitAuthority } from '../../../../specs/uncommitted/attempts';
 import { errorOfFailedJournal, findManualCommitJournal } from '../../../../specs/manual-commit';
 import { readProjectGitPolicy } from '../../../../version-control/worktrees/config';
 import type { PostActionResult } from '../../../operations/post-actions';
@@ -142,7 +143,8 @@ export async function commitAgentAttempt(
           authorsJudged: true,
           composed: attemptCommitMessage(journal, action.stepTitle, found.specification.slug),
         },
-        options,
+        // The one commit exempt from this attempt's hold of its paths: its own.
+        { ...options, attemptCommit: mintAttemptCommitAuthority(journal.operationId) },
       ),
     );
   } catch (error) {

@@ -208,10 +208,30 @@ unavailable with reason `attempt-commit`, and the editor shows the note with Ret
 neither a refused owner save nor, with automatic commits on, a queued owner commit takes the agent's
 file, and the first Retry commits the attempt.
 
-**The wait fails closed.** An attempt journal that cannot be read, or a listing cut short, may be
-the one that waits: the workflow admission refuses `WORKFLOW_STATE_CORRUPT`, and the document writer
-refuses every write `COMMIT_BLOCKED` (`blockedBy: attempt-record-unreadable`; the tree reports
-`commit-blocked`), until the record is repaired.
+**Commits and Close while an attempt commit waits (owner decision 2026-11-24).** No other commit
+takes a held path: the manual commit (Specification and Workspace scope, the owner's
+`commit-execution-state` included) refuses a selection that contains one, at its admission and
+again under the lock of its reservation, with the same `DOCUMENT_COMMITS_PENDING` (`cause:
+attempt-commit`). The one exemption is the attempt's own attempt commit, identified by an
+in-process authority minted for that attempt by the attempt commit runner, never by the caller
+being internal. Close never accepts a held path as execution state it archives along (pending or
+failed alike, for the closing Specification or a sibling) and refuses before it reserves
+(`DOCUMENT_COMMITS_PENDING`, `commit-uncommitted`, the attempt listed in `attempts`, D16); the
+archive effects check again. So a Retry always holds all of the agent's work.
+
+**One source of truth (owner decision 2026-11-24).** Which uncommitted paths finished agent attempts
+hold, and which operation may take them, is one Engine query (`attemptCommitHolds(workspaceId)`,
+computed by the workflow from its attempt journals and the ledger), keyed by the checkout of the
+Specification acted on, not the checkout the Engine was opened on. The workflow admission, the
+document writer and tree, the manual commit, Close and the owner's `commit-execution-state` are
+thin adapters over it; there is no second list of failed attempts or of agent executions.
+
+**The wait fails closed.** An attempt journal that cannot be read, or a listing cut short (or, once
+an attempt waits, a ledger record that cannot be read), may hide what waits: the workflow admission
+refuses `WORKFLOW_STATE_CORRUPT`; the document writer, the manual commit and Close refuse
+`COMMIT_BLOCKED` (`blockedBy: attempt-record-unreadable`; the tree reports `commit-blocked`); the
+owner's `commit-execution-state` holds the agents' entries (`WORKFLOW_STATE_CORRUPT`), until the
+record is repaired.
 
 **Every owner change is the owner's commit.** Reject and a Return that applies now run
 `commit-execution-state` like Confirm; a new agent attempt first commits the owner's uncommitted

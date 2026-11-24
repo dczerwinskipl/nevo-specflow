@@ -140,7 +140,8 @@ Specification's document queue drains first.
   (ADR 0018).
 - The owner's `commit-execution-state` leaves out only what an attempt commit still takes: the
   entries of the Turns of an attempt in progress, or of a finished one whose attempt commit is
-  pending or failed (`attemptCommitExecutions`). The execution state of an attempt that ended
+  pending or failed (`executions` of the attempt holds of the Specification's own checkout, see
+  below). The execution state of an attempt that ended
   without its own commit (taken over, returned) has no other commit: the owner's next one takes it.
   It is never `completed` while it left an owner change uncommitted because of agent work: an
   owner's change tied to waiting agent work (closed under operations, or inside the same entry)
@@ -148,6 +149,18 @@ Specification's document queue drains first.
   journals cannot all be read fails `WORKFLOW_STATE_CORRUPT`; both name the held paths (`held`).
 
 ### While an attempt commit waits
+
+**One source of truth.** Which uncommitted paths finished agent attempts hold, and which operation
+may take them, is one query: `readAttemptCommitHolds` (`finalize/attempt-commit/holds.ts`), the
+engine port `attemptCommitHolds(workspaceId)`, keyed by the checkout of the Specification acted on.
+Per attempt whose commit is pending or failed it returns the wait (named attempt, reason, code), the
+Turns whose writes are its own and the paths its commit takes (its ledger entries, mixed ones
+included, and its declared files); it also returns the agent executions an attempt commit still
+takes (the Turns of an attempt in progress or of a held one). It fails closed (`readable: false`)
+when an attempt journal or a ledger record cannot be read, or a listing was cut short. Every
+admission below is a thin adapter over it: the workflow's (`specificationAttemptCommitWait`, which
+resolves the Specification's checkout), the document writer's and the document tree's, the manual
+commit's, Close's and the owner's `commit-execution-state`.
 
 With Git on, while a finished attempt's commit is pending or failed
 (`specificationAttemptCommitWait`), every workflow write of its Specification is refused before
@@ -161,8 +174,8 @@ which the waiting commit's retry needs settled. The wait fails closed: a journal
 (or a listing cut short) may be the one that waits, so every workflow write is refused
 `WORKFLOW_STATE_CORRUPT` until it is repaired. Other Specifications are unaffected.
 
-The agent's files are guarded at the document writer too (`attemptCommitPathHolds`, the engine port
-`attemptCommitHolds`): while the commit waits, a document write not made under one of the attempt's
+The agent's files are guarded at the document writer too (the same holds): while the commit
+waits, a document write not made under one of the attempt's
 own Turns to a path that commit takes (its ledger entries, mixed ones included, and its declared
 paths) is refused under the reservation lock before anything is written or queued
 (`DOCUMENT_COMMITS_PENDING`, `cause: attempt-commit`, naming the attempt and the paths; the owner's
@@ -170,6 +183,15 @@ save, create, rename, move, delete and Task document edits alike). The other pat
 The document tree reports the same holds (`attemptCommit`, actions `attempt-commit`); holds that
 cannot be read refuse every write `COMMIT_BLOCKED` and show `commit-blocked`. See
 [document commit policy](../runtime/document-commit-policy.md#agent-writes).
+
+No other commit takes those paths either: the manual commit (Specification and Workspace scope, and
+the owner's `commit-execution-state`) refuses a selection that contains one, at its admission and
+under the lock of its reservation, with the same `DOCUMENT_COMMITS_PENDING`, `cause:
+attempt-commit`; only the attempt's own attempt commit is exempt, proven by an in-process authority
+the attempt commit runner mints for that attempt. Close never accepts them as execution state it
+archives along, pending or failed alike, and refuses before it reserves
+([Close lifecycle](../runtime/specification-close-lifecycle.md)). So a Retry always holds all of the
+agent's work.
 
 The projection (`withAttemptCommitWait`) shows it for every affected action: `attemptCommit` names
 the attempt and its subject (Retry commit), `start`, `finish`, `return`, `confirm` and `reject`

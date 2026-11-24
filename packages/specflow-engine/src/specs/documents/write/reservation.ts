@@ -33,7 +33,7 @@ import {
   listDocumentChangeJournals,
   sweepSettledDocumentChanges,
 } from './journal-store';
-import { attemptCommitHeld } from './attempt-commit-hold';
+import { attemptCommitHeld } from '../attempt-commit-hold';
 import { foreignUncommitted } from './foreign-ledger';
 import type { WriteRuntime } from './writer-types';
 
@@ -160,7 +160,15 @@ export async function reserveOnce(
     // (the owner's write included is refused), so its commit never meets another author's change.
     // Before the attempt finished, its execution claim refused this write already (above).
     const holds = await rt.engine.attemptCommitHolds?.(loaded.workspaceId);
-    const held = holds !== undefined ? attemptCommitHeld(holds, plan, owned) : undefined;
+    const held =
+      holds !== undefined
+        ? attemptCommitHeld(
+            holds,
+            plan.paths.map((path) => path.path),
+            'change',
+            (hold) => owned !== undefined && hold.invocations.has(owned.operationId),
+          )
+        : undefined;
     if (held !== undefined) {
       return { kind: 'busy', error: held, waitable: false };
     }

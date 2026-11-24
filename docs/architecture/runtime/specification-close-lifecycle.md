@@ -124,11 +124,21 @@ Specification's Task and step changes stay in the ledger until its next step fin
 **Uncommitted agent work (D16, [ADR 0026](../decisions/0026-agent-step-execution.md)).** A finished
 agent attempt commits its own work at finish; what stays uncommitted is listed, never discarded:
 
-- an agent attempt whose commit failed is listed apart, in `attempts` of the `uncommitted-changes`
-  blocker and of the `DOCUMENT_COMMITS_PENDING` hold (its step, Task, failure code and its paths:
+- an agent attempt whose commit waits (failed, or pending: not run yet or interrupted) is listed
+  apart, in `attempts` of the `uncommitted-changes` blocker and of the `DOCUMENT_COMMITS_PENDING`
+  hold (its step, Task, failure code, `ATTEMPT_COMMIT_PENDING` for a pending one, and its paths:
   the documents, Tasks and execution state its Turns wrote and its declared files), with the remedy
   "retry the attempt commit" (`POST .../workflow/attempt-commit/retry`, `nevo-specflow workflow
 retry-commit`); those paths are not counted again under the other kinds;
+- a path such an attempt holds is never accepted, whatever the Close kind: not as the closing
+  Specification's own execution state, not as a sibling's (#181). The preview and the Close refuse
+  before anything is reserved (`CLOSE_PREFLIGHT` answered as `DOCUMENT_COMMITS_PENDING`,
+  `commit-uncommitted`, with the attempt in `attempts`), the locked admission judges the ledger hold
+  the same way, and the archive effects check once more, so no archive commit ever takes the
+  agent's work, even when only its execution state is dirty (the agent finished the last step). The
+  holds are the Engine's one answer (`attemptCommitHolds` of the source checkout,
+  [document commit policy](document-commit-policy.md#agent-writes)); when they cannot be read the
+  Close is refused `COMMIT_BLOCKED` (`blockedBy: attempt-record-unreadable`);
 - the code changes of an attempt the owner took over, or of a Turn that ended without a finish,
   are ordinary dirty paths: listed under `other` with the remedy to commit them in Git;
 - the CLI `specs close --preview` and a Close refusal print the same groups as the UI

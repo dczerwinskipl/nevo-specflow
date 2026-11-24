@@ -19,6 +19,7 @@ import {
   listUncleanPaths,
   siblingSpecificationDirectories,
 } from './preflight';
+import { readableAttemptCommitHolds } from '../documents/attempt-commit-hold';
 import { isExecutionStatePathOf } from '../execution-paths';
 import { disabledIntegrationHooksDirectory } from './git/scratch';
 import { readCloseJournal } from './journal/store';
@@ -445,7 +446,7 @@ export async function archiveSpecificationWithCommit(
   const newPath = 'specs/archive/' + record.plan.slug;
   // The Specification's uncommitted execution state goes into the archive commit; a sibling
   // Specification's own pending execution state does not block it either (#181); nothing else may
-  // be dirty.
+  // be dirty, and never a path a waiting agent attempt commit takes (D15).
   const siblings = await siblingSpecificationDirectories(
     actual.root,
     source.workspaceId,
@@ -456,6 +457,7 @@ export async function archiveSpecificationWithCommit(
     specificationDirectory: oldPath,
     acceptExecutionState: true,
     siblingDirectories: siblings.map((entry) => entry.directory),
+    holds: await readableAttemptCommitHolds(engine, source.workspaceId),
   });
   if (
     facts.head !== source.head ||

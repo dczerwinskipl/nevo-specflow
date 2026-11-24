@@ -97,8 +97,10 @@ Manual commit shares the queued commit port, checkout-scoped claim, lease and du
 #### Admission and reservation
 
 1. Require Git, flush queue to rest and a nonempty ledger.
-2. Verify `ledgerRevision`, subset closure, pinned branch, Git preflight and unchanged post-images.
-3. Under control lock, reread the ledger; replan if it moved, then reserve the claim and journal.
+2. Verify `ledgerRevision`, subset closure, no selected path held by a waiting agent attempt commit
+   (see [Agent writes](#agent-writes)), pinned branch, Git preflight and unchanged post-images.
+3. Under control lock, reread the ledger; replan if it moved, judge the attempt holds again, then
+   reserve the claim and journal.
 
 #### Execution and verification
 
@@ -134,6 +136,26 @@ the held paths' actions unavailable (`attempt-commit`). When the attempt journal
 cannot be read, every write is refused `COMMIT_BLOCKED` (`blockedBy: attempt-record-unreadable`).
 So with automatic commits on, no owner commit queued meanwhile takes the agent's file, and the
 attempt commit's retry is never raced by one.
+
+The manual commit applies the same holds: a selection (Specification or Workspace scope, the owner's
+`commit-execution-state` included) that contains a path a waiting attempt commit takes is refused at
+its admission and again under the control lock of its reservation, with the same
+`DOCUMENT_COMMITS_PENDING`, `cause: attempt-commit` (`COMMIT_BLOCKED` when the holds cannot be
+read). The only commit exempt is that attempt's own attempt commit, proven by an in-process
+authority the attempt commit runner mints for that one attempt (`mintAttemptCommitAuthority`); no
+transport can carry it and it exempts no other attempt's hold. So a Retry always holds all of the
+agent's work.
+
+**One source of truth.** Which uncommitted paths finished agent attempts hold, and which operation
+may take them, is one query of the workflow (`readAttemptCommitHolds`,
+`workflow/agent/finalize/attempt-commit/holds.ts`), supplied through the opened Engine as
+`attemptCommitHolds(workspaceId)` and always keyed by the checkout of the Specification acted on
+(never the checkout the Engine was opened on). It returns, per waiting attempt (commit pending or
+failed), the paths its commit takes (its ledger entries, mixed ones included, and its declared
+files) and the Turns whose writes are its own, plus the agent executions whose entries an attempt
+commit still takes; it fails closed (`readable: false`) when an attempt journal or a ledger record
+cannot be read, or a listing was cut short. Workflow admission, document admission and the document
+tree, the manual commit, Close and `commit-execution-state` are thin adapters over it.
 
 ### Close and queued operations
 
@@ -224,7 +246,10 @@ published change is ONE document operation of action `workflow` (contract
   so no owner change joins the agent's entries. `commit-execution-state` is never `completed` while
   it left an owner change uncommitted because of agent work: `failed`
   `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` or `WORKFLOW_STATE_CORRUPT` (an attempt journal cannot be
-  read), with `held`. Paths a person edited by hand stay `held` on a `completed` result.
+  read), with `held`. Paths a person edited by hand stay `held` on a `completed` result. Which
+  entries are the agents' comes from the attempt holds of the Specification's own checkout
+  (`attemptCommitHolds`, see [Agent writes](#agent-writes)), resolved with the Specification, so an
+  Engine opened on the primary checkout leaves out the entries of an attempt in a linked worktree.
 - **Workflow subjects** follow the same rule as document subjects: at most 72 characters and never cut. When
   `<summary> in <slug>` does not fit, the summary goes alone, then `change the workflow state`; the body then holds the
   summary and `Specification: <slug>`.

@@ -1,4 +1,5 @@
 import type { SpecFlowEngine } from '../../../application';
+import { readableAttemptCommitHolds } from '../attempt-commit-hold';
 import { documentChangeError } from '../changes/errors';
 import type { DocumentChangeJournal } from '../changes/journal/model';
 import type { DocumentChangeStage } from '../changes/journal/stages';
@@ -127,7 +128,12 @@ export async function readCloseHold(
   }
 
   await pruneUncommitted(engine, { workspaceId }).catch(() => undefined);
-  const ledger = await readUncommittedHold(engine, workspaceId, allowance);
+  const ledger = await readUncommittedHold(
+    engine,
+    workspaceId,
+    allowance,
+    await readableAttemptCommitHolds(engine, workspaceId),
+  );
 
   return ledger !== undefined ? uncommittedHoldOf(ledger) : undefined;
 }
@@ -450,7 +456,12 @@ export async function assertNoUncommittedHold(
   allowance?: UncommittedAllowance,
 ): Promise<void> {
   for (const workspaceId of new Set(workspaceIds)) {
-    const hold = await readUncommittedHold(engine, workspaceId, allowance);
+    const hold = await readUncommittedHold(
+      engine,
+      workspaceId,
+      allowance,
+      await readableAttemptCommitHolds(engine, workspaceId),
+    );
     if (hold !== undefined) {
       throw documentCommitsPendingError(uncommittedHoldOf(hold));
     }

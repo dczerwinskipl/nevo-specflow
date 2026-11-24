@@ -17,7 +17,8 @@ import type { AgentContextSource } from './context/gather';
 import type { AgentAttemptDependencies } from './dependencies';
 import type { FinalizeBoundary } from './finalize/finalize';
 import { memoryAgentAttemptJournal } from './journal/memory.test-support';
-import { specificationAttemptCommitWaitOf } from './finalize/attempt-commit/close';
+import { specificationWaitOf } from '../attempt-commit-admission';
+import { attemptCommitHoldsOf } from './finalize/attempt-commit/holds';
 import { agentPostActionRunId } from './journal/model';
 
 /** One execution claim of the fake claim journal. */
@@ -105,9 +106,16 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
       ...workflow.holds,
       // Git on unless a test turns it off: the attempt commits as the memory journal records them.
       async attemptCommit(specId: string) {
-        return state.gitEnabled
-          ? specificationAttemptCommitWaitOf(await journal.listActive(), specId)
-          : undefined;
+        if (!state.gitEnabled) {
+          return undefined;
+        }
+
+        // The Specification's checkout is the one its attempts worked in.
+        const listing = await journal.listActive();
+        const workspaceId =
+          listing.journals.find((entry) => entry.subject.specId === specId)?.workspaceId ?? '';
+
+        return specificationWaitOf(attemptCommitHoldsOf(listing, workspaceId, []), specId);
       },
     },
     postActions: {

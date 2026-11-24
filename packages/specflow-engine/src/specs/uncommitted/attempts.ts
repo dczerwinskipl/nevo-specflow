@@ -1,3 +1,5 @@
+import { foldPathKey } from '../document-rules/document-paths';
+
 /**
  * The holds of the finished agent attempts whose own commit (D15) waits: the one source of truth
  * every admission asks ({@link AttemptCommitHolds}). The workflow computes them from its attempt
@@ -191,13 +193,15 @@ export function attemptsHolding(
   named: number,
   declared: 'always' | 'when-present' = 'when-present',
 ): { readonly attempts: readonly UncommittedAttempt[]; readonly taken: ReadonlySet<string> } {
-  const present = new Set(paths);
+  // Folded like `attemptCommitHeld`: a path spelled in another case is the attempt's, listed as given.
+  const present = new Map([...paths].map((path) => [foldPathKey(path), path]));
+  const given = (path: string) => present.get(foldPathKey(path));
   const taken = new Set<string>();
   const held: UncommittedAttempt[] = [];
   for (const { declared: files, ...attempt } of attempts) {
     const mine = [
-      ...attempt.paths.filter((path) => present.has(path)),
-      ...files.filter((path) => declared === 'always' || present.has(path)),
+      ...attempt.paths.flatMap((path) => given(path) ?? []),
+      ...files.flatMap((path) => given(path) ?? (declared === 'always' ? path : [])),
     ]
       .filter((path, index, all) => !taken.has(path) && all.indexOf(path) === index)
       .sort();

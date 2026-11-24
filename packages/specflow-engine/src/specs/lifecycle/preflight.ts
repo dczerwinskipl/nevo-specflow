@@ -16,6 +16,7 @@ import { runGitFreeMutation } from '../../project/request-verification-memo';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import type { GitWorktreePolicy } from '../../version-control/worktrees/policy';
 import { resolveSpecification } from '../discovery';
+import { foldPathKey } from '../document-rules/document-paths';
 import { listWorkspaceSpecifications } from '../repository';
 import { isExecutionStatePathOf } from '../execution-paths';
 import { isValidSpecificationId } from '../model';
@@ -305,7 +306,10 @@ export function scopedPaths(
  */
 export function isAcceptedDirtyPath(path: string, check: CleanTreeCheck): boolean {
   const { specificationDirectory: directory, acceptExecutionState, siblingDirectories } = check;
-  if (check.holds?.holds.some((hold) => hold.paths.includes(path))) {
+  // Folded like every other held-path check (`attemptCommitHeld`): a spelling that differs in case
+  // only is the same file on a case-insensitive file system.
+  const key = foldPathKey(path);
+  if (check.holds?.holds.some((hold) => hold.paths.some((held) => foldPathKey(held) === key))) {
     return false;
   }
 

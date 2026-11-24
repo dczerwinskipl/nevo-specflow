@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import type { AttemptCommitPathHold } from '../uncommitted/attempts';
 import { isAcceptedDirtyPath, scopedPaths } from './preflight';
 
 describe('scopedPaths', () => {
@@ -103,5 +104,30 @@ describe('isAcceptedDirtyPath (#181 sibling-isolation widening)', () => {
     expect(isAcceptedDirtyPath('specs/active/b/.execution/state.json', check)).toBe(true);
     expect(isAcceptedDirtyPath('specs/active/b/overview.md', check)).toBe(false);
     expect(isAcceptedDirtyPath('specs/active/other/overview.md', check)).toBe(false);
+  });
+
+  it('never accepts a path a waiting attempt commit holds, spelled in another case', () => {
+    const state = 'specs/active/b/.execution/state.json';
+    const hold = {
+      wait: {
+        reason: 'attempt-commit-pending',
+        attemptId: 'attempt-1',
+        subject: { specId: 'spec-b' },
+        step: 'write',
+        attempt: 1,
+        stepTitle: 'Write it',
+      },
+      invocations: new Set<string>(),
+      ledger: [state],
+      declared: [],
+      paths: [state],
+    } satisfies AttemptCommitPathHold;
+    const check = {
+      specificationDirectory: 'specs/active/b',
+      acceptExecutionState: true,
+      holds: { readable: true, holds: [hold], executions: new Set<string>() },
+    } as const;
+    expect(isAcceptedDirtyPath(state, check)).toBe(false);
+    expect(isAcceptedDirtyPath('specs/active/b/.execution/STATE.json', check)).toBe(false);
   });
 });

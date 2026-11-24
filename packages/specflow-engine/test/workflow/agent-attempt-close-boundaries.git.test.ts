@@ -15,11 +15,13 @@ import {
   closeWorktree,
   createSpecificationForTesting,
   manualCommit,
+  openSpecFlowEngine,
   openWorkflow,
   readSpecificationDocumentTree,
   readWorkspaceSpecification,
   retryAgentAttemptCommit,
 } from '../../src/testing';
+import type { SpecFlowEngine } from '../../src/application';
 import { commitExecutionState } from '../../src/specs/documents/execution-state-commit';
 import { readLedgerRecord } from '../../src/specs/durable';
 import { previewPublicCloseOperation } from '../../src/specs/operations/api';
@@ -69,11 +71,18 @@ async function untouched(spec: Spec, others: readonly string[] = []) {
   };
 }
 
-/** The refusal of a Close while the attempt commit waits: the attempt named with its paths. */
-function waitingCloseRefusal(attemptId: string) {
+/** The refusal of a Close while the attempt commit waits: the attempt named (its `code`) with its paths. */
+function waitingCloseRefusal(attemptId: string, code?: string) {
   return {
     code: 'DOCUMENT_COMMITS_PENDING',
-    details: { uncommitted: { attempts: [expect.objectContaining({ attemptId }) as object] } },
+    details: {
+      cause: 'commit-uncommitted',
+      uncommitted: {
+        attempts: [
+          expect.objectContaining({ attemptId, ...(code !== undefined ? { code } : {}) }) as object,
+        ],
+      },
+    },
   };
 }
 
@@ -269,21 +278,62 @@ it('refuses worktree Close, Abandon and the owner’s commit of the agent’s st
   expect(dirty()).toEqual([]);
 }, 600_000);
 
+/** Where the last step's Specification lives: the Engine's own checkout, or a worktree of its own. */
+type LastStepCheckout = 'primary' | 'worktree';
+
+/** A one-step Specification in `checkout` (a worktree is the case's checkout from here on). */
+async function lastStepSpecification(title: string, checkout: LastStepCheckout) {
+  if (checkout === 'primary') {
+    return { spec: await newSpecification(title, ONE_STEP), workspaceId: undefined };
+  }
+
+  const created = await createSpecificationForTesting(engine, {
+    operationId: randomUUID(),
+    title,
+    created: '2026-11-23',
+    archetype: { id: ONE_STEP, version: 1 },
+    target: { kind: 'new-worktree', baseRef: 'HEAD' },
+  });
+  cleanup.push(dirname(created.workspaceRoot));
+  useCheckout(created.workspaceRoot);
+  git(root, 'add', '-A');
+  commitStaged(root, 'Specification source');
+  const spec: Spec = {
+    specId: created.specId,
+    archetype: ONE_STEP,
+    directory: 'specs/active/' + created.slug,
+    subject: { kind: 'specification', specId: created.specId },
+  };
+
+  return { spec, workspaceId: created.workspaceId };
+}
+
 /**
  * The agent finishes the one step of a one-step Specification, so its run ends and the exit gate
  * admits Close, and its attempt commit waits (`fault`: a crash left it pending, or an outside edit of
  * its declared file, undone again, made it fail): only its execution state is dirty, the state Close
- * otherwise takes into its archive commit. Close (preview and Close) refuses, naming the attempt,
- * before anything is reserved or committed; after Retry commit the Close archives the Specification
- * and the agent's state is in its one attempt commit.
+ * otherwise takes into its archive commit. Close (preview and Close: Specification Close in the
+ * primary checkout, worktree Close of a Specification in its own worktree) refuses, naming the
+ * attempt, before anything is reserved, committed, integrated or removed; after Retry commit the
+ * Close runs and the agent's state is in its one attempt commit. `engineOnWorktree` (primary only):
+ * an Engine opened on another checkout of the project asks the holds of the Specification's own.
  */
-async function lastStepWaitsForAttemptCommit(fault: 'pending' | 'failed'): Promise<void> {
-  const spec = await newSpecification(`Last step ${fault}`, ONE_STEP);
+async function lastStepWaitsForAttemptCommit(
+  fault: 'pending' | 'failed',
+  checkout: LastStepCheckout,
+  engineOnWorktree?: () => Promise<SpecFlowEngine>,
+): Promise<void> {
+  const primary = root;
+  const { spec, workspaceId } = await lastStepSpecification(
+    `Last step ${fault} ${checkout}`,
+    checkout,
+  );
   const head = git(root, 'rev-parse', 'HEAD');
   const agentContent = `export const app = "${fault}";\n`;
   const attempt = await agentAttempt(spec, {
     step: 'write',
     archetype: 'spec-writer',
+    ...(workspaceId !== undefined ? { workspaceId } : {}),
     ...(fault === 'failed' ? { declared: ['src/app.ts'] } : {}),
     work: () => (fault === 'failed' ? put('src/app.ts', agentContent) : Promise.resolve()),
     faults: async (boundary) => {
@@ -310,20 +360,49 @@ async function lastStepWaitsForAttemptCommit(fault: 'pending' | 'failed'): Promi
     });
   }
 
-  const before = { head, dirty: dirty() };
+  const state = async () => ({
+    head: git(root, 'rev-parse', 'HEAD'),
+    primary: git(primary, 'rev-parse', 'HEAD'),
+    dirty: dirty(),
+    location: (await readWorkspaceSpecification(root, spec.specId)).location,
+    checkout: (await lstat(root)).isDirectory(),
+    binding: (await engine.readRegistry()).specBindings.find(
+      (binding) => binding.specId === spec.specId,
+    ),
+  });
+  const before = await state();
+  expect(before.head).toBe(head);
+  expect(before.location).toBe('active');
   expect(before.dirty.length).toBeGreaterThan(0);
   expect(before.dirty.every((path) => path.startsWith(`${spec.directory}/.execution/`))).toBe(true);
 
-  const close = { operationId: randomUUID(), specId: spec.specId };
-  await expect(
-    previewPublicCloseOperation(engine, { kind: 'specification-close', ...close }),
-  ).rejects.toMatchObject(waitingCloseRefusal(attempt.attemptId));
-  await expect(closeSpecification(engine, close)).rejects.toMatchObject(
-    waitingCloseRefusal(attempt.attemptId),
+  const refusal = waitingCloseRefusal(
+    attempt.attemptId,
+    fault === 'pending' ? 'ATTEMPT_COMMIT_PENDING' : 'MANUAL_COMMIT_CONFLICT',
   );
-  // Nothing reserved, archived or committed: the agent's state stays the attempt commit's.
-  expect({ head: git(root, 'rev-parse', 'HEAD'), dirty: dirty() }).toEqual(before);
-  expect((await readWorkspaceSpecification(root, spec.specId)).location).toBe('active');
+  const close = { operationId: randomUUID(), specId: spec.specId };
+  const kind = checkout === 'primary' ? 'specification-close' : 'worktree-close';
+  const runClose = () =>
+    checkout === 'primary' ? closeSpecification(engine, close) : closeWorktree(engine, close);
+  await expect(previewPublicCloseOperation(engine, { kind, ...close })).rejects.toMatchObject(
+    refusal,
+  );
+  await expect(runClose()).rejects.toMatchObject(refusal);
+  if (engineOnWorktree !== undefined) {
+    // Keyed by the Specification's checkout, not the Engine's: its Close preview names the attempt
+    // and the owner's commit of the execution state takes none of the agent's entries.
+    const other = await engineOnWorktree();
+    expect(other.workspace.workspaceId).not.toBe(engine.workspace.workspaceId);
+    await expect(previewPublicCloseOperation(other, { kind, ...close })).rejects.toMatchObject(
+      refusal,
+    );
+    expect(await commitExecutionState(other, spec.specId, { phrase: 'finish' })).toEqual({
+      kind: 'nothing-to-commit',
+    });
+  }
+
+  // Nothing reserved, archived, committed, integrated or removed: the state stays the attempt's.
+  expect(await state()).toEqual(before);
 
   if (fault === 'failed') {
     await put('src/app.ts', agentContent);
@@ -342,14 +421,48 @@ async function lastStepWaitsForAttemptCommit(fault: 'pending' | 'failed'): Promi
   expect(others).toEqual([]);
   expect(filesOf(attemptCommit!)).toEqual(expect.arrayContaining(before.dirty));
 
-  await expect(closeSpecification(engine, close)).resolves.toMatchObject({ status: 'completed' });
-  expect((await readWorkspaceSpecification(root, spec.specId)).location).toBe('archive');
+  await expect(runClose()).resolves.toMatchObject({ status: 'completed' });
+  if (checkout === 'primary') {
+    expect((await readWorkspaceSpecification(root, spec.specId)).location).toBe('archive');
+    expect(dirty()).toEqual([]);
+
+    return;
+  }
+
+  // The worktree Close integrated the branch with the attempt commit and removed the worktree.
+  const worktree = root;
+  useCheckout(primary);
+  git(primary, 'merge-base', '--is-ancestor', attemptCommit!, 'feature/work');
+  const registry = await engine.readRegistry();
+  expect(registry.workspaces.some((entry) => entry.workspaceId === workspaceId)).toBe(false);
+  await expect(lstat(worktree)).rejects.toMatchObject({ code: 'ENOENT' });
   expect(dirty()).toEqual([]);
 }
 
 it('refuses Close of a Specification whose last step an agent finished until its pending or failed attempt commit ran', async () => {
   await autoCommitDocuments(false);
   await pinIntegrationTarget();
-  await lastStepWaitsForAttemptCommit('pending');
-  await lastStepWaitsForAttemptCommit('failed');
+  // An Engine opened on a worktree of the project (another Specification's) asks the same holds.
+  const onWorktree = async () => {
+    const created = await createSpecificationForTesting(engine, {
+      operationId: randomUUID(),
+      title: 'Other worktree',
+      created: '2026-11-23',
+      archetype: { id: 'minimal', version: 1 },
+      target: { kind: 'new-worktree', baseRef: 'HEAD' },
+    });
+    cleanup.push(dirname(created.workspaceRoot));
+
+    return openSpecFlowEngine({ cwd: created.workspaceRoot });
+  };
+
+  await lastStepWaitsForAttemptCommit('pending', 'primary', onWorktree);
+  await lastStepWaitsForAttemptCommit('failed', 'primary');
+}, 600_000);
+
+it('refuses worktree Close of a Specification whose last step an agent finished in its worktree until its pending or failed attempt commit ran', async () => {
+  await autoCommitDocuments(false);
+  await pinIntegrationTarget();
+  await lastStepWaitsForAttemptCommit('pending', 'worktree');
+  await lastStepWaitsForAttemptCommit('failed', 'worktree');
 }, 600_000);

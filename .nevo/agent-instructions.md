@@ -31,6 +31,8 @@ pnpm docs:search "how are document commits owned by the engine"
 
 `docs:get` fails closed for `deprecated` and `superseded` documents. Replace an inactive ID with its current authoritative successor before continuing.
 
+Verification is Linux-first: on a Windows or macOS host run only unit tests and the single new or changed test case, and run real-Git files and package suites on Linux (`tools/dev/linux-test.sh`) or leave them to CI (`engineering.shared.testing`, `engineering.repository.local-setup`). An orchestrator writing briefs for other agents passes this rule on instead of asking for whole files or repeated runs on the host.
+
 Do not infer repository-specific rules when no matching documentation exists. Prefer the authoritative document over duplicated guidance in prompts or generated skills.
 
 When the user requests an end-to-end screen design or delivery process, select `nevo-agents:screen-coordinator` for the coordinating invocation. The coordinator owns scope and handoffs; specialist profiles retain their own responsibilities. The profile does not itself provide agent spawning or automatic session switching.

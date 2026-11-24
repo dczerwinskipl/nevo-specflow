@@ -2484,7 +2484,10 @@
       "runWithAgent": "Uruchom z agentem",
       "readFailed": "SpecFlow nie mógł odczytać, co można teraz zrobić w tym kroku.",
       "readStale": "SpecFlow nie mógł odświeżyć tego kroku; pokazuje ostatnio odczytany stan, który może być nieaktualny.",
-      "readRetry": "Spróbuj ponownie"
+      "readRetry": "Spróbuj ponownie",
+      "youAct": "Ten krok wykonujesz Ty: wykonaj pracę, a potem zakończ krok.",
+      "youActTakenOver": "Przejąłeś ten krok od agenta, więc teraz należy do Ciebie: dokończ pracę sam i zakończ krok. Agent nie może przejąć tej próby z powrotem.",
+      "personActs": "Ten krok wykonuje {{actor}}; możesz śledzić go tutaj."
     },
     "blocker": {
       "dependencies_one": "Czeka na {{count}} zależność",
@@ -2931,7 +2934,8 @@
         "session": "Sesja <session/> zostaje otwarta do czytania; nie pracuje już nad tym krokiem.",
         "sessionGone": "Sesja <session/> już nie istnieje, więc nie ma czego czytać."
       },
-      "earlierStep": "wcześniejszy krok"
+      "earlierStep": "wcześniejszy krok",
+      "workingNote": "Agent wykonuje teraz ten krok. Nie musisz nic robić, dopóki nie skończy; Zatrzymaj agenta kończy jego pracę."
     },
     "confirmation": {
       "line": "Czeka na Twoje potwierdzenie · agent skończył {{at}}",

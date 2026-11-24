@@ -28,8 +28,9 @@ import { offersAgent } from './agent/agentOption';
 import { ReturnStepDialog } from './ReturnStepDialog';
 import { StartTaskDialog, type PinPreview } from './StartTaskDialog';
 import type { NowLinks } from './StartBlockerLines';
-import { nowActionPlan } from './presentation';
+import { nowActionPlan, personLabel } from './presentation';
 import { useWorkflowCommands } from './useWorkflowCommands';
+import { useViewer } from './useViewer';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
 
 type PostAction = NonNullable<FinishWorkflowResult['postActions']>[number];
@@ -131,6 +132,7 @@ export function WorkflowNow({
   specification,
 }: WorkflowNowProps) {
   const { t } = useTranslation();
+  const viewer = useViewer();
   const commands = useWorkflowCommands(subject);
   const { actions, position } = projection;
   const agentNow = useAgentAttemptNow({ subject, projection, links, headingId });
@@ -530,8 +532,27 @@ export function WorkflowNow({
   const projectHold = projection.projectHold;
   const workflowActions =
     projectHold?.kind === 'agent-outcome-unknown' ? undefined : offeredActions;
+  // Who acts on the step now and what the owner is expected to do, in one sentence. An agent's
+  // attempt says it in its own note.
+  const personActor =
+    position.kind === 'active' && position.attempt.actor.class === 'human'
+      ? position.attempt.actor
+      : undefined;
+  const actorName = personActor ? personLabel(t, personActor.details.actorId, viewer) : undefined;
+  const whoActs = !personActor
+    ? undefined
+    : actorName !== t('workflowExecution.actor.you')
+      ? t('workflowExecution.now.personActs', { actor: actorName })
+      : position.kind === 'active' && position.attempt.takenOverFrom
+        ? t('workflowExecution.now.youActTakenOver')
+        : t('workflowExecution.now.youAct');
   const note = (
     <>
+      {whoActs ? (
+        <Typography as="p" variant="body-sm" className="text-content-secondary" data-now-who="">
+          {whoActs}
+        </Typography>
+      ) : null}
       {projectHold ? (
         <ProjectHoldNote hold={projectHold} hasAction={offeredActions !== undefined} />
       ) : null}

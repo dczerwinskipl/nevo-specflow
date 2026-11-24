@@ -2484,7 +2484,10 @@
       "runWithAgent": "Run with agent",
       "readFailed": "SpecFlow could not read what can be done in this step now.",
       "readStale": "SpecFlow could not refresh this step; it shows what was read last, which may be out of date.",
-      "readRetry": "Try again"
+      "readRetry": "Try again",
+      "youAct": "You are doing this step: do the work, then finish it.",
+      "youActTakenOver": "You took this step over from the agent, so it is yours now: do the rest yourself and finish it. The agent cannot take this attempt back.",
+      "personActs": "{{actor}} is doing this step; you can follow it here."
     },
     "blocker": {
       "dependencies_one": "Waiting for {{count}} dependency",
@@ -2931,7 +2934,8 @@
         "session": "The session <session/> stays open to read; it no longer works on this step.",
         "sessionGone": "The session <session/> no longer exists, so there is nothing to read."
       },
-      "earlierStep": "an earlier step"
+      "earlierStep": "an earlier step",
+      "workingNote": "The agent is doing this step now. You do not need to do anything until it finishes; Stop agent ends its work."
     },
     "confirmation": {
       "line": "Waiting for your confirmation · the agent finished {{at}}",

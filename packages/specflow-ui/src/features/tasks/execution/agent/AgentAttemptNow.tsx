@@ -522,7 +522,13 @@ export function useAgentAttemptNow({
           }),
           view,
         ),
-        note: failed ? <WorkflowRefusalAlert error={failed} /> : null,
+        note: failed ? (
+          <WorkflowRefusalAlert error={failed} />
+        ) : (
+          <Typography as="p" variant="body-sm" className="text-content-secondary">
+            {t('workflowExecution.agentAttempt.workingNote')}
+          </Typography>
+        ),
         actions: (
           <Button
             variant="secondary"

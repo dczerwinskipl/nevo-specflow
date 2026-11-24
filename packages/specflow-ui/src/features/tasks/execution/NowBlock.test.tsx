@@ -149,6 +149,31 @@ describe('the Specification Now block', () => {
     expect(within(region).queryByText(/needed to (finish|start)/i)).toBeNull();
   });
 
+  it('says in one sentence who does the step now and what is expected of the owner', () => {
+    const you = { class: 'human', details: { actorId: 'runtime:trusted-local', trust: 'local' } };
+    const owned = breakdown(3);
+    const taken = {
+      ...owned,
+      position: {
+        ...owned.position,
+        attempt: {
+          number: 3,
+          startedAt: new Date().toISOString(),
+          actor: you,
+          takenOverFrom: { attempt: 2 },
+        },
+      },
+    } as WorkflowActionProjection;
+    const view = renderNow(<OverviewNow projection={taken} />);
+
+    expect(screen.getByText(/^You took this step over from the agent/)).toBeTruthy();
+    expect(screen.getByText(/The agent cannot take this attempt back\.$/)).toBeTruthy();
+    view.unmount();
+
+    renderNow(<OverviewNow projection={breakdown(2)} />);
+    expect(screen.getByText('dominik is doing this step; you can follow it here.')).toBeTruthy();
+  });
+
   it('names the attempt from the second one on', () => {
     renderNow(<OverviewNow projection={breakdown(2)} />);
 

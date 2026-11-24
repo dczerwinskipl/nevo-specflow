@@ -60,9 +60,11 @@ it('isolates generated outputs and workspace links while testing current source 
     expect(existsSync(join(snapshot.root, 'deleted.ts'))).toBe(false);
     expect(existsSync(join(snapshot.root, 'packages/provider/dist'))).toBe(false);
     expect(existsSync(join(snapshot.root, '.artifacts'))).toBe(false);
-    expect(realpathSync(join(snapshot.root, 'packages/consumer/node_modules/provider'))).toBe(
-      realpathSync(join(snapshot.root, 'packages/provider')),
-    );
+    // The native resolver also expands Windows 8.3 short names (`RUNNER~1`), which `tmpdir()` may
+    // return while the workspace link points at the long path.
+    expect(
+      realpathSync.native(join(snapshot.root, 'packages/consumer/node_modules/provider')),
+    ).toBe(realpathSync.native(join(snapshot.root, 'packages/provider')));
 
     put('packages/provider/dist/index.js', 'concurrent build');
     snapshot.dispose();

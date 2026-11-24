@@ -53,7 +53,8 @@ describe('agent attempt projection reads', () => {
   it('reads the active agent attempt as a read request', async () => {
     const { workflow, reads } = recordingWorkflow();
 
-    await activeAgentAttempt(workflow, subject).catch(() => undefined);
+    // A Specification whose run has not started has no attempt (an agent may start its first step).
+    await expect(activeAgentAttempt(workflow, subject)).resolves.toBeUndefined();
 
     expect(reads).toEqual([true]);
   });

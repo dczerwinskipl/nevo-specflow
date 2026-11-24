@@ -1,7 +1,11 @@
 import { activeAttempt, findStep } from '@nevo/workflow';
 
 import { runReadRequest } from '../../../project/request-verification-memo';
-import { loadSubject, type WorkflowDependencies } from '../../operations/loaded-execution';
+import {
+  loadSubject,
+  loadTask,
+  type WorkflowDependencies,
+} from '../../operations/loaded-execution';
 import {
   agentAttemptBindingOf,
   type AgentAttemptBinding,
@@ -45,7 +49,8 @@ export async function agentAttemptScope(
 
 /**
  * The agent attempt the subject's active step is in (started by agent step execution), or `undefined` when no
- * step is active or its attempt is a person's. Read-only and lock-free, and an Engine read request:
+ * step is active (the subject's run has not started included: an agent may start its first step)
+ * or its attempt is a person's. Read-only and lock-free, and an Engine read request:
  * the snapshot read verifies the Project Home and checkout from on-disk evidence and spawns no Git
  * process (a projection reads it on every request).
  */
@@ -64,6 +69,14 @@ export function activeAgentAttempt(
 > {
   return runReadRequest(async () => {
     const snapshot = await workflow.store.read(subject.specId);
+    const started =
+      subject.kind === 'specification'
+        ? snapshot.specification !== undefined
+        : loadTask(workflow.catalogue, snapshot, subject.taskId).run !== undefined;
+    if (!started) {
+      return undefined;
+    }
+
     const run = loadSubject(workflow.catalogue, snapshot, subject).run;
     const active = activeAttempt(run);
     const binding = agentAttemptBindingOf(active);

@@ -106,46 +106,22 @@
     transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/*
- * The row's own band: once the header has scrolled away, content scrolls under the floating
- * controls, so a strip of the sheet's material spans the surface's full width from its top edge
- * (status-bar safe area included) to just below the controls, fading out at its lower edge. Text
- * never reads half-hidden between the controls; it passes under the band. It appears and fades
- * with the row itself (the row's opacity), and takes no pointer events.
- */
-.mobile-floating-navigation::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  top: calc(-1 * var(--workspace-overlay-top));
-  right: calc(-1 * max(0.75rem, env(safe-area-inset-right)));
-  bottom: -0.75rem;
-  left: calc(-1 * max(0.75rem, env(safe-area-inset-left)));
-  pointer-events: none;
-  background:
-    linear-gradient(var(--color-workspace-material), var(--color-workspace-material)),
-    var(--color-canvas);
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 0.75rem), transparent);
-  mask-image: linear-gradient(to bottom, black calc(100% - 0.75rem), transparent);
-}
-
 .mobile-floating-navigation > button {
   border-color: rgb(255 255 255 / 0.11);
   border-radius: 9999px;
-  background: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
-  -webkit-backdrop-filter: blur(var(--blur-sm));
-  backdrop-filter: blur(var(--blur-sm));
-  /* Drop-shadow component matches Tailwind's own `shadow-lg` literally (see
-   * `node_modules/tailwindcss/theme.css`'s `--shadow-lg`) — this screen's one shared "floating
-   * surface above content" elevation, also applied via the `shadow-lg` utility class to the
-   * Composer bar and the "jump to latest" pill in `ManagedSession.tsx`, so all three floating
-   * controls share one elevation rather than three different shadow values. The inset highlight
-   * is a separate "material" effect (the frosted edge), not the elevation shadow, so it is kept as-is.
+  /* The controls float over the content on purpose (nothing else covers the page): each circle
+   * is near-opaque with a stronger blur, so text scrolled under it never reads through it. */
+  background: color-mix(in srgb, var(--color-surface-raised) 96%, transparent);
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  backdrop-filter: blur(var(--blur-md));
+  /* Tailwind's `shadow-lg` geometry at a darker alpha: the small circles float over any content,
+   * so their edge must read against text as well as against the page. The inset highlight is a
+   * separate "material" effect (the frosted edge), not the elevation shadow.
    */
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.08),
-    0 10px 15px -3px rgb(0 0 0 / 0.1),
-    0 4px 6px -4px rgb(0 0 0 / 0.1);
+    0 10px 15px -3px rgb(0 0 0 / 0.3),
+    0 4px 6px -4px rgb(0 0 0 / 0.3);
   pointer-events: none;
 }
 

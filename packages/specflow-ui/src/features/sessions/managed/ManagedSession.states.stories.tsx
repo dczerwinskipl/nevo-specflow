@@ -278,16 +278,15 @@ export const TerminalFailure: Story = {
       within(attentionItem).queryByRole('img', { name: 'Wymaga uwagi' }),
     ).not.toBeInTheDocument();
 
-    // Item 4 regression: the outcome entry's icon names the specific outcome, not the generic
+    // The outcome names the specific outcome in words beside its danger icon, not the generic
     // entry-kind label every outcome used to share.
     const outcomeEntry = canvasElement.querySelector('[data-entry-id="outcome-1"]');
     if (!outcomeEntry) {
       throw new Error('Expected the terminal outcome entry.');
     }
 
-    await expect(
-      within(outcomeEntry as HTMLElement).getByRole('img', { name: 'Niepowodzenie' }),
-    ).toBeInTheDocument();
+    await expect(within(outcomeEntry as HTMLElement).getByText('Niepowodzenie')).toBeVisible();
+    await expect(outcomeEntry.querySelector('svg.text-status-danger')).not.toBeNull();
   },
 };
 

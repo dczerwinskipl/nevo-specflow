@@ -134,6 +134,7 @@ export function prepareClaudeQuestion(frame: unknown) {
       labels: options.map((option) => option.label),
       interaction: {
         kind: 'question',
+        ...(question.header === undefined ? {} : { header: boundedText(question.header, 128) }),
         prompt,
         allowText: true,
         maxSelections: question.multiSelect ? options.length : 1,

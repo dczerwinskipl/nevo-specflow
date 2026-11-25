@@ -652,6 +652,65 @@ describe('durable Session store', () => {
     await emit({ kind: 'action-update', key: 'a', state: 'completed' });
     expect(await read()).toMatchObject({ decision: 'allowed', subject: 'mkdir -p scratch' });
   });
+  it('records the answered question with the chosen option and the free text on its Work', async () => {
+    const { sessionId } = await create();
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Ask me' },
+    });
+    let driverSeq = 0;
+    const emit = (fact: DriverFact) =>
+      store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
+    await emit({ kind: 'work-open', key: 'q', workKind: 'interaction', title: 'Question' });
+    await emit({
+      kind: 'interaction',
+      key: 'q',
+      interaction: {
+        kind: 'question',
+        header: 'Scope',
+        prompt: 'Which batches?\n\nSelect one option or enter your answer.',
+        allowText: true,
+        maxSelections: 1,
+        options: [
+          { id: 'a', label: 'All' },
+          { id: 'b', label: 'Some' },
+        ],
+      },
+    });
+    const read = async () =>
+      (
+        await store!.call<WorkPage>({
+          op: 'work',
+          sessionId,
+          turnId: start.turnId,
+          actor: 'user',
+          limit: 40,
+        })
+      ).items[0]!;
+    expect((await read()).question).toBeUndefined();
+    await store!.call({
+      op: 'respond',
+      actor: 'user',
+      sessionId,
+      interactionId: (await snap(sessionId)).interaction!.interactionId,
+      input: {
+        requestId: randomUUID(),
+        kind: 'question',
+        answer: { optionIds: ['a'], text: 'Sessions last' },
+      },
+    });
+    expect((await read()).question).toEqual({
+      header: 'Scope',
+      text: 'Which batches?',
+      options: [
+        { id: 'a', label: 'All' },
+        { id: 'b', label: 'Some' },
+      ],
+      answer: { optionIds: ['a'], text: 'Sessions last' },
+    });
+  });
   it('checks single-selection answers before durable admission and expires native-cancelled questions', async () => {
     const { sessionId } = await create();
     const start = await store!.call<StartAdmission>({

@@ -4,6 +4,7 @@ import type { ManagedSessionsApi } from './api';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import {
   actionsWorkId,
+  answeredQuestionItems,
   claudeTurnWorkItems,
   claudeWriteActions,
   claudeWriteWorkId,
@@ -599,5 +600,49 @@ export const DetailedToggleByWidth: Story = {
     const bounds = toggle().getBoundingClientRect();
     await expect(bounds.right).toBeLessThanOrEqual(375);
     await expect(bounds.width).toBeLessThanOrEqual(40);
+  },
+};
+
+/**
+ * Owner, PR 169: an answered question says what was asked and what the owner answered ("Scope → All
+ * batches A–E (Recommended), …"); opening it shows every option with the chosen one marked. A
+ * question from before answers were recorded keeps its plain row. Checked at 375 px and desktop.
+ */
+export const AnsweredQuestions: Story = {
+  tags: ['integration'],
+  args: { api: createWorkInspectorFixtureApi(answeredQuestionItems()) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const row = 'Scope → All batches A–E (Recommended), Do Sessions last, behind the other four.';
+    for (const [width, height] of [
+      [375, 812],
+      [1440, 900],
+    ] as const) {
+      await settleViewport(width, height);
+      if (width === 375) {
+        await openWork(canvasElement);
+      }
+
+      await expect(await canvas.findByText(row)).toBeVisible();
+      await expect(
+        canvas.getByText('Fault scenarios → A test-only port, never in the public schemas.'),
+      ).toBeVisible();
+      await userEvent.click(canvas.getByText(row));
+      const detail = await waitFor(() => {
+        const node = canvasElement.querySelector<HTMLElement>('[data-question-detail]');
+        if (!node) {
+          throw new Error('The question detail is not open.');
+        }
+
+        return node;
+      });
+      await expect(detail.querySelector('[data-chosen="true"]')).toHaveTextContent(
+        'All batches A–E (Recommended)',
+      );
+      await expect(within(detail).getByText('Batch A only')).toBeVisible();
+      // No horizontal overflow at either width.
+      await expect(detail.getBoundingClientRect().right).toBeLessThanOrEqual(width);
+      await userEvent.click(canvas.getByText(row));
+    }
   },
 };

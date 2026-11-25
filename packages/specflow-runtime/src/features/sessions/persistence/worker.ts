@@ -35,6 +35,7 @@ import { createSessionTelemetry } from './telemetry';
 import { createSessionManagement } from './session-management';
 import { createFingerprint, createSessionAssociations } from './associations';
 import { createSessionCatalogue } from './catalogue';
+import { answeredQuestion } from './answered-question';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -1224,6 +1225,8 @@ export async function runSessionWorker(): Promise<void> {
         w.state = 'waiting';
         if (c.input.kind === 'permission') {
           w.decision = c.input.decision === 'allow' ? 'allowed' : 'denied';
+        } else if (i.kind === 'question') {
+          w.question = answeredQuestion(i, c.input.answer);
         }
 
         w.revision++;

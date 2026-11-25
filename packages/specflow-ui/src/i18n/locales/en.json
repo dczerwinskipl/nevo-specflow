@@ -1921,6 +1921,13 @@
         "interaction_many": "{{count}} user interactions",
         "interaction_other": "{{count}} user interactions"
       },
+      "question": {
+        "answer": "{{question}} → {{answer}}",
+        "ownText": "your own answer",
+        "asked": "Question",
+        "chosen": "Chosen",
+        "yourText": "Your words: {{text}}"
+      },
       "detailedView": "Show every operation",
       "authorization": {
         "title": "Authorization",

@@ -180,6 +180,13 @@ Live updates never open, switch or reset Work history.
   while detailed); no control in the body. The choice is remembered in the
   browser for every Turn. Whether a group is open is state of the Turn's view: it survives the group
   growing, a drill-in and back, and a tab switch.
+- **An answered question says what was asked and what was answered.** The Runtime records the
+  question (its label, first paragraph and option labels) and the answer (chosen options and the
+  person's own words, bounded) on the question's Work when it accepts the answer (`question` in the
+  Work read model). The row reads "Scope → All batches A–E" (the label, else the question text);
+  opening it shows the question, every option with the chosen ones marked (a check, and "Chosen" for
+  screen readers) and the person's words. A question answered before answers were recorded keeps
+  its plain "Question" row; the answer is never guessed from the transcript.
 - **A permission is not a row of its own** when data pairs it with exactly one tool: an answered
   permission Work with the same `operation` and `subject` as the tool Work directly before or after
   it, and no second neighbour that would match. The tool row then says **Allowed** or **Denied**

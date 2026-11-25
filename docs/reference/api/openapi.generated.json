@@ -18370,6 +18370,10 @@
                                 "question"
                               ]
                             },
+                            "header": {
+                              "type": "string",
+                              "maxLength": 128
+                            },
                             "prompt": {
                               "type": "string",
                               "maxLength": 8192
@@ -26159,6 +26163,67 @@
                                 ]
                               }
                             ]
+                          },
+                          "question": {
+                            "type": "object",
+                            "required": [
+                              "text",
+                              "answer"
+                            ],
+                            "properties": {
+                              "header": {
+                                "type": "string",
+                                "maxLength": 128
+                              },
+                              "text": {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "options": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": [
+                                    "id",
+                                    "label"
+                                  ],
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "maxLength": 128
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "maxLength": 512
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                "maxItems": 20
+                              },
+                              "answer": {
+                                "type": "object",
+                                "required": [
+                                  "optionIds"
+                                ],
+                                "properties": {
+                                  "optionIds": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "maxLength": 128
+                                    },
+                                    "maxItems": 20
+                                  },
+                                  "text": {
+                                    "type": "string",
+                                    "maxLength": 2048
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "additionalProperties": false
                           },
                           "createdAt": {
                             "type": "string",

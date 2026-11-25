@@ -102,6 +102,8 @@ export const InteractionSchema = Type.Union([
       workId: WorkIdSchema,
       revision: SessionSequenceSchema,
       kind: Type.Literal('question'),
+      /** A short label of the question the provider gave (Claude's `header`, e.g. "Scope"). */
+      header: Type.Optional(text(128)),
       prompt: text(8192),
       options: Type.Optional(
         Type.Array(Type.Object({ id: text(128), label: text(512) }, closed), { maxItems: 20 }),
@@ -465,6 +467,30 @@ export const WorkSummarySchema = Type.Object(
     ),
     /** A permission the person answered: what they decided. */
     decision: Type.Optional(Type.Union([Type.Literal('allowed'), Type.Literal('denied')])),
+    /**
+     * A question the person answered, as asked and as answered, recorded when the answer is
+     * accepted (bounded: the question's first paragraph, the option labels, the free text). Absent
+     * for questions answered before it was recorded; a client then never guesses the answer.
+     */
+    question: Type.Optional(
+      Type.Object(
+        {
+          header: Type.Optional(text(128)),
+          text: text(1024),
+          options: Type.Optional(
+            Type.Array(Type.Object({ id: text(128), label: text(512) }, closed), { maxItems: 20 }),
+          ),
+          answer: Type.Object(
+            {
+              optionIds: Type.Array(text(128), { maxItems: 20 }),
+              text: Type.Optional(text(2048)),
+            },
+            closed,
+          ),
+        },
+        closed,
+      ),
+    ),
     createdAt: text(40),
     updatedAt: text(40),
   },

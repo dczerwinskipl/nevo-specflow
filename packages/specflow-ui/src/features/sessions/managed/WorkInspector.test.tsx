@@ -260,6 +260,44 @@ describe('WorkInspector compact and detailed views', () => {
   });
 });
 
+describe('WorkInspector answered questions', () => {
+  it('names the question and its answer, and opens to every option with the chosen one marked', async () => {
+    const items = [
+      work({ kind: 'commentary', title: { text: 'Asking about the scope.', complete: true } }),
+      work({
+        kind: 'interaction',
+        title: { text: 'Question', complete: true },
+        question: {
+          header: 'Scope',
+          text: 'Which batches should this Specification deliver?',
+          options: [
+            { id: '0', label: 'All batches A–E' },
+            { id: '1', label: 'Batches A–C only' },
+          ],
+          answer: { optionIds: ['0'], text: 'Keep Sessions last' },
+        },
+      }),
+      work({ kind: 'interaction', title: { text: 'Question', complete: true } }),
+    ];
+    await openWork(fixtureApi(items).api);
+
+    expect(await screen.findByText('Scope → All batches A–E, Keep Sessions last')).toBeTruthy();
+    clickTrigger('Scope → All batches A–E, Keep Sessions last');
+    const detail = await waitFor(() => {
+      const node = document.querySelector('[data-question-detail]');
+      expect(node).toBeTruthy();
+
+      return node!;
+    });
+    expect(detail.textContent).toContain('Which batches should this Specification deliver?');
+    expect(detail.querySelector('[data-chosen="true"]')?.textContent).toContain('All batches A–E');
+    expect(detail.textContent).toContain('Batches A–C only');
+    expect(detail.textContent).toContain('Your words: Keep Sessions last');
+    // A question answered before answers were recorded keeps its plain row, with no guess.
+    expect(document.querySelectorAll('[data-question-answer]')).toHaveLength(1);
+  });
+});
+
 describe('WorkInspector Work screen', () => {
   it('groups operations under their Commentary, defaulting leading operations to Start of Turn', async () => {
     const leading = work({

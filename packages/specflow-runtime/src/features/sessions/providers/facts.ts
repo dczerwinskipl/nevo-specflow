@@ -33,6 +33,7 @@ const counters = Type.Object(
 const question = Type.Object(
   {
     kind: Type.Literal('question'),
+    header: Type.Optional(text(128)),
     prompt: text(8192),
     allowText: Type.Boolean(),
     maxSelections: Type.Optional(Type.Integer({ minimum: 1, maximum: 20 })),

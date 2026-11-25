@@ -79,6 +79,53 @@ function workItem(overrides: Partial<WorkSummary> & { kind: WorkSummary['kind'] 
 }
 
 /**
+ * Questions the owner answered (dogfood round 3): one recorded with its answer (a choice plus the
+ * owner's own words), one recorded as free text only, and one from before answers were recorded,
+ * which keeps its plain row.
+ */
+export function answeredQuestionItems(): WorkSummary[] {
+  return [
+    workItem({
+      kind: 'commentary',
+      title: {
+        text: 'Four decisions shape this Specification; asking before writing.',
+        complete: true,
+      },
+    }),
+    workItem({
+      kind: 'interaction',
+      title: { text: 'Question', complete: true },
+      createdAt: '2026-10-30T10:00:00Z',
+      updatedAt: '2026-10-30T10:01:13Z',
+      question: {
+        header: 'Scope',
+        text: 'Which batches should this Specification deliver? The issue lists five, A to E; Sessions (E) is the largest.',
+        options: [
+          { id: '0', label: 'All batches A–E (Recommended)' },
+          { id: '1', label: 'Batches A–D, Sessions later' },
+          { id: '2', label: 'Batch A only' },
+        ],
+        answer: { optionIds: ['0'], text: 'Do Sessions last, behind the other four.' },
+      },
+    }),
+    workItem({
+      kind: 'interaction',
+      title: { text: 'Question', complete: true },
+      question: {
+        header: 'Fault scenarios',
+        text: 'How should tests inject the demo fault scenarios?',
+        options: [
+          { id: '0', label: 'Test-only injected port (Recommended)' },
+          { id: '1', label: 'A request header' },
+        ],
+        answer: { optionIds: [], text: 'A test-only port, never in the public schemas.' },
+      },
+    }),
+    workItem({ kind: 'interaction', title: { text: 'Question', complete: true } }),
+  ];
+}
+
+/**
  * A moderate, hand-authored mix exercising every grouping/Thinking/filter rule at once:
  * a leading tool burst before any Commentary (Start of Turn), a Commentary chapter with a
  * Reasoning summary and a run of happy-path tools compacted into a burst, a second chapter

@@ -126,8 +126,105 @@ export const chapterEntryMembers = (entry: ChapterEntry): string[] =>
 /** A Work row's title on the Timeline rail (`WorkRowContent`). The Timeline is `size="md"`: its
  * title slot is a block that wraps (long tool titles take two lines instead of being cut), and the
  * row carries its own meta line and navigation chevron. */
+/** The answer of a recorded question in a few words: the chosen labels, else the person's own words. */
+function answerText(t: TFunction, question: NonNullable<WorkSummary['question']>): string {
+  const chosen = question.answer.optionIds.flatMap(
+    (id) => question.options?.find((option) => option.id === id)?.label ?? [],
+  );
+  const parts = [...chosen, ...(question.answer.text ? [question.answer.text] : [])];
+
+  return parts.length ? parts.join(', ') : t('managedSession.workInspector.question.ownText');
+}
+
+/**
+ * A question the person answered, recorded with its answer: the row says the question's label (or
+ * its text) and the answer ("Scope → All batches A–E"); opening it shows the question, every option
+ * with the chosen ones marked, and the person's own words. Older questions carry no record and keep
+ * the plain row (never an answer guessed from the transcript).
+ */
+function AnsweredQuestionTimelineItem({
+  item,
+  question,
+}: {
+  item: WorkSummary;
+  question: NonNullable<WorkSummary['question']>;
+}) {
+  const { t } = useTranslation();
+  const { meta, srStatus } = useWorkRowMeta(item, {
+    leading: t('managedSession.workInspector.question.asked'),
+  });
+  const chosen = new Set(question.answer.optionIds);
+
+  return (
+    <Timeline.Item {...historyEntry(item.workId)}>
+      <Timeline.Marker tone={workStateTone(item.state)} />
+      <Collapsible density="inline" defaultExpanded={false}>
+        <Timeline.Content
+          title={
+            <Collapsible.Trigger className="relative text-left after:absolute after:inset-x-0 after:top-1/2 after:h-[max(100%,var(--target-size))] after:-translate-y-1/2 after:content-['']">
+              <span className="line-clamp-2 [overflow-wrap:anywhere]" data-question-answer="">
+                {t('managedSession.workInspector.question.answer', {
+                  question: question.header ?? question.text,
+                  answer: answerText(t, question),
+                })}
+              </span>
+              {srStatus}
+            </Collapsible.Trigger>
+          }
+          description={meta}
+        >
+          <Collapsible.Content>
+            <div className="grid gap-2 pt-1" data-question-detail="">
+              <Typography as="p" variant="body-sm" className="[overflow-wrap:anywhere]">
+                {question.text}
+              </Typography>
+              {question.options?.length ? (
+                <ul className="grid gap-1">
+                  {question.options.map((option) => (
+                    <li
+                      key={option.id}
+                      className={cn(
+                        'flex min-w-0 items-start gap-2 text-body-sm',
+                        chosen.has(option.id) ? 'text-content-primary' : 'text-content-secondary',
+                      )}
+                      data-chosen={chosen.has(option.id) ? 'true' : undefined}
+                    >
+                      {chosen.has(option.id) ? (
+                        <Icon name="check" size="sm" className="mt-0.5 shrink-0" />
+                      ) : (
+                        <span aria-hidden="true" className="inline-block size-icon-sm shrink-0" />
+                      )}
+                      <span className="min-w-0 [overflow-wrap:anywhere]">
+                        {option.label}
+                        {chosen.has(option.id) ? (
+                          <span className="sr-only">
+                            {' '}
+                            ({t('managedSession.workInspector.question.chosen')})
+                          </span>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {question.answer.text ? (
+                <Typography as="p" variant="body-sm" className="[overflow-wrap:anywhere]">
+                  {t('managedSession.workInspector.question.yourText', {
+                    text: question.answer.text,
+                  })}
+                </Typography>
+              ) : null}
+            </div>
+          </Collapsible.Content>
+        </Timeline.Content>
+      </Collapsible>
+    </Timeline.Item>
+  );
+}
+
 function InteractionTimelineItem({ item }: { item: WorkSummary }) {
   const { t } = useTranslation();
+
   const kind = t('managedSession.workKind.interaction');
   // The interaction's own title (e.g. "Permission to write workspace") — previously every
   // interaction showed only the generic kind name, losing what was actually asked — with its kind
@@ -341,6 +438,12 @@ export function WorkOperationsTimeline({
             view={view}
             authorizations={authorizations}
             onOpenActions={onOpenActions}
+          />
+        ) : entry.item.kind === 'interaction' && entry.item.question ? (
+          <AnsweredQuestionTimelineItem
+            key={keys[index]}
+            item={entry.item}
+            question={entry.item.question}
           />
         ) : entry.item.kind === 'interaction' ? (
           <InteractionTimelineItem key={keys[index]} item={entry.item} />

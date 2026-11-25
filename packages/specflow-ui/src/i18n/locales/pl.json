@@ -1921,6 +1921,13 @@
         "interaction_many": "{{count}} interakcji z użytkownikiem",
         "interaction_other": "{{count}} interakcji z użytkownikiem"
       },
+      "question": {
+        "answer": "{{question}} → {{answer}}",
+        "ownText": "własna odpowiedź",
+        "asked": "Pytanie",
+        "chosen": "Wybrane",
+        "yourText": "Twoje słowa: {{text}}"
+      },
       "detailedView": "Pokaż każdą operację",
       "authorization": {
         "title": "Autoryzacja",

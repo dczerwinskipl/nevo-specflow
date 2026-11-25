@@ -334,3 +334,29 @@ describe('WorkspaceHeader complete menu grouping', () => {
     );
   });
 });
+
+describe('WorkspaceHeader labelled icon toggle', () => {
+  it('shows a labelWhenWide toggle as a neutral button with its words on a wide header', () => {
+    const markup = renderToStaticMarkup(
+      <WorkspaceHeader
+        title="Work"
+        actions={[
+          {
+            id: 'detailed',
+            label: 'Show every operation',
+            icon: 'list',
+            presentation: 'icon',
+            labelWhenWide: true,
+            direct: 'always',
+            pressed: true,
+            onPress: vi.fn(),
+          },
+        ]}
+      />,
+    );
+
+    expect(markup).toContain('Show every operation</');
+    expect(markup).toContain('aria-pressed="true"');
+    expect(markup).not.toContain('bg-action-primary');
+  });
+});

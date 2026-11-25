@@ -175,8 +175,9 @@ Live updates never open, switch or reset Work history.
   rows keep trailing navigation chevrons). Failures, questions, thinking, unpaired permissions and a
   tool whose permission was denied are always rows of their own, as are cancelled, interrupted,
   unknown, active and queued tools. The detailed view shows every operation as its own row. One
-  toggle in the screen's header switches the view (**Show every operation**, an icon button with its
-  words as tooltip; pressed while detailed); no control in the body. The choice is remembered in the
+  toggle in the screen's header switches the view (**Show every operation**: on a wide header the icon
+  with its words, a neutral button; on a phone the icon alone with its words as tooltip; pressed
+  while detailed); no control in the body. The choice is remembered in the
   browser for every Turn. Whether a group is open is state of the Turn's view: it survives the group
   growing, a drill-in and back, and a tab switch.
 - **A permission is not a row of its own** when data pairs it with exactly one tool: an answered

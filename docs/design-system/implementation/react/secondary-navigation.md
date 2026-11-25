@@ -595,6 +595,7 @@ which has no `.mobile-workspace-scroll-area` ancestor, reads the same variable w
   presentation?: 'button' | 'icon',      // 'icon' requires `icon` (type-enforced): IconButton sm + Tooltip(label)
   direct?: 'wide' | 'always' | 'never',  // default: primary -> shown directly, everything else -> 'never'
   pressed?: boolean,                     // icon actions only: toggle state, see below
+  labelWhenWide?: boolean,               // non-primary icon actions: icon + label on wide, icon only on narrow
   group?: 'display' | 'actions',         // complete menu only: section, default 'actions'
   checked?: boolean,                     // toggle state, both menu modes; wins over `pressed` for icons too
   shortcut?: string }                    // trailing hint in the menu row, e.g. 'Ctrl+S' (both menu modes)
@@ -615,6 +616,10 @@ which has no `.mobile-workspace-scroll-area` ancestor, reads the same variable w
   `onMenuClosed: () => void`. The menu then does not return focus to the `•••` trigger; it calls the
   handler once it has closed and no longer traps focus, so the consumer needs no timers or retakes.
 - An icon action's `label` is its accessible name and its tooltip (also on keyboard focus).
+- `labelWhenWide: true` on a direct non-primary icon action shows the label beside the icon on a
+  wide header, as a neutral `ghost` `Button sm` (same `aria-pressed` and selected style as the icon
+  toggle, never the filled primary look); a narrow header keeps the icon-only button with its
+  tooltip. Use it where the words matter on desktop (the Work history's **Show every operation**).
 - The stacked floating row (`compact` density) lists **all** actions in `•••`, a superset of the in-flow
   header (which is `inert` while covered), so nothing is exposed twice.
 - **Icon toggles.** On non-primary icon actions, `checked ?? pressed` is the **same effective state**

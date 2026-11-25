@@ -864,6 +864,8 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
             label: translateNow('managedSession.workInspector.detailedView'),
             icon: 'list',
             presentation: 'icon',
+            // Icon with its words on a wide header, the icon alone on a narrow (phone) one.
+            labelWhenWide: true,
             direct: 'always',
             pressed: data.view === 'detailed',
             checked: data.view === 'detailed',

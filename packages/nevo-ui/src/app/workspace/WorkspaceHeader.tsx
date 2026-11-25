@@ -97,6 +97,11 @@ export interface WorkspaceHeaderButtonAction extends WorkspaceHeaderActionBase {
 interface WorkspaceHeaderIconActionBase extends WorkspaceHeaderActionBase {
   icon: IconGlyph;
   presentation: 'icon';
+  /**
+   * A direct non-primary icon action that also shows its label beside the icon on a wide header:
+   * a neutral (ghost) button, never the filled primary look. Narrow headers keep the icon only.
+   */
+  labelWhenWide?: boolean;
 }
 
 /**
@@ -430,6 +435,23 @@ function DirectPrimaryAction({
   narrow: boolean;
 }) {
   if (action.presentation === 'icon') {
+    if (action.labelWhenWide && !narrow && !action.primary) {
+      return (
+        <Button
+          aria-pressed={menuCheckedState(action)}
+          className="aria-pressed:bg-surface-selected aria-pressed:text-content-primary"
+          disabled={action.disabled}
+          aria-disabled={action.busy ? true : undefined}
+          leadingIcon={action.icon}
+          onClick={action.busy ? undefined : action.onPress}
+          size="sm"
+          variant="ghost"
+        >
+          {action.label}
+        </Button>
+      );
+    }
+
     return <DirectIconAction action={action} />;
   }
 

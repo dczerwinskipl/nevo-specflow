@@ -1,0 +1,29 @@
+schemaVersion: 1
+id: close-skill-wrappers-group
+title: Skill wrappers group in the Close dialog
+summary: The UI Close dialog shows uncommitted skill wrappers as a Skill wrappers group with the skill install remedy (D10, S3).
+type: ui-implementation
+status: ready
+dependsOn:
+  - engine-project-file-install
+origin:
+  kind: produced
+  step: breakdown
+  attempt: 2
+documents:
+  - id: task
+    path: task.md
+    type: task
+context:
+  - kind: specification-document
+    id: architecture
+    required: true
+  - kind: specification-document
+    id: decisions
+    required: true
+  - kind: specification-document
+    id: ux
+    required: true
+  - kind: path
+    path: packages/specflow-ui/src/features/tasks/execution/specification/RepositoryBlockers.tsx
+    required: true

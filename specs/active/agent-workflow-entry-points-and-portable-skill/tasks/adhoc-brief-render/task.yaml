@@ -1,0 +1,28 @@
+schemaVersion: 1
+id: adhoc-brief-render
+title: Ad-hoc brief rendering
+summary: readAgentSessionContext, renderAdHocBrief and mint returning the brief for an ad-hoc write Turn (C4, S6, S9).
+type: implementation
+status: ready
+dependsOn: []
+origin:
+  kind: produced
+  step: breakdown
+  attempt: 2
+documents:
+  - id: task
+    path: task.md
+    type: task
+context:
+  - kind: specification-document
+    id: backend
+    required: true
+  - kind: specification-document
+    id: architecture
+    required: true
+  - kind: specification-document
+    id: ux
+    required: true
+  - kind: project-document
+    id: architecture.runtime.agent-step-execution
+    required: true

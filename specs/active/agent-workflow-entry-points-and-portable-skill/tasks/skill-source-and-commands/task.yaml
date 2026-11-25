@@ -1,0 +1,33 @@
+schemaVersion: 1
+id: skill-source-and-commands
+title: Skill source, wrappers and skill commands
+summary: Ship the provider-neutral nevo-specflow skill, render and classify its wrappers, add skill show and skill install, and the CLI Skill wrappers Close group (S1, S2, C2, C3, D9, D10). Also see decisions.md, Task text changes.
+type: implementation
+status: ready
+dependsOn:
+  - owner-decisions-in-step-context
+  - engine-project-file-install
+origin:
+  kind: produced
+  step: breakdown
+  attempt: 2
+documents:
+  - id: task
+    path: task.md
+    type: task
+context:
+  - kind: specification-document
+    id: behaviour-brcvm5
+    required: true
+  - kind: specification-document
+    id: backend
+    required: true
+  - kind: specification-document
+    id: architecture
+    required: true
+  - kind: specification-document
+    id: decisions
+    required: true
+  - kind: project-document
+    id: reference.cli.specflow-specification-commands
+    required: true

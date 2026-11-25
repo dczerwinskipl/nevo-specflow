@@ -1,0 +1,31 @@
+schemaVersion: 1
+id: engine-project-file-install
+title: Engine project-file install and commit
+summary: installProjectFiles/writeProjectFiles, commit kinds skill-install and project-init, ledger and hold owner skill, CLI-only commit through all (S3, S4, D9, D10). Also see decisions.md, Task text changes, which includes the architecture.md S3 update.
+type: implementation
+status: ready
+dependsOn: []
+origin:
+  kind: produced
+  step: breakdown
+  attempt: 2
+documents:
+  - id: task
+    path: task.md
+    type: task
+context:
+  - kind: specification-document
+    id: architecture
+    required: true
+  - kind: specification-document
+    id: backend
+    required: true
+  - kind: specification-document
+    id: decisions
+    required: true
+  - kind: project-document
+    id: adr.0013-engine-owned-commits-and-protected-branches
+    required: true
+  - kind: project-document
+    id: adr.0018-engine-commit-policy-and-manual-commit
+    required: true

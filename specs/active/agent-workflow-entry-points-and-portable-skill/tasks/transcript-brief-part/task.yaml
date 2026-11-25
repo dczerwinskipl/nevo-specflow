@@ -1,0 +1,23 @@
+schemaVersion: 1
+id: transcript-brief-part
+title: SpecFlow brief part in the Session transcript
+summary: Render the brief entry as a collapsed SpecFlow brief part above the owner's unchanged message (D7, ux.md).
+type: ui-implementation
+status: ready
+dependsOn:
+  - adhoc-brief-delivery
+origin:
+  kind: produced
+  step: breakdown
+  attempt: 2
+documents:
+  - id: task
+    path: task.md
+    type: task
+context:
+  - kind: specification-document
+    id: ux
+    required: true
+  - kind: specification-document
+    id: architecture
+    required: true

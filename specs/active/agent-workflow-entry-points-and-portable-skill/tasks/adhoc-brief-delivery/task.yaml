@@ -1,0 +1,32 @@
+schemaVersion: 1
+id: adhoc-brief-delivery
+title: Ad-hoc brief delivery and its conversation entry
+summary: Send the brief ahead of the owner's message and store it as a brief entry with the dispatch intent (C5, S5, S6).
+type: implementation
+status: ready
+dependsOn:
+  - adhoc-brief-render
+origin:
+  kind: produced
+  step: breakdown
+  attempt: 2
+documents:
+  - id: task
+    path: task.md
+    type: task
+context:
+  - kind: specification-document
+    id: backend
+    required: true
+  - kind: specification-document
+    id: architecture
+    required: true
+  - kind: project-document
+    id: architecture.ai.session-history-and-events
+    required: true
+  - kind: project-document
+    id: architecture.ai.canonical-session-turn-work
+    required: true
+  - kind: project-document
+    id: architecture.ai.session-storage-and-lifecycle
+    required: true

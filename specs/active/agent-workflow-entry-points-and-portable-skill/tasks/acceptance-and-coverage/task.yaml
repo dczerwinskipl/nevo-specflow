@@ -1,0 +1,35 @@
+schemaVersion: 1
+id: acceptance-and-coverage
+title: End-to-end acceptance and roadmap coverage
+summary: Verify A1-A4 and A6-A8 on the packaged product with Runtime stopped where required, and record L131 and the Idea in roadmap coverage. Also see decisions.md, Task text changes.
+type: implementation
+status: ready
+dependsOn:
+  - init-installs-skill
+  - transcript-brief-part
+  - create-with-agent
+  - close-skill-wrappers-group
+origin:
+  kind: produced
+  step: breakdown
+  attempt: 2
+documents:
+  - id: task
+    path: task.md
+    type: task
+context:
+  - kind: specification-document
+    id: behaviour
+    required: true
+  - kind: specification-document
+    id: behaviour-brcvm5
+    required: true
+  - kind: specification-document
+    id: ux
+    required: true
+  - kind: specification-document
+    id: decisions
+    required: true
+  - kind: project-document
+    id: ideas.roadmap-coverage
+    required: true

@@ -1,0 +1,42 @@
+id: agent-workflow-entry-points-and-portable-skill
+key: nevo-1
+title: Agent workflow entry points and portable skill
+status: draft
+priority: 10
+created: 2026-11-24
+spec_id: a057b992-104e-4dd8-acc7-b105ad7113a8
+archetype:
+  id: feature
+  version: 1
+  requirements:
+    - documentType: overview
+      minCount: 1
+documents:
+  - id: overview
+    path: overview.md
+    type: overview
+    baselineRevision: 79ec47b215b82189c108ae505c6b73601e2a20e8ad253e05d20b36da8af18fb8
+  - id: behaviour
+    path: behaviour.md
+    type: behaviour
+    baselineRevision: c851ff15a8802871ccd50f662f7a20e8afd47e58d95686c18d422545ba645377
+  - id: backend
+    path: backend.md
+    type: backend
+    baselineRevision: c0d1acc89df88d5ae5cf71d9151d9e08478cdd826646e0190ba809cb14d0072a
+  - id: decisions
+    path: decisions.md
+    type: decisions
+    baselineRevision: dd02d2d9d47c442b13f3f97e21f0868fb9a1bab40ca9d43b59cce00f4343f7ca
+  - id: research
+    path: research.md
+    type: research
+  - id: behaviour-brcvm5
+    path: skill.md
+    type: behaviour
+  - id: ux
+    path: ux.md
+    type: ux
+  - id: architecture
+    path: architecture.md
+    type: architecture

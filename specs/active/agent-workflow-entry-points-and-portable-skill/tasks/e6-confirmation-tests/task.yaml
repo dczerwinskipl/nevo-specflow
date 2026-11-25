@@ -1,0 +1,25 @@
+schemaVersion: 1
+id: e6-confirmation-tests
+title: Confirm delivered E6 behaviour with tests
+summary: Prove A5, A9, A10 and A11 with named tests, adding only the missing ones; no E6 rule changes.
+type: implementation
+status: ready
+dependsOn: []
+origin:
+  kind: produced
+  step: breakdown
+  attempt: 2
+documents:
+  - id: task
+    path: task.md
+    type: task
+context:
+  - kind: specification-document
+    id: behaviour
+    required: true
+  - kind: project-document
+    id: adr.0026-agent-step-execution
+    required: true
+  - kind: project-document
+    id: architecture.runtime.agent-step-execution
+    required: true

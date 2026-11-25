@@ -1,0 +1,38 @@
+schemaVersion: 1
+id: create-with-agent
+title: Create with an agent in project mode
+summary: "Project Create offers With an agent: create, then start Run with agent on the first step with a derived request id, and land in its Session (L131, D4, D5, C6, S7, S8). Also see decisions.md, Task text changes."
+type: ui-implementation
+status: ready
+dependsOn:
+  - archetype-first-step
+origin:
+  kind: produced
+  step: breakdown
+  attempt: 2
+documents:
+  - id: task
+    path: task.md
+    type: task
+context:
+  - kind: specification-document
+    id: ux
+    required: true
+  - kind: specification-document
+    id: backend
+    required: true
+  - kind: specification-document
+    id: architecture
+    required: true
+  - kind: specification-document
+    id: behaviour
+    required: true
+  - kind: specification-document
+    id: decisions
+    required: true
+  - kind: project-document
+    id: product.specflow.specification-creation
+    required: true
+  - kind: project-document
+    id: architecture.runtime.specification-create-lifecycle
+    required: true

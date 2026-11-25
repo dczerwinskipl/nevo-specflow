@@ -1,0 +1,25 @@
+schemaVersion: 1
+id: archetype-first-step
+title: First step per archetype in the archetype catalogue
+summary: ArchetypeInfo.firstStep {id, title, agent} from the execution binding, and the catalogue ETag covers it (D8, S7).
+type: implementation
+status: ready
+dependsOn: []
+origin:
+  kind: produced
+  step: breakdown
+  attempt: 2
+documents:
+  - id: task
+    path: task.md
+    type: task
+context:
+  - kind: specification-document
+    id: architecture
+    required: true
+  - kind: specification-document
+    id: backend
+    required: true
+  - kind: project-document
+    id: architecture.runtime.specification-create-options
+    required: true

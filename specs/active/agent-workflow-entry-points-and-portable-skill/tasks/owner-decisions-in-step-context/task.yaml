@@ -1,0 +1,25 @@
+schemaVersion: 1
+id: owner-decisions-in-step-context
+title: Owner decisions in the step context
+summary: workflow context marks every finish result that is an owner decision, with its reasons (C1).
+type: implementation
+status: ready
+dependsOn: []
+origin:
+  kind: produced
+  step: breakdown
+  attempt: 2
+documents:
+  - id: task
+    path: task.md
+    type: task
+context:
+  - kind: specification-document
+    id: backend
+    required: true
+  - kind: specification-document
+    id: architecture
+    required: true
+  - kind: project-document
+    id: reference.cli.specflow-specification-commands
+    required: true

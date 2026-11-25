@@ -1,0 +1,14 @@
+schemaVersion: 1
+tasks:
+  - id: owner-decisions-in-step-context
+  - id: engine-project-file-install
+  - id: skill-source-and-commands
+  - id: archetype-first-step
+  - id: init-installs-skill
+  - id: adhoc-brief-render
+  - id: adhoc-brief-delivery
+  - id: transcript-brief-part
+  - id: create-with-agent
+  - id: e6-confirmation-tests
+  - id: acceptance-and-coverage
+  - id: close-skill-wrappers-group

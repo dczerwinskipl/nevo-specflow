@@ -258,6 +258,11 @@ RESULT                        Copy    verbatim output, no gutter
   Session pair), an attention note above the Composer names both and Send stays off until another
   model or mode is picked. A refusal with `details.reason: mode-model-unsupported` says the same,
   never "model not available".
+- **Open agent attempt.** In the Session of an agent attempt that is still open the Runtime takes no
+  owner message (`TURN_CONFLICT`, `agent-attempt-open`), so the Composer is disabled up front: the
+  editor and Send are off and an info note above the Composer says why and what to do instead
+  (Continue with a note, or Take over, on the Specification), from the Session's
+  `ownerMessageHold`. Stop stays available while the agent's Turn runs.
 - Model and effort are one picker; effort appears only when the provider allows the override. A
   provider without models or without the model override renders no picker.
 - **Refused vs unknown outcome.** A definitely refused Send (any 4xx, including a start's 409

@@ -487,10 +487,13 @@ function ManagedSessionConversation({
     (mode) => mode.modeId === workModeId,
   )?.modelIds;
   const pairUnsupported = !modeRunsModel(provider, workModeId, selectedModelId);
+  // The Session of an open agent attempt takes no owner message: said up front, not after Send.
+  const ownerMessageHold = snapshot?.session.ownerMessageHold;
   const canSend =
     !!snapshot &&
     !state.commandBusy &&
-    (!!state.pending || (snapshot.session.capabilities.start && !pairUnsupported)) &&
+    (!!state.pending ||
+      (snapshot.session.capabilities.start && !pairUnsupported && !ownerMessageHold)) &&
     (!!state.pending || !!state.draft.trim());
   // The composer shows one adaptive Send/Stop action, not two simultaneous
   // buttons: Stop only while a Turn is actually running and cancellable, Send/Retry otherwise.
@@ -931,6 +934,11 @@ function ManagedSessionConversation({
                             </InlineNote>
                           </ComposerNotice>
                         ) : null}
+                        {ownerMessageHold && !state.pending && !archived && !viewOnly ? (
+                          <ComposerNotice className="mb-3 px-4 py-3">
+                            <InlineNote tone="info">{ownerMessageHold.message}</InlineNote>
+                          </ComposerNotice>
+                        ) : null}
                         {state.archivedRefusal && !archived ? (
                           <ComposerNotice className="mb-3 px-4 py-3">
                             <InlineNote tone="info">
@@ -1037,7 +1045,9 @@ function ManagedSessionConversation({
                               value={state.draft}
                               onChange={(event) => feed.setDraft(event.target.value)}
                               disabled={
-                                !!state.pending || snapshot.session.readiness === 'unavailable'
+                                !!state.pending ||
+                                snapshot.session.readiness === 'unavailable' ||
+                                !!ownerMessageHold
                               }
                             />
                             <MessageComposer.Toolbar>

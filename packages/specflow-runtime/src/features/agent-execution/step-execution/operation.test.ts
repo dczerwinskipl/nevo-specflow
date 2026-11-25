@@ -332,7 +332,7 @@ describe('agent step execution', () => {
 
     const hold = await execution.ownerTurnHold(subject, derivedId(id, 'session'));
     expect(hold).toContain('still open');
-    expect(hold).toContain('Continue or Take over');
+    expect(hold).toContain('Continue with a note');
     expect(await execution.ownerTurnHold(subject, 'another-session')).toBeUndefined();
   });
 

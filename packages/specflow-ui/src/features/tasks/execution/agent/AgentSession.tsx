@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Typography, cn } from '@nevo/ui';
@@ -145,6 +145,8 @@ export function AgentSession({
 }) {
   const { t } = useTranslation();
   const labelId = useId();
+  /** The owner picked the agent or model in this dialog: the choice is no longer the settings'. */
+  const [ownChoice, setOwnChoice] = useState(false);
   if (mode === 'reuse' || mode === 'gone') {
     return (
       <ContinuedSession
@@ -179,6 +181,7 @@ export function AgentSession({
                 providerId={choice.providerId}
                 labelledBy={labelId}
                 onSelect={(providerId) => {
+                  setOwnChoice(true);
                   const next = ready.providers.find(
                     (candidate) => candidate.providerId === providerId,
                   );
@@ -201,6 +204,7 @@ export function AgentSession({
                         ...(choice.effort ? { effort: choice.effort } : {}),
                       }}
                       onChange={(modelId, effort) => {
+                        setOwnChoice(true);
                         // Picking a model keeps the effort chosen so far (the agent settings') when
                         // the model offers it; otherwise none, so the provider's own default runs,
                         // never the first effort of the list. Picking an effort sets it.
@@ -247,10 +251,17 @@ export function AgentSession({
               })}
             </Typography>
           ) : null}
-          {(ready && !modelUnassigned) || independent ? (
+          {/* "Preselected from the … settings" only while the choice is still the settings' one:
+              once the owner picks the agent or model, it is theirs. */}
+          {(ready && !modelUnassigned && !ownChoice) || independent ? (
             <Typography as="p" variant="body-sm" className="text-content-secondary">
               {independent
-                ? t('workflowExecution.agent.session.independent', { step, role })
+                ? t(
+                    ownChoice
+                      ? 'workflowExecution.agent.session.independentOwn'
+                      : 'workflowExecution.agent.session.independent',
+                    { step, role },
+                  )
                 : t('workflowExecution.agent.session.preselected', { role })}
             </Typography>
           ) : null}

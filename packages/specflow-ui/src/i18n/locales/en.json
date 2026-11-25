@@ -2492,6 +2492,7 @@
         "model": "Model",
         "preselected": "Preselected from the {{role}} settings. Your choice applies to this attempt only.",
         "independent": "{{step}} is done independently: it always starts in a new session, never in the one that wrote the change. Preselected from the {{role}} settings.",
+        "independentOwn": "{{step}} is done independently: it always starts in a new session, never in the one that wrote the change.",
         "catalogueFailed": "The agents could not be listed, so the attempt starts with {{agent}} from the {{role}} settings.",
         "loadingAgents": "Loading the agents…",
         "chooseModel": "Choose a model",

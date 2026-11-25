@@ -187,6 +187,14 @@ export const SessionInfoSchema = Type.Object(
     createdAt: text(40),
     updatedAt: text(40),
     agentStep: Type.Optional(AgentStepOriginSchema),
+    /**
+     * Present while the Session's agent attempt is open: an owner message would be refused
+     * (`TURN_CONFLICT`, reason `agent-attempt-open`), so a client disables the Composer up front
+     * and shows `message`, which says what to do instead.
+     */
+    ownerMessageHold: Type.Optional(
+      Type.Object({ reason: Type.Literal('agent-attempt-open'), message: text(1024) }, closed),
+    ),
   },
   closed,
 );

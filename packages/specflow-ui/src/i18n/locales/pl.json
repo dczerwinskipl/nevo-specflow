@@ -2492,6 +2492,7 @@
         "model": "Model",
         "preselected": "Wstępnie wybrane z ustawień roli „{{role}}”. Twój wybór dotyczy tylko tej próby.",
         "independent": "Krok {{step}} jest wykonywany niezależnie: zawsze startuje w nowej sesji, nigdy w tej, która napisała zmianę. Wstępnie wybrane z ustawień roli „{{role}}”.",
+        "independentOwn": "Krok {{step}} jest wykonywany niezależnie: zawsze startuje w nowej sesji, nigdy w tej, która napisała zmianę.",
         "catalogueFailed": "Nie udało się wyświetlić listy agentów, więc próba wystartuje z agentem {{agent}} z ustawień roli „{{role}}”.",
         "loadingAgents": "Wczytywanie agentów…",
         "chooseModel": "Wybierz model",

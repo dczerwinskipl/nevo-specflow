@@ -232,6 +232,15 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
             snapshot.session.agentStep = agentStep;
           }
 
+          // Said before the owner writes, not only when the send is refused (the same hold as Start a Turn).
+          const hold =
+            identity.specId !== undefined && options.ownerTurnHold
+              ? await options.ownerTurnHold(identity.specId, identity.sessionId)
+              : undefined;
+          if (hold !== undefined) {
+            snapshot.session.ownerMessageHold = { reason: 'agent-attempt-open', message: hold };
+          }
+
           return snapshot;
         },
       );

@@ -690,8 +690,9 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     return (
       `This session belongs to the agent's attempt ${attempt}, which is still open. A message ` +
       'here would run outside that attempt: it could not finish the step, and the files it ' +
-      'changed would stop Continue. Use Continue or Take over on the specification; you can write ' +
-      'here again once the attempt has ended.'
+      'changed would stop Continue. To tell the agent something, use Continue with a note on the ' +
+      'specification (stop the agent first if it is working), or Take over; you can write here ' +
+      'again once the attempt has ended.'
     );
   }
 

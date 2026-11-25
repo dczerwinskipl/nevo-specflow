@@ -329,6 +329,8 @@ describe('Run with agent dialog', () => {
     fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
     await waitFor(() => expect((footerOf(dialog)[1] as HTMLButtonElement).disabled).toBe(false));
+    // The owner chose the model: nothing in the dialog calls it preselected from the settings.
+    expect(within(dialog).queryByText(/Preselected from/)).toBeNull();
     fireEvent.click(footerOf(dialog)[1]!);
     await waitFor(() =>
       expect(startAgent).toHaveBeenCalledWith(

@@ -3907,6 +3907,26 @@
                   }
                 },
                 "additionalProperties": false
+              },
+              "ownerMessageHold": {
+                "type": "object",
+                "required": [
+                  "reason",
+                  "message"
+                ],
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "agent-attempt-open"
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 1024
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -18128,6 +18148,26 @@
                             "taskTitle": {
                               "type": "string",
                               "maxLength": 512
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "ownerMessageHold": {
+                          "type": "object",
+                          "required": [
+                            "reason",
+                            "message"
+                          ],
+                          "properties": {
+                            "reason": {
+                              "type": "string",
+                              "enum": [
+                                "agent-attempt-open"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "maxLength": 1024
                             }
                           },
                           "additionalProperties": false

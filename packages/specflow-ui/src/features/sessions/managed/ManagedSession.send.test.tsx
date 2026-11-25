@@ -293,6 +293,33 @@ describe('the Composer Send', () => {
     expect(start).not.toHaveBeenCalled();
   });
 
+  it('disables the Composer up front with the reason while the agent attempt is open', async () => {
+    const start = vi.fn<ManagedSessionsApi['start']>();
+    const served = sessionFixture();
+    const message =
+      "This session belongs to the agent's attempt Draft · attempt 1, which is still open. To tell the agent something, use Continue with a note on the specification.";
+    renderSession(
+      start,
+      {},
+      {
+        ...served,
+        session: {
+          ...served.session,
+          ownerMessageHold: { reason: 'agent-attempt-open', message },
+        },
+      },
+    );
+    await settle();
+
+    expect(screen.getByText(message)).toBeTruthy();
+    const editor = await screen.findByLabelText<HTMLTextAreaElement>('Message');
+    expect(editor.disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Send' }).disabled).toBe(true);
+    fireEvent.submit(editor.closest('form')!);
+    await settle();
+    expect(start).not.toHaveBeenCalled();
+  });
+
   it('sends where crypto.randomUUID is missing (plain http)', async () => {
     vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) });
     const start = vi.fn<ManagedSessionsApi['start']>().mockResolvedValue({ turnId: 'turn-2' });

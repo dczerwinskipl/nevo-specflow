@@ -186,7 +186,10 @@ const RevisionText = forwardRef<
       {markdown ? (
         <MarkdownDocument source={text} labels={markdownLabels} headingOffset={1} />
       ) : (
-        <p className="whitespace-pre-wrap break-words text-body-md">{text}</p>
+        // `wrap-anywhere`, not `break-words`: a long unbroken token (a JSON blob or a path in an
+        // agent brief) must not set the message's minimum width, or it widens the conversation
+        // past a phone's viewport.
+        <p className="whitespace-pre-wrap wrap-anywhere text-body-md">{text}</p>
       )}
       {(busy || failed) && (
         <span className="flex flex-wrap items-center gap-2">

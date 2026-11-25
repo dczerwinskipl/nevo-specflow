@@ -129,7 +129,7 @@ function EntryRow({
 
   if (entry.kind === 'request') {
     return (
-      <article data-entry-id={entry.id} className="group/message relative grid justify-end">
+      <article data-entry-id={entry.id} className="group/message relative grid min-w-0 justify-end">
         {srLabel}
         {/* `bg-surface-primary` — a brand-derived token (`brandEnvironment.ts`'s own
             `surfacePrimary`, mixed 55% toward black) rather than the brand's full-saturation
@@ -667,7 +667,8 @@ function ManagedSessionConversation({
                     // conversation keeps the split layout's `sticky` Composer at the bottom
                     // instead of right after the last message (sticky only pins once content
                     // overflows; stacked/mobile's `fixed` Composer is pinned regardless).
-                    'mx-auto grid w-full max-w-content-standard flex-1 gap-4 px-5 py-5',
+                    // One column never wider than the reading width: no entry's content can widen it.
+                    'mx-auto grid w-full max-w-content-standard flex-1 grid-cols-[minmax(0,1fr)] gap-4 px-5 py-5',
                     // Empty: the ready empty state centres in that height; otherwise messages
                     // stack from the top instead of stretching their rows across it.
                     snapshot.entries.length ? 'content-start' : 'grid-rows-[1fr]',

@@ -11,7 +11,7 @@ import { specsOverviewEndpoint } from './overview/endpoint';
 import type { SpecsOverviewRepository } from './overview/repository/read-repository';
 import {
   createEngineSpecsOverviewRepository,
-  type OverviewTaskProgress,
+  type OverviewExecution,
 } from './overview/repository/engine-repository';
 import { specificationWorkspaceEndpoint } from './workspace/endpoint';
 import { createEngineWorkspaceRepository } from './workspace/engine-repository';
@@ -27,8 +27,8 @@ export interface SpecsFeatureDependencies {
   readonly engine?: SpecFlowEngine;
   readonly workspaceRepository?: SpecificationWorkspaceRepository;
   readonly contributions?: WorkspaceContributions;
-  /** The Tasks owner's progress of each listed Specification (project mode Overview). */
-  readonly taskProgress?: OverviewTaskProgress;
+  /** The workflow owner's execution facts of each listed Specification (project mode Overview). */
+  readonly overviewExecution?: OverviewExecution;
   readonly sessions?: SessionReferenceOwner;
   /** The Runtime's project when there is no Engine to read it from (demo catalogue); see `specScope`. */
   readonly projectId?: ProjectIdSource;
@@ -59,7 +59,7 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
     (options.dependencies?.engine
       ? createEngineSpecsOverviewRepository(
           options.dependencies.engine,
-          options.dependencies.taskProgress,
+          options.dependencies.overviewExecution,
         )
       : undefined);
   // Same rule for the workspace identity: an injected repository (demo) wins, the Engine is the

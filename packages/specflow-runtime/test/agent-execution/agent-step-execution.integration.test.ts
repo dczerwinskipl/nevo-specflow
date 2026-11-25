@@ -89,7 +89,6 @@ async function project() {
       },
       documents: [{ id: 'overview', path: 'overview.md', type: 'overview' }],
       folders: [],
-      status: 'draft',
       location: 'active',
       priority: 10,
       created: '2026-11-21',

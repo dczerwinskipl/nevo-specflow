@@ -19,6 +19,8 @@ export interface OperationalGroupHeaderProps {
   readonly selectable?: boolean;
   readonly ariaDisabled?: boolean;
   readonly headingTag?: 'h2' | 'h3' | 'h4' | 'span';
+  /** `plain`: no filled band (a list whose rows carry the state, the header only groups them). */
+  readonly surface?: 'filled' | 'plain';
 }
 
 export function OperationalGroupHeader({
@@ -33,6 +35,7 @@ export function OperationalGroupHeader({
   selectable = false,
   ariaDisabled = false,
   headingTag = 'h2',
+  surface = 'filled',
 }: OperationalGroupHeaderProps) {
   const listContext = useOptionalInformationListContext();
   const effectiveSelectable = selectable || (listContext?.selectable ?? false);
@@ -40,7 +43,8 @@ export function OperationalGroupHeader({
   return (
     <div
       className={cn(
-        'flex min-h-control-height-default min-w-0 items-center gap-x-3 rounded-control bg-surface-control px-2',
+        'flex min-h-control-height-default min-w-0 items-center gap-x-3 rounded-control px-2',
+        surface === 'filled' && 'bg-surface-control',
         className,
       )}
       data-spec-section-header

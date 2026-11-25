@@ -6,6 +6,8 @@ import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import {
   createArchiveItem,
   createSpecItem,
+  waitingForTasks,
+  workflowFixtures,
 } from '../../../../../test-support/specs/overview/fixtures';
 import { stubLayoutApis } from '../../../../../test-support/app/stubLayoutApis';
 import { archiveRow, currentRow } from '../presentation';
@@ -121,5 +123,56 @@ describe('SpecListRow pull requests', () => {
   it('shows nothing when there is none', () => {
     archived({ pullRequests: [] });
     expect(screen.queryByText(/PR/)).toBeNull();
+  });
+});
+
+describe('SpecListRow situation', () => {
+  const situation = (item: Parameters<typeof createSpecItem>[0]) => {
+    renderRow({ item: currentRow(createSpecItem(item)) });
+
+    // One line per part: the step, its track label, the detail.
+    return [...document.querySelectorAll('[data-spec-reason] > span:not([data-spec-track])')]
+      .map((part) => part.textContent)
+      .join(' | ');
+  };
+
+  it('names the step the workflow waits on and the Tasks the owner can start', () => {
+    expect(
+      situation({ workflow: waitingForTasks(), classification: { section: 'in-progress' } }),
+    ).toBe('Waiting for Tasks | Step 6 of 7 · 5 Tasks ready to start');
+    // The Overview's segmented step track, named for assistive technology.
+    expect(screen.getByRole('img', { name: 'Step 6 of 7: Waiting for Tasks' })).toBeTruthy();
+  });
+
+  it('says a workflow that has not started is not started, never "In preparation"', () => {
+    expect(
+      situation({
+        workflow: workflowFixtures.notStarted,
+        classification: { section: 'not-started' },
+      }),
+    ).toBe('Not started | First step · Gather requirements');
+  });
+
+  it('keeps the step under an attention summary', () => {
+    expect(
+      situation({
+        workflow: workflowFixtures.readyForNextStep,
+        classification: { section: 'requires-attention', count: 1 },
+      }),
+    ).toBe('1 item requires attention | Review the breakdown | Step 5 of 7 · Ready to start');
+  });
+
+  it('tells a completed run from an abandoned one', () => {
+    expect(
+      situation({
+        workflow: { kind: 'ended', outcome: 'completed', stepCount: 7 },
+        classification: { section: 'ended' },
+      }),
+    ).toBe('Completed | All 7 steps · completed');
+    cleanup();
+    expect(
+      situation({ workflow: workflowFixtures.abandoned, classification: { section: 'ended' } }),
+    ).toBe('Abandoned');
+    expect(document.querySelector('[data-spec-track]')).toBeNull();
   });
 });

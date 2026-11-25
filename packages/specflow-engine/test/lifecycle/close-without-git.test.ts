@@ -46,12 +46,12 @@ async function fixture() {
   return { root, engine, spec, head: git(root, 'rev-parse', 'HEAD') };
 }
 
-const archivedStatus = async (root: string, slug: string) =>
-  (
-    parse(await readFile(join(root, 'specs/archive', slug, 'specification.yaml'), 'utf8')) as {
-      status: string;
-    }
-  ).status;
+/** The archived manifest (its read fails when it is not in `specs/archive`). */
+const archivedManifest = async (root: string, slug: string) =>
+  parse(await readFile(join(root, 'specs/archive', slug, 'specification.yaml'), 'utf8')) as Record<
+    string,
+    unknown
+  >;
 
 describe('Specification Close with Git off', () => {
   it('archives in place without a commit, and the codec accepts only its exact journal', async () => {
@@ -73,7 +73,7 @@ describe('Specification Close with Git off', () => {
       status: 'completed',
       journal: { stage: 'completed', outcome: 'archived-without-git', plan: { gitOff: true } },
     });
-    expect(await archivedStatus(root, spec.slug)).toBe('archived');
+    expect(await archivedManifest(root, spec.slug)).not.toHaveProperty('status');
     expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
     expect(await inspectCloseOperation(engine, operationId)).toEqual(closed.journal);
     expect(await closeSpecification(engine, { operationId, specId: spec.specId })).toEqual(closed);
@@ -186,7 +186,7 @@ describe('Specification Close with Git off', () => {
 
     const resumed = await resumeCloseWithoutGit(engine, operationId, true);
     expect(resumed).toMatchObject({ stage: 'completed', outcome: 'archived-without-git' });
-    expect(await archivedStatus(root, spec.slug)).toBe('archived');
+    expect(await archivedManifest(root, spec.slug)).not.toHaveProperty('status');
   }, 120000);
 
   it('archives a linked Specification created while Git was on in its worktree, uncommitted', async () => {
@@ -220,7 +220,7 @@ describe('Specification Close with Git off', () => {
       outcome: 'archived-without-git',
       plan: { gitOff: true, integrateToTargetBranch: false },
     });
-    expect(await archivedStatus(spec.workspaceRoot, spec.slug)).toBe('archived');
+    expect(await archivedManifest(spec.workspaceRoot, spec.slug)).not.toHaveProperty('status');
     expect(git(spec.workspaceRoot, 'rev-parse', 'HEAD')).toBe(head);
     await access(spec.workspaceRoot);
     expect((await engine.readRegistry()).specBindings).toContainEqual(

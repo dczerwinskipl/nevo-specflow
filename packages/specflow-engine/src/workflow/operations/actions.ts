@@ -1610,50 +1610,11 @@ export async function taskProjection(
   const { task } = loaded;
   const { lifecycle, pending } = await taskLifecycleOf(dependencies, snapshot, loaded, read.detail);
   const readinessBlockers = () => taskReadinessBlockers(task, tasks.tasks);
-  const contextBlockers = async (): Promise<StartBlocker[]> => {
-    const issues = (await unresolvedContext(dependencies, subject.specId, task)).filter(
-      (issue) => issue.entry.required,
-    );
-    const stale = issues.filter((issue) => !isAwaited(issue));
-    const awaited = issues.flatMap((issue) =>
-      isAwaited(issue) && issue.entry.kind !== 'instructions'
-        ? [{ index: issue.index, kind: issue.entry.kind }]
-        : [],
-    );
-
-    return [
-      ...(stale.length > 0
-        ? [
-            {
-              kind: 'context-unresolved' as const,
-              entries: stale.map((issue) => ({
-                index: issue.index,
-                kind: issue.entry.kind,
-                reason: issue.reason,
-              })),
-            },
-          ]
-        : []),
-      ...(awaited.length > 0 ? [{ kind: 'context-awaited' as const, entries: awaited }] : []),
-    ];
-  };
-
+  const contextBlockers = () => contextBlockersOf(dependencies, task);
   const gates: GateReading = { subject, documents: dependencies.references };
   const run = task.run;
   if (!run) {
-    let workflow: WorkflowDefinition | undefined;
-    const typeBlockers: StartBlocker[] = [];
-    try {
-      workflow = resolveTaskType({
-        type: task.type,
-        allowed: await read.allowedTypes(),
-        taskType: (id) => catalogue.taskType(id),
-        workflow: (id) => catalogue.workflow(id),
-      }).workflow;
-    } catch (error) {
-      typeBlockers.push(typeBlockerOf(error));
-    }
-
+    const { workflow, blockers: typeBlockers } = await taskWorkflowOf(catalogue, read, task);
     const blockers = [...readinessBlockers(), ...typeBlockers, ...(await contextBlockers())];
     // A Task on hold has no start-blocker item: the item of its hold, if any, is derived
     // (`heldTaskAttention`), as for a Task with a run.
@@ -1715,6 +1676,116 @@ export async function taskProjection(
     task: lifecycle,
     ...ownAttention(derived, subject),
   };
+}
+
+/** The workflow a Task's first start would follow, or why its type cannot start one. */
+async function taskWorkflowOf(
+  catalogue: ExecutionCatalogue,
+  read: TaskProjectionRead,
+  task: ExecutionTask,
+): Promise<{ readonly workflow?: WorkflowDefinition; readonly blockers: StartBlocker[] }> {
+  try {
+    return {
+      workflow: resolveTaskType({
+        type: task.type,
+        allowed: await read.allowedTypes(),
+        taskType: (id) => catalogue.taskType(id),
+        workflow: (id) => catalogue.workflow(id),
+      }).workflow,
+      blockers: [],
+    };
+  } catch (error) {
+    return { blockers: [typeBlockerOf(error)] };
+  }
+}
+
+/** The required context of a Task that does not resolve: stale (a person fixes it) or awaited. */
+async function contextBlockersOf(
+  dependencies: ActionDependencies,
+  task: ExecutionTask,
+): Promise<StartBlocker[]> {
+  const issues = (await unresolvedContext(dependencies, task.specId, task)).filter(
+    (issue) => issue.entry.required,
+  );
+  const stale = issues.filter((issue) => !isAwaited(issue));
+  const awaited = issues.flatMap((issue) =>
+    isAwaited(issue) && issue.entry.kind !== 'instructions'
+      ? [{ index: issue.index, kind: issue.entry.kind }]
+      : [],
+  );
+
+  return [
+    ...(stale.length > 0
+      ? [
+          {
+            kind: 'context-unresolved' as const,
+            entries: stale.map((issue) => ({
+              index: issue.index,
+              kind: issue.entry.kind,
+              reason: issue.reason,
+            })),
+          },
+        ]
+      : []),
+    ...(awaited.length > 0 ? [{ kind: 'context-awaited' as const, entries: awaited }] : []),
+  ];
+}
+
+/** What a list row needs of an approved Task that has not started. */
+export interface UnstartedTaskStanding {
+  /** It can start now: the action projection would find no start blocker. */
+  readonly startable: boolean;
+  /** Its start-blocker attention item, if a person has to fix something before it can start. */
+  readonly attention?: AttentionItem;
+}
+
+/**
+ * {@link taskProjection}'s start rule for an approved Task that has not started, reduced to what a
+ * list row needs (whether it can start, and its start-blocker attention), with the same blockers in
+ * the same precedence (`startBlockerAttention`). It stops reading as soon as the answer is decided:
+ * a type or an unsatisfiable dependency decides without any lookup, context is looked up only when
+ * neither does, and the entry gates of the first step (which read the Task's documents) are
+ * evaluated only for a Task no dependency still keeps waiting. No preview, actions, lifecycle or
+ * document relations are built. An item it returns names the step only when the gates decided it.
+ */
+export async function unstartedTaskStanding(
+  dependencies: ActionDependencies,
+  read: TaskProjectionRead,
+  task: ExecutionTask,
+): Promise<UnstartedTaskStanding> {
+  const subject = { kind: 'task', specId: task.specId, taskId: task.taskId } as const;
+  const { broken } = read.tasks;
+  const { workflow, blockers: typeBlockers } = await taskWorkflowOf(
+    dependencies.catalogue,
+    read,
+    task,
+  );
+  const early = [...taskReadinessBlockers(task, read.tasks.tasks), ...typeBlockers];
+  const decided = startBlockerAttention(subject, early, undefined, broken);
+  if (decided || !workflow) {
+    return { startable: false, ...(decided ? { attention: decided } : {}) };
+  }
+
+  const known = [...early, ...(await contextBlockersOf(dependencies, task))];
+  if (known.some((blocker) => blocker.kind === 'context-unresolved')) {
+    const attention = startBlockerAttention(subject, known, undefined, broken);
+
+    return { startable: false, ...(attention ? { attention } : {}) };
+  }
+
+  // A dependency that can still complete may deliver what the gates ask: they decide nothing yet.
+  if (known.some((blocker) => blocker.kind === 'dependencies')) {
+    return { startable: false };
+  }
+
+  const next = await firstStepOf(workflow, dependencies.catalogue, {
+    subject,
+    documents: dependencies.references,
+  });
+  const blockers = [...known, ...entryGateBlockers(next)];
+  const attention = startBlockerAttention(subject, blockers, next, broken);
+
+  return { startable: blockers.length === 0, ...(attention ? { attention } : {}) };
 }
 
 function typeBlockerOf(error: unknown): StartBlocker {

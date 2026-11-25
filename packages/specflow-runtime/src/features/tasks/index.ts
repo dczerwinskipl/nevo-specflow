@@ -21,8 +21,8 @@ export {
 export type { TaskCommands } from './commands/task-commands';
 
 export {
-  createEngineTaskProgress,
+  createEngineOverviewExecution,
   createEngineWorkspaceTasks,
-  type TaskProgressSource,
+  type OverviewExecutionSource,
   type WorkspaceTasksContribution,
 } from './workspace/engine-contribution';

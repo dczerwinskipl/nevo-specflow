@@ -4,6 +4,8 @@ import {
   createArchiveItem,
   createSpecItem,
   createSpecsFixture,
+  waitingForTasks,
+  workflowFixtures,
 } from '../../../../test-support/specs/overview/fixtures';
 import { sectionTranslationKey } from './model';
 import {
@@ -13,6 +15,7 @@ import {
   sortArchiveItems,
   rowMetadata,
   rowProgress,
+  workflowLine,
 } from './presentation';
 
 describe('Specs Overview presentation boundary', () => {
@@ -62,7 +65,15 @@ describe('Specs Overview presentation boundary', () => {
 
     expect(row.sectionId).toBe('requires-attention');
     expect(row.summary).toEqual({ kind: 'attention', reason: 'input' });
-    expect(row.qualifier).toEqual({ executionCount: 1 });
+    // The workflow position is the one qualifier under attention; it wins over the Session count.
+    expect(row.workflow).toEqual({
+      kind: 'step',
+      title: 'Waiting for Tasks',
+      position: { position: 6, total: 7 },
+      detail: { kind: 'tasks-in-progress', count: 2 },
+    });
+    expect(row.qualifier).toBeUndefined();
+    expect(currentRow({ ...source, workflow: null }).qualifier).toEqual({ executionCount: 1 });
     expect(row).not.toHaveProperty('signals');
     expect(row).not.toHaveProperty('currentExecutions');
     expect(JSON.stringify(row)).not.toContain('TASK-');
@@ -70,15 +81,65 @@ describe('Specs Overview presentation boundary', () => {
     expect(
       currentRow({
         ...source,
-        classification: { section: 'draft' },
+        workflow: workflowFixtures.notStarted,
+        classification: { section: 'not-started' },
         currentExecutions: [],
       }).sectionId,
-    ).toBe('draft');
+    ).toBe('not-started');
+  });
+
+  it('says where the workflow stands, never what the manifest status says', () => {
+    const summary = (workflow: Parameters<typeof workflowLine>[0], section = 'in-progress') =>
+      currentRow(
+        createSpecItem({
+          workflow,
+          classification: { section } as ReturnType<typeof createSpecItem>['classification'],
+        }),
+      ).summary;
+
+    expect(summary(workflowFixtures.notStarted, 'not-started')).toEqual({
+      kind: 'workflow',
+      line: { kind: 'not-started', stepCount: 7, firstStep: 'Gather requirements' },
+    });
+    expect(summary(workflowFixtures.waiting)).toEqual({
+      kind: 'workflow',
+      line: {
+        kind: 'step',
+        title: 'Waiting for Tasks',
+        position: { position: 6, total: 7 },
+        detail: { kind: 'tasks-ready', count: 5 },
+      },
+    });
+    expect(summary(workflowFixtures.completed, 'ended')).toEqual({
+      kind: 'workflow',
+      line: { kind: 'ended', outcome: 'completed', stepCount: 7 },
+    });
+  });
+
+  it.each([
+    [workflowFixtures.agentWorking, { kind: 'agent-working' }],
+    [workflowFixtures.ownerWorking, { kind: 'in-progress' }],
+    [workflowFixtures.readyForNextStep, { kind: 'ready' }],
+    [waitingForTasks({ readyToStart: 0, inProgress: 3 }), { kind: 'tasks-in-progress', count: 3 }],
+    [
+      waitingForTasks({ readyToStart: 0, inProgress: 0, open: 2, total: 12 }),
+      { kind: 'waiting-for', count: 2, total: 12 },
+    ],
+  ] as const)('names what step %j waits for', (workflow, detail) => {
+    expect(workflowLine(workflow)).toMatchObject({ kind: 'step', detail });
+  });
+
+  it('names no step whose workflow changed under the run', () => {
+    expect(workflowLine({ kind: 'step', state: 'ready' })).toEqual({
+      kind: 'step',
+      detail: { kind: 'ready' },
+    });
   });
 
   it('keeps unknown status and progress explicit in the presentation model', () => {
     const row = currentRow(
       createSpecItem({
+        workflow: null,
         classification: { section: 'unknown' },
         progress: null,
         signals: null,
@@ -104,17 +165,18 @@ describe('Specs Overview presentation boundary', () => {
   it('maps stable Current section IDs to frontend-owned translations', () => {
     expect(sectionTranslationKey).toEqual({
       'requires-attention': 'specifications.sections.requiresAttention',
-      active: 'specifications.sections.active',
-      ready: 'specifications.sections.ready',
-      draft: 'specifications.sections.draft',
+      'in-progress': 'specifications.sections.inProgress',
+      'not-started': 'specifications.sections.notStarted',
+      ended: 'specifications.sections.ended',
       unknown: 'specifications.sections.unknown',
     });
   });
 
-  it('derives Active execution count from current executions instead of duplicated backend data', () => {
+  it('counts the executing Sessions when the workflow position is not known', () => {
     const row = currentRow(
       createSpecItem({
-        classification: { section: 'active' },
+        workflow: null,
+        classification: { section: 'in-progress' },
         currentExecutions: [
           { sessionId: 'one', agentRole: 'Implementer', taskIds: ['TASK-1'] },
           { sessionId: 'two', agentRole: 'Reviewer', taskIds: ['TASK-2'] },
@@ -122,7 +184,7 @@ describe('Specs Overview presentation boundary', () => {
       }),
     );
 
-    expect(row.summary).toEqual({ kind: 'active', executionCount: 2 });
+    expect(row.summary).toEqual({ kind: 'sessions', executionCount: 2 });
     expect(row.qualifier).toBeUndefined();
   });
 
@@ -199,6 +261,7 @@ describe('Specs Overview capabilities', () => {
   const unknown = (id: string) =>
     createSpecItem({
       id,
+      workflow: null,
       classification: { section: 'unknown' },
       progress: null,
       signals: null,

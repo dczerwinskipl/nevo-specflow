@@ -216,8 +216,10 @@ describe('E2.I03 three-owner OS-process SIGKILL regression', () => {
     ).toBe('completed');
     expect((await reopened.readRegistry()).revision).toBe(originalRegistry.revision + 2);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(sourceCommit);
-    for (const [id, status] of ids.map((id, i) => [id, i === 1 ? 'archived' : 'draft'] as const)) {
-      expect((await readWorkspaceSpecification(root, id)).status).toBe(status);
+    for (const [id, location] of ids.map(
+      (id, i) => [id, i === 1 ? 'archive' : 'active'] as const,
+    )) {
+      expect((await readWorkspaceSpecification(root, id)).location).toBe(location);
     }
   }, 180000);
 

@@ -8,14 +8,14 @@ describe('Current Specs Overview section configuration', () => {
   });
 
   it('uses section list order directly without an order field', () => {
-    expect(parseCurrentOverviewSections(['draft', 'ready', 'requires-attention'])).toEqual([
-      'draft',
-      'ready',
+    expect(parseCurrentOverviewSections(['ended', 'not-started', 'requires-attention'])).toEqual([
+      'ended',
+      'not-started',
       'requires-attention',
     ]);
   });
 
-  it.each(['ready', ['ready', 'ready'], ['invalid-section']])(
+  it.each(['ended', ['ended', 'ended'], ['invalid-section'], ['draft'], ['ready']])(
     'rejects invalid section configuration: %j',
     (value) => {
       expect(() => parseCurrentOverviewSections(value)).toThrow();

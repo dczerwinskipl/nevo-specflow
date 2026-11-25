@@ -23,14 +23,15 @@ describe('sample Specs Overview repository', () => {
         .map((item) => item.id),
     ).toEqual(['admission']);
     expect(classifyCurrentSpec(snapshot.items.find((item) => item.id === 'providers')!)).toEqual({
-      section: 'active',
+      section: 'in-progress',
     });
+    // Without the demo's workflow its position is not known: no section is guessed.
     expect(classifyCurrentSpec(snapshot.items.find((item) => item.id === 'packaging')!)).toEqual({
-      section: 'ready',
+      section: 'unknown',
     });
     expect(classifyCurrentSpec(snapshot.items.find((item) => item.id === 'localization')!)).toEqual(
       {
-        section: 'draft',
+        section: 'not-started',
       },
     );
   });
@@ -40,7 +41,7 @@ describe('sample Specs Overview repository', () => {
     const snapshot = await repository.readArchive();
 
     expect(snapshot.items).toHaveLength(1);
-    expect(snapshot.items[0]).not.toHaveProperty('readyForWork');
+    expect(snapshot.items[0]).not.toHaveProperty('workflow');
     expect(snapshot.items[0]).not.toHaveProperty('signals');
     expect(snapshot.items[0]).not.toHaveProperty('currentExecutions');
   });

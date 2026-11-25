@@ -5,7 +5,7 @@ import {
   type CollectionTracks,
 } from '../../../../shared/operational-list';
 import { useTranslation } from 'react-i18next';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   rowMetadata,
   rowProgress,
@@ -18,6 +18,9 @@ import { SpecRowSummary } from './SpecRowSummary';
 import { SpecPrimaryLink, type RenderSpecificationLink } from './SpecPrimaryLink';
 import { SpecPullRequests } from './SpecPullRequests';
 import { formatSpecDate } from './specDate';
+
+/** The Overview's done fill of the Task progress bar (`SpecificationNow`). */
+const doneFill = { '--color-progress-fill': 'var(--color-status-success)' } as CSSProperties;
 
 export interface SpecListRowProps {
   readonly item: SpecRowModel;
@@ -59,7 +62,7 @@ export function SpecListRow({
       interactive={
         Boolean(specificationHref) || Boolean(onOpenTarget) || Boolean(renderSpecificationLink)
       }
-      className="py-3"
+      className="py-2.5"
       data-spec-id={item.id}
       data-spec-key={item.key}
     >
@@ -131,7 +134,7 @@ function SpecRowIdentity({
             <span key={fact.id} className="contents">
               {index ? <span aria-hidden="true">·</span> : null}
               {fact.kind === 'key' ? (
-                <span className="font-mono" data-spec-key>
+                <span className="font-mono text-content-muted" data-spec-key>
                   {fact.value}
                 </span>
               ) : fact.kind === 'pr' ? (
@@ -186,8 +189,9 @@ function SpecUpdated({ item }: { item: CurrentSpecRowModel }) {
 function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
   const { t } = useTranslation();
   const details = item.progress;
+  // The Overview's words and bar for the same count (`taskOverview.progress.tasksDone`).
   const count = details
-    ? t('specifications.progress', details)
+    ? t('taskOverview.progress.tasksDone', details)
     : t('specifications.progressUnknown');
   const progress = rowProgress(details);
 
@@ -214,12 +218,12 @@ function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
         </span>
       ) : details ? (
         <>
-          <div className="w-28 shrink-0">
+          {/* One continuous bar, as the Overview's Task progress: never a second segmented track. */}
+          <div className="w-20 shrink-0">
             <Progress
-              variant="segmented"
-              size="compact"
-              completed={details.completed}
-              total={details.total}
+              value={details.completed}
+              max={details.total}
+              style={doneFill}
               aria-label={t('specifications.progressLabel', { title: item.title })}
               aria-valuetext={count}
             />

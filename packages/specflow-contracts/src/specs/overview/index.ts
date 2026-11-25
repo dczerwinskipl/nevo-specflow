@@ -14,6 +14,7 @@ export {
   CurrentSpecSignalSchema,
   CurrentSpecTargetSchema,
   CurrentSpecsOverviewSchema,
+  CurrentSpecWorkflowSchema,
 } from './current';
 export type {
   CurrentSpecAttentionReason,
@@ -24,6 +25,7 @@ export type {
   CurrentSpecSignal,
   CurrentSpecTarget,
   CurrentSpecsOverview,
+  CurrentSpecWorkflow,
 } from './current';
 
 export { ArchivedSpecOverviewItemSchema, ArchiveSpecsOverviewSchema } from './archive';

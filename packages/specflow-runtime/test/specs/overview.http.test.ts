@@ -39,16 +39,35 @@ describe('Specs overview HTTP integration', () => {
 
     try {
       const response = await app.inject('/api/specs/overview');
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode, response.body).toBe(200);
 
       const overview = response.json<CurrentSpecsOverview>();
       expect(overview.collection).toBe('current');
       expect(overview.items).toHaveLength(6);
+      // Where each demo workflow run stands (the Overview's Now), never a manifest status.
+      const byId = new Map(overview.items.map((item) => [item.id, item]));
+      expect(byId.get('localization')).toMatchObject({
+        workflow: { kind: 'not-started' },
+        classification: { section: 'not-started' },
+      });
+      expect(byId.get('packaging')).toMatchObject({
+        workflow: {
+          kind: 'step',
+          state: 'waiting',
+          step: { title: 'Waiting for Tasks', position: 6, count: 7 },
+          tasks: { open: 2, total: 4, inProgress: 0, readyToStart: 2 },
+        },
+        classification: { section: 'in-progress' },
+      });
+      expect(byId.get('security')).toMatchObject({
+        workflow: { kind: 'step', state: 'ready', step: { title: 'Review the breakdown' } },
+        classification: { section: 'requires-attention', count: 1 },
+      });
       expect(overview.sections).toEqual([
         'requires-attention',
-        'active',
-        'ready',
-        'draft',
+        'in-progress',
+        'not-started',
+        'ended',
         'unknown',
       ]);
     } finally {

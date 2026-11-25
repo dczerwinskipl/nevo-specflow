@@ -187,11 +187,11 @@ describe('E2.I02 workspace-owned integration destination', () => {
     expect(git(feature.workspaceRoot, 'rev-parse', 'HEAD')).toBe(sourceCommit);
     expect(git(feature.workspaceRoot, 'rev-parse', 'HEAD')).not.toBe(originalFeatureHead);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(developHead);
-    expect((await readWorkspaceSpecification(feature.workspaceRoot, child.specId)).status).toBe(
-      'draft',
+    expect((await readWorkspaceSpecification(feature.workspaceRoot, child.specId)).location).toBe(
+      'active',
     );
-    expect((await readWorkspaceSpecification(feature.workspaceRoot, sibling.specId)).status).toBe(
-      'draft',
+    expect((await readWorkspaceSpecification(feature.workspaceRoot, sibling.specId)).location).toBe(
+      'active',
     );
     const registry = await engine.readRegistry();
     for (const id of [child.specId, sibling.specId]) {
@@ -511,7 +511,6 @@ describe('E2.I02 workspace-owned integration destination', () => {
     ).toBe('');
     const archived = await readWorkspaceSpecification(feature.workspaceRoot, child.specId);
     expect(archived.location).toBe('archive');
-    expect(archived.status).toBe('archived');
     expect(git(feature.workspaceRoot, 'ls-files', '--', 'specs/active/' + child.slug)).toBe('');
     expect(
       git(

@@ -21,12 +21,15 @@ related:
 
 ## Manifest schema (`specification.yaml`)
 
+The manifest has no `status`: where the work stands is the Specification's workflow run, and
+active or archived is its location (`specs/active` or `specs/archive`). The `status` key of an older
+manifest is ignored on read and dropped when the Engine rewrites the manifest or archives it.
+
 ```yaml
 id: <slug> # existing
 key: nevo-12 # optional: <prefix>-<number>, given by Create (one more than the highest key of the project)
 spec_id: <uuid> # existing
 title: <string> # existing
-status: draft # existing
 priority: 10 # existing, optional
 created: 2026-10-23 # existing, optional
 archetype: # REQUIRED; replaces `type`

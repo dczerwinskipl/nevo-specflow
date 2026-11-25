@@ -22,6 +22,7 @@ const KNOWN_TOP_LEVEL_KEYS = new Set([
   'id',
   'key',
   'title',
+  // Legacy: older manifests had a status. Known, so a rewrite drops it instead of preserving it.
   'status',
   'priority',
   'created',
@@ -43,7 +44,6 @@ export function serializeSpecificationManifest(
     id: manifest.slug,
     ...(manifest.key !== undefined ? { key: manifest.key } : {}),
     title: manifest.title,
-    status: manifest.status,
     ...(manifest.priority !== undefined ? { priority: manifest.priority } : {}),
     ...(manifest.created !== undefined ? { created: manifest.created } : {}),
     spec_id: manifest.specId,

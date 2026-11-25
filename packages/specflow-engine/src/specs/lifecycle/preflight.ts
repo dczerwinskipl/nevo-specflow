@@ -966,7 +966,6 @@ async function previewWorkspaceClose(
       specId: binding.specId,
       slug: manifest.slug,
       location: manifest.location,
-      status: manifest.status,
       bindingGeneration: binding.generation,
     } as const;
   });

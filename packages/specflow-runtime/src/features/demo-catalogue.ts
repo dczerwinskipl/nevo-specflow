@@ -5,7 +5,6 @@ export interface DemoSpecification {
   key?: string;
   title: string;
   progress: { completed: number; total: number };
-  readyForWork?: boolean;
   currentExecutions?: readonly {
     sessionId: string;
     agentRole: string;

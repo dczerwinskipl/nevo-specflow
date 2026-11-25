@@ -23,7 +23,7 @@ import {
   type SessionDriver,
 } from '../features/sessions';
 import {
-  createEngineTaskProgress,
+  createEngineOverviewExecution,
   createEngineTaskSources,
   createProjectTaskEngine,
   createEngineWorkspaceTasks,
@@ -368,7 +368,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         overviewRepository: dependencies.specs?.overviewRepository ?? demo?.overviewRepository,
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
         contributions,
-        ...(taskEngine ? { taskProgress: createEngineTaskProgress(taskEngine) } : {}),
+        ...(taskEngine ? { overviewExecution: createEngineOverviewExecution(taskEngine) } : {}),
         sessions: sessionReferences,
         projectId,
         // Close deletes a checkout only after the documentation index there is released (E9).

@@ -4,7 +4,11 @@ import {
   type RegisteredWorkspaceInspection,
   type WorkspaceRegistry,
 } from '../project/workspace/registry/registry';
-import { runReadRequest } from '../project/request-verification-memo';
+import {
+  isReadRequest,
+  memoizeVerification,
+  runReadRequest,
+} from '../project/request-verification-memo';
 import { READ_GIT_CONCURRENCY, mapBounded } from '../concurrency';
 import { isValidSpecificationId, SpecificationError } from './model';
 import { listWorkspaceSpecifications, type WorkspaceSpecification } from './repository';
@@ -62,6 +66,23 @@ export async function discoverSpecificationsForCreateAdmission(
   return discoverWithAdmission(engine, undefined, writingSlugsByWorkspace);
 }
 
+/**
+ * The manifests of a checkout, listed once per read request: a request that resolves many
+ * Specifications (the Specs list reads each one's execution) would otherwise list every manifest of
+ * the checkout again for each of them. Never remembered outside a read request (a mutation lists
+ * afresh) nor while slugs are being written.
+ */
+function listedInRequest(
+  root: string,
+  writingSlugs: ReadonlySet<string> | undefined,
+): Promise<readonly WorkspaceSpecification[]> {
+  if (writingSlugs || !isReadRequest()) {
+    return listWorkspaceSpecifications(root, writingSlugs);
+  }
+
+  return memoizeVerification('specifications:' + root, () => listWorkspaceSpecifications(root));
+}
+
 async function discoverWithAdmission(
   engine: SpecFlowEngine,
   isIncluded?: (specId: string) => boolean,
@@ -80,7 +101,7 @@ async function discoverWithAdmission(
     );
   }
 
-  const primarySpecifications = await listWorkspaceSpecifications(
+  const primarySpecifications = await listedInRequest(
     primary.root,
     writingSlugsByWorkspace?.get(primary.root),
   );
@@ -139,10 +160,7 @@ async function discoverWithAdmission(
       const inspection = await inspectRegisteredWorkspace(engine.context, registry, workspaceId);
       const listed =
         inspection.status === 'available'
-          ? await listWorkspaceSpecifications(
-              inspection.root,
-              writingSlugsByWorkspace?.get(inspection.root),
-            )
+          ? await listedInRequest(inspection.root, writingSlugsByWorkspace?.get(inspection.root))
           : undefined;
 
       return { inspection, listed } satisfies LinkedOutcome;

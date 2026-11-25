@@ -37,7 +37,8 @@ function signal(
 const currentItems: readonly CurrentSpecRecord[] = [
   {
     id: 'admission',
-    readyForWork: true,
+    // The demo's workflow (run in memory) says where it stands; this sample does not know.
+    workflow: null,
     key: 'UI-1234',
     title: 'Deterministic admission and execution boundaries',
     updatedAt: '2026-10-01T12:00:00Z',
@@ -65,7 +66,8 @@ const currentItems: readonly CurrentSpecRecord[] = [
   },
   {
     id: 'security',
-    readyForWork: true,
+    // The demo's workflow (run in memory) says where it stands; this sample does not know.
+    workflow: null,
     key: 'RT-1235',
     title: 'Runtime authorization and access policy',
     updatedAt: '2026-10-01T12:00:00Z',
@@ -76,7 +78,8 @@ const currentItems: readonly CurrentSpecRecord[] = [
   },
   {
     id: 'review',
-    readyForWork: true,
+    // The demo's workflow (run in memory) says where it stands; this sample does not know.
+    workflow: null,
     key: 'CORE-1236',
     title: 'Review evidence and verification handover',
     updatedAt: '2026-10-01T12:00:00Z',
@@ -86,7 +89,8 @@ const currentItems: readonly CurrentSpecRecord[] = [
   },
   {
     id: 'packaging',
-    readyForWork: true,
+    // The demo's workflow (run in memory) says where it stands; this sample does not know.
+    workflow: null,
     key: 'CORE-1237',
     title: 'Single-artifact packaging and installation',
     updatedAt: '2026-10-01T12:00:00Z',
@@ -97,7 +101,8 @@ const currentItems: readonly CurrentSpecRecord[] = [
   },
   {
     id: 'providers',
-    readyForWork: true,
+    // The demo's workflow (run in memory) says where it stands; this sample does not know.
+    workflow: null,
     key: 'RT-104',
     title: 'Provider diagnostics and replay',
     updatedAt: '2026-10-01T12:00:00Z',
@@ -114,8 +119,7 @@ const currentItems: readonly CurrentSpecRecord[] = [
   },
   {
     id: 'localization',
-    readyForWork: false,
-    status: 'draft',
+    workflow: { kind: 'not-started' },
     key: 'UI-1238',
     title: 'Localization and account preferences',
     updatedAt: '2026-10-01T12:00:00Z',

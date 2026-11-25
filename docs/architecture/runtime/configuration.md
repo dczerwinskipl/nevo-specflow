@@ -79,9 +79,9 @@ specs:
     current:
       sections:
         - requires-attention
-        - active
-        - ready
-        - draft
+        - in-progress
+        - not-started
+        - ended
 
 sessions:
   enabled: false # managed Sessions feature; default false

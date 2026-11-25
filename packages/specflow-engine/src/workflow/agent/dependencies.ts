@@ -27,11 +27,12 @@ import { engineAttributionFacts } from './boundary/engine-facts';
 import { readAttemptCommitHolds } from './finalize/attempt-commit/holds';
 import { attemptCommitRunner } from './finalize/attempt-commit/run';
 import { ownerStatePaths } from './boundary/owner-state';
-import { resolveSpecification } from '../../specs/discovery';
+import { resolveSpecification, resolveSpecificationForRead } from '../../specs/discovery';
 import { containerDirectory } from '../../specs/documents/changes/plan/container';
 import type { AgentPostActionRunner, FinalizeBoundary } from './finalize/ports';
 import { openDocumentWritesOf } from './finalize/open-writes';
 import { filesystemAgentAttemptJournal, type AgentAttemptJournalStore } from './journal/store';
+import type { AttemptSpecification } from './history/attempt';
 
 /** What the agent attempt operations need besides the workflow operations themselves. */
 export interface AgentAttemptDependencies {
@@ -61,6 +62,12 @@ export interface AgentAttemptDependencies {
    * attempt's history lists as the work SpecFlow wrote for it and has not committed.
    */
   ledger(workspaceId: string, specId: string): Promise<readonly LedgerEntry[]>;
+  /**
+   * The Specification's folder in a checkout and its registered documents, checkout-relative:
+   * what an attempt's work groups its paths by (`AgentAttemptChanges`); `undefined` when the
+   * Specification is not available in that checkout (lock-free, Git-free).
+   */
+  specification(workspaceId: string, specId: string): Promise<AttemptSpecification | undefined>;
   /**
    * The Specification's uncommitted execution state that is the owner's to commit
    * (`boundary/owner-state.ts`), checkout-relative: a new agent attempt starts only once it is
@@ -158,6 +165,20 @@ export async function openAgentAttempts(
       });
 
       return record?.entries ?? [];
+    },
+    async specification(workspaceId, specId) {
+      const found = await resolveSpecificationForRead(engine, specId);
+      if (found.status !== 'available' || found.workspaceId !== workspaceId) {
+        return undefined;
+      }
+
+      const manifest = found.specification.relativeManifestPath;
+      const directory = manifest.slice(0, manifest.lastIndexOf('/'));
+
+      return {
+        directory,
+        documents: found.specification.documents.map((entry) => `${directory}/${entry.path}`),
+      };
     },
     async ownerWorkflowState(workspaceId, specId) {
       const found = await resolveSpecification(engine, specId);

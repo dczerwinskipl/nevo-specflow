@@ -202,6 +202,7 @@ export function memoryAgentDependencies(catalogue: ExecutionCatalogue, attemptId
     newId: () => attemptId,
     boundary: { facts: () => Promise.resolve(state.attribution) },
     ledger: () => Promise.resolve([...state.ledger]),
+    specification: () => Promise.resolve(undefined),
     ownerWorkflowState: () => Promise.resolve([...state.ownerWorkflowState]),
     finalize: {
       store: () => finalizeStore,

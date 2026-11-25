@@ -6,6 +6,9 @@ import { NO_POST_ACTIONS, type PostActionResult } from '../../operations/post-ac
 import { agentAttemptBindingOf, type OwnerActor, type WorkflowSubject } from '../../state/model';
 import type { AgentAttemptDependencies } from '../dependencies';
 import {
+  AGENT_COMMITTED_PATHS_CHARACTERS_MAX,
+  AGENT_COMMITTED_PATHS_MAX,
+  AGENT_DIRTY_PATH_LENGTH_MAX,
   isAttemptJournalSettled,
   isAttemptResolved,
   type AgentPostActionOutcome,
@@ -15,8 +18,37 @@ import {
 export type { AgentPostActionRunner } from './ports';
 
 /**
- * What a run reported, as the journal keeps it. A commit's paths are counted, not kept: those the
- * agent declared (`files`) and the rest, which SpecFlow wrote (`documents`).
+ * The paths a commit summary names: sorted, within {@link AGENT_COMMITTED_PATHS_MAX} paths and
+ * {@link AGENT_COMMITTED_PATHS_CHARACTERS_MAX} characters; `truncated` when some are left out.
+ */
+export function committedPathsOf(paths: readonly string[]): {
+  readonly paths: readonly string[];
+  readonly truncated?: true;
+} {
+  const sorted = [...new Set(paths)].sort();
+  const kept: string[] = [];
+  let characters = 0;
+  for (const path of sorted) {
+    if (
+      path === '' ||
+      path.length > AGENT_DIRTY_PATH_LENGTH_MAX ||
+      kept.length === AGENT_COMMITTED_PATHS_MAX ||
+      characters + path.length > AGENT_COMMITTED_PATHS_CHARACTERS_MAX
+    ) {
+      continue;
+    }
+
+    kept.push(path);
+    characters += path.length;
+  }
+
+  return { paths: kept, ...(kept.length < sorted.length ? { truncated: true as const } : {}) };
+}
+
+/**
+ * What a run reported, as the journal keeps it. A commit's paths are counted (those the agent
+ * declared, `files`, and the rest, which SpecFlow wrote, `documents`) and named, within a bound, so
+ * the history can tell what the commit held once the ledger was pruned.
  */
 function outcomesOf(
   results: readonly PostActionResult[],
@@ -38,6 +70,7 @@ function outcomesOf(
               ...(commit.sha !== undefined ? { sha: commit.sha } : {}),
               documents: commit.paths.length - files,
               files,
+              ...committedPathsOf(commit.paths),
             },
           }
         : {}),

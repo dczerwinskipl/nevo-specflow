@@ -230,6 +230,17 @@ export type AgentOption = Static<typeof AgentOptionSchema>;
  * - `proposal`: the agent's finish proposal: `pending` (not finalized yet), `refused` (with the
  *   reasons it was refused when applied), `finalized`.
  */
+/** What an agent attempt itself changed, by what it is (see `AgentAttemptWorkSchema`). */
+export const AgentAttemptChangesSchema = Type.Object({
+  directory: Type.Optional(Type.String()),
+  documents: array(Type.String()),
+  tasks: array(Type.Object({ id: Type.String(), title: Type.String() })),
+  files: array(Type.String()),
+  state: array(Type.String()),
+  truncated: Type.Optional(Type.Literal(true)),
+});
+export type AgentAttemptChanges = Static<typeof AgentAttemptChangesSchema>;
+
 /**
  * What an agent attempt left (partial work is never rolled back, D19), Git-free:
  *
@@ -241,8 +252,13 @@ export type AgentOption = Static<typeof AgentOptionSchema>;
  * - `commit`: its attempt commit (D15): `none` (it did not finish with its own result), `pending`,
  *   `committed` or `failed` (with the code; Retry commit is possible). Once `committed` with a
  *   commit: its `sha` (absent when every path already equalled HEAD), how many of its paths SpecFlow
- *   wrote (`documents`: documents, Task files, execution state) and how many are the agent's
- *   declared files (`files`).
+ *   wrote (`documents`: documents, Task files, execution state; with `changes`, the registered
+ *   documents only) and how many are the agent's declared files (`files`; with `changes`, every
+ *   other file).
+ * - `changes`: what the attempt itself changed, committed or not, by what it is: registered
+ *   `documents`, the Task drafts it produced (`tasks`, with titles), other `files` and SpecFlow's own
+ *   records (`state`: execution state, Task resources, the manifest); `directory` is the
+ *   Specification's folder, checkout-relative. Absent where the Specification was not read.
  */
 export const AgentAttemptWorkSchema = Type.Object({
   documents: array(Type.String()),
@@ -260,6 +276,7 @@ export const AgentAttemptWorkSchema = Type.Object({
     documents: Type.Optional(Type.Integer({ minimum: 0 })),
     files: Type.Optional(Type.Integer({ minimum: 0 })),
   }),
+  changes: Type.Optional(AgentAttemptChangesSchema),
 });
 export type AgentAttemptWork = Static<typeof AgentAttemptWorkSchema>;
 

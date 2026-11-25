@@ -376,7 +376,7 @@ function longLinesSnapshot() {
     revision: 1,
     kind,
     createdAt: '2026-11-24T23:59:00Z',
-    text: { text, complete: true },
+    text: { text, complete: true as const },
   });
   snapshot.entries = [
     entry(

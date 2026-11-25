@@ -16,6 +16,7 @@ import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import type { ManagedSessionsApi } from './api';
 import { createSessionFeed } from './feed';
 import { createWorkInspector } from './WorkInspector';
+import { resetWorkHistoryView } from './workHistoryViewPreference';
 import { availablePaged } from './usePagedHistory';
 import { initialPagedState } from './workInspectorStore';
 
@@ -220,6 +221,44 @@ function selectFilterKind(currentLabel: string, kindLabel: string) {
   fireEvent.keyDown(trigger, { key: 'Enter' });
   fireEvent.click(screen.getByRole('menuitemradio', { name: kindLabel }));
 }
+
+describe('WorkInspector compact and detailed views', () => {
+  afterEach(() => {
+    window.localStorage.removeItem('nevo:work-history:view');
+    resetWorkHistoryView();
+  });
+
+  it('groups tool actions by default, folds an answered permission into its command, and remembers the detailed view', async () => {
+    const command = { operation: 'command' as const, subject: 'pnpm test' };
+    const items = [
+      work({ kind: 'commentary', title: { text: 'Running the checks.', complete: true } }),
+      work({ kind: 'tool', ...command, title: { text: 'Bash', complete: true } }),
+      work({ kind: 'interaction', decision: 'allowed', ...command }),
+      work({ kind: 'tool', operation: 'read', subject: 'a.ts' }),
+      work({ kind: 'tool', operation: 'command', subject: 'pnpm lint' }),
+    ];
+    await openWork(fixtureApi(items).api);
+
+    // One group row for the three tool actions, by kind under it; the permission is no row.
+    expect(await screen.findByText('3 tool actions')).toBeTruthy();
+    expect(screen.getByText('2 commands · 1 read')).toBeTruthy();
+    clickTrigger('3 tool actions');
+    expect(document.querySelector('[data-work-authorization="allowed"]')?.textContent).toBe(
+      'Allowed',
+    );
+
+    // The one toggle, an icon button in the screen's header.
+    const toggle = screen.getByRole('button', { name: 'Show every operation' });
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(toggle);
+
+    await waitFor(() => expect(screen.queryByText('3 tool actions')).toBeNull());
+    expect(
+      screen.getByRole('button', { name: 'Show every operation' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(window.localStorage.getItem('nevo:work-history:view')).toBe('detailed');
+  });
+});
 
 describe('WorkInspector Work screen', () => {
   it('groups operations under their Commentary, defaulting leading operations to Start of Turn', async () => {
@@ -803,6 +842,8 @@ describe('WorkInspector view state', () => {
 
         return { top, bottom: top + height, height } as DOMRect;
       });
+    // Every operation its own row: the anchor is measured on single rows here.
+    window.localStorage.setItem('nevo:work-history:view', 'detailed');
     try {
       const pages = [toolItems('Old', 2), toolItems('Tail', 2)];
       const { api, release } = pagedApi({ turns: { [turnId]: pages }, hold: '0' });
@@ -825,6 +866,8 @@ describe('WorkInspector view state', () => {
       expect(viewport.scrollTop).toBe(600);
     } finally {
       rects.mockRestore();
+      window.localStorage.removeItem('nevo:work-history:view');
+      resetWorkHistoryView();
     }
   });
 

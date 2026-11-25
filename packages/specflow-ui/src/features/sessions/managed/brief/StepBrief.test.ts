@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { briefParts } from './StepBrief';
+import { briefParts, briefPurpose } from './StepBrief';
 import { stepBriefText } from './stepBrief.stories-support';
 
 describe('briefParts', () => {
@@ -26,5 +26,20 @@ describe('briefParts', () => {
     expect(briefParts('# Brief\nDo the step.')).toEqual([
       { kind: 'text', text: '# Brief\nDo the step.' },
     ]);
+  });
+});
+
+describe('briefPurpose', () => {
+  it('reads the step purpose as the short instruction, nothing else of the brief', () => {
+    expect(briefPurpose(stepBriefText)).toBe(
+      'Draft Tasks that together cover the solution, each one verifiable.',
+    );
+  });
+
+  it('keeps the first paragraph, also from a preview cut inside the block, and none without one', () => {
+    expect(
+      briefPurpose('Purpose:\n<untrusted source="step.purpose">\nFirst part.\n\nSecond part'),
+    ).toBe('First part.');
+    expect(briefPurpose('# Brief\nDo the step.')).toBeUndefined();
   });
 });

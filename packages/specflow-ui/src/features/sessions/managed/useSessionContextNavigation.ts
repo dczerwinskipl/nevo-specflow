@@ -48,6 +48,19 @@ export function useSessionContextNavigation(sessionId: string) {
     [navigate, collectionOf, rememberSessionReturn, sessionId],
   );
 
+  // A Turn that ended badly after changing files: the Specification's uncommitted changes, the view
+  // the app already has for them.
+  const onReviewChanges = useCallback(
+    (specification: Pick<ContextSpecification, 'id' | 'collection'>) => {
+      void navigate({
+        to: '/specs/$specId/changes',
+        params: { specId: specification.id },
+        search: { collection: collectionOf(specification), source: 'uncommitted' },
+      });
+    },
+    [navigate, collectionOf],
+  );
+
   const onOpenDocumentation = useCallback(
     (sessionTitle?: string) => {
       // The Session's workspace is the Runtime's own checkout; it becomes the tab's current one
@@ -63,5 +76,5 @@ export function useSessionContextNavigation(sessionId: string) {
     [navigate, sessionId],
   );
 
-  return { onOpenSpecification, onOpenDocuments, onOpenDocumentation };
+  return { onOpenSpecification, onOpenDocuments, onOpenDocumentation, onReviewChanges };
 }

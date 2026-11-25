@@ -151,7 +151,7 @@ export const WorkHistoryToolActionDetail: Story = {
 
     // JSON parameters numbered; the Read tool's own numbered output verbatim, no second gutter.
     const input = await within(region).findByRole('textbox', { name: 'Parametry' });
-    const output = await within(region).findByRole('textbox', { name: 'Odpowiedź narzędzia' });
+    const output = await within(region).findByRole('textbox', { name: 'Wynik' });
     await expect(input.closest('.cm-editor')!.querySelector('.cm-lineNumbers')).not.toBeNull();
     await expect(output.closest('.cm-editor')!.querySelector('.cm-gutters')).toBeNull();
     await expect(output.querySelector('.cm-line')!.textContent).toBe(

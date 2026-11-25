@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { sessionValidators, type ConversationEntry } from '@nevo/specflow-contracts/sessions';
 import { createSpecFlowI18n } from '../../../i18n';
 import { describeWorkBlock } from './workDigest';
-import { conversationItems, type WorkBlockModel } from './workBlockModel';
+import type { WorkBlockModel } from './workBlockModel';
 
 const pl = createSpecFlowI18n('pl').t;
 const en = createSpecFlowI18n('en').t;
@@ -48,66 +47,6 @@ describe('describeWorkBlock', () => {
     );
   });
 
-  it('owns the Turn outcome only when it is not a plain completion', () => {
-    expect(describeWorkBlock(block({ actionCount: 2, outcome: 'completed' }), pl).outcome).toBe(
-      undefined,
-    );
-    expect(
-      describeWorkBlock(block({ actionCount: 2, outcome: 'interrupted' }), pl).outcome,
-    ).toEqual({ text: 'Tura przerwana', tone: 'attention' });
-  });
-
-  it('says why a Turn ended and what to do for a reason the Runtime records without Commentary', () => {
-    expect(
-      describeWorkBlock(
-        block({ actionCount: 2, outcome: 'interrupted', outcomeError: 'PROCESS_STOPPED' }),
-        en,
-      ).outcome?.reason,
-    ).toBe(
-      'The agent stopped while SpecFlow could not record its result. Review the changes in the workspace before you continue.',
-    );
-    // A provider failure already has its own Commentary: no second line.
-    expect(
-      describeWorkBlock(
-        block({ actionCount: 2, outcome: 'failed', outcomeError: 'PROVIDER_FAILED' }),
-        en,
-      ).outcome,
-    ).toEqual({ text: 'Turn failed', tone: 'danger' });
-  });
-
-  it('carries the outcome reason from the outcome entry into the block', () => {
-    const turnId = '00000000-0000-4000-8000-000000000001';
-    const base = {
-      turnId,
-      revision: 1,
-      createdAt: '2026-11-16T00:00:00.000Z',
-      text: { text: 'x', complete: true as const },
-    };
-    const items = conversationItems(
-      [
-        { ...base, id: '00000000-0000-4000-8000-000000000101', ordinal: 1, kind: 'work-summary' },
-        {
-          ...base,
-          id: '00000000-0000-4000-8000-000000000102',
-          ordinal: 2,
-          kind: 'outcome',
-          text: { text: 'interrupted', complete: true as const },
-          error: { code: 'PROCESS_STOPPED', message: 'Stopped.' },
-        },
-      ],
-      { hasOlder: false },
-    );
-    expect(items).toEqual([
-      expect.objectContaining({
-        type: 'work',
-        block: expect.objectContaining({
-          outcome: 'interrupted',
-          outcomeError: 'PROCESS_STOPPED',
-        }) as unknown,
-      }),
-    ]);
-  });
-
   it('describes the live activity from its kind, the tool by its runtime label verbatim', () => {
     // No "Wykonuje:" prefix for `tool`: the runtime's own activity label is already a complete,
     // self-describing sentence (e.g. "Bash: pnpm test", "Searching repository…") in every real
@@ -117,40 +56,5 @@ describe('describeWorkBlock', () => {
       describeWorkBlock(block({ live: { kind: 'tool', label: 'Bash: pnpm test' } }), pl).live,
     ).toBe('Bash: pnpm test');
     expect(describeWorkBlock(block({ live: { kind: 'reasoning' } }), pl).live).toBe('Myśli…');
-  });
-
-  it("reads the Runtime digest from the Turn's latest work-summary entry", () => {
-    const turnId = '00000000-0000-4000-8000-000000000001';
-    const entry = (ordinal: number, extra: Partial<ConversationEntry> = {}): ConversationEntry => ({
-      id: `00000000-0000-4000-8000-00000000010${ordinal}`,
-      ordinal,
-      revision: 1,
-      turnId,
-      kind: 'work-summary',
-      text: { text: 'Tools', complete: true },
-      workId: `00000000-0000-4000-8000-00000000020${ordinal}`,
-      createdAt: '2026-11-08T00:00:00.000Z',
-      ...extra,
-    });
-    // An earlier entry keeps the digest it had while it was the latest; the newest one wins.
-    const entries = [
-      entry(1, { digest: { opened: { read: 1 } } }),
-      entry(2, {
-        revision: 3,
-        digest: { opened: { read: 1, command: 2 }, failed: { command: 1 } },
-      }),
-    ];
-    expect(
-      sessionValidators.history({
-        sessionId: turnId,
-        eventSeq: 5,
-        entries,
-        history: { hasOlder: false },
-      }),
-    ).toBe(true);
-    const [item] = conversationItems(entries, { hasOlder: false });
-    expect(item?.type).toBe('work');
-    const text = describeWorkBlock((item as { block: WorkBlockModel }).block, en);
-    expect(text).toMatchObject({ summary: '2 commands · 1 read', failed: 'Failed: 1 command' });
   });
 });

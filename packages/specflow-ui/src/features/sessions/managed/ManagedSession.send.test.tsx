@@ -306,7 +306,7 @@ describe('the Composer Send', () => {
 });
 
 describe('the conversation', () => {
-  it('shows a SpecFlow notice apart from the agent words, and an interrupted Turn as a warning', async () => {
+  it('says an interrupted Turn once, with the SpecFlow notice that caused it, apart from the agent words', async () => {
     const served = sessionFixture();
     const turnId = served.entries[0]!.turnId;
     renderSession(
@@ -351,16 +351,18 @@ describe('the conversation', () => {
     );
     await settle();
 
-    const notice = document.querySelector('[data-entry-id="notice"]')!;
-    expect(notice.textContent).toContain('SpecFlow error.');
-    expect(notice.textContent).toContain('SpecFlow: SpecFlow stopped the Claude process.');
-    expect(notice.querySelector('svg')).toBeTruthy();
+    // The error notice is the cause of the interruption: said once, in the Turn's outcome event,
+    // never as a row of its own.
+    expect(document.querySelector('[data-entry-id="notice"]')).toBeNull();
     const commentary = document.querySelector('[data-entry-id="agent-commentary"]')!;
     expect(commentary.textContent).not.toContain('SpecFlow');
     const outcome = document.querySelector('[data-entry-id="outcome"]')!;
-    // A warning note with its icon, not the neutral bullet.
+    expect(outcome.getAttribute('data-turn-outcome')).toBe('interrupted');
     expect(outcome.querySelector('svg')).toBeTruthy();
-    expect(outcome.querySelector('[aria-label="Interrupted"]')).toBeNull();
-    expect(outcome.textContent).toContain('Interrupted');
+    expect(outcome.textContent).toContain('Turn interrupted');
+    expect(outcome.textContent).toContain('SpecFlow stopped the Claude process.');
+    expect(document.body.textContent?.match(/SpecFlow stopped the Claude process/g)).toHaveLength(
+      1,
+    );
   });
 });

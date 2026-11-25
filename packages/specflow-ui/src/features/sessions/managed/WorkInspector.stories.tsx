@@ -308,12 +308,12 @@ export const ToolActionDetails: Story = {
       await canvas.findByText('Updated src/admission.mjs (1 replacement, lines 42-44).'),
     ).toBeVisible();
     await expect(canvas.getAllByText('Parametry')).toHaveLength(3);
-    await expect(canvas.getAllByText('Odpowiedź narzędzia')).toHaveLength(3);
+    await expect(canvas.getAllByText('Wynik')).toHaveLength(3);
     // Parameters and response sit on the one product code view (as a document's source), read-only.
     // The JSON parameters the product pretty-printed are coloured and numbered; the verbatim
     // response is neither — its lines are the tool's own, so no gutter numbers them.
     const inputs = await canvas.findAllByRole('textbox', { name: 'Parametry' });
-    const outputs = await canvas.findAllByRole('textbox', { name: 'Odpowiedź narzędzia' });
+    const outputs = await canvas.findAllByRole('textbox', { name: 'Wynik' });
     await expect(inputs).toHaveLength(3);
     await expect(outputs).toHaveLength(3);
     for (const block of [...inputs, ...outputs]) {
@@ -525,7 +525,7 @@ export const ClaudeTurn: Story = {
     ).toBeInTheDocument();
     // The headers and responses name files relative to the worktree (the raw parameters keep
     // the tool's own absolute paths).
-    for (const response of canvas.getAllByRole('textbox', { name: 'Odpowiedź narzędzia' })) {
+    for (const response of canvas.getAllByRole('textbox', { name: 'Wynik' })) {
       await expect(response.textContent).not.toContain('C:/Users');
     }
 

@@ -1803,12 +1803,6 @@
     "actions_many": "Działań narzędzia",
     "actions_other": "Działania narzędzia",
     "newer": "Nowsza aktywność",
-    "outcome": {
-      "completed": "Zakończono",
-      "failed": "Niepowodzenie",
-      "cancelled": "Zatrzymano",
-      "interrupted": "Przerwano"
-    },
     "workKind": {
       "commentary": "Postęp",
       "reasoning": "Myślenie",
@@ -1891,7 +1885,7 @@
       "emptyTurn": "Brak jeszcze historii pracy dla tej tury.",
       "noActions": "Jeszcze brak działań narzędzia.",
       "input": "Parametry",
-      "output": "Odpowiedź narzędzia",
+      "output": "Wynik",
       "errorCode": "Kod błędu: {{code}}",
       "counts": {
         "total_one": "{{count}} element przebiegu",
@@ -1911,6 +1905,13 @@
         "interaction_few": "{{count}} interakcje z użytkownikiem",
         "interaction_many": "{{count}} interakcji z użytkownikiem",
         "interaction_other": "{{count}} interakcji z użytkownikiem"
+      },
+      "detailedView": "Pokaż każdą operację",
+      "authorization": {
+        "title": "Autoryzacja",
+        "allowed": "Dozwolono",
+        "denied": "Odmówiono",
+        "byYou": "Twoja decyzja"
       }
     },
     "workSummary": {
@@ -1983,7 +1984,10 @@
     "outcomeReason": {
       "claude-policy-check-failed": "SpecFlow nie mógł sprawdzić ustawień Claude na tym komputerze. Spróbuj ponownie; jeśli to się powtarza, uruchom Runtime ponownie.",
       "TURN_CONFLICT": "Inny agent lub zmiana specyfikacji wciąż zapisuje w tym projekcie. Poczekaj, aż się zakończy, albo sprawdź wynik tury o nieznanym wyniku, a potem wyślij wiadomość ponownie.",
-      "PROCESS_STOPPED": "Agent zatrzymał się, gdy SpecFlow nie mógł zapisać jego wyniku. Przejrzyj zmiany w obszarze roboczym, zanim przejdziesz dalej."
+      "PROCESS_STOPPED": "Proces agenta zatrzymał się, zanim SpecFlow zdążył zapisać, jak zakończyła się tura.",
+      "failed": "Agent nie zdołał dokończyć tej tury.",
+      "cancelled": "Agent został zatrzymany, zanim skończył.",
+      "interrupted": "Agent przerwał pracę, zanim skończył."
     },
     "turnUnknown": "Wynik tury nieznany",
     "reconcile": {
@@ -2004,8 +2008,6 @@
     "messageActions": "Akcje wiadomości",
     "brief": {
       "title": "Co otrzymał agent",
-      "open": "Pokaż, co otrzymał agent",
-      "line": "agent otrzymał zlecenie wykonania kroku {{subject}}.",
       "subject": "{{step}} · podejście {{attempt}}",
       "subjectTask": "{{step}} zadania {{task}} · podejście {{attempt}}",
       "intro": "Opis zadania, który SpecFlow wysłał na start tego podejścia, tak jak otrzymał go agent.",
@@ -2015,8 +2017,21 @@
         "stepInstructions": "Instrukcje kroku",
         "agentProfile": "Profil agenta",
         "handoff": "Przekazanie z poprzedniego kroku"
-      }
-    }
+      },
+      "generated": "Wygenerowane przez SpecFlow",
+      "titleTask": "{{step}} zadania {{task}}",
+      "openFull": "Zobacz pełny brief",
+      "resumed": "Wznowiono wykonanie",
+      "continue": "Kontynuuj bieżącą próbę workflow.",
+      "openContinuation": "Zobacz brief kontynuacji",
+      "introContinuation": "Brief, który SpecFlow wysłał, aby kontynuować tę próbę — tak, jak otrzymał go agent."
+    },
+    "turnOutcome": {
+      "consequence": "W przestrzeni roboczej mogły już zajść zmiany.",
+      "reviewChanges": "Przejrzyj zmiany w przestrzeni roboczej",
+      "details": "Pokaż szczegóły techniczne"
+    },
+    "composerPlaceholder": "Napisz do {{agent}}…"
   },
   "sessionStart": {
     "heading": "Nowa sesja",

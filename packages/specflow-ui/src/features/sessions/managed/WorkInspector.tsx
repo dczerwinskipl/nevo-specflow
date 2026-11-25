@@ -56,10 +56,14 @@ import {
   mergeToolActions,
   mergeWorkItems,
   availableWorkFilterKinds,
+  foldPermissions,
   type ChapterEntry,
   type WorkChapter,
   type WorkFilterKind,
+  type WorkHistoryView,
 } from './workGrouping';
+import { useWorkHistoryView } from './workHistoryViewPreference';
+import { AuthorizationSection } from './AuthorizationSection';
 import { WorkOperationsTimeline, chapterEntryMembers } from './WorkOperationsTimeline';
 import { workTabLabel } from './workTabLabel';
 import {
@@ -68,6 +72,8 @@ import {
   ToolActionTimelineItem,
   WrapLinesToggle,
 } from './ToolActionDetails';
+
+type OpenActions = (workId: string, title: string, permissionId?: string) => void;
 
 interface Root {
   sessionId: string;
@@ -80,10 +86,14 @@ type Data = Root & {
   /** The view state of an object, kept across Secondary tab switches (`workInspectorStore.ts`). */
   workView: (turnId: string) => ViewStore<WorkViewState>;
   actionsView: (workId: string) => ViewStore<ActionsViewState>;
+  /** Compact (default) or every operation: the person's remembered choice (`useWorkHistoryView`). */
+  view: WorkHistoryView;
+  setView: (view: WorkHistoryView) => void;
 };
 interface Pages {
   work: Record<string, never>;
-  actions: { workId: string; workTitle: string };
+  /** `permissionId`: the permission Work folded into this tool Work (`foldPermissions`). */
+  actions: { workId: string; workTitle: string; permissionId?: string };
 }
 function useWorkRefresh(feed: SessionFeed, turnId: string, refresh: () => Promise<unknown>) {
   useEffect(() => {
@@ -328,18 +338,21 @@ function WorkChapterSection({
   chapter,
   turnStartLoaded,
   data,
+  authorizations,
   onOpenActions,
 }: {
   chapter: WorkChapter;
+  /** Permissions folded into the tool Work they were for, by the tool Work's id. */
+  authorizations: ReadonlyMap<string, WorkSummary>;
   /** The oldest page is loaded: a chapter without Commentary is really the start of the Turn. */
   turnStartLoaded: boolean;
   data: Data;
-  onOpenActions: (workId: string, title: string) => void;
+  onOpenActions: OpenActions;
 }) {
   const { t } = useTranslation();
   const segments = useMemo(
-    () => chapterSegments(groupChapterEntries(chapter.items)),
-    [chapter.items],
+    () => chapterSegments(groupChapterEntries(chapter.items, data.view, authorizations)),
+    [chapter.items, data.view, authorizations],
   );
   // A run between narration keeps its identity while an older page joins it (`useGroupKeys`).
   const keys = useGroupKeys(segments.map(segmentMembers));
@@ -371,6 +384,7 @@ function WorkChapterSection({
             key={keys[index]}
             entries={segment.entries}
             view={data.workView(data.turnId)}
+            authorizations={authorizations}
             onOpenActions={onOpenActions}
           />
         ),
@@ -526,7 +540,16 @@ function Work({ data }: { data: Data }) {
   const loadGate = useLoadGate(query, state.items.length > 0);
   const setFilter = (next: WorkFilterState) => view.update((value) => ({ ...value, filter: next }));
 
-  const chapters = useMemo(() => buildWorkChapters(items), [items]);
+  // A permission and the tool Work it was for are one operation, in both views; a kind filter or a
+  // search sees every Work as it is (a filter on interactions still finds each permission).
+  const folded = useMemo(
+    () =>
+      filter.kind === 'all' && !filter.search.trim()
+        ? foldPermissions(items)
+        : { items, authorizations: new Map<string, WorkSummary>() },
+    [items, filter],
+  );
+  const chapters = useMemo(() => buildWorkChapters(folded.items), [folded.items]);
   const visibleChapters = useMemo(() => filterWorkChapters(chapters, filter), [chapters, filter]);
   // The leading chapter of the loaded part ("Start of Turn" until an older page brings its
   // Commentary) keeps its identity as older pages join it.
@@ -535,8 +558,12 @@ function Work({ data }: { data: Data }) {
     () => availableWorkFilterKinds(items, counts?.byKind),
     [items, counts],
   );
-  const openActions = (workId: string, workTitle: string) =>
-    void navigation.navTo('actions', { workId, workTitle });
+  const openActions: OpenActions = (workId, workTitle, permissionId) =>
+    void navigation.navTo('actions', {
+      workId,
+      workTitle,
+      ...(permissionId ? { permissionId } : {}),
+    });
 
   return (
     <AppContent className="h-full w-full">
@@ -598,6 +625,7 @@ function Work({ data }: { data: Data }) {
                       chapter={chapter}
                       turnStartLoaded={!hasOlder}
                       data={data}
+                      authorizations={folded.authorizations}
                       onOpenActions={openActions}
                     />
                   ))}
@@ -695,6 +723,12 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
   const olderError = state.error;
   const loadGate = useLoadGate(query, state.items.length > 0);
   const single = isSingleAction(items.length, hasOlder);
+  // The permission folded into this tool Work in the Work list, read from the Turn view it came from.
+  const turnItems = useViewState(data.workView(data.turnId)).items;
+  const permission = params.permissionId
+    ? turnItems.find((item) => item.workId === params.permissionId)
+    : undefined;
+  const authorization = <AuthorizationSection permission={permission} />;
 
   return (
     <AppContent className="h-full w-full">
@@ -757,22 +791,30 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
                 // the rail to align against, that reserved column was pure indent (see
                 // `SingleToolActionDetail`'s own doc comment). Flush at the same edge as
                 // `params.workTitle` above.
-                <SingleToolActionDetail item={items[0]!} source={data} withHeader={!headerHosted} />
+                <SingleToolActionDetail
+                  item={items[0]!}
+                  source={data}
+                  withHeader={!headerHosted}
+                  authorization={authorization}
+                />
               ) : (
                 // L3/L4 exact chronology: the generic Timeline is the right default here, unlike
                 // the Commentary-grouped L2 Work log above (full-session.md "Work history (L2)").
                 // Several ToolActions genuinely need the marker rail — see
                 // `ToolActionTimelineItem`'s own doc comment.
-                <div {...historyList} className="w-full">
-                  <Timeline
-                    size="md"
-                    aria-label={t('managedSession.actions', { count: items.length })}
-                  >
-                    {items.map((item) => (
-                      <ToolActionTimelineItem key={item.actionId} item={item} source={data} />
-                    ))}
-                  </Timeline>
-                </div>
+                <>
+                  {authorization}
+                  <div {...historyList} className="w-full">
+                    <Timeline
+                      size="md"
+                      aria-label={t('managedSession.actions', { count: items.length })}
+                    >
+                      {items.map((item) => (
+                        <ToolActionTimelineItem key={item.actionId} item={item} source={data} />
+                      ))}
+                    </Timeline>
+                  </div>
+                </>
               )}
             </>
           )}
@@ -798,15 +840,36 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
     initial: 'work',
     instanceId: (params) => params.turnId,
     tabLabel: (params) => workTabLabel(feed.getSnapshot().snapshot?.entries ?? [], params.turnId),
-    useData: (params) => ({
-      status: 'ready',
-      data: { ...params, api, feed, owner, workView, actionsView },
-    }),
+    useData: (params) => {
+      // Called as a hook by the workspace's screen host, so the remembered view re-renders the
+      // screen and its header action alike.
+      const [view, setView] = useWorkHistoryView();
+
+      return {
+        status: 'ready',
+        data: { ...params, api, feed, owner, workView, actionsView, view, setView },
+      };
+    },
     screens: {
       work: {
         get title() {
           return translateNow('managedSession.work');
         },
+        // The one way to every operation (full-session.md "Work history (L2)"): a pressed icon
+        // toggle with its words as tooltip and name in the header, a checked row of the "…" menu
+        // where the stacked header keeps every action there (the DS header's own rules).
+        actions: ({ data }) => [
+          {
+            id: 'work-history-detailed',
+            label: translateNow('managedSession.workInspector.detailedView'),
+            icon: 'list',
+            presentation: 'icon',
+            direct: 'always',
+            pressed: data.view === 'detailed',
+            checked: data.view === 'detailed',
+            onPress: () => data.setView(data.view === 'detailed' ? 'compact' : 'detailed'),
+          },
+        ],
         component: Work,
       },
       actions: {

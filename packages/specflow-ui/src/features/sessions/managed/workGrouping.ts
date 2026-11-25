@@ -178,33 +178,90 @@ export function filterWorkChapters(
   });
 }
 
-const happyToolState = (item: WorkSummary) => item.kind === 'tool' && item.state === 'completed';
+/** How Work history shows a Turn's operations: compact by default, every operation on request. */
+export type WorkHistoryView = 'compact' | 'detailed';
 
 /**
- * Minimum length of an adjacent happy-path tool run before it compacts into one burst row
- * (don't wrap 1-4 operations in a synthetic "N tool actions" summary container, just show the
- * rows). A run shorter than this renders as its own individual `Timeline.Item` per entry —
- * grouping only ever kicks in once hiding the run's members stops hurting the ability to trace what happened, i.e. for a genuinely
- * long, uneventful run.
+ * A permission Work that answered for exactly one tool Work next to it: the same operation and
+ * subject (the Runtime names a permission by the tool call it is for), the tool directly before or
+ * after it, and no other neighbour that would match too. Only then is the pair one operation.
  */
-export const TOOL_BURST_MIN_SIZE = 5;
+function correlatedTool(
+  items: readonly WorkSummary[],
+  index: number,
+  claimed: ReadonlySet<string>,
+): WorkSummary | undefined {
+  const permission = items[index]!;
+  if (
+    permission.kind !== 'interaction' ||
+    !permission.decision ||
+    !permission.operation ||
+    permission.subject === undefined
+  ) {
+    return undefined;
+  }
+
+  const matches = [items[index - 1], items[index + 1]].filter(
+    (item): item is WorkSummary =>
+      !!item &&
+      item.kind === 'tool' &&
+      item.operation === permission.operation &&
+      item.subject === permission.subject &&
+      !claimed.has(item.workId),
+  );
+
+  return matches.length === 1 ? matches[0] : undefined;
+}
 
 /**
- * Compacts a long (`>= TOOL_BURST_MIN_SIZE`) run of adjacent happy-path ('completed') tool items
- * inside one chapter into a single collapsible burst row — one `Timeline.Item`/marker for the
- * whole run, never one marker per member (full-session.md "Work history (L2)" and the
- * one-axis, one-hierarchy principle above). A shorter run
- * (1 to `TOOL_BURST_MIN_SIZE - 1` items) is left as that many individual rows instead of being
- * wrapped in a container at all. Reasoning and Interaction are never merged, and a tool that is
- * queued/active/waiting/failed/cancelled/interrupted/expired always stays its own isolated row —
- * exceptional or in-progress work must never disappear into a compact successful-looking group,
- * even when it would otherwise sit inside what is now a long enough run to group.
+ * Folds each answered permission into the tool Work it was for (`correlatedTool`), so the
+ * operation is one row that says "Allowed" or "Denied" instead of two rows. A permission that
+ * cannot be paired unambiguously by data stays its own row. `authorizations` maps the tool Work's
+ * id to its permission Work.
  */
-export function groupChapterEntries(items: readonly WorkSummary[]): ChapterEntry[] {
+export function foldPermissions(items: readonly WorkSummary[]): {
+  items: WorkSummary[];
+  authorizations: ReadonlyMap<string, WorkSummary>;
+} {
+  const authorizations = new Map<string, WorkSummary>();
+  const folded = new Set<string>();
+  items.forEach((_, index) => {
+    const tool = correlatedTool(items, index, new Set(authorizations.keys()));
+    if (tool) {
+      authorizations.set(tool.workId, items[index]!);
+      folded.add(items[index]!.workId);
+    }
+  });
+
+  return { items: items.filter((item) => !folded.has(item.workId)), authorizations };
+}
+
+/** A completed tool Work nobody refused: the only kind a compact group may hide. */
+const happyToolState = (item: WorkSummary, authorizations?: ReadonlyMap<string, WorkSummary>) =>
+  item.kind === 'tool' &&
+  item.state === 'completed' &&
+  authorizations?.get(item.workId)?.decision !== 'denied';
+
+/** The shortest run of adjacent completed tool Work the compact view folds into one group row. */
+export const TOOL_GROUP_MIN_SIZE = 2;
+
+/**
+ * The compact view (the default) folds every run of `TOOL_GROUP_MIN_SIZE`+ adjacent completed tool
+ * Work inside one chapter into one collapsible group row ("6 tool actions", by kind under it). The
+ * detailed view never groups: every operation is its own row. In both, reasoning and interactions
+ * are never merged, and a tool that is queued/active/waiting/failed/cancelled/interrupted/expired,
+ * or whose permission was denied, always stays its own row: exceptional or in-progress work never
+ * disappears into a successful-looking group.
+ */
+export function groupChapterEntries(
+  items: readonly WorkSummary[],
+  view: WorkHistoryView = 'compact',
+  authorizations?: ReadonlyMap<string, WorkSummary>,
+): ChapterEntry[] {
   const entries: ChapterEntry[] = [];
   let run: WorkSummary[] = [];
   const flushRun = () => {
-    if (run.length >= TOOL_BURST_MIN_SIZE) {
+    if (view === 'compact' && run.length >= TOOL_GROUP_MIN_SIZE) {
       entries.push({ type: 'burst', items: run });
     } else {
       for (const item of run) {
@@ -216,7 +273,7 @@ export function groupChapterEntries(items: readonly WorkSummary[]): ChapterEntry
   };
 
   for (const item of items) {
-    if (happyToolState(item)) {
+    if (happyToolState(item, authorizations)) {
       run.push(item);
     } else {
       flushRun();

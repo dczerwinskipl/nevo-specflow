@@ -80,26 +80,49 @@ export function withRuntimeReasons(option: AgentOption, facts: AgentRuntimeFacts
 }
 
 /**
- * A fresh launch whose configured model the provider does not offer has no model assigned: the
- * owner picks one of the provider's own models (`modelRequired`). The unknown id is never passed on.
- * `offered`: the provider's model ids; absent or empty when it has not listed them yet (not judged).
+ * A fresh launch's configured model as the provider offers it: by its id, or else by the entry that
+ * runs it (an alias, `resolvedModelId`; not the provider's `default`, which may change), whose id
+ * the launch then carries, its effort kept while that entry offers it. A model the provider does
+ * not offer at all is no model: the owner picks one of the provider's own (`modelRequired`) and the
+ * unknown id is never passed on. `offered`: the provider's models; absent or empty when it has not
+ * listed them yet (not judged).
  */
 export function withOfferedModel(
   option: Available,
-  offered: readonly string[] | undefined,
+  offered:
+    | readonly Pick<
+        ProviderDescriptor['models'][number],
+        'modelId' | 'efforts' | 'resolvedModelId'
+      >[]
+    | undefined,
 ): Available {
+  const configured = option.launch.model;
   if (
     option.launch.session.mode !== 'fresh' ||
-    !option.launch.model ||
+    !configured ||
     !offered?.length ||
-    offered.includes(option.launch.model)
+    offered.some((model) => model.modelId === configured)
   ) {
     return option;
   }
 
-  const { effort: _effort, ...launch } = option.launch;
+  const { effort, ...launch } = option.launch;
+  const alias = offered.find(
+    (model) => model.modelId !== 'default' && model.resolvedModelId === configured,
+  );
+  if (alias) {
+    return {
+      ...option,
+      launch: {
+        ...launch,
+        model: alias.modelId,
+        ...(effort !== undefined && alias.efforts.includes(effort) ? { effort } : {}),
+      },
+    };
+  }
 
-  return { ...option, launch: { ...launch, model: '' }, modelRequired: true };
+  // The configured effort stays as the suggestion for the model the owner picks.
+  return { ...option, launch: { ...option.launch, model: '' }, modelRequired: true };
 }
 
 /** The work modes an agent's fresh Session prefers, in order: no prompt per edit when possible. */

@@ -27,8 +27,23 @@ describe('the attempt commit message', () => {
         'Nevo-Action': 'attempt-commit',
         'Nevo-Attempt': '2a1d7b63-7b54-4d66-8e4f-2c8b6e3a9d02',
         'Nevo-Step': 'implement#3',
+        'Nevo-Model': 'opus',
         'Nevo-Task': 'api',
       },
+    });
+  });
+
+  it('names the model by its title for people, and keeps its id in the trailer', () => {
+    const titled = {
+      ...journal(),
+      actor: {
+        class: 'agent',
+        details: { provider: 'claude', model: 'opus', modelTitle: 'Opus 5.5' },
+      },
+    } as const;
+    expect(attemptCommitMessage(titled, 'Implement', 'my-spec')).toMatchObject({
+      body: 'Step implement, attempt 3, by agent claude (Opus 5.5).',
+      trailers: { 'Nevo-Model': 'opus' },
     });
   });
 

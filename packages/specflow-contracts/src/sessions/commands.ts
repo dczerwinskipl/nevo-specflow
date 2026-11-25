@@ -245,6 +245,11 @@ export const ProviderDescriptorSchema = Type.Object(
           modelId: choice(256),
           title: choice(512),
           efforts: Type.Array(choice(64), { maxItems: 16 }),
+          /**
+           * The model an alias runs, when the provider says so and it is another id (Claude's
+           * `opus` runs `claude-opus-5-5`): a configured full id finds the entry that offers it.
+           */
+          resolvedModelId: Type.Optional(choice(256)),
         },
         closed,
       ),

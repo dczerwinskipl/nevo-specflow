@@ -5600,6 +5600,9 @@
                                   "model": {
                                     "type": "string"
                                   },
+                                  "modelTitle": {
+                                    "type": "string"
+                                  },
                                   "sessionId": {
                                     "type": "string"
                                   }
@@ -6076,6 +6079,9 @@
                                     "type": "string"
                                   },
                                   "model": {
+                                    "type": "string"
+                                  },
+                                  "modelTitle": {
                                     "type": "string"
                                   },
                                   "sessionId": {
@@ -7856,6 +7862,9 @@
                                   "model": {
                                     "type": "string"
                                   },
+                                  "modelTitle": {
+                                    "type": "string"
+                                  },
                                   "sessionId": {
                                     "type": "string"
                                   }
@@ -7982,6 +7991,9 @@
                                     "type": "string"
                                   },
                                   "model": {
+                                    "type": "string"
+                                  },
+                                  "modelTitle": {
                                     "type": "string"
                                   },
                                   "sessionId": {
@@ -14570,6 +14582,9 @@
                                 "model": {
                                   "type": "string"
                                 },
+                                "modelTitle": {
+                                  "type": "string"
+                                },
                                 "sessionId": {
                                   "type": "string"
                                 }
@@ -17004,6 +17019,11 @@
                                     "maxLength": 64
                                   },
                                   "maxItems": 16
+                                },
+                                "resolvedModelId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 256
                                 }
                               },
                               "additionalProperties": false
@@ -29488,6 +29508,9 @@
                                                           "model": {
                                                             "type": "string"
                                                           },
+                                                          "modelTitle": {
+                                                            "type": "string"
+                                                          },
                                                           "sessionId": {
                                                             "type": "string"
                                                           }
@@ -29611,6 +29634,9 @@
                                                                     "type": "string"
                                                                   },
                                                                   "model": {
+                                                                    "type": "string"
+                                                                  },
+                                                                  "modelTitle": {
                                                                     "type": "string"
                                                                   },
                                                                   "sessionId": {
@@ -55041,6 +55067,9 @@
                                       "type": "string"
                                     },
                                     "model": {
+                                      "type": "string"
+                                    },
+                                    "modelTitle": {
                                       "type": "string"
                                     },
                                     "sessionId": {

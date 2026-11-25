@@ -103,7 +103,19 @@ export function claudeModels(
       throw new ClaudeProtocolError();
     }
 
-    return { modelId: model.value, title: model.displayName, efforts: efforts as string[] };
+    const resolved =
+      typeof model.resolvedModel === 'string' &&
+      model.resolvedModel !== model.value &&
+      /^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$/.test(model.resolvedModel)
+        ? model.resolvedModel
+        : undefined;
+
+    return {
+      modelId: model.value,
+      title: model.displayName,
+      efforts: efforts as string[],
+      ...(resolved ? { resolvedModelId: resolved } : {}),
+    };
   });
   if (new Set(models.map((model) => model.modelId)).size !== models.length) {
     throw new ClaudeProtocolError();

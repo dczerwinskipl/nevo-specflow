@@ -103,6 +103,20 @@ describe('Claude native launch contract', () => {
     expect(() =>
       claudeModels({ ...payload, models: [...payload.models, ...payload.models] }),
     ).toThrow();
+    // 2.1.312: an alias names the model it runs; an entry that is its own model says nothing more.
+    expect(
+      claudeModels({
+        models: [
+          { value: 'opus', resolvedModel: 'claude-opus-5-5', displayName: 'Opus 5.5' },
+          { value: 'claude-opus-5', resolvedModel: 'claude-opus-5', displayName: 'Opus 5' },
+          { value: 'odd', resolvedModel: 'not an id', displayName: 'Odd' },
+        ],
+      }),
+    ).toEqual([
+      { modelId: 'opus', title: 'Opus 5.5', efforts: [], resolvedModelId: 'claude-opus-5-5' },
+      { modelId: 'claude-opus-5', title: 'Opus 5', efforts: [] },
+      { modelId: 'odd', title: 'Odd', efforts: [] },
+    ]);
   });
   it('accepts only the observed builtin plugins and explicit read tools, never arbitrary plugins/MCP or mode escalation', () => {
     const workspace = resolve('workspace');

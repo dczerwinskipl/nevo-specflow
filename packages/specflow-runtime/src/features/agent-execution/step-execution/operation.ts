@@ -70,6 +70,9 @@ export interface AgentStepExecutionRequest {
 
 const RUNTIME_ACTOR = 'runtime-agent-execution';
 
+/** An agent option an agent can start with. */
+type AvailableOption = Extract<AgentOption, { kind: 'available' }>;
+
 /**
  * A UUID derived from the request: a repeated request names the same Session, Turn and invocation,
  * so its retry finds what the first one made instead of making it again.
@@ -254,6 +257,34 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
   }
 
   /**
+   * A continued Session runs its own model and effort, not the agent settings': the launch names
+   * them, so the dialog and the attempt's actor (its commit, its hand-off) say what really runs.
+   */
+  async function asContinued(option: AvailableOption): Promise<AvailableOption> {
+    const sessions = dependencies.sessions();
+    const session = option.launch.session;
+    if (session.mode !== 'reuse' || !sessions || !(await sessions.hasSession(session.sessionId))) {
+      return option;
+    }
+
+    const own = (await sessions.snapshot(session.sessionId, RUNTIME_ACTOR)).session;
+    if (own.modelId === undefined) {
+      return option;
+    }
+
+    const { effort: _configured, ...launch } = option.launch;
+
+    return {
+      ...option,
+      launch: {
+        ...launch,
+        model: own.modelId,
+        ...(own.effort !== undefined ? { effort: own.effort } : {}),
+      },
+    };
+  }
+
+  /**
    * The option with the Runtime's reasons. `checkout` reads the checkout's baseline (Git): the
    * explicit check and the start; the projection never does and says `baseline: unchecked`.
    */
@@ -270,10 +301,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     // A configured model the provider does not offer is no model: the owner chooses one, and the
     // unknown id is never shown.
     const described = dependencies.sessions()?.provider(given.launch.provider);
-    const offered = withOfferedModel(
-      given,
-      described?.models.map((model) => model.modelId),
-    );
+    const offered = withOfferedModel(await asContinued(given), described?.models);
     const mode =
       offered.launch.session.mode === 'fresh' && offered.launch.model
         ? workModeFor(described, offered.launch.model)
@@ -951,13 +979,18 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
         );
       }
 
-      launch = chosen;
+      // The launch as judged: a configured model the provider offers under an alias runs as it.
+      launch = option.launch;
+      const modelTitle = sessions
+        ?.provider(launch.provider)
+        ?.models.find((model) => model.modelId === launch.model)?.title;
       actor = {
         class: 'agent',
         details: {
           archetype: launch.archetype,
           provider: launch.provider,
           model: launch.model,
+          ...(modelTitle !== undefined ? { modelTitle } : {}),
           sessionId:
             launch.session.mode === 'reuse'
               ? launch.session.sessionId

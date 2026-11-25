@@ -125,8 +125,9 @@ paths whose content still has the hash recorded at publication. With automatic c
 Specification's document queue drains first.
 
 - Subject `spec(<task id | specification>): <step title> (attempt n) by agent in <slug>` (a shorter
-  form is taken whole when it does not fit), trailers `Nevo-Action: attempt-commit`, `Nevo-Attempt`,
-  `Nevo-Step` and, for a Task, `Nevo-Task`.
+  form is taken whole when it does not fit), a body naming the agent's provider and model by the
+  model's catalogue title recorded at the start, trailers `Nevo-Action: attempt-commit`,
+  `Nevo-Attempt`, `Nevo-Step`, `Nevo-Model` (the model id) and, for a Task, `Nevo-Task`.
 - An entry the attempt changed together with someone else (`ATTEMPT_COMMIT_MIXED_AUTHORS`), a
   declared path that could not be hashed (`ATTEMPT_COMMIT_UNATTRIBUTABLE`) or a path changed since
   (`MANUAL_COMMIT_CONFLICT`, a genuine foreign edit: restore it or commit it by hand) refuses the

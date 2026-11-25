@@ -2449,7 +2449,7 @@
         },
         "sessionUnavailable": {
           "title": "The session to continue is gone",
-          "body": "The workflow continues the session that did {{step}} before, and that session no longer exists. SpecFlow does not start a new one in its place, because this step is meant to build on what that session knows.",
+          "body": "This step continues the session of an earlier step, and that session no longer exists. SpecFlow does not start a new one in its place, because this step is meant to build on what that session knows.",
           "hint": "Do the step yourself with {{startLabel}}, or have the workflow changed so this step may start a new session."
         },
         "projectBusy": {
@@ -2472,7 +2472,7 @@
         "newSession": "New session",
         "label": "Session",
         "continues": "Continues",
-        "continuesWhy": "{{model}}. The workflow continues the session that did {{step}} before, so the agent keeps what it learned there. Its agent and model stay as they are.",
+        "continuesWhy": "{{model}}. This step continues the session named above, the one of an earlier step, so the agent keeps what it learned there. Its agent and model stay as they are.",
         "earlier": "the earlier session",
         "gone": "This session no longer exists.",
         "notChosen": "Agent and model not chosen",

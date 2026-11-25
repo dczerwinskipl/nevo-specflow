@@ -62,13 +62,11 @@ export function SessionLink({
 function ContinuedSession({
   gone,
   launch,
-  step,
   sessionTitle,
   catalogue,
 }: {
   readonly gone: boolean;
   readonly launch: AgentLaunch | undefined;
-  readonly step: string;
   readonly sessionTitle: string | undefined;
   readonly catalogue: AgentCatalogue;
 }) {
@@ -103,7 +101,7 @@ function ContinuedSession({
       <Typography as="p" variant="body-sm" className="text-content-secondary">
         {gone
           ? t('workflowExecution.agent.session.gone')
-          : t('workflowExecution.agent.session.continuesWhy', { model: modelLine, step })}
+          : t('workflowExecution.agent.session.continuesWhy', { model: modelLine })}
       </Typography>
     </div>
   );
@@ -152,7 +150,6 @@ export function AgentSession({
       <ContinuedSession
         gone={mode === 'gone'}
         launch={launch}
-        step={step}
         sessionTitle={sessionTitle}
         catalogue={catalogue}
       />
@@ -203,13 +200,24 @@ export function AgentSession({
                         modelId: choice.modelId,
                         ...(choice.effort ? { effort: choice.effort } : {}),
                       }}
-                      onChange={(modelId, effort) =>
+                      onChange={(modelId, effort) => {
+                        // Picking a model keeps the effort chosen so far (the agent settings') when
+                        // the model offers it; otherwise none, so the provider's own default runs,
+                        // never the first effort of the list. Picking an effort sets it.
+                        const offered =
+                          provider.models.find((model) => model.modelId === modelId)?.efforts ?? [];
+                        const kept =
+                          modelId === choice.modelId
+                            ? effort
+                            : choice.effort !== undefined && offered.includes(choice.effort)
+                              ? choice.effort
+                              : undefined;
                         onChoice({
                           providerId: choice.providerId,
                           modelId,
-                          ...(effort ? { effort } : {}),
-                        })
-                      }
+                          ...(kept ? { effort: kept } : {}),
+                        });
+                      }}
                     />
                   </div>
                   {workMode ? (

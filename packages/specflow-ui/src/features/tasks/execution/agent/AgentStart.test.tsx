@@ -333,7 +333,8 @@ describe('Run with agent dialog', () => {
     await waitFor(() =>
       expect(startAgent).toHaveBeenCalledWith(
         { specId: SPEC, taskId: TASK },
-        expect.objectContaining({ provider: 'claude', model: 'claude-sonnet' }),
+        // The agent settings' effort stays for the picked model, never the list's first (low).
+        expect.objectContaining({ provider: 'claude', model: 'claude-sonnet', effort: 'high' }),
       ),
     );
   });

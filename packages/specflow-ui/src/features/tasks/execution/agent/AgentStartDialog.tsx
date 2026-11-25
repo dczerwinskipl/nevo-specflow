@@ -166,8 +166,13 @@ export function AgentStartDialog({
     // A provider that lists no models runs its own default: nothing to choose.
     chosenProvider.models.length > 0 &&
     (modelRequired || !chosenProvider.models.some((model) => model.modelId === choice.modelId));
+  // No model yet, but the agent settings' effort stays the suggestion for the one the owner picks.
   const pickerChoice: FreshChoice = modelUnassigned
-    ? { providerId: choice.providerId, modelId: '' }
+    ? {
+        providerId: choice.providerId,
+        modelId: '',
+        ...(choice.effort ? { effort: choice.effort } : {}),
+      }
     : choice;
   const choose = (next: FreshChoice) => {
     // A refusal was for the earlier choice: another one is checked again by its own start.

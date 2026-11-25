@@ -105,6 +105,7 @@ function renderFinish(context: StepContext): string[] {
       ? 'This step has one result: finish it without `--result`.'
       : 'Finish with exactly one of these `--result` values; no other value is accepted:',
     ...lines,
+    'Do not commit anything yourself. Once you finished and your Turn ended, SpecFlow makes the commit of this attempt itself (when the project uses Git), with your saved documents and Tasks; so when you report, do not call your saves uncommitted.',
     ...(context.finish.tasks
       ? [
           `Tasks: ${context.finish.tasks.rule}`,

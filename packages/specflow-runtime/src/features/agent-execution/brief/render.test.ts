@@ -211,6 +211,7 @@ describe('agent brief', () => {
     expect(brief).toMatch(/at most 7000 bytes.*--content-file/);
     expect(brief).toMatch(/relative to the Specification folder/);
     expect(brief).toMatch(/under `\.nevo\/local\/scratch\/` in this worktree/);
+    expect(brief).toContain('SpecFlow makes the commit of this attempt itself');
   });
 
   it('says what a --tasks-file holds for a step that produces Tasks', () => {

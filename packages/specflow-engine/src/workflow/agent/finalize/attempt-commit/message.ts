@@ -35,9 +35,9 @@ export function attemptCommitMessage(
     candidates.find((candidate) => codePoints(candidate.subject) <= COMMIT_SUBJECT_MAX) ??
     candidates.at(-1)!;
   const actor = journal.proposal?.actor ?? journal.actor;
-  const agent = actor.details.model
-    ? `${actor.details.provider} (${actor.details.model})`
-    : actor.details.provider;
+  // People read the model's title; its id stays in the trailer.
+  const model = actor.details.modelTitle ?? actor.details.model;
+  const agent = model ? `${actor.details.provider} (${oneLine(model)})` : actor.details.provider;
   const body = [
     ...(chosen.title ? [] : [`Step: ${title}`]),
     `Step ${journal.step}, attempt ${String(journal.attempt)}, by agent ${agent}.`,
@@ -51,6 +51,7 @@ export function attemptCommitMessage(
       'Nevo-Action': 'attempt-commit',
       'Nevo-Attempt': journal.operationId,
       'Nevo-Step': `${journal.step}#${String(journal.attempt)}`,
+      ...(actor.details.model !== undefined ? { 'Nevo-Model': actor.details.model } : {}),
       ...(journal.subject.kind === 'task' ? { 'Nevo-Task': journal.subject.taskId } : {}),
     },
   };

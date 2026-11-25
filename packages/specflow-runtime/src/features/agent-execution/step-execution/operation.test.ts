@@ -79,13 +79,18 @@ function fakes(
     baseline?: Awaited<ReturnType<AgentStepEngine['baseline']>>;
     /** The model ids the provider lists. */
     models?: readonly string[];
+    /** The model an alias of `models` runs (Claude's `opus` runs `claude-opus-5-5`). */
+    resolved?: Readonly<Record<string, string>>;
+    /** Sessions that exist already, and the model and effort every Session runs. */
+    existing?: readonly string[];
+    sessionModel?: { readonly modelId: string; readonly effort?: string };
     /** The models the provider runs in its auto mode (it lists auto and accept edits then). */
     autoFor?: string[];
     /** The Turn keeps running and its Session asks the owner this (a pending interaction). */
     waiting?: 'question' | 'permission';
   } = {},
 ) {
-  const created = new Set<string>();
+  const created = new Set<string>(options.existing);
   let failCreate = options.failFirstCreate === true;
   const calls: string[] = [];
   /** The message of every Turn the Sessions started, in order. */
@@ -189,7 +194,10 @@ function fakes(
             models: (options.models ?? []).map((modelId) => ({
               modelId,
               title: modelId,
-              efforts: [],
+              efforts: ['low', 'high'],
+              ...(options.resolved?.[modelId]
+                ? { resolvedModelId: options.resolved[modelId] }
+                : {}),
             })),
             providerModes: [
               {
@@ -258,7 +266,11 @@ function fakes(
         ...(options.waiting && turnId
           ? { interaction: { kind: options.waiting, interactionId: 'interaction-1', turnId } }
           : {}),
-        session: { providerId: 'controlled', mode: 'workspace-write', modelId: 'm' },
+        session: {
+          providerId: 'controlled',
+          mode: 'workspace-write',
+          ...(options.sessionModel ?? { modelId: 'm' }),
+        },
       } as never);
     },
     associateTasks: () => Promise.resolve(),
@@ -312,13 +324,13 @@ describe('agent step execution', () => {
   });
 
   it('holds owner messages in the Session of the open attempt, and only there', async () => {
-    const { execution, attempt } = fakes();
+    const { execution } = fakes();
     const id = '00000000-0000-4000-8000-00000000000d';
     expect(await execution.ownerTurnHold(subject, derivedId(id, 'session'))).toBeUndefined();
 
     await execution.startAgentStepExecution(request(id));
 
-    const hold = await execution.ownerTurnHold(subject, attempt()!.journal.actor.details.sessionId);
+    const hold = await execution.ownerTurnHold(subject, derivedId(id, 'session'));
     expect(hold).toContain('still open');
     expect(hold).toContain('Continue or Take over');
     expect(await execution.ownerTurnHold(subject, 'another-session')).toBeUndefined();
@@ -618,6 +630,72 @@ describe('Hand to agent', () => {
         model: 'opus',
       }),
     ).resolves.toMatchObject({ kind: 'started' });
+  });
+
+  it('proposes the alias that runs the configured model, with its effort, and starts with it', async () => {
+    const withEffort = {
+      subject,
+      position: {
+        kind: 'ready',
+        next: {
+          step: { id: 'breakdown', title: 'Break it down' },
+          human: true,
+          agent: { kind: 'available', launch: { ...launch, effort: 'high' } },
+        },
+      },
+      actions: {},
+    } as unknown as ActionProjection;
+    const { execution, calls, attempt } = fakes({
+      models: ['default', 'opus'],
+      resolved: { default: 'm', opus: 'm' },
+      before: withEffort,
+    });
+
+    const projected = await execution.decorate(subject, withEffort);
+    expect(projected.position.kind === 'ready' && projected.position.next.agent).toMatchObject({
+      kind: 'available',
+      launch: { model: 'opus', effort: 'high' },
+    });
+    expect(projected.position.kind === 'ready' && projected.position.next.agent).not.toHaveProperty(
+      'modelRequired',
+    );
+    await expect(
+      execution.startAgentStepExecution(request('00000000-0000-4000-8000-0000000000f4')),
+    ).resolves.toMatchObject({ kind: 'started' });
+    expect(calls).toContain('session.validate controlled opus');
+    expect(attempt()?.journal.actor.details).toMatchObject({ model: 'opus', modelTitle: 'opus' });
+  });
+
+  it('names the model and effort a continued Session runs, not the agent settings', async () => {
+    const reuse = {
+      subject,
+      position: {
+        kind: 'ready',
+        next: {
+          step: { id: 'breakdown', title: 'Break it down' },
+          human: true,
+          agent: {
+            kind: 'available',
+            launch: {
+              ...launch,
+              model: 'claude-opus-5-5',
+              session: { mode: 'reuse', sessionId: 'earlier' },
+            },
+          },
+        },
+      },
+      actions: {},
+    } as unknown as ActionProjection;
+    const { execution } = fakes({
+      existing: ['earlier'],
+      sessionModel: { modelId: 'opus', effort: 'high' },
+    });
+
+    const projected = await execution.decorate(subject, reuse);
+    expect(projected.position.kind === 'ready' && projected.position.next.agent).toMatchObject({
+      kind: 'available',
+      launch: { model: 'opus', effort: 'high', session: { mode: 'reuse', sessionId: 'earlier' } },
+    });
   });
 
   it('keeps an offered model as it is', async () => {

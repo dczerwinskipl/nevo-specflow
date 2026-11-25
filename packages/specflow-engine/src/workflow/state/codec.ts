@@ -63,6 +63,7 @@ export const ActorSchema = Type.Union([
       archetype: optional(id()),
       provider: id(),
       model: optional(text(200)),
+      modelTitle: optional(text(200)),
       sessionId: optional(text(200)),
     }),
   }),

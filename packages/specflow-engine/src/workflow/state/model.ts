@@ -33,6 +33,8 @@ export interface AgentActor {
     readonly archetype?: string;
     readonly provider: string;
     readonly model?: string;
+    /** The model's title in the provider's catalogue when the attempt started, for people. */
+    readonly modelTitle?: string;
     readonly sessionId?: string;
   };
 }

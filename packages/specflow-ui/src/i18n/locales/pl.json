@@ -2449,7 +2449,7 @@
         },
         "sessionUnavailable": {
           "title": "Sesji do kontynuacji już nie ma",
-          "body": "Przepływ kontynuuje sesję, która wykonywała krok {{step}} wcześniej, a ta sesja już nie istnieje. SpecFlow nie zakłada nowej w jej miejsce, bo ten krok ma bazować na tym, co ta sesja wie.",
+          "body": "Ten krok kontynuuje sesję wcześniejszego kroku, a ta sesja już nie istnieje. SpecFlow nie zakłada nowej w jej miejsce, bo ten krok ma bazować na tym, co ta sesja wie.",
           "hint": "Wykonaj krok sam przez {{startLabel}} albo zmień przepływ, tak by ten krok mógł zacząć nową sesję."
         },
         "projectBusy": {
@@ -2472,7 +2472,7 @@
         "newSession": "Nowa sesja",
         "label": "Sesja",
         "continues": "Kontynuuje",
-        "continuesWhy": "{{model}}. Przepływ kontynuuje sesję, która wykonywała krok {{step}} wcześniej, więc agent zachowuje to, czego się tam nauczył. Jego agent i model pozostają bez zmian.",
+        "continuesWhy": "{{model}}. Ten krok kontynuuje sesję podaną wyżej, sesję wcześniejszego kroku, więc agent zachowuje to, czego się tam nauczył. Jego agent i model pozostają bez zmian.",
         "earlier": "wcześniejszą sesję",
         "gone": "Ta sesja już nie istnieje.",
         "notChosen": "Nie wybrano agenta ani modelu",

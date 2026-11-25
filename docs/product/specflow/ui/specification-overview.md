@@ -140,11 +140,14 @@ dashboard configuration). The Overview renders what the reads deliver.
   (no second width switch): at a tablet's 834 px the section is wider than 48rem and keeps the
   columns; on a phone the rows stack. There are no group headers: each row's status names its
   group, and groups are divided like the rows inside them. A held Task that requires attention
-  shows the overlay and its hold reason, one line each. Under a group's last row a quiet link
-  "2 more in Waiting" (the count beyond the preview and the
-  group's name as the Runtime delivers it) opens the Tasks page filtered to that group
+  shows the overlay and its hold reason, one line each. A waiting Task names the one Task it waits
+  for by its title ("Waiting for Identity provider sandbox tenant"), several by count ("Waiting for
+  3 other tasks"), never a list of keys. Under a group's last row a link in the link colour
+  "Show 2 more tasks: Waiting" (the count beyond the preview and the
+  group's name as the Runtime delivers it; it says it counts Tasks and what it opens, so it never
+  reads as something the Task above waits on, owner 2026-11-25) opens the Tasks page filtered to that group
   (`?group=<groupId>`); a group that fits shows no link. The section therefore never exceeds
-  row groups × 2 rows. Compact groups (Done, Cancelled, Ended) share one line of the same quiet
+  row groups × 2 rows. Compact groups (Done, Cancelled, Ended) share one line of the same
   links, "Done 2 · Cancelled 1", that open the Tasks page filtered to that group (owner decision at the final
   Overview approval, 2026-11-14). A held Task carries its Requires attention overlay on its row
   only when the Engine reports it; the Requires attention item with Resume and Cancel task is the
@@ -223,7 +226,7 @@ The page's search is router-owned and validated; absence is the default:
   their groups, resolved by the Runtime when read, never from ids in the URL. A filter bar shows
   "Blocking specification · 2 tasks" (or "Nothing blocks the specification now") with a clear
   button, and the count reads "2 of 7 shown". Review tasks pushes the entry; clearing replaces it.
-- `group=<id>` (the Overview's "N more in <group>" and its compact links) lists only that group's
+- `group=<id>` (the Overview's "Show N more tasks: <group>" and its compact links) lists only that group's
   Tasks, resolved by the Runtime when read (`GET /api/specs/:specId/tasks?group=<id>`), as rows
   without a group header (also a group the configuration collapses); focus stays where the page
   puts it. A filter chip names the group ("Waiting") with a clear button, and the section count

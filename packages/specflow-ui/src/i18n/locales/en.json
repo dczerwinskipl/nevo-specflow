@@ -3166,10 +3166,10 @@
     },
     "summary": {
       "allTasks": "All tasks",
-      "moreIn_one": "{{count}} more in {{group}}",
-      "moreIn_other": "{{count}} more in {{group}}",
-      "moreIn_few": "{{count}} more in {{group}}",
-      "moreIn_many": "{{count}} more in {{group}}",
+      "moreIn_one": "Show {{count}} more task: {{group}}",
+      "moreIn_other": "Show {{count}} more tasks: {{group}}",
+      "moreIn_few": "Show {{count}} more tasks: {{group}}",
+      "moreIn_many": "Show {{count}} more tasks: {{group}}",
       "moreActions": "Tasks: more actions"
     },
     "progress": {
@@ -3228,7 +3228,11 @@
       "holdsUpMore": "holds up {{ids}} (+{{more}})",
       "holdsFinish": "{{step}} cannot finish while this task is on hold",
       "holdsFinishUnnamed": "the step cannot finish while this task is on hold",
-      "waitingFor": "Waiting for {{ids}}"
+      "waitingFor": "Waiting for {{ids}}",
+      "waitingForCount_one": "Waiting for {{count}} other task",
+      "waitingForCount_few": "Waiting for {{count}} other tasks",
+      "waitingForCount_many": "Waiting for {{count}} other tasks",
+      "waitingForCount_other": "Waiting for {{count}} other tasks"
     },
     "page": {
       "loading": "Loading tasks",

@@ -3166,10 +3166,10 @@
     },
     "summary": {
       "allTasks": "Wszystkie zadania",
-      "moreIn_one": "jeszcze {{count}} w grupie {{group}}",
-      "moreIn_few": "jeszcze {{count}} w grupie {{group}}",
-      "moreIn_many": "jeszcze {{count}} w grupie {{group}}",
-      "moreIn_other": "jeszcze {{count}} w grupie {{group}}",
+      "moreIn_one": "Pokaż jeszcze {{count}} zadanie: {{group}}",
+      "moreIn_few": "Pokaż jeszcze {{count}} zadania: {{group}}",
+      "moreIn_many": "Pokaż jeszcze {{count}} zadań: {{group}}",
+      "moreIn_other": "Pokaż jeszcze {{count}} zadań: {{group}}",
       "moreActions": "Zadania: więcej akcji"
     },
     "progress": {
@@ -3228,7 +3228,11 @@
       "holdsUpMore": "wstrzymuje {{ids}} (+{{more}})",
       "holdsFinish": "{{step}} nie może się zakończyć, dopóki to zadanie jest wstrzymane",
       "holdsFinishUnnamed": "krok nie może się zakończyć, dopóki to zadanie jest wstrzymane",
-      "waitingFor": "Czeka na {{ids}}"
+      "waitingFor": "Czeka na {{ids}}",
+      "waitingForCount_one": "Czeka na {{count}} inne zadanie",
+      "waitingForCount_few": "Czeka na {{count}} inne zadania",
+      "waitingForCount_many": "Czeka na {{count}} innych zadań",
+      "waitingForCount_other": "Czeka na {{count}} innych zadań"
     },
     "page": {
       "loading": "Wczytywanie zadań",

@@ -68,7 +68,7 @@ export const TwentyFiveTasks: Story = {
   args: { fixture: 'twentyFive' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole('link', { name: '3 more in Waiting' });
+    await canvas.findByRole('link', { name: 'Show 3 more tasks: Waiting' });
     await expect(canvasElement.querySelectorAll('[data-row-task]')).toHaveLength(8);
     const held = canvasElement.querySelector<HTMLElement>('[data-row-task="T-07"]')!;
     // The overlay and the hold reason, one line each.
@@ -78,9 +78,9 @@ export const TwentyFiveTasks: Story = {
     await expect(held.querySelector('[data-collection-supporting]')).toHaveTextContent(
       'Waiting for the identity provider sandbox account from IT.',
     );
-    // One quiet link style for "N more" and the compact counts.
+    // One link style for "N more" and the compact counts.
     await expect(canvas.getByRole('link', { name: 'Done 10' }).className).toBe(
-      canvas.getByRole('link', { name: '3 more in Waiting' }).className,
+      canvas.getByRole('link', { name: 'Show 3 more tasks: Waiting' }).className,
     );
   },
 };

@@ -49,14 +49,19 @@ export function taskRowLines(
   row: TaskListRowView,
   t: TFunction,
   specificationTitle?: string,
+  titleOf?: (taskId: string) => string | undefined,
 ): TaskRowLines {
   const overlay = taskAttentionOverlay(taskRowAttention(row, specificationTitle), t);
   const waitingFor =
     row.statusId === 'waiting' && row.waitingFor && row.waitingFor.length > 0
       ? row.waitingFor
       : undefined;
+  // One Task it waits for by its title (its key when the title is not known here); more by count,
+  // never a list of keys (owner, 2026-11-25: keys read as noise).
   const label = waitingFor
-    ? t('taskOverview.row.waitingFor', { ids: waitingFor.join(', ') })
+    ? waitingFor.length === 1
+      ? t('taskOverview.row.waitingFor', { ids: titleOf?.(waitingFor[0]!) ?? waitingFor[0] })
+      : t('taskOverview.row.waitingForCount', { count: waitingFor.length })
     : row.statusId === 'draft'
       ? t('taskAuthoring.tasks.draftLine')
       : t(`taskAuthoring.status.${row.statusId}`, { defaultValue: row.statusId });

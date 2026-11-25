@@ -17,6 +17,8 @@ export interface TaskRowProps {
   readonly onOpen: (taskId: string) => void;
   /** The Specification's title, for "<specification> cannot continue until it moves". */
   readonly specificationTitle?: string;
+  /** The titles of the Specification's Tasks the caller knows, for "Waiting for <title>". */
+  readonly titleOf?: (taskId: string) => string | undefined;
 }
 
 /**
@@ -26,9 +28,9 @@ export interface TaskRowProps {
  * and a hold reason share two lines). Below 48rem of collection width it stacks in that order. The title is a real link
  * to the Full Task (a new window from the browser's own link menu). No row menu and no selection.
  */
-export function TaskRow({ row, fullTaskHref, onOpen, specificationTitle }: TaskRowProps) {
+export function TaskRow({ row, fullTaskHref, onOpen, specificationTitle, titleOf }: TaskRowProps) {
   const { t } = useTranslation();
-  const lines = taskRowLines(row, t, specificationTitle);
+  const lines = taskRowLines(row, t, specificationTitle, titleOf);
   // Two supporting lines (an overlay and the hold reason) share the two-line budget.
   const both = lines.overlay !== undefined && lines.text !== undefined;
 

@@ -103,6 +103,11 @@ export function TasksPage({
   }
 
   const { view } = state;
+  // Every Task of the Specification, for "Waiting for <title>".
+  const titles = new Map(
+    view.groups.flatMap((group) => group.rows.map((row) => [row.id, row.title] as const)),
+  );
+  const titleOf = (taskId: string) => titles.get(taskId) ?? undefined;
   const needle = query.trim().toLowerCase();
   const groups = view.groups
     .map((group) => ({
@@ -239,6 +244,7 @@ export function TasksPage({
                       fullTaskHref={fullTaskHref(row.id)}
                       onOpen={onOpenTask}
                       {...(specificationTitle ? { specificationTitle } : {})}
+                      titleOf={titleOf}
                     />
                   ))}
                 </InformationList>

@@ -52,14 +52,18 @@ describe('Overview Tasks summary', () => {
     expect(held.textContent).toContain('Requires attention · holds up T-12, T-13');
     expect(
       [...container.querySelectorAll('[data-summary-more]')].map((link) => link.textContent),
-    ).toEqual(['2 more in In progress', '1 more in Ready to start', '3 more in Waiting']);
+    ).toEqual([
+      'Show 2 more tasks: In progress',
+      'Show 1 more task: Ready to start',
+      'Show 3 more tasks: Waiting',
+    ]);
     expect(screen.getByRole('link', { name: 'Done 10' })).not.toBeNull();
     expect(screen.getByRole('link', { name: 'Cancelled 1' })).not.toBeNull();
   });
 
   it('opens the Tasks page filtered to a group, the Full Task from a row', async () => {
     const { actions } = await renderSummary(tasksPreviewFixtures.seven);
-    const more = screen.getByRole('link', { name: '2 more in Waiting' });
+    const more = screen.getByRole('link', { name: 'Show 2 more tasks: Waiting' });
 
     expect(more.getAttribute('href')).toBe('/specs/fake/tasks');
     fireEvent.click(more);

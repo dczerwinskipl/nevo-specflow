@@ -117,6 +117,12 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
     );
   }
 
+  // The titles of the Tasks the preview shows, for "Waiting for <title>".
+  const titles = new Map(
+    overview.rows.flatMap((row) => row.tasks.map((entry) => [entry.id, entry.title] as const)),
+  );
+  const titleOf = (taskId: string) => titles.get(taskId) ?? undefined;
+
   const openGroup = (group: string) => (event: MouseEvent) => {
     if (!plainClick(event)) {
       return;
@@ -148,13 +154,15 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
                   fullTaskHref={actions.fullTaskHref(entry.id)}
                   onOpen={(taskId) => actions.openTask(taskId)}
                   specificationTitle={data.title}
+                  titleOf={titleOf}
                 />
               ))}
             </InformationList>
             {row.more > 0 ? (
               <Typography as="p" variant="body-sm" className="px-2 pb-2">
+                {/* A link in the link colour whose words say what it opens: a count of Tasks, never
+                    read as something this Task waits on (owner, 2026-11-25). */}
                 <Link
-                  tone="muted"
                   href={actions.tasksHref({ group: row.groupId })}
                   onClick={openGroup(row.groupId)}
                   data-summary-more={row.groupId}
@@ -175,9 +183,8 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
             {overview.compact.map((group, index) => (
               <span key={group.groupId}>
                 {index > 0 ? ' · ' : null}
-                {/* The same quiet link as "N more in <group>". */}
+                {/* The same link as "Show N more tasks". */}
                 <Link
-                  tone="muted"
                   href={actions.tasksHref({ group: group.groupId })}
                   onClick={openGroup(group.groupId)}
                   data-summary-group={group.groupId}

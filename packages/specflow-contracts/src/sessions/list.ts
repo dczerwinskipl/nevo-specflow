@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import {
+  AgentStepOriginSchema,
   DisplayTitleSchema,
   SessionIdSchema,
   SessionInfoSchema,
@@ -84,6 +85,8 @@ export const SessionListItemSchema = Type.Object(
     createdAt: SessionInfoSchema.properties.createdAt,
     updatedAt: SessionInfoSchema.properties.updatedAt,
     association: ListAssociationSchema,
+    /** An agent step execution Session's step and attempt (only with a `specification` association). */
+    agentStep: Type.Optional(AgentStepOriginSchema),
   },
   closed,
 );

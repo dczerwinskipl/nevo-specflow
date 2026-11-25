@@ -1,32 +1,9 @@
 import { readAgentSessionOrigins, type WorkflowDependencies } from '@nevo/specflow-engine';
+import type { AgentStepOrigin } from '@nevo/specflow-contracts/sessions';
 
 import { GENERIC_AGENT_SESSION_TITLE, sessionTitleOf } from './operation';
 
 export { GENERIC_AGENT_SESSION_TITLE };
-
-/**
- * The titles of a Specification's agent step Sessions, by Session id, derived at read time from the
- * committed run records ("Break the solution down · attempt 2", with the Task title for a Task
- * subject; `sessionTitleOf`), so a Session created before it was titled so reads the same as a new
- * one. Nothing is migrated or written.
- */
-export async function agentSessionTitles(
-  openWorkflow: () => Promise<Pick<WorkflowDependencies, 'catalogue' | 'store'>>,
-  specId: string,
-): Promise<ReadonlyMap<string, string>> {
-  const origins = await readAgentSessionOrigins(await openWorkflow(), specId);
-
-  return new Map(
-    [...origins].map(([sessionId, origin]) => [
-      sessionId,
-      sessionTitleOf({
-        step: origin.step,
-        attempt: origin.attempt,
-        ...(origin.task ? { task: origin.task } : {}),
-      }),
-    ]),
-  );
-}
 
 /** The title to show for a Session: the derived one replaces only none or the generic one. */
 export function shownSessionTitle(
@@ -36,4 +13,38 @@ export function shownSessionTitle(
   return derived !== undefined && (stored === undefined || stored === GENERIC_AGENT_SESSION_TITLE)
     ? derived
     : stored;
+}
+
+/**
+ * The agent step origin of each agent step execution Session of a Specification, by Session id,
+ * as Session reads expose it (`agentStep`), from the committed attempt records.
+ */
+export async function agentStepOrigins(
+  openWorkflow: () => Promise<Pick<WorkflowDependencies, 'catalogue' | 'store'>>,
+  specId: string,
+): Promise<ReadonlyMap<string, AgentStepOrigin>> {
+  const origins = await readAgentSessionOrigins(await openWorkflow(), specId);
+
+  return new Map(
+    [...origins].map(([sessionId, origin]) => [
+      sessionId,
+      {
+        stepId: origin.step.id,
+        stepTitle: origin.step.title,
+        attempt: origin.attempt,
+        ...(origin.task ? { taskId: origin.task.id, taskTitle: origin.task.title } : {}),
+      },
+    ]),
+  );
+}
+
+/** The title of an agent step Session from its origin (`sessionTitleOf`). */
+export function agentStepTitle(origin: AgentStepOrigin): string {
+  return sessionTitleOf({
+    step: { id: origin.stepId, title: origin.stepTitle },
+    attempt: origin.attempt,
+    ...(origin.taskId !== undefined
+      ? { task: { id: origin.taskId, title: origin.taskTitle ?? origin.taskId } }
+      : {}),
+  });
 }

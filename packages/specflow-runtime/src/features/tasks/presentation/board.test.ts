@@ -468,6 +468,28 @@ describe('the titles of the Tasks the facts name', () => {
     expect(list.taskTitles).toEqual({ 'w-1': 'Title w-1' });
   });
 
+  it("come with the Overview for the Tasks the Specification's attention names", () => {
+    const item: AttentionItem = {
+      subject: { kind: 'task', specId: SPEC, taskId: 'r-1' },
+      reason: 'dependency-unsatisfiable',
+      actor: 'owner',
+      action: 'restore-task',
+      secondaryAction: 'edit-dependencies',
+      message:
+        'It depends on broken tasks: d-1. Restore their files from Git, or edit its dependencies.',
+      taskIds: ['d-1'],
+      brokenTaskIds: ['d-1'],
+    };
+    const section = workspaceTasksOf(basisOf(mix({ ready: 1, done: 1 }), [item])).section;
+    const data = section.state === 'available' ? section.data : undefined;
+
+    expect(data?.attention[0]).toMatchObject({
+      code: 'dependency-unsatisfiable',
+      brokenTaskIds: ['d-1'],
+    });
+    expect(data?.overview.taskTitles).toEqual({ 'd-1': 'Title d-1' });
+  });
+
   it('are absent when the facts name no Task', () => {
     const list = taskListOf(basisOf(mix({ done: 2 })), {});
 

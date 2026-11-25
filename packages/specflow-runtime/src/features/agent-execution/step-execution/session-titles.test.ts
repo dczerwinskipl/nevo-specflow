@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { WorkflowDependencies } from '@nevo/specflow-engine';
 
-import { agentSessionTitles, shownSessionTitle } from './session-titles';
+import { agentStepOrigins, agentStepTitle, shownSessionTitle } from './session-titles';
 
 describe('agent step Session titles at read time', () => {
   it('names each agent Session by the step and attempt it was made for, with the Task title', async () => {
@@ -39,9 +39,18 @@ describe('agent step Session titles at read time', () => {
       },
     } as unknown as Pick<WorkflowDependencies, 'catalogue' | 'store'>;
 
-    const titles = await agentSessionTitles(() => Promise.resolve(workflow), 'SPEC-1');
+    const origins = await agentStepOrigins(() => Promise.resolve(workflow), 'SPEC-1');
 
-    expect(Object.fromEntries(titles)).toEqual({ 's-1': 'Implement · attempt 2 · Login form' });
+    expect(Object.fromEntries(origins)).toEqual({
+      's-1': {
+        stepId: 'implement',
+        stepTitle: 'Implement',
+        attempt: 2,
+        taskId: 'T-1',
+        taskTitle: 'Login form',
+      },
+    });
+    expect(agentStepTitle(origins.get('s-1')!)).toBe('Implement · attempt 2 · Login form');
   });
 
   it('replaces only no title or the generic one an older Session was created with', () => {

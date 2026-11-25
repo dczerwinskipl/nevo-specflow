@@ -331,9 +331,9 @@ export function startBlockerAttention(
         ? item(subject, 'dependency-unsatisfiable', {
             ...step,
             taskIds,
+            brokenTaskIds: restorable,
             action: 'restore-task',
             secondaryAction: 'edit-dependencies',
-            message: `It depends on broken tasks: ${restorable.join(', ')}. Restore their files from Git, or edit its dependencies.`,
           })
         : item(subject, 'dependency-unsatisfiable', { ...step, taskIds });
     }
@@ -498,7 +498,9 @@ function messageOf(reason: AttentionItemReason, fields: ItemFields): string {
     case 'awaiting-confirmation':
       return `The agent finished ${step}and its result waits for you: confirm it, or reject it with what should change.`;
     case 'dependency-unsatisfiable':
-      return `It depends on tasks that can no longer complete: ${(fields.taskIds ?? []).join(', ')}. Edit its dependencies or cancel it.`;
+      return fields.brokenTaskIds && fields.brokenTaskIds.length > 0
+        ? `It depends on broken tasks: ${fields.brokenTaskIds.join(', ')}. Restore their files from Git, or edit its dependencies.`
+        : `It depends on tasks that can no longer complete: ${(fields.taskIds ?? []).join(', ')}. Edit its dependencies or cancel it.`;
     default:
       // The other reasons always carry their own message.
       return `${step}needs your attention.`;

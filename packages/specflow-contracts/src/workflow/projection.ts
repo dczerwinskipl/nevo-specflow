@@ -663,6 +663,8 @@ export const WorkflowAttentionItemSchema = Type.Object({
    * `dependency-unsatisfiable`.
    */
   taskIds: Type.Optional(array(TaskIdSchema)),
+  /** `dependency-unsatisfiable` with `restore-task`: the broken Tasks among `taskIds`. */
+  brokenTaskIds: Type.Optional(array(TaskIdSchema)),
   /** `tasks-stuck`: why each Task of `taskIds` blocks. */
   blocking: Type.Optional(array(BlockingTaskSchema)),
   /** `on-hold-blocking`: what the held Task holds up (`step` is then the finish step, if any). */

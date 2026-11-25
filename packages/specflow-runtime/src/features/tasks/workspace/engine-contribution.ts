@@ -60,6 +60,7 @@ export function workspaceAttentionOf(
     action: item.action,
     ...(item.secondaryAction ? { secondaryAction: item.secondaryAction } : {}),
     ...(item.taskIds ? { taskIds: [...item.taskIds] } : {}),
+    ...(item.brokenTaskIds ? { brokenTaskIds: [...item.brokenTaskIds] } : {}),
     ...(item.blocking ? { blocking: item.blocking.map((task) => ({ ...task })) } : {}),
     ...(item.blocks
       ? {
@@ -142,7 +143,7 @@ export function workspaceTasksOf(
   };
 }
 
-/** The Overview summary with the titles of the Tasks its rows' facts name. */
+/** The Overview summary with the titles of the Tasks its rows' and the attention's facts name. */
 function overviewOf(
   board: ReturnType<typeof taskBoardOf>,
   stuck: TaskOverview['stuck'],
@@ -155,6 +156,7 @@ function overviewOf(
     ...namedTaskTitles(
       board.rows,
       summary.rows.flatMap((row) => row.tasks),
+      board.attention,
     ),
   };
 }

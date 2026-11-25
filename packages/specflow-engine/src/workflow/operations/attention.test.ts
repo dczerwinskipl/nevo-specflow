@@ -82,6 +82,8 @@ describe('startBlockerAttention (owner decision 2A)', () => {
       action: 'restore-task',
       secondaryAction: 'edit-dependencies',
       taskIds: ['gone'],
+      // The broken ones as a fact, so a client words the line itself; the message is the CLI's.
+      brokenTaskIds: ['gone'],
       message:
         'It depends on broken tasks: gone. Restore their files from Git, or edit its dependencies.',
     });

@@ -5,7 +5,7 @@ import {
   BlockingTaskSchema,
   HeldTaskBlocksSchema,
 } from '../../workflow/projection';
-import { SessionIdSchema } from '../../sessions/model';
+import { AgentStepOriginSchema, SessionIdSchema } from '../../sessions/model';
 import { SpecIdSchema, TaskIdSchema, WorkspaceIdSchema } from '../../identifiers';
 import { DocumentContentStateSchema } from '../../documents/vocabulary';
 export * from '../../tasks';
@@ -83,6 +83,8 @@ export const WorkspaceSessionSchema = Type.Object(
     modelId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
     modelTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
     updatedAt: Type.String({ minLength: 1, maxLength: 40 }),
+    /** An agent step execution Session's step and attempt (sessions `AgentStepOrigin`). */
+    agentStep: Type.Optional(AgentStepOriginSchema),
   },
   { additionalProperties: false },
 );
@@ -126,6 +128,7 @@ export const WorkspaceAttentionSchema = Type.Object({
     ),
   ),
   taskIds: Type.Optional(Type.Array(TaskIdSchema)),
+  brokenTaskIds: Type.Optional(Type.Array(TaskIdSchema)),
   blocking: Type.Optional(Type.Array(BlockingTaskSchema)),
   blocks: Type.Optional(HeldTaskBlocksSchema),
 });

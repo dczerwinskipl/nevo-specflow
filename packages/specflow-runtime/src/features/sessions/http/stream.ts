@@ -7,6 +7,7 @@ import { SessionError } from '../errors';
 import { createStreamWakeup } from './wakeup';
 import { authorizeSession, authorizedIdentity } from './authorization';
 import { effectiveEvent } from './projection';
+import type { AgentStepOf } from './agent-step';
 import { telemetryAccess } from './telemetry';
 
 export function createSessionStreams<RawServer extends RawServerBase>(
@@ -64,6 +65,7 @@ export function createSessionStreams<RawServer extends RawServerBase>(
       sid: string,
       principal: string,
       suppliedAfter?: string,
+      agentStepOf?: AgentStepOf,
     ) {
       const header = request.headers['last-event-id'];
       if (
@@ -86,6 +88,7 @@ export function createSessionStreams<RawServer extends RawServerBase>(
 
       // Immutable for the Session's life: the home Specification never changes.
       const identity = authorizedIdentity(request, sid);
+      let agentStep: ReturnType<AgentStepOf> | undefined;
       const initialAccess = telemetryAccess(request, identity).accessRevision;
       const admission = admit(principal);
       if (!admission) {
@@ -146,11 +149,23 @@ export function createSessionStreams<RawServer extends RawServerBase>(
               break;
             }
 
+            const change = effectiveEvent(event, request, coordinator.provider, identity);
+            const projected =
+              'projection' in change.changes ? change.changes.projection : undefined;
+            if (projected && agentStepOf) {
+              // Read once per stream: the attempt a Session was made for does not change.
+              agentStep ??= agentStepOf(request, identity);
+              const origin = await agentStep;
+              if (origin) {
+                projected.session.agentStep = origin;
+              }
+            }
+
             const frame =
               'id: ' +
               event.eventSeq +
               '\nevent: session-change\ndata: ' +
-              JSON.stringify(effectiveEvent(event, request, coordinator.provider, identity)) +
+              JSON.stringify(change) +
               '\n\n';
             if (!raw.write(frame)) {
               await once(raw, 'drain', { signal: controller.signal });

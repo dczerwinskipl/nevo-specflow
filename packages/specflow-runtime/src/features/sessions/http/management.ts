@@ -13,6 +13,7 @@ import type { SessionCoordinator } from '../lifecycle/coordinator';
 import type { SessionView } from '../persistence/protocol';
 import { authorizeSessionCapability, authorizedIdentity } from './authorization';
 import { effective } from './projection';
+import type { AgentStepOf } from './agent-step';
 import { contractRef } from '../../../server/shared-contracts';
 import { capabilityRefusal, sessionRouteErrors } from './route-docs';
 
@@ -24,6 +25,7 @@ const actor = (request: FastifyRequest) => request.authz.readContext().subject;
 export function registerSessionManagementRoutes(
   feature: FastifyInstance,
   coordinator: () => SessionCoordinator,
+  agentStepOf?: AgentStepOf,
 ): void {
   const authorize = (capability: 'manage' | 'delete') => async (request: FastifyRequest) => {
     await authorizeSessionCapability(
@@ -36,8 +38,9 @@ export function registerSessionManagementRoutes(
     );
   };
 
-  const project = (view: SessionView, request: FastifyRequest) => ({
-    session: effective(
+  const project = async (view: SessionView, request: FastifyRequest) => {
+    const identity = authorizedIdentity(request, view.session.sessionId);
+    const session = effective(
       {
         session: view.session,
         revision: 0,
@@ -48,9 +51,13 @@ export function registerSessionManagementRoutes(
       },
       request,
       coordinator().provider,
-      authorizedIdentity(request, view.session.sessionId),
-    ).session,
-  });
+      identity,
+    ).session;
+    const agentStep = await agentStepOf?.(request, identity);
+
+    return { session: agentStep ? { ...session, agentStep } : session };
+  };
+
   const command = (
     path: string,
     summary: string,

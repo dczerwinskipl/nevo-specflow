@@ -1,4 +1,8 @@
-import { SessionListLimits, type SessionInfo } from '@nevo/specflow-contracts/sessions';
+import {
+  SessionListLimits,
+  type AgentStepOrigin,
+  type SessionInfo,
+} from '@nevo/specflow-contracts/sessions';
 import type { RequestAuthorization } from '../../auth';
 import {
   SessionError,
@@ -26,12 +30,12 @@ interface WorkspaceSessionItem {
   modelId?: string;
   modelTitle?: string;
   updatedAt: string;
+  agentStep?: AgentStepOrigin;
 }
 export type StartSessionReason = 'sessions_disabled' | 'forbidden' | 'no_provider';
 
-/** The title a Session is shown with, from its stored one (see `sessionTitles`). */
+/** The title a Session is shown with, from its stored one (see `agentSteps`). */
 type SessionTitleOf = (sessionId: string, stored: string | undefined) => string | undefined;
-const storedTitle: SessionTitleOf = (_sessionId, stored) => stored;
 
 /** Effective Session readiness only; an Engine attempt never colours a Session row. */
 export function workspaceSessionStatus(readiness: SessionInfo['readiness']): Status {
@@ -146,10 +150,14 @@ export function createWorkspaceSessionContribution(options: {
   sessions: SessionsRuntime;
   projectId: ProjectIdSource;
   /**
-   * How a Specification's Sessions are titled at read time (agent step Sessions by their step and
-   * attempt); absent: their stored titles. A failure keeps the stored titles.
+   * Agent step execution Sessions: the step and attempt each was made for (each row's `agentStep`)
+   * and the title it is shown with (by its step and attempt unless the owner named it). Absent:
+   * stored titles only. Origins that cannot be read leave the rows as stored.
    */
-  sessionTitles?: (specId: string) => Promise<SessionTitleOf>;
+  agentSteps?: {
+    readonly origins: (specId: string) => Promise<ReadonlyMap<string, AgentStepOrigin>>;
+    readonly title: (stored: string | undefined, origin: AgentStepOrigin) => string | undefined;
+  };
 }) {
   function startSession(
     specId: string,
@@ -179,9 +187,15 @@ export function createWorkspaceSessionContribution(options: {
       };
     }
 
-    const titleOf = options.sessionTitles
-      ? await options.sessionTitles(specId).catch(() => storedTitle)
-      : storedTitle;
+    const origins: ReadonlyMap<string, AgentStepOrigin> = options.agentSteps
+      ? await options.agentSteps.origins(specId).catch(() => new Map())
+      : new Map();
+    const titleOf: SessionTitleOf = (sessionId, stored) => {
+      const origin = origins.get(sessionId);
+
+      return origin && options.agentSteps ? options.agentSteps.title(stored, origin) : stored;
+    };
+
     try {
       const scan = await coordinator.store.call<SessionListScan>({
         op: 'list',
@@ -219,6 +233,7 @@ export function createWorkspaceSessionContribution(options: {
           ...(summary.modelId ? { modelId: summary.modelId } : {}),
           ...(summary.modelTitle ? { modelTitle: summary.modelTitle } : {}),
           updatedAt: summary.updatedAt,
+          ...(origins.has(row.sessionId) ? { agentStep: origins.get(row.sessionId)! } : {}),
         };
       });
       // Every Session that waits for input, also one beyond the rows (only scanned when more exist).

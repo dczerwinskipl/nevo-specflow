@@ -108,10 +108,14 @@ export interface AttentionItem {
   /**
    * `task-escalated` on the Specification: every escalated Task (none on a Task's own item);
    * `tasks-stuck`: the Tasks to resolve (`blocking`);
-   * `dependency-unsatisfiable`: the dependencies that can no longer complete (`restore-task`: the
-   * broken ones among them). In id order.
+   * `dependency-unsatisfiable`: the dependencies that can no longer complete. In id order.
    */
   readonly taskIds?: readonly string[];
+  /**
+   * `dependency-unsatisfiable` with `restore-task`: the broken Tasks among `taskIds`, which
+   * restoring their files fixes. In id order.
+   */
+  readonly brokenTaskIds?: readonly string[];
   /** `tasks-stuck`: each Task of `taskIds` with why it blocks (always set, possibly empty). */
   readonly blocking?: readonly BlockingTask[];
   /** `on-hold-blocking`: what the held Task holds up (`step` is then the finish step, if any). */

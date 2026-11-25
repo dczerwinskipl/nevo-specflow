@@ -154,18 +154,26 @@ describe('workspace Session section policy', () => {
       projectId: 'project',
       coordinator: { store: { call }, provider: () => undefined, usable: () => true },
     } as unknown as SessionsRuntime;
-    const derived = new Map([
-      ['old', 'Break the solution down · attempt 1'],
-      ['untitled', 'Implement · attempt 2 · Login form'],
-      ['renamed', 'Review · attempt 1'],
+    const origins = new Map([
+      ['old', { stepId: 'breakdown', stepTitle: 'Break the solution down', attempt: 1 }],
+      [
+        'untitled',
+        {
+          stepId: 'implement',
+          stepTitle: 'Implement',
+          attempt: 2,
+          taskId: 'T-1',
+          taskTitle: 'Login form',
+        },
+      ],
+      ['renamed', { stepId: 'review', stepTitle: 'Review', attempt: 1 }],
     ]);
+    const title = (stored: string | undefined, origin: { stepTitle: string; attempt: number }) =>
+      stored === 'My notes' ? stored : `${origin.stepTitle} · attempt ${String(origin.attempt)}`;
     const read = createWorkspaceSessionContribution({
       sessions,
       projectId: () => 'project',
-      sessionTitles: () =>
-        Promise.resolve((sessionId, stored) =>
-          stored === 'My notes' ? stored : (derived.get(sessionId) ?? stored),
-        ),
+      agentSteps: { origins: () => Promise.resolve(origins), title },
     });
 
     const result = await read('spec', { authz: { can: () => true } as never });
@@ -173,10 +181,12 @@ describe('workspace Session section policy', () => {
 
     expect(data?.items.map((item) => [item.id, item.title])).toEqual([
       ['old', 'Break the solution down · attempt 1'],
-      ['untitled', 'Implement · attempt 2 · Login form'],
+      ['untitled', 'Implement · attempt 2'],
       // A title the owner gave is kept.
       ['renamed', 'My notes'],
     ]);
+    // Each row carries its structured origin, so a client words its lines without parsing titles.
+    expect(data?.items.map((item) => item.agentStep)).toEqual([...origins.values()]);
     expect(result.sessionStarts?.map((start) => start.title)).toEqual(
       data?.items.map((item) => item.title),
     );
@@ -185,7 +195,7 @@ describe('workspace Session section policy', () => {
     const failing = createWorkspaceSessionContribution({
       sessions,
       projectId: () => 'project',
-      sessionTitles: () => Promise.reject(new Error('definitions unreadable')),
+      agentSteps: { origins: () => Promise.reject(new Error('definitions unreadable')), title },
     });
     const fallback = await failing('spec', { authz: { can: () => true } as never });
     expect(
@@ -193,5 +203,10 @@ describe('workspace Session section policy', () => {
         ? fallback.section.data.items.map((item) => item.title)
         : [],
     ).toEqual(['Agent step execution', undefined, 'My notes']);
+    expect(
+      fallback.section.state === 'available'
+        ? fallback.section.data.items.some((item) => item.agentStep)
+        : true,
+    ).toBe(false);
   });
 });

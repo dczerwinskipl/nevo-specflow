@@ -300,7 +300,10 @@ lists it ready and authorized for the model (`providerModes[].modelIds`), otherw
 mode field. Its title is the step and attempt it was made for ("Break the solution down · attempt 2",
 with the Task title for a Task subject). A Session created before it was titled so (titled "Agent
 step execution", or untitled) is named so at read time in the Specification Overview, from the
-committed attempt records that name its Session; nothing is migrated.
+committed attempt records that name its Session; nothing is migrated. Every Session read (the list,
+the single Session, its live projection and the Overview's Sessions) carries the same facts as
+`agentStep` (`stepId`, `stepTitle`, `attempt`, `taskId`, `taskTitle`) for a caller who may view
+the Specification, so a client words the Session's lines without parsing its title.
 
 ### D19 — Stop, Return, Take over
 

@@ -1,4 +1,5 @@
 import { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
+import type { AgentStepOrigins } from './http/agent-step';
 
 import type { RuntimeFeature } from '../runtime-feature';
 import type { SessionsFeatureConfig } from './configuration';
@@ -58,6 +59,8 @@ export function createSessionsFeature(
     settleAgentAttempt?: AgentAttemptSettlement;
     /** The admission and abandon judgement of agent attempt Turns (the agent-execution feature). */
     agentTurns?: AgentTurnAdmission;
+    /** The step and attempt of agent step execution Sessions (the agent-execution feature). */
+    agentStepOrigins?: AgentStepOrigins;
   } = {},
 ): RuntimeFeature & { readonly runtime: SessionsRuntime } {
   let registered: SessionCoordinator | undefined;
@@ -216,6 +219,7 @@ export function createSessionsFeature(
           : {}),
         ...(options.demoList ? { demoList: options.demoList } : {}),
         ...(options.demoReads ? { demoReads: options.demoReads } : {}),
+        ...(options.agentStepOrigins ? { agentStepOrigins: options.agentStepOrigins } : {}),
       });
     },
   };

@@ -125,6 +125,26 @@ export const InteractionSchema = Type.Union([
     closed,
   ),
 ]);
+/**
+ * The agent step attempt an agent step execution Session was made for (its first attempt; a reused
+ * Session keeps it), derived on each read from the committed attempt records, never stored: the
+ * step's id and title in the pinned workflow (the id when the workflow no longer defines it), the
+ * attempt number and, for a Task subject, the Task. Present only to a caller who may view the
+ * Session's Specification. A client words the Session's lines from it; the Session `title` stays
+ * the title line when the owner gave one.
+ */
+export const AgentStepOriginSchema = Type.Object(
+  {
+    stepId: text(128),
+    stepTitle: text(512),
+    attempt: Type.Integer({ minimum: 1 }),
+    taskId: Type.Optional(text(128)),
+    taskTitle: Type.Optional(text(512)),
+  },
+  closed,
+);
+export type AgentStepOrigin = Static<typeof AgentStepOriginSchema>;
+
 export const SessionInfoSchema = Type.Object(
   {
     sessionId: SessionIdSchema,
@@ -166,6 +186,7 @@ export const SessionInfoSchema = Type.Object(
     archivedAt: Type.Optional(text(40)),
     createdAt: text(40),
     updatedAt: text(40),
+    agentStep: Type.Optional(AgentStepOriginSchema),
   },
   closed,
 );

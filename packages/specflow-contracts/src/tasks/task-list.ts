@@ -95,7 +95,8 @@ const RowAttention = Type.Optional(WorkflowAttentionItemSchema);
 
 /**
  * The titles of the Tasks the response's structured facts name (a row's `dependsOn` and
- * `facts.dependencyWait`, an attention item's `blocks`, `taskIds` and `blocking`), keyed by Task
+ * `facts.dependencyWait`, an attention item's `blocks`, `taskIds`, `brokenTaskIds` and `blocking`),
+ * keyed by Task
  * id, readable ones only, so a client words "holds up <title>" or "waits for <title>" from the facts
  * in its own language, also for a Task the response does not list. Absent when they name none.
  * The attention `message` stays the English fallback the CLI shows, worded from the same facts.
@@ -223,7 +224,10 @@ export const TaskOverviewSchema = Type.Object({
       }),
     ),
   ),
-  /** The titles of the Tasks the facts of `rows[].tasks` name (see `NamedTaskTitlesSchema`). */
+  /**
+   * The titles of the Tasks the facts of `rows[].tasks` and of the Specification's attention items
+   * (the workspace `tasks.data.attention`) name (see `NamedTaskTitlesSchema`).
+   */
   taskTitles: Type.Optional(NamedTaskTitlesSchema),
 });
 export type TaskOverview = Static<typeof TaskOverviewSchema>;

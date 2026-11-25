@@ -4,6 +4,7 @@ import { SpecIdSchema, TaskIdSchema } from '@nevo/specflow-contracts/documents';
 import {
   SessionCapabilities,
   SessionListArchivedSchema,
+  type AgentStepOrigin,
   SessionListLimits,
   SessionListPageSchema,
   type ListAssociation,
@@ -22,6 +23,7 @@ import type {
   StoredListSummary,
 } from '../persistence/protocol';
 import { listedSession } from './projection';
+import type { AgentStepOrigins } from './agent-step';
 import { capabilityRefusal, sessionRouteErrors } from './route-docs';
 import { sessionScope } from '../scope';
 import { specScope } from '../../specs';
@@ -132,6 +134,7 @@ export function registerSessionListRoute(
   feature: FastifyInstance,
   source: () => SessionListSource,
   projectId: () => string,
+  agentStepOrigins?: AgentStepOrigins,
 ): void {
   feature.get(
     '/api/sessions',
@@ -200,16 +203,49 @@ export function registerSessionListRoute(
         more && last ? sessions.cursor(filter, last.createdSeq) : Promise.resolve(undefined),
       ]);
       const byId = new Map(summaries.map((summary) => [summary.sessionId, summary]));
+      const associations = new Map(
+        visible.map((row) => [row.sessionId, association(request, row, projectId())] as const),
+      );
+      const origins = await agentStepsOf(agentStepOrigins, [...associations.values()]);
       const items: SessionListItem[] = visible.flatMap((row) => {
         // A Session deleted between the scan and the decode is simply absent.
         const summary = byId.get(row.sessionId);
+        const listed = associations.get(row.sessionId)!;
+        const agentStep =
+          listed.kind === 'specification'
+            ? origins.get(listed.specId)?.get(row.sessionId)
+            : undefined;
 
-        return summary ? [{ ...summary, association: association(request, row, projectId()) }] : [];
+        return summary
+          ? [{ ...summary, association: listed, ...(agentStep ? { agentStep } : {}) }]
+          : [];
       });
 
       return { items, ...(nextCursor !== undefined ? { nextCursor } : {}) };
     },
   );
+}
+
+/**
+ * The agent step origins of the Specifications a page discloses (`specification` associations
+ * only), one read per Specification; one that cannot be read leaves its rows without.
+ */
+async function agentStepsOf(
+  origins: AgentStepOrigins | undefined,
+  associations: readonly ListAssociation[],
+): Promise<ReadonlyMap<string, ReadonlyMap<string, AgentStepOrigin>>> {
+  const found = new Map<string, ReadonlyMap<string, AgentStepOrigin>>();
+  if (!origins) {
+    return found;
+  }
+
+  for (const listed of associations) {
+    if (listed.kind === 'specification' && !found.has(listed.specId)) {
+      found.set(listed.specId, await origins(listed.specId).catch(() => new Map()));
+    }
+  }
+
+  return found;
 }
 
 function canView(request: FastifyRequest, row: SessionListRow): boolean {

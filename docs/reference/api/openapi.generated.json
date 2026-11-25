@@ -3876,6 +3876,37 @@
               "updatedAt": {
                 "type": "string",
                 "maxLength": 40
+              },
+              "agentStep": {
+                "type": "object",
+                "required": [
+                  "stepId",
+                  "stepTitle",
+                  "attempt"
+                ],
+                "properties": {
+                  "stepId": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "stepTitle": {
+                    "type": "string",
+                    "maxLength": 512
+                  },
+                  "attempt": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "taskId": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "taskTitle": {
+                    "type": "string",
+                    "maxLength": 512
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -11176,6 +11207,13 @@
                 },
                 "maxItems": 1000
               },
+              "brokenTaskIds": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TaskId"
+                },
+                "maxItems": 1000
+              },
               "blocking": {
                 "type": "array",
                 "items": {
@@ -17374,6 +17412,37 @@
                                 "additionalProperties": false
                               }
                             ]
+                          },
+                          "agentStep": {
+                            "type": "object",
+                            "required": [
+                              "stepId",
+                              "stepTitle",
+                              "attempt"
+                            ],
+                            "properties": {
+                              "stepId": {
+                                "type": "string",
+                                "maxLength": 128
+                              },
+                              "stepTitle": {
+                                "type": "string",
+                                "maxLength": 512
+                              },
+                              "attempt": {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              "taskId": {
+                                "type": "string",
+                                "maxLength": 128
+                              },
+                              "taskTitle": {
+                                "type": "string",
+                                "maxLength": 512
+                              }
+                            },
+                            "additionalProperties": false
                           }
                         },
                         "additionalProperties": false
@@ -17888,6 +17957,37 @@
                         "updatedAt": {
                           "type": "string",
                           "maxLength": 40
+                        },
+                        "agentStep": {
+                          "type": "object",
+                          "required": [
+                            "stepId",
+                            "stepTitle",
+                            "attempt"
+                          ],
+                          "properties": {
+                            "stepId": {
+                              "type": "string",
+                              "maxLength": 128
+                            },
+                            "stepTitle": {
+                              "type": "string",
+                              "maxLength": 512
+                            },
+                            "attempt": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "taskId": {
+                              "type": "string",
+                              "maxLength": 128
+                            },
+                            "taskTitle": {
+                              "type": "string",
+                              "maxLength": 512
+                            }
+                          },
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -36829,6 +36929,13 @@
                                               },
                                               "maxItems": 1000
                                             },
+                                            "brokenTaskIds": {
+                                              "type": "array",
+                                              "items": {
+                                                "$ref": "#/components/schemas/TaskId"
+                                              },
+                                              "maxItems": 1000
+                                            },
                                             "blocking": {
                                               "type": "array",
                                               "items": {
@@ -37476,6 +37583,13 @@
                                           "maxLength": 4000
                                         },
                                         "taskIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "$ref": "#/components/schemas/TaskId"
+                                          },
+                                          "maxItems": 1000
+                                        },
+                                        "brokenTaskIds": {
                                           "type": "array",
                                           "items": {
                                             "$ref": "#/components/schemas/TaskId"
@@ -38236,6 +38350,13 @@
                                           },
                                           "maxItems": 1000
                                         },
+                                        "brokenTaskIds": {
+                                          "type": "array",
+                                          "items": {
+                                            "$ref": "#/components/schemas/TaskId"
+                                          },
+                                          "maxItems": 1000
+                                        },
                                         "blocking": {
                                           "type": "array",
                                           "items": {
@@ -38883,6 +39004,13 @@
                             "maxLength": 4000
                           },
                           "taskIds": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/TaskId"
+                            },
+                            "maxItems": 1000
+                          },
+                          "brokenTaskIds": {
                             "type": "array",
                             "items": {
                               "$ref": "#/components/schemas/TaskId"
@@ -41278,6 +41406,13 @@
                                   "maxLength": 4000
                                 },
                                 "taskIds": {
+                                  "type": "array",
+                                  "items": {
+                                    "$ref": "#/components/schemas/TaskId"
+                                  },
+                                  "maxItems": 1000
+                                },
+                                "brokenTaskIds": {
                                   "type": "array",
                                   "items": {
                                     "$ref": "#/components/schemas/TaskId"
@@ -61378,6 +61513,12 @@
                                   "$ref": "#/components/schemas/TaskId"
                                 }
                               },
+                              "brokenTaskIds": {
+                                "type": "array",
+                                "items": {
+                                  "$ref": "#/components/schemas/TaskId"
+                                }
+                              },
                               "blocking": {
                                 "type": "array",
                                 "items": {
@@ -61959,6 +62100,12 @@
                                             ]
                                           },
                                           "taskIds": {
+                                            "type": "array",
+                                            "items": {
+                                              "$ref": "#/components/schemas/TaskId"
+                                            }
+                                          },
+                                          "brokenTaskIds": {
                                             "type": "array",
                                             "items": {
                                               "$ref": "#/components/schemas/TaskId"
@@ -63301,6 +63448,13 @@
                                                                   },
                                                                   "maxItems": 1000
                                                                 },
+                                                                "brokenTaskIds": {
+                                                                  "type": "array",
+                                                                  "items": {
+                                                                    "$ref": "#/components/schemas/TaskId"
+                                                                  },
+                                                                  "maxItems": 1000
+                                                                },
                                                                 "blocking": {
                                                                   "type": "array",
                                                                   "items": {
@@ -63948,6 +64102,13 @@
                                                               "maxLength": 4000
                                                             },
                                                             "taskIds": {
+                                                              "type": "array",
+                                                              "items": {
+                                                                "$ref": "#/components/schemas/TaskId"
+                                                              },
+                                                              "maxItems": 1000
+                                                            },
+                                                            "brokenTaskIds": {
                                                               "type": "array",
                                                               "items": {
                                                                 "$ref": "#/components/schemas/TaskId"
@@ -64708,6 +64869,13 @@
                                                               },
                                                               "maxItems": 1000
                                                             },
+                                                            "brokenTaskIds": {
+                                                              "type": "array",
+                                                              "items": {
+                                                                "$ref": "#/components/schemas/TaskId"
+                                                              },
+                                                              "maxItems": 1000
+                                                            },
                                                             "blocking": {
                                                               "type": "array",
                                                               "items": {
@@ -65272,6 +65440,37 @@
                                             "type": "string",
                                             "minLength": 1,
                                             "maxLength": 40
+                                          },
+                                          "agentStep": {
+                                            "type": "object",
+                                            "required": [
+                                              "stepId",
+                                              "stepTitle",
+                                              "attempt"
+                                            ],
+                                            "properties": {
+                                              "stepId": {
+                                                "type": "string",
+                                                "maxLength": 128
+                                              },
+                                              "stepTitle": {
+                                                "type": "string",
+                                                "maxLength": 512
+                                              },
+                                              "attempt": {
+                                                "type": "integer",
+                                                "minimum": 1
+                                              },
+                                              "taskId": {
+                                                "type": "string",
+                                                "maxLength": 128
+                                              },
+                                              "taskTitle": {
+                                                "type": "string",
+                                                "maxLength": 512
+                                              }
+                                            },
+                                            "additionalProperties": false
                                           }
                                         },
                                         "additionalProperties": false
@@ -65587,6 +65786,12 @@
                                             ]
                                           },
                                           "taskIds": {
+                                            "type": "array",
+                                            "items": {
+                                              "$ref": "#/components/schemas/TaskId"
+                                            }
+                                          },
+                                          "brokenTaskIds": {
                                             "type": "array",
                                             "items": {
                                               "$ref": "#/components/schemas/TaskId"
@@ -66223,6 +66428,12 @@
                                             ]
                                           },
                                           "taskIds": {
+                                            "type": "array",
+                                            "items": {
+                                              "$ref": "#/components/schemas/TaskId"
+                                            }
+                                          },
+                                          "brokenTaskIds": {
                                             "type": "array",
                                             "items": {
                                               "$ref": "#/components/schemas/TaskId"

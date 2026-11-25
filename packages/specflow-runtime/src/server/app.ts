@@ -1,4 +1,5 @@
 import compress from '@fastify/compress';
+import type { AgentStepOrigin } from '@nevo/specflow-contracts/sessions';
 import cookie from '@fastify/cookie';
 import { RuntimeInfoResponseSchema } from '@nevo/specflow-contracts/runtime';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -14,6 +15,7 @@ import type { RuntimeConfig } from '../config/types';
 import {
   checkoutSessions,
   createSessionsFeature,
+  type AgentStepOrigins,
   type SessionsRuntime,
   projectSessionStoreDirectory,
   runtimeCheckoutQuiescence,
@@ -39,7 +41,8 @@ import {
   type WorkflowFeatureDependencies,
 } from '../features/workflow';
 import {
-  agentSessionTitles,
+  agentStepOrigins,
+  agentStepTitle,
   createAgentExecutionFeature,
   createUnavailableAgentStepExecutionFeature,
   shownSessionTitle,
@@ -103,6 +106,8 @@ export interface RuntimeAppDependencies {
     driver?: SessionDriver | readonly SessionDriver[];
     /** Engine facts of associated Specifications and Tasks (default: the Engine, project mode). */
     targets?: AssociationTargets;
+    /** Agent step origins of Sessions (default: the Engine's attempt records, project mode). */
+    agentStepOrigins?: AgentStepOrigins;
   };
   readonly auth?: AuthFeatureDependencies;
   readonly specs?: SpecsFeatureDependencies;
@@ -245,6 +250,13 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       : undefined;
   const sessionsFeature = createSessionsFeature({
     ...(engine ? { engine } : {}),
+    ...(dependencies.sessions?.agentStepOrigins
+      ? { agentStepOrigins: dependencies.sessions.agentStepOrigins }
+      : mode === 'project' && taskEngine
+        ? {
+            agentStepOrigins: (specId: string) => agentStepOrigins(taskEngine.openWorkflow, specId),
+          }
+        : {}),
     workspaceOccupancy,
     ...(agentExecution
       ? {
@@ -325,11 +337,11 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
                 projectId,
                 ...(taskEngine
                   ? {
-                      sessionTitles: async (specId: string) => {
-                        const derived = await agentSessionTitles(taskEngine.openWorkflow, specId);
-
-                        return (sessionId: string, stored: string | undefined) =>
-                          shownSessionTitle(stored, derived.get(sessionId));
+                      agentSteps: {
+                        origins: (specId: string) =>
+                          agentStepOrigins(taskEngine.openWorkflow, specId),
+                        title: (stored: string | undefined, origin: AgentStepOrigin) =>
+                          shownSessionTitle(stored, agentStepTitle(origin)),
                       },
                     }
                   : {}),

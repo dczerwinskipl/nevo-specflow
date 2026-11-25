@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import type { WorkSummary } from '@nevo/specflow-contracts/sessions';
-import { Collapsible, Timeline, Typography, cn } from '@nevo/ui';
+import { ShieldCheck, ShieldX } from 'lucide-react';
+import type { ToolOperation, WorkSummary } from '@nevo/specflow-contracts/sessions';
+import { Collapsible, Icon, Timeline, Typography, cn } from '@nevo/ui';
+import { toolOperationOrder } from './workDigest';
 import { historyEntry } from './pagedHistoryAnchor';
 import { useGroupKeys } from './stableGroupKeys';
 import type { ChapterEntry, ToolBurstEntry } from './workGrouping';
@@ -17,7 +19,8 @@ import { workStateTextClassName, workStateTone } from './workStatus';
 import { WorkRowContent, useWorkRowMeta } from './WorkRow';
 import { workFailureText, workItemTitle, workItemTitleParts } from './toolLabels';
 
-type OpenActions = (workId: string, title: string) => void;
+type OpenActions = (workId: string, title: string, permissionId?: string) => void;
+type Authorizations = ReadonlyMap<string, WorkSummary>;
 
 /**
  * A Work row's title: the label emphasised ("Ran command", "Allowed"), the subject under it as an
@@ -56,6 +59,64 @@ function withFailure(meta: ReactNode, item: WorkSummary, t: TFunction): ReactNod
   ) : (
     meta
   );
+}
+
+/**
+ * A tool row's meta line with how its permission was answered, when one was folded into it
+ * (`foldPermissions`): "Allowed" or "Denied" behind a shield, never a second row for the same
+ * operation.
+ */
+function withAuthorization(meta: ReactNode, permission: WorkSummary | undefined): ReactNode {
+  if (!permission?.decision) {
+    return meta;
+  }
+
+  const denied = permission.decision === 'denied';
+
+  return (
+    <>
+      {meta}
+      {meta ? ' · ' : null}
+      <span
+        className={cn(
+          'inline-flex items-center gap-1 align-bottom',
+          denied && workStateTextClassName('danger'),
+        )}
+        data-work-authorization={permission.decision}
+      >
+        <Icon
+          name={denied ? ShieldX : ShieldCheck}
+          size="sm"
+          aria-hidden="true"
+          className={denied ? undefined : 'text-status-success'}
+        />
+        <AuthorizationWord decision={permission.decision} />
+      </span>
+    </>
+  );
+}
+
+function AuthorizationWord({ decision }: { decision: 'allowed' | 'denied' }) {
+  const { t } = useTranslation();
+
+  return <>{t(`managedSession.permissionState.${decision}`)}</>;
+}
+
+/** What a tool group holds by kind ("5 commands · 1 read"), from the Runtime's `operation`. */
+function burstKinds(burst: ToolBurstEntry, t: TFunction): string | undefined {
+  const counts = new Map<ToolOperation, number>();
+  for (const item of burst.items) {
+    const operation = item.operation ?? 'other';
+    counts.set(operation, (counts.get(operation) ?? 0) + 1);
+  }
+
+  const kinds = toolOperationOrder
+    .filter((operation) => counts.has(operation))
+    .map((operation) =>
+      t(`managedSession.workSummary.kind.${operation}`, { count: counts.get(operation) }),
+    );
+
+  return kinds.length > 0 ? kinds.join(' · ') : undefined;
 }
 
 /** The Work ids an entry of a run holds: a tool group's members, or the one item. */
@@ -102,9 +163,12 @@ function InteractionTimelineItem({ item }: { item: WorkSummary }) {
  * plain completion), never only by the marker's colour — `Timeline.Marker` is `aria-hidden`. */
 function ToolTimelineItem({
   item,
+  permission,
   onOpenActions,
 }: {
   item: WorkSummary;
+  /** The permission folded into this tool Work, when one answered for it. */
+  permission?: WorkSummary;
   onOpenActions: OpenActions;
 }) {
   const { t } = useTranslation();
@@ -124,8 +188,12 @@ function ToolTimelineItem({
                 {srStatus}
               </>
             }
-            meta={withFailure(meta, item, t)}
-            onOpen={item.actionCount ? () => onOpenActions(item.workId, title) : undefined}
+            meta={withFailure(withAuthorization(meta, permission), item, t)}
+            onOpen={
+              item.actionCount
+                ? () => onOpenActions(item.workId, title, permission?.workId)
+                : undefined
+            }
           />
         }
       />
@@ -139,9 +207,11 @@ function ToolTimelineItem({
  * tools are ever grouped (`groupChapterEntries`), so the state word never shows here. */
 function GroupedToolRow({
   item,
+  permission,
   onOpenActions,
 }: {
   item: WorkSummary;
+  permission?: WorkSummary;
   onOpenActions: OpenActions;
 }) {
   const { t } = useTranslation();
@@ -156,8 +226,10 @@ function GroupedToolRow({
           {srStatus}
         </Typography>
       }
-      meta={meta}
-      onOpen={item.actionCount ? () => onOpenActions(item.workId, title) : undefined}
+      meta={withAuthorization(meta, permission)}
+      onOpen={
+        item.actionCount ? () => onOpenActions(item.workId, title, permission?.workId) : undefined
+      }
     />
   );
 }
@@ -178,11 +250,13 @@ function ToolBurstTimelineItem({
   burst,
   entryId,
   view,
+  authorizations,
   onOpenActions,
 }: {
   burst: ToolBurstEntry;
   entryId: string;
   view: ViewStore<WorkViewState>;
+  authorizations: Authorizations;
   onOpenActions: OpenActions;
 }) {
   const { t } = useTranslation();
@@ -206,12 +280,17 @@ function ToolBurstTimelineItem({
               {t('managedSession.workInspector.toolBurst', { count: burst.items.length })}
             </Collapsible.Trigger>
           }
+          description={burstKinds(burst, t)}
         >
           <Collapsible.Content>
             <ul className="grid gap-3 pt-1">
               {burst.items.map((item) => (
                 <li key={item.workId} className="min-w-0">
-                  <GroupedToolRow item={item} onOpenActions={onOpenActions} />
+                  <GroupedToolRow
+                    item={item}
+                    permission={authorizations.get(item.workId)}
+                    onOpenActions={onOpenActions}
+                  />
                 </li>
               ))}
             </ul>
@@ -232,10 +311,13 @@ function ToolBurstTimelineItem({
 export function WorkOperationsTimeline({
   entries,
   view,
+  authorizations,
   onOpenActions,
 }: {
   entries: readonly ChapterEntry[];
   view: ViewStore<WorkViewState>;
+  /** Permissions folded into the tool Work they were for (`foldPermissions`). */
+  authorizations: Authorizations;
   onOpenActions: OpenActions;
 }) {
   const { t } = useTranslation();
@@ -257,12 +339,18 @@ export function WorkOperationsTimeline({
             burst={entry}
             entryId={keys[index]!}
             view={view}
+            authorizations={authorizations}
             onOpenActions={onOpenActions}
           />
         ) : entry.item.kind === 'interaction' ? (
           <InteractionTimelineItem key={keys[index]} item={entry.item} />
         ) : (
-          <ToolTimelineItem key={keys[index]} item={entry.item} onOpenActions={onOpenActions} />
+          <ToolTimelineItem
+            key={keys[index]}
+            item={entry.item}
+            permission={authorizations.get(entry.item.workId)}
+            onOpenActions={onOpenActions}
+          />
         ),
       )}
     </Timeline>

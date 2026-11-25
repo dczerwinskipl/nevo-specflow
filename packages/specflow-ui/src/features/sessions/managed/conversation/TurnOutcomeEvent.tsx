@@ -1,0 +1,83 @@
+import { useTranslation } from 'react-i18next';
+import { GitCompare } from 'lucide-react';
+import { Alert, Button, Collapsible, Typography } from '@nevo/ui';
+import { outcomeCause } from '../outcomeReason';
+import { workStateTone } from '../workStatus';
+import type { TurnOutcomeItem } from './transcriptItems';
+
+/**
+ * How a Turn that did not simply complete ended (full-session.md "Turn outcome"): ONE event at the
+ * end of the Turn, never repeated in the tool rows, as a SpecFlow notice row or in the Work history
+ * link. What happened (the title), the actual cause, what it may have left behind (only when the
+ * Turn opened tool actions that change the workspace) and what to do about it:
+ *
+ * - **Review workspace changes** opens the Specification's uncommitted changes, the view the app
+ *   already has for them, when the Session belongs to a Specification.
+ * - **View technical details** discloses the Runtime's error code and message.
+ *
+ * Failed tool actions stay in the stage's tool row only. The tone follows the shared state
+ * vocabulary (`workStatus.ts`): failed is danger, stopped and interrupted attention.
+ */
+export function TurnOutcomeEvent({
+  item,
+  onReviewChanges,
+}: {
+  item: TurnOutcomeItem;
+  /** Opens the workspace changes; absent when this Session has no Specification to show them for. */
+  onReviewChanges?: () => void;
+}) {
+  const { t } = useTranslation();
+  const tone = workStateTone(item.outcome);
+  const review = item.workspaceMayHaveChanged && onReviewChanges;
+
+  return (
+    <article data-entry-id={item.id} data-turn-outcome={item.outcome} className="grid min-w-0">
+      <Alert
+        tone={tone === 'danger' ? 'danger' : 'attention'}
+        title={t(`managedSession.workSummary.outcome.${item.outcome}`)}
+        actions={
+          review ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              leadingIcon={GitCompare}
+              onClick={onReviewChanges}
+            >
+              {t('managedSession.turnOutcome.reviewChanges')}
+            </Button>
+          ) : undefined
+        }
+      >
+        <p className="text-content-primary">
+          {outcomeCause(item.outcome, item.error, item.notices, t)}
+        </p>
+        {item.workspaceMayHaveChanged && (
+          <p className="mt-1">{t('managedSession.turnOutcome.consequence')}</p>
+        )}
+        {item.error && (
+          <div className="mt-2">
+            <Collapsible density="inline" className="w-full">
+              <Collapsible.Trigger>{t('managedSession.turnOutcome.details')}</Collapsible.Trigger>
+              <Collapsible.Content>
+                <Typography
+                  as="p"
+                  variant="body-sm"
+                  className="font-mono text-content-secondary [overflow-wrap:anywhere]"
+                >
+                  {item.error.code}
+                </Typography>
+                <Typography
+                  as="p"
+                  variant="body-sm"
+                  className="text-content-secondary [overflow-wrap:anywhere]"
+                >
+                  {item.error.message}
+                </Typography>
+              </Collapsible.Content>
+            </Collapsible>
+          </div>
+        )}
+      </Alert>
+    </article>
+  );
+}

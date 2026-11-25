@@ -1,30 +1,43 @@
 import type { TFunction } from 'i18next';
+import type { ConversationEntry } from '@nevo/specflow-contracts/sessions';
 
-/** Reasons the Runtime records without its own conversation text, so the UI must say why. */
-const explained = ['TURN_CONFLICT', 'PROCESS_STOPPED'] as const;
+type TurnError = NonNullable<ConversationEntry['error']>;
 
-/**
- * Why a Turn ended and what to do, from its outcome entry's error code (full-session.md "Outcome
- * reason"). Other codes come with the provider's own Commentary in the conversation, so they add no
- * second line here.
- */
 /** Stable failure reasons the UI words itself (`TurnError.reason`). */
 const knownReasons = ['claude-policy-check-failed'] as const;
+/** Error codes the Runtime records without words of its own in the conversation. */
+const explainedCodes = ['TURN_CONFLICT', 'PROCESS_STOPPED'] as const;
 
-export function outcomeReason(
-  error: string | { code: string; message: string; reason?: string } | undefined,
+const includes = <T extends string>(list: readonly T[], value: string | undefined): value is T =>
+  value !== undefined && (list as readonly string[]).includes(value);
+
+/**
+ * Why a Turn that did not complete ended (full-session.md "Outcome reason"), in this order: a
+ * stable reason the UI words itself; else what SpecFlow said about it in the Turn (its error and
+ * warning notices, the actual cause, e.g. a process it stopped); else an error code the Runtime
+ * records without words of its own; else the Runtime's own message; else the outcome in plain words.
+ */
+export function outcomeCause(
+  outcome: 'failed' | 'cancelled' | 'interrupted',
+  error: TurnError | undefined,
+  notices: readonly string[],
   t: TFunction,
-): string | undefined {
-  const code = typeof error === 'string' ? error : error?.code;
-  const reason = typeof error === 'string' ? undefined : error?.reason;
-  if (reason && typeof error !== 'string') {
-    // A reason the UI knows in its own words; any other in the Runtime's message.
-    return (knownReasons as readonly string[]).includes(reason)
-      ? t(`managedSession.outcomeReason.${reason as (typeof knownReasons)[number]}`)
-      : error!.message;
+): string {
+  if (includes(knownReasons, error?.reason)) {
+    return t(`managedSession.outcomeReason.${error.reason}`);
   }
 
-  return code && (explained as readonly string[]).includes(code)
-    ? t(`managedSession.outcomeReason.${code as (typeof explained)[number]}`)
-    : undefined;
+  if (notices.length > 0) {
+    return notices.join(' ');
+  }
+
+  if (includes(explainedCodes, error?.code)) {
+    return t(`managedSession.outcomeReason.${error.code}`);
+  }
+
+  const message = error?.message;
+
+  return message !== undefined && message !== ''
+    ? message
+    : t(`managedSession.outcomeReason.${outcome}`);
 }

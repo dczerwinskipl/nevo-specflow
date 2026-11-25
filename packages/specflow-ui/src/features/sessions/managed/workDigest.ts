@@ -1,8 +1,6 @@
 import type { TFunction } from 'i18next';
 import type { ToolOperation, WorkDigest } from '@nevo/specflow-contracts/sessions';
 import type { LiveActivity, WorkBlockModel } from './workBlockModel';
-import { workStateTone } from './workStatus';
-import { outcomeReason } from './outcomeReason';
 
 /** Display order: what changed the workspace and what verified it first, lookups after. */
 export const toolOperationOrder: readonly ToolOperation[] = [
@@ -26,8 +24,6 @@ export interface WorkBlockText {
   summary?: string;
   /** Failed tool actions, e.g. "Nie powiodło się: 1 uruchomienie testów". */
   failed?: string;
-  /** The Turn's own terminal outcome when it was not a plain completion. */
-  outcome?: { text: string; tone: 'danger' | 'attention'; reason?: string };
   /** What is happening right now (active Turn only). */
   live?: string;
 }
@@ -63,27 +59,6 @@ function liveText(live: LiveActivity, t: TFunction): string {
   }
 }
 
-/** The Turn's non-plain terminal outcome, toned by the SAME state vocabulary Work history uses for
- * its rows (`workStatus.ts`), so "interrupted" is attention-toned in both views, never re-decided. */
-function outcomeText(
-  outcome: string | undefined,
-  error: string | undefined,
-  t: TFunction,
-): WorkBlockText['outcome'] {
-  if (outcome !== 'failed' && outcome !== 'cancelled' && outcome !== 'interrupted') {
-    return undefined;
-  }
-
-  const tone = workStateTone(outcome);
-  const reason = outcomeReason(error, t);
-
-  return {
-    text: t(`managedSession.workSummary.outcome.${outcome}`),
-    tone: tone === 'danger' ? 'danger' : 'attention',
-    ...(reason ? { reason } : {}),
-  };
-}
-
 export function describeWorkBlock(block: WorkBlockModel, t: TFunction): WorkBlockText {
   const { digest } = block;
   let summary: string | undefined;
@@ -116,7 +91,6 @@ export function describeWorkBlock(block: WorkBlockModel, t: TFunction): WorkBloc
       failedKinds.length > 0
         ? t('managedSession.workSummary.failed', { list: failedKinds.join(', ') })
         : undefined,
-    outcome: outcomeText(block.outcome, block.outcomeError, t),
     live: block.live ? liveText(block.live, t) : undefined,
   };
 }

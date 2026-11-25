@@ -20,6 +20,18 @@ import {
   WorkInspectorHost,
   openWork,
 } from './managedSession.workInspectorHost.stories-support';
+import { resetWorkHistoryView } from './workHistoryViewPreference';
+
+/** Every operation its own row (the detailed view), for a story that checks single rows. */
+function detailedView() {
+  window.localStorage.setItem('nevo:work-history:view', 'detailed');
+  resetWorkHistoryView();
+
+  return () => {
+    window.localStorage.removeItem('nevo:work-history:view');
+    resetWorkHistoryView();
+  };
+}
 
 /**
  * The MUST-FIX Work (L2) timeline rebuild: Commentary-grouped chapters, a distinct collapsible
@@ -121,11 +133,12 @@ export const Default: Story = {
         'Two approaches could fix this; the narrower one risks missing a related case.',
       ),
     ).toBeVisible();
-    // The three happy-path reads/searches right after Commentary are a short run (below
-    // `workGrouping.TOOL_BURST_MIN_SIZE`): live owner review #2 — don't wrap 1-4 operations in a
-    // synthetic "N tool actions" container, just show the rows. So every one of them is its own
-    // directly visible row, with no trigger to click first.
-    await expect(canvas.getByText('Read file admission.mjs')).toBeVisible();
+    // Compact by default (owner, PR 169): the happy-path reads/searches right after Commentary are
+    // one group row, collapsed; expanding it shows each of them as its own row.
+    const group = canvas.getByRole('button', { name: '3 działania narzędzia' });
+    await expect(canvas.getByText('Read file admission.mjs')).not.toBeVisible();
+    await userEvent.click(group);
+    await expect(await canvas.findByText('Read file admission.mjs')).toBeVisible();
     await expect(canvas.getByText('Search code WORKSPACE_WRITER_BLOCKED')).toBeVisible();
     await expect(canvas.getByText('Search code readiness-policy')).toBeVisible();
     // Never a fabricated "0 ms": every fixture item here has identical createdAt/updatedAt, which
@@ -181,6 +194,7 @@ export const LongRunGrouping: Story = {
  */
 export const TypeFilterShowsOnlyItsKind: Story = {
   tags: ['integration'],
+  beforeEach: detailedView,
   args: {
     api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
       [actionsWorkId]: mixedWorkTimelineActions(),
@@ -216,9 +230,7 @@ export const TypeFilterShowsOnlyItsKind: Story = {
       canvas.queryByText('Checking the implementation and locating the admission path…'),
     ).not.toBeInTheDocument();
 
-    // The three happy-path tool reads/searches left after filtering are a short run — below
-    // `workGrouping.TOOL_BURST_MIN_SIZE` — so they stay their own individually visible rows, with
-    // nothing to click first.
+    // In the detailed view the tool reads/searches left after filtering are their own visible rows.
     await expect(canvas.getByText('Read file admission.mjs')).toBeVisible();
     await expect(canvas.getByText('Search code WORKSPACE_WRITER_BLOCKED')).toBeVisible();
     await expect(canvas.getByText('Search code readiness-policy')).toBeVisible();
@@ -308,12 +320,12 @@ export const ToolActionDetails: Story = {
       await canvas.findByText('Updated src/admission.mjs (1 replacement, lines 42-44).'),
     ).toBeVisible();
     await expect(canvas.getAllByText('Parametry')).toHaveLength(3);
-    await expect(canvas.getAllByText('Odpowiedź narzędzia')).toHaveLength(3);
+    await expect(canvas.getAllByText('Wynik')).toHaveLength(3);
     // Parameters and response sit on the one product code view (as a document's source), read-only.
     // The JSON parameters the product pretty-printed are coloured and numbered; the verbatim
     // response is neither — its lines are the tool's own, so no gutter numbers them.
     const inputs = await canvas.findAllByRole('textbox', { name: 'Parametry' });
-    const outputs = await canvas.findAllByRole('textbox', { name: 'Odpowiedź narzędzia' });
+    const outputs = await canvas.findAllByRole('textbox', { name: 'Wynik' });
     await expect(inputs).toHaveLength(3);
     await expect(outputs).toHaveLength(3);
     for (const block of [...inputs, ...outputs]) {
@@ -493,7 +505,8 @@ export const ClaudeTurn: Story = {
     const subjects = await canvas.findAllByText(
       'mkdir -p /tmp/dummy-job && cd /tmp/dummy-job && ./hello.sh …',
     );
-    await expect(subjects).toHaveLength(2);
+    // The command and the permission it needed are one row (`foldPermissions`).
+    await expect(subjects).toHaveLength(1);
     for (const subject of subjects) {
       await expect(subject).toHaveAttribute('data-work-subject');
       await expect(getComputedStyle(subject).fontWeight).toBe('400');
@@ -525,7 +538,7 @@ export const ClaudeTurn: Story = {
     ).toBeInTheDocument();
     // The headers and responses name files relative to the worktree (the raw parameters keep
     // the tool's own absolute paths).
-    for (const response of canvas.getAllByRole('textbox', { name: 'Odpowiedź narzędzia' })) {
+    for (const response of canvas.getAllByRole('textbox', { name: 'Wynik' })) {
       await expect(response.textContent).not.toContain('C:/Users');
     }
 

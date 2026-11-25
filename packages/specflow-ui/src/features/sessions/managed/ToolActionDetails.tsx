@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -373,9 +373,12 @@ function ToolActionContent({
   source,
   withHeader,
   asHeading = false,
+  authorization,
 }: {
   item: ToolActionSummary;
   source: ContentSource;
+  /** How the permission for this action was answered, between what it ran and its result. */
+  authorization?: ReactNode;
   /** Render the header (`ToolActionHeader`) as the first part of the content. */
   withHeader: boolean;
   /** The single-action screen's own heading (no parent Work title above it). */
@@ -405,6 +408,7 @@ function ToolActionContent({
           lineNumbers={block.lineNumbers}
         />
       ))}
+      {authorization}
       {output.data && (
         // Shown with workspace paths relative; Copy keeps the tool's own text.
         <CodeSection
@@ -502,14 +506,24 @@ export function SingleToolActionDetail({
   item,
   source,
   withHeader,
+  authorization,
 }: {
   item: ToolActionSummary;
   source: ContentSource;
+  authorization?: ReactNode;
   /**
    * Heads the content with the action's header (as the screen's heading). False when the workspace
    * already shows it in the detail header row (`SingleToolActionHeader`, `detailHeader`).
    */
   withHeader: boolean;
 }) {
-  return <ToolActionContent item={item} source={source} withHeader={withHeader} asHeading />;
+  return (
+    <ToolActionContent
+      item={item}
+      source={source}
+      withHeader={withHeader}
+      asHeading
+      authorization={authorization}
+    />
+  );
 }

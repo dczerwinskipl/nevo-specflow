@@ -1,10 +1,5 @@
-import type {
-  ConversationEntry,
-  SessionSnapshot,
-  WorkDigest,
-} from '@nevo/specflow-contracts/sessions';
+import type { SessionSnapshot, WorkDigest } from '@nevo/specflow-contracts/sessions';
 
-type Entry = ConversationEntry;
 type CurrentActivity = NonNullable<SessionSnapshot['currentActivity']>;
 type ActiveTurn = NonNullable<SessionSnapshot['activeTurn']>;
 
@@ -50,139 +45,22 @@ export function liveActivity(
 }
 
 /**
- * One Turn's Work in the Conversation (full-session.md "Work block"): every `work-summary`
- * entry of the Turn folded into a single block, plus — while the Turn is live — what is happening
- * right now, and — once it has ended — its terminal outcome.
- *
- * The real runtime emits one `work-summary` entry per tool Work it opens (title only, see
- * `specflow-runtime/.../persistence/facts.ts`), so rendering entries 1:1 would put raw tool titles
- * into the chat. The block is the only place a Turn's Work appears in Primary.
+ * One stage of a Turn's tool Work in the Conversation (full-session.md "Conversation"): the tool
+ * Work the agent did after a Commentary, plus, on the active Turn's last stage, what is happening
+ * right now. Built by `transcriptItems` from the Turn's `work-summary` entries, so raw tool titles
+ * never become chat rows. How the Turn ended is its own event (`TurnOutcomeItem`), never part of a
+ * stage.
  */
 export interface WorkBlockModel {
   turnId: string;
-  /** Stable key/anchor: the Turn's last folded entry, or the Turn itself while nothing is folded. */
+  /** Stable key/anchor: the stage's last `work-summary` entry, or the Turn while nothing is there. */
   id: string;
-  /** Tool Work the client has loaded for this Turn (one real entry per tool Work). */
+  /** Tool Work the client has loaded for this stage (one real entry per tool Work). */
   actionCount: number;
-  /** The Turn may continue into older, not-yet-loaded history: `actionCount` is a lower bound. */
+  /** The stage may continue into older, not-yet-loaded history: `actionCount` is a lower bound. */
   partial: boolean;
-  /** Runtime's by-operation ToolAction digest from the Turn's latest `work-summary` entry; absent
-   * for Turns recorded before Runtime maintained it. */
+  /** This stage's share of the Runtime's by-operation ToolAction digest; absent when unknown. */
   digest?: WorkDigest;
-  /** Present only while this is the Session's active Turn and something is happening in it. */
+  /** Present only on the active Turn's last stage while something is happening in it. */
   live?: LiveActivity;
-  /** Terminal outcome folded in from the Turn's `outcome` entry (block owns it; no second row). */
-  outcome?: string;
-  /** The error code of that `outcome` entry, when the Turn ended with one. */
-  outcomeError?: string;
-}
-
-export type ConversationItem =
-  { type: 'entry'; entry: Entry } | { type: 'work'; block: WorkBlockModel };
-
-/**
- * Orders the Conversation as entries plus at most one Work block per Turn.
- *
- * Placement: a settled Turn's block takes the position of its last `work-summary` entry (Commentary
- * before it stays before it). The active Turn's block sits at the end of that Turn — before its
- * streaming answer if one already exists — so "what is happening now" is always the Turn's latest
- * line.
- *
- * Single owner for terminal state: when a Turn has a block, the block shows its failed/cancelled/
- * interrupted outcome and the separate `outcome` entry is dropped; a Turn with no Work keeps its
- * outcome row (the only place that fact exists then).
- *
- * The live line comes from `liveActivity` (authoritative projection), never from the last entry.
- */
-export function conversationItems(
-  entries: readonly Entry[],
-  options: {
-    activeTurn?: ActiveTurn;
-    currentActivity?: CurrentActivity;
-    hasOlder: boolean;
-  },
-): ConversationItem[] {
-  const { activeTurn, currentActivity, hasOlder } = options;
-  const activeTurnId = activeTurn?.turnId;
-  const live = liveActivity(activeTurn, currentActivity);
-
-  const byTurn = new Map<
-    string,
-    { work: Entry[]; outcome?: Entry; firstIndex: number; lastIndex: number; answerIndex?: number }
-  >();
-  entries.forEach((entry, index) => {
-    const turn = byTurn.get(entry.turnId) ?? { work: [], firstIndex: index, lastIndex: index };
-    turn.lastIndex = index;
-    if (entry.kind === 'work-summary') {
-      turn.work.push(entry);
-    } else if (entry.kind === 'outcome') {
-      turn.outcome = entry;
-    } else if (entry.kind === 'answer' && turn.answerIndex === undefined) {
-      turn.answerIndex = index;
-    }
-
-    byTurn.set(entry.turnId, turn);
-  });
-
-  // `before[i]`: block rendered immediately before entry i (or at the end when i === length).
-  const before = new Map<number, WorkBlockModel[]>();
-  let liveBlockPlaced = false;
-  for (const [turnId, turn] of byTurn) {
-    const isLive = live !== undefined && turnId === activeTurnId;
-    if (turn.work.length === 0 && !isLive) {
-      continue;
-    }
-
-    const lastWork = turn.work.at(-1);
-    const digest = [...turn.work].reverse().find((entry) => entry.digest)?.digest;
-    const block: WorkBlockModel = {
-      turnId,
-      id: lastWork?.id ?? `work-${turnId}`,
-      actionCount: turn.work.length,
-      partial: hasOlder && turn.firstIndex === 0,
-      ...(digest ? { digest } : {}),
-      ...(isLive ? { live } : {}),
-      ...(!isLive && turn.outcome ? { outcome: turn.outcome.text.text } : {}),
-      ...(!isLive && turn.outcome?.error ? { outcomeError: turn.outcome.error.code } : {}),
-    };
-    const position = isLive ? (turn.answerIndex ?? turn.lastIndex + 1) : entries.indexOf(lastWork!);
-    before.set(position, [...(before.get(position) ?? []), block]);
-    liveBlockPlaced ||= isLive;
-  }
-
-  const items: ConversationItem[] = [];
-  const emitBefore = (position: number) => {
-    for (const block of before.get(position) ?? []) {
-      items.push({ type: 'work', block });
-    }
-  };
-
-  entries.forEach((entry, index) => {
-    emitBefore(index);
-    const turn = byTurn.get(entry.turnId)!;
-    const foldedOutcome =
-      entry.kind === 'outcome' &&
-      turn.work.length > 0 &&
-      !(live !== undefined && entry.turnId === activeTurnId);
-    if (entry.kind !== 'work-summary' && !foldedOutcome) {
-      items.push({ type: 'entry', entry });
-    }
-  });
-  emitBefore(entries.length);
-
-  // An active Turn whose own entries are not in the loaded window yet still shows what it does now.
-  if (live && activeTurnId && !liveBlockPlaced) {
-    items.push({
-      type: 'work',
-      block: {
-        turnId: activeTurnId,
-        id: `work-${activeTurnId}`,
-        actionCount: 0,
-        partial: hasOlder,
-        live,
-      },
-    });
-  }
-
-  return items;
 }

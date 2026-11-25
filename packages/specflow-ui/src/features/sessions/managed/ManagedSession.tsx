@@ -23,12 +23,10 @@ import {
   MenuTrigger,
   MessageComposer,
   Spinner,
-  StatusIndicator,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-  Typography,
   WorkspaceHeader,
   useRegisterPinnedSecondaryTab,
   useSecondaryNavigation,
@@ -57,7 +55,7 @@ import {
   selectedWorkModeId,
 } from './workModes';
 import { createWorkInspector } from './WorkInspector';
-import { StepBriefLine, createStepBriefStack } from './brief/StepBrief';
+import { StepBriefMessage, createStepBriefStack } from './brief/StepBrief';
 import { SessionContext, sessionContextStack } from './context/SessionContext';
 import { SessionContextSourceProvider } from './context/sessionContextValue';
 import { useDropNarrowContextOnSplit, useSessionSidePanel } from './context/useSessionSidePanel';
@@ -84,8 +82,11 @@ import type {
 } from './context/sessionContextTypes';
 
 import { WorkBlock } from './WorkBlock';
-import { outcomeReason } from './outcomeReason';
-import { conversationItems, liveActivity } from './workBlockModel';
+import { liveActivity } from './workBlockModel';
+import { transcriptItems } from './conversation/transcriptItems';
+import { TurnOutcomeEvent } from './conversation/TurnOutcomeEvent';
+import { AgentIdentity } from './conversation/AgentIdentity';
+import { ComposerNotice } from './conversation/ComposerNotice';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import type { ManagedSessionsApi } from './api';
 import { newId } from '../../../shared/ids/newId';
@@ -112,17 +113,15 @@ function EntryRow({
   entry,
   api,
   sessionId,
-  outcomeLabels,
   onGrow,
-  onOpenBrief,
 }: {
-  /** Never a `work-summary` entry: those are folded into a `WorkBlock` by `conversationItems`. */
+  /**
+   * A request, an answer, a Commentary or a SpecFlow notice: `transcriptItems` turns briefs, tool
+   * Work and Turn outcomes into items of their own.
+   */
   entry: ConversationEntry;
   api: ManagedSessionsApi;
   sessionId: string;
-  outcomeLabels: Record<string, string>;
-  /** Opens what the agent received for a request SpecFlow wrote (`origin`). */
-  onOpenBrief: (entry: ConversationEntry) => void;
   /** Forwarded to every `ReadableText` below — see its own doc comment in `MessageText.tsx`. */
   onGrow: () => void;
 }) {
@@ -131,20 +130,6 @@ function EntryRow({
   const srLabel = <span className="sr-only">{kindLabel}</span>;
   const textRef = useRef<ReadableTextHandle>(null);
   const handleCopy = () => textRef.current?.copy() ?? Promise.resolve(false);
-
-  if (entry.kind === 'request' && entry.origin?.kind === 'specflow-step-brief') {
-    // SpecFlow's own brief to the agent, never the owner's words: its line, the brief one tap away.
-    return (
-      <article
-        data-entry-id={entry.id}
-        data-entry-origin={entry.origin.kind}
-        className="grid min-w-0"
-      >
-        {srLabel}
-        <StepBriefLine origin={entry.origin} onOpen={() => onOpenBrief(entry)} />
-      </article>
-    );
-  }
 
   if (entry.kind === 'request') {
     return (
@@ -213,76 +198,13 @@ function EntryRow({
     );
   }
 
-  if (entry.kind === 'commentary') {
-    // Plain muted prose, no icon, no container: a pulse icon does not fit commentary semantically,
-    // and it reads fine as Markdown alone. `text-content-muted` (not `-secondary`) so it is
-    // clearly quieter than the final answer below it without a box to lean on, while still
-    // reading against the page background.
-    return (
-      <article data-entry-id={entry.id} className="grid min-w-0 gap-1 text-content-muted">
-        {srLabel}
-        <ReadableText api={api} sessionId={sessionId} value={entry.text} onGrow={onGrow} />
-      </article>
-    );
-  }
-
-  // 'outcome' (only for a Turn with no Work block — `conversationItems` folds it into the block
-  // otherwise, so the fact appears once): no celebratory chrome on completion; a quiet semantic
-  // marker on failure/cancel. No "view work" link here: by construction this branch only
-  // ever renders for a Turn with zero `work-summary` entries, so that link would open an empty,
-  // dead-end Work history panel every time.
-  // Why it ended and what to do, when the Runtime recorded no Commentary of its own for it.
-  const reason = outcomeReason(entry.error, t);
-  // A failed or interrupted Turn is an error/warning state with its tone's icon, not a quiet
-  // bullet; a cancelled one (the owner's own stop) keeps the neutral marker.
-  const label = outcomeLabels[entry.text.text] ?? entry.text.text;
-  const warning =
-    entry.text.text === 'failed'
-      ? ('danger' as const)
-      : entry.text.text === 'interrupted'
-        ? ('attention' as const)
-        : undefined;
-
+  // The agent's Commentary (the first line of a work stage): plain muted prose, no icon, no
+  // container. `text-content-muted` (not `-secondary`) so it is clearly quieter than the final
+  // answer without a box to lean on, while still reading against the page background.
   return (
-    <article
-      data-entry-id={entry.id}
-      className={cn(
-        'grid min-w-0 gap-1',
-        entry.text.text === 'failed' ? 'text-content-error' : 'text-content-secondary',
-      )}
-    >
+    <article data-entry-id={entry.id} className="grid min-w-0 gap-1 text-content-muted">
       {srLabel}
-      {warning ? (
-        <InlineNote tone={warning}>
-          <span
-            className={cn(
-              'font-semibold',
-              warning === 'danger' ? 'text-content-error' : 'text-content-primary',
-            )}
-          >
-            {label}
-          </span>
-        </InlineNote>
-      ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          {/* The marker's accessible name names the specific outcome ("Zatrzymano"), not the
-              generic entry-kind label ("Wynik tury"). */}
-          {entry.text.text !== 'completed' && (
-            <StatusIndicator tone="neutral" aria-label={label} decorative={false} />
-          )}
-          <ReadableText
-            api={api}
-            sessionId={sessionId}
-            value={{ ...entry.text, text: label }}
-            onGrow={onGrow}
-          />
-        </div>
-      )}
-      {reason && (
-        <Typography as="p" variant="body-sm" className="text-content-secondary">
-          {reason}
-        </Typography>
-      )}
+      <ReadableText api={api} sessionId={sessionId} value={entry.text} onGrow={onGrow} />
     </article>
   );
 }
@@ -317,7 +239,10 @@ function ManagedSessionConversation({
   unarchive,
   composerFocusRequested,
   onComposerFocused,
+  reviewChanges,
 }: {
+  /** Opens the Session's Specification's workspace changes, when it has one. */
+  reviewChanges?: () => void;
   /** The Unarchive command (shared with the header menu), pressed from the archived bar. */
   unarchive: SessionCommandView & { run: () => void };
   /** Focus the Composer editor once it is back (a Restore succeeded). */
@@ -627,13 +552,6 @@ function ManagedSessionConversation({
       : navigation.open(briefStack, params));
   };
 
-  const outcomeLabels: Record<string, string> = {
-    completed: t('managedSession.outcome.completed'),
-    failed: t('managedSession.outcome.failed'),
-    cancelled: t('managedSession.outcome.cancelled'),
-    interrupted: t('managedSession.outcome.interrupted'),
-  };
-
   // Composer toolbar's "+" entry (full-session.md "Composer"). Attachments are local-only React
   // state: session-composer-design.md §1 documents the upload contract as a known gap, so nothing
   // here is actually sent anywhere — they stay in the composer after Send and the chips carry the
@@ -738,29 +656,83 @@ function ManagedSessionConversation({
                       viewOnly={viewOnly}
                     />
                   )}
-                  {conversationItems(snapshot.entries, {
+                  {transcriptItems(snapshot.entries, {
                     activeTurn: snapshot.activeTurn,
                     currentActivity: snapshot.currentActivity,
                     hasOlder: snapshot.history.hasOlder,
-                  }).map((item) =>
-                    item.type === 'work' ? (
-                      <WorkBlock
-                        key={item.block.id}
-                        block={item.block}
-                        onInspect={() => openWork(item.block.turnId)}
-                      />
-                    ) : (
-                      <EntryRow
-                        key={item.entry.id}
-                        entry={item.entry}
-                        api={api}
-                        sessionId={sessionId}
-                        outcomeLabels={outcomeLabels}
-                        onGrow={layoutChanged}
-                        onOpenBrief={openBrief}
-                      />
-                    ),
-                  )}
+                  }).map((item) => {
+                    switch (item.type) {
+                      case 'brief':
+                        return (
+                          <article
+                            key={item.entry.id}
+                            data-entry-id={item.entry.id}
+                            data-entry-origin={item.origin.kind}
+                            className="grid min-w-0"
+                          >
+                            <span className="sr-only">{t('managedSession.entry.request')}</span>
+                            <StepBriefMessage
+                              origin={item.origin}
+                              text={item.entry.text}
+                              onOpen={() => openBrief(item.entry)}
+                            />
+                          </article>
+                        );
+                      case 'agent':
+                        return (
+                          <AgentIdentity
+                            key={item.id}
+                            providerId={snapshot.session.providerId}
+                            providerTitle={
+                              snapshot.session.providerTitle ??
+                              provider?.title ??
+                              snapshot.session.providerId
+                            }
+                            modelTitle={snapshot.session.modelTitle ?? snapshot.session.modelId}
+                          />
+                        );
+                      case 'stage':
+                        // One work stage: its Commentary and, right under it, its tool row — one
+                        // visually related group (tighter than the conversation's own rhythm).
+                        return (
+                          <div key={item.id} data-work-stage="" className="grid min-w-0 gap-2">
+                            {item.commentary.map((entry) => (
+                              <EntryRow
+                                key={entry.id}
+                                entry={entry}
+                                api={api}
+                                sessionId={sessionId}
+                                onGrow={layoutChanged}
+                              />
+                            ))}
+                            {item.block && (
+                              <WorkBlock
+                                block={item.block}
+                                onInspect={() => openWork(item.turnId)}
+                              />
+                            )}
+                          </div>
+                        );
+                      case 'outcome':
+                        return (
+                          <TurnOutcomeEvent
+                            key={item.id}
+                            item={item}
+                            onReviewChanges={reviewChanges}
+                          />
+                        );
+                      default:
+                        return (
+                          <EntryRow
+                            key={item.entry.id}
+                            entry={item.entry}
+                            api={api}
+                            sessionId={sessionId}
+                            onGrow={layoutChanged}
+                          />
+                        );
+                    }
+                  })}
                 </div>
                 {/* "Jump to latest": a genuinely independent floating control — deliberately a
                     SIBLING of `composerOverlayNode` below, never a flow child inside it, so its
@@ -871,83 +843,100 @@ function ManagedSessionConversation({
                     )}
                   >
                     {snapshot.interaction && (
-                      <InteractionPrompt
-                        key={snapshot.interaction.interactionId}
-                        interaction={snapshot.interaction}
-                        busy={state.commandBusy || !snapshot.session.capabilities.manage}
-                        onRespond={(response) =>
-                          void feed.respond(snapshot.interaction!.interactionId, response)
-                        }
-                      />
+                      <ComposerNotice className="rounded-control">
+                        <InteractionPrompt
+                          key={snapshot.interaction.interactionId}
+                          interaction={snapshot.interaction}
+                          busy={state.commandBusy || !snapshot.session.capabilities.manage}
+                          onRespond={(response) =>
+                            void feed.respond(snapshot.interaction!.interactionId, response)
+                          }
+                        />
+                      </ComposerNotice>
                     )}
                     {unknownTurn && (
-                      <UnknownTurnNotice
-                        feed={feed}
-                        canManage={snapshot.session.capabilities.manage}
-                        reconcile={
-                          state.reconcile?.turnId === snapshot.activeTurn?.turnId
-                            ? state.reconcile
-                            : undefined
-                        }
-                      />
+                      <ComposerNotice>
+                        <UnknownTurnNotice
+                          feed={feed}
+                          canManage={snapshot.session.capabilities.manage}
+                          reconcile={
+                            state.reconcile?.turnId === snapshot.activeTurn?.turnId
+                              ? state.reconcile
+                              : undefined
+                          }
+                        />
+                      </ComposerNotice>
                     )}
                     {state.pendingUnreadable ? (
-                      <Alert tone="attention" title={t('managedSession.savedRequestUnreadable')}>
-                        <p>{t('managedSession.savedRequestUnreadableBody')}</p>
-                        <Button size="sm" onClick={() => feed.discardPending()}>
-                          {t('managedSession.discardSavedRequest')}
-                        </Button>
-                      </Alert>
-                    ) : (
-                      state.commandError &&
-                      (state.sendFailure === 'unconfirmed' && state.pending ? (
-                        // Outcome unknown: Retry (the Send button) confirms the same request; the
-                        // check re-reads the Session and either confirms it or frees the draft.
-                        <Alert tone="attention" title={t('managedSession.sendFailure.unconfirmed')}>
-                          <p>{t('managedSession.unconfirmedCheckBody')}</p>
-                          <Button
-                            size="sm"
-                            disabled={state.commandBusy}
-                            onClick={() => void feed.checkUnconfirmed()}
-                          >
-                            {t('managedSession.unconfirmedCheck')}
+                      <ComposerNotice>
+                        <Alert tone="attention" title={t('managedSession.savedRequestUnreadable')}>
+                          <p>{t('managedSession.savedRequestUnreadableBody')}</p>
+                          <Button size="sm" onClick={() => feed.discardPending()}>
+                            {t('managedSession.discardSavedRequest')}
                           </Button>
                         </Alert>
-                      ) : state.sendFailure ? (
-                        <Alert
-                          tone="attention"
-                          title={t(
-                            sendFailureKey(
-                              state.sendFailure === 'SESSION_RECOVERY_REQUIRED' && !unknownTurn
-                                ? 'SESSION_RECOVERY_REQUIRED_SESSION'
-                                : state.sendFailure,
-                            ),
+                      </ComposerNotice>
+                    ) : (
+                      state.commandError && (
+                        <ComposerNotice>
+                          {state.sendFailure === 'unconfirmed' && state.pending ? (
+                            // Outcome unknown: Retry (the Send button) confirms the same request; the
+                            // check re-reads the Session and either confirms it or frees the draft.
+                            <Alert
+                              tone="attention"
+                              title={t('managedSession.sendFailure.unconfirmed')}
+                            >
+                              <p>{t('managedSession.unconfirmedCheckBody')}</p>
+                              <Button
+                                size="sm"
+                                disabled={state.commandBusy}
+                                onClick={() => void feed.checkUnconfirmed()}
+                              >
+                                {t('managedSession.unconfirmedCheck')}
+                              </Button>
+                            </Alert>
+                          ) : state.sendFailure ? (
+                            <Alert
+                              tone="attention"
+                              title={t(
+                                sendFailureKey(
+                                  state.sendFailure === 'SESSION_RECOVERY_REQUIRED' && !unknownTurn
+                                    ? 'SESSION_RECOVERY_REQUIRED_SESSION'
+                                    : state.sendFailure,
+                                ),
+                              )}
+                            />
+                          ) : (
+                            <Alert tone="attention" title={t('managedSession.commandFailed')} />
                           )}
-                        />
-                      ) : (
-                        <Alert tone="attention" title={t('managedSession.commandFailed')} />
-                      ))
+                        </ComposerNotice>
+                      )
                     )}
                     {/* Archived in another view: said here until the `session` change brings the
                         archived bar (full-session.md "Session actions"). */}
                     <div>
                       <div role="status">
                         {pairUnsupported && !state.pending && !archived && !viewOnly ? (
-                          <InlineNote tone="attention" className="mb-3">
-                            {t('managedSession.modeModelUnsupported', {
-                              mode:
-                                workModes.find((mode) => mode.id === workModeId)?.title ??
-                                workModeId,
-                              model:
-                                provider?.models.find((model) => model.modelId === selectedModelId)
-                                  ?.title ?? selectedModelId,
-                            })}
-                          </InlineNote>
+                          <ComposerNotice className="mb-3 px-4 py-3">
+                            <InlineNote tone="attention">
+                              {t('managedSession.modeModelUnsupported', {
+                                mode:
+                                  workModes.find((mode) => mode.id === workModeId)?.title ??
+                                  workModeId,
+                                model:
+                                  provider?.models.find(
+                                    (model) => model.modelId === selectedModelId,
+                                  )?.title ?? selectedModelId,
+                              })}
+                            </InlineNote>
+                          </ComposerNotice>
                         ) : null}
                         {state.archivedRefusal && !archived ? (
-                          <InlineNote tone="info" className="mb-3">
-                            {t('managedSession.sessionActions.archivedElsewhere')}
-                          </InlineNote>
+                          <ComposerNotice className="mb-3 px-4 py-3">
+                            <InlineNote tone="info">
+                              {t('managedSession.sessionActions.archivedElsewhere')}
+                            </InlineNote>
+                          </ComposerNotice>
                         ) : null}
                       </div>
                       {archived ? (
@@ -1036,6 +1025,15 @@ function ManagedSessionConversation({
                               ref={editorRef}
                               id="managed-message"
                               minRows={1}
+                              // Says who reads it; `content-muted` (not the fainter DS placeholder
+                              // tone) so it reads on the dark Composer surface.
+                              placeholder={t('managedSession.composerPlaceholder', {
+                                agent:
+                                  snapshot.session.providerTitle ??
+                                  provider?.title ??
+                                  snapshot.session.providerId,
+                              })}
+                              className="placeholder:text-content-muted"
                               value={state.draft}
                               onChange={(event) => feed.setDraft(event.target.value)}
                               disabled={
@@ -1239,6 +1237,7 @@ export function ManagedSession({
   onSessionDeleted,
   onSessionChanged,
   onGoToSpecifications,
+  onReviewChanges,
   namingPending = false,
 }: {
   /**
@@ -1287,8 +1286,17 @@ export function ManagedSession({
    * Session's title names the reader's way back.
    */
   onOpenDocumentation?: (sessionTitle?: string) => void;
+  /**
+   * Opens that Specification's uncommitted workspace changes (the route composition wires it): a
+   * Turn that ended badly after changing files offers it. Omitted: no such action.
+   */
+  onReviewChanges?: (specification: ContextSpecification) => void;
 }) {
   const { t } = useTranslation();
+  const reviewSpecification =
+    sessionContext.specification?.status === 'ready'
+      ? sessionContext.specification.value
+      : undefined;
   // The shell hint "a non-stacking Secondary (the pinned Context tab, the side-panel toggle) can be
   // shown" — NOT the layout of the conversation, which `ManagedSessionConversation` reads from
   // `useWorkspaceLayout()` (workspace-dynamic-split.md "Resolved layout vs shell capability").
@@ -1624,6 +1632,11 @@ export function ManagedSession({
             unarchive={sessionActions.unarchive}
             composerFocusRequested={composerFocusRequested}
             onComposerFocused={onComposerFocused}
+            reviewChanges={
+              onReviewChanges && reviewSpecification
+                ? () => onReviewChanges(reviewSpecification)
+                : undefined
+            }
           />
           {sessionActions.dialogs}
         </AppWorkspace.Primary>

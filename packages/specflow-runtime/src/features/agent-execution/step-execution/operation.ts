@@ -194,8 +194,15 @@ export const GENERIC_AGENT_SESSION_TITLE = 'Agent step execution';
 
 const titled = (title: string | undefined) => (title !== undefined ? { title } : {});
 
-/** The marker of a Turn's request that is SpecFlow's brief of the step (sessions `RequestOrigin`). */
-export function requestOriginOf(subject: WorkflowSubject, brief: AgentBrief): RequestOrigin {
+/**
+ * The marker of a Turn's request that is SpecFlow's brief of the step (sessions `RequestOrigin`);
+ * `continuation` when the Turn continues the attempt instead of starting it.
+ */
+export function requestOriginOf(
+  subject: WorkflowSubject,
+  brief: AgentBrief,
+  continuation = false,
+): RequestOrigin {
   const handoff = brief.handoff;
 
   return {
@@ -204,6 +211,7 @@ export function requestOriginOf(subject: WorkflowSubject, brief: AgentBrief): Re
     ...(brief.task ? { task: brief.task } : {}),
     step: brief.step,
     attempt: brief.attempt,
+    ...(continuation ? { continuation: true as const } : {}),
     ...(handoff
       ? {
           handoff:
@@ -848,7 +856,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
           agentPermissions: { allow: await allowlistOf(bound.actor) },
           // The request is SpecFlow's brief, marked so a client shows it as such (the agent's
           // message is unchanged).
-          origin: requestOriginOf(subject, brief),
+          origin: requestOriginOf(subject, brief, bound.kind === 'continued'),
         },
       );
     }

@@ -90,7 +90,7 @@ describe('ToolAction details', () => {
   it('numbers only the JSON it pretty-printed; the verbatim response keeps its own lines, no gutter', async () => {
     renderDetail();
     const input = await screen.findByRole('textbox', { name: 'Parameters' });
-    const output = await screen.findByRole('textbox', { name: 'Tool response' });
+    const output = await screen.findByRole('textbox', { name: 'Result' });
 
     expect(input.closest('.cm-editor')!.querySelector('.cm-lineNumbers')).not.toBeNull();
     expect(output.closest('.cm-editor')!.querySelector('.cm-gutters')).toBeNull();
@@ -230,7 +230,7 @@ describe('ToolAction details', () => {
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Wrote file');
     expect(document.querySelector('[data-tool-action-subject]')!.textContent).toBe('dummy/job.sh');
     expect(content.textContent).toContain('echo "Hello, $1"');
-    const response = screen.getByRole('textbox', { name: 'Tool response' });
+    const response = screen.getByRole('textbox', { name: 'Result' });
     expect(response.textContent).toBe('File created successfully at: dummy/job.sh');
     // The raw parameters stay one click away.
     const raw = screen.getByRole('button', { name: 'Raw parameters' });

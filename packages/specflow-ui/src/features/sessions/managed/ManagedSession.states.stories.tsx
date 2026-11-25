@@ -285,8 +285,10 @@ export const TerminalFailure: Story = {
       throw new Error('Expected the terminal outcome entry.');
     }
 
-    await expect(within(outcomeEntry as HTMLElement).getByText('Niepowodzenie')).toBeVisible();
-    await expect(outcomeEntry.querySelector('svg.text-status-danger')).not.toBeNull();
+    await expect(
+      within(outcomeEntry as HTMLElement).getByText('Tura zakończona niepowodzeniem'),
+    ).toBeVisible();
+    await expect(outcomeEntry.querySelector('.text-status-danger svg')).not.toBeNull();
   },
 };
 
@@ -510,7 +512,7 @@ async function verifyWorkBlocks(canvasElement: HTMLElement) {
 
   await expect(canvas.getAllByText('Tura przerwana')).toHaveLength(1);
   await expect(canvas.queryByText('Przerwano')).not.toBeInTheDocument();
-  await expect(canvas.getByText('Niepowodzenie')).toBeVisible();
+  await expect(canvas.getByText('Tura zakończona niepowodzeniem')).toBeVisible();
   await expect(canvas.getByText('Nie powiodło się: 1 uruchomienie testów')).toBeVisible();
   await expect(canvas.getByText('4 działania narzędzia')).toBeVisible();
   await expect(canvas.getByText(/i więcej$/)).toBeVisible();
@@ -736,8 +738,8 @@ export const SendPending: Story = {
   },
 };
 
-/** A Turn SpecFlow stopped: its own notice (an error, labelled as from SpecFlow, apart from the
- * agent's words) and the interrupted outcome as a warning, said once. */
+/** A Turn SpecFlow stopped: one outcome event, its notice as the cause (said once, not as a row of
+ * its own), and the Composer still usable. */
 const stopped = sessionFixture();
 stopped.history = { hasOlder: false };
 stopped.entries = [
@@ -773,7 +775,9 @@ export const StoppedProcessNotice: Story = {
     await expect(
       await canvas.findByText(/sent output that SpecFlow does not support/),
     ).toBeVisible();
-    await expect(canvas.getByText('Błąd SpecFlow.')).toBeInTheDocument();
+    await expect(canvas.getAllByText(/sent output that SpecFlow does not support/)).toHaveLength(1);
+    await expect(canvas.getByText('Tura przerwana')).toBeVisible();
+    await expect(canvas.queryByText('Błąd SpecFlow.')).toBeNull();
     await expect(canvas.getByLabelText('Wiadomość')).toBeEnabled();
   },
 };

@@ -18845,6 +18845,12 @@
                                 "type": "integer",
                                 "minimum": 1
                               },
+                              "continuation": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
                               "handoff": {
                                 "type": "object",
                                 "required": [
@@ -20487,6 +20493,12 @@
                               "attempt": {
                                 "type": "integer",
                                 "minimum": 1
+                              },
+                              "continuation": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
                               },
                               "handoff": {
                                 "type": "object",

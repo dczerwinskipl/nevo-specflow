@@ -43,6 +43,8 @@ export interface TaskListView {
   readonly filter?:
     | { readonly blocking: 'specification'; readonly matched: number; readonly total: number }
     | { readonly group: string; readonly matched: number; readonly total: number };
+  /** The titles of the Tasks the rows' facts name, also of Tasks a filter leaves out. */
+  readonly taskTitles?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -93,5 +95,6 @@ export function taskListViewOf(response: TaskListResponse): TaskListView {
     })),
     progress: response.progress,
     ...(response.filter ? { filter: response.filter } : {}),
+    ...(response.taskTitles ? { taskTitles: response.taskTitles } : {}),
   };
 }

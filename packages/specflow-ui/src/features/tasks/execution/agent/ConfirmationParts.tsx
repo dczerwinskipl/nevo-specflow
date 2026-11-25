@@ -10,15 +10,12 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
-  Icon,
   InlineNote,
   TextArea,
-  Typography,
 } from '@nevo/ui';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { focusInitial } from '../focusInitial';
 import { InlineAction } from '../InlineAction';
-import { transitionLabel } from '../presentation';
 import type { NowLinks } from '../StartBlockerLines';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
 
@@ -26,51 +23,6 @@ type Confirmation = Extract<
   WorkflowActionProjection['position'],
   { kind: 'awaiting-confirmation' }
 >;
-
-/** The result the agent proposes, as a person reads it: its label, else the result, else its id. */
-export const proposedResult = (proposal: Confirmation['proposal']) =>
-  transitionLabel(proposal.transition);
-
-/**
- * The agent's proposal as a labelled quote (the hand-off's look): the result it proposes with the
- * agent that proposes it, then its feedback.
- */
-export function ProposalQuote({
-  proposal,
-  agent,
-}: {
-  readonly proposal: Confirmation['proposal'];
-  readonly agent: string;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <div
-      className="grid gap-1 border-border-default @min-[40rem]/app-content:border-l-2 @min-[40rem]/app-content:pl-3"
-      data-now-proposal=""
-    >
-      <Typography as="p" variant="body-sm" className="text-content-secondary">
-        {t('workflowExecution.confirmation.proposes')}{' '}
-        <span className="font-medium text-content-primary">
-          <span className="mr-1 inline-flex h-[1lh] items-center align-top">
-            <Icon name="arrow-right" size="sm" aria-hidden="true" />
-          </span>
-          {proposedResult(proposal)}
-        </span>
-        {agent ? ` · ${agent}` : null}
-      </Typography>
-      {proposal.feedback ? (
-        <Typography
-          as="p"
-          variant="body-sm"
-          className="whitespace-pre-line text-content-primary [overflow-wrap:anywhere]"
-        >
-          {proposal.feedback}
-        </Typography>
-      ) : null}
-    </div>
-  );
-}
 
 /** What Confirm applies, in the owner's words: the drafts it approves and where the run goes. */
 export function ConfirmApplies({

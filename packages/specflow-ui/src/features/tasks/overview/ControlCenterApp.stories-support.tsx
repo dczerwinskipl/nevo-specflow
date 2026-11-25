@@ -7,7 +7,7 @@ import type {
   TaskListResponse,
 } from '@nevo/specflow-contracts/specs/workspace';
 import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
-import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import type { WorkflowActionProjection, WorkflowHistory } from '@nevo/specflow-contracts/workflow';
 import { createFixtureSpecsOverviewApi } from '../../../../test-support/specs/overview/api';
 import { createAuthStore } from '../../../auth/store';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
@@ -20,6 +20,7 @@ import type { DocumentApi } from '../../documents/api';
 import { SPEC } from '../execution/projections.stories-support';
 import { authoringApi, taskDocumentApi } from '../pages/ProjectTaskAuthoring.stories-support';
 import {
+  controlCenterHistory,
   controlCenterProjection,
   controlCenterTaskList,
   controlCenterWorkspace,
@@ -38,6 +39,8 @@ export interface ControlCenterSource {
   readonly workspace: () => Promise<SpecificationWorkspaceResponse>;
   readonly projection: () => WorkflowActionProjection;
   readonly taskList: (query: TaskListQuery) => TaskListResponse;
+  /** The workflow history (the agent's attempt behind the last hand-off); absent: never answers. */
+  readonly history?: () => WorkflowHistory;
   readonly documents?: DocumentApi;
   /** The document type catalogue (type titles and icons of the rows). */
   readonly catalogue?: ArchetypeCatalogue;
@@ -50,6 +53,7 @@ function scenarioSource(scenario: ControlCenterScenario): ControlCenterSource {
     workspace: () => controlCenterWorkspace(scenario),
     projection: () => controlCenterProjection(scenario),
     taskList: (query) => controlCenterTaskList(scenario, query),
+    history: () => controlCenterHistory(scenario),
   };
 }
 
@@ -87,7 +91,7 @@ function services(source: ControlCenterSource) {
       retryAttemptCommit: never,
       confirmResult: never,
       takeOverAgentExecution: never,
-      history: never,
+      history: source.history ? () => Promise.resolve(source.history!()) : never,
       rejectResult: never,
       closeOccupancy: never,
       close: never,

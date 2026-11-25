@@ -287,7 +287,7 @@ describe('a result that waits for the owner', () => {
     const confirmResult = vi.fn(() => Promise.reject(refusal('WORKFLOW_ATTEMPT_COMMIT_REQUIRED')));
     const history = vi.fn(() => Promise.resolve(confirmationAttemptHistory('committed')));
     renderNow('confirmation', { confirmResult, history });
-    await screen.findByText('3f9c2a1');
+    await screen.findByText(/3f9c2a1/);
     const reads = history.mock.calls.length;
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
@@ -395,7 +395,7 @@ describe('the commit of a finished attempt', () => {
       { projection: finishedAttemptProjection() },
     );
 
-    expect(await screen.findByText(/Its work is committed/)).toBeTruthy();
+    expect(await screen.findByText('Work committed')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Retry commit' })).toBeNull();
   });
 
@@ -417,8 +417,8 @@ describe('the commit of a finished attempt', () => {
       { projection: finishedAttemptProjection() },
     );
 
-    expect(await screen.findByText('3f9a1c7')).toBeTruthy();
-    expect(document.body.textContent).toContain('1 document and 3 files');
+    // One line of the Last hand-off: what was committed, then the commit's short id.
+    expect(await screen.findByText('1 document and 3 files committed · 3f9a1c7')).toBeTruthy();
   });
 
   it('reads nothing when a person finished the step before', () => {
@@ -445,7 +445,7 @@ describe('the commit of a finished attempt', () => {
 
       state = 'committed';
       await vi.advanceTimersByTimeAsync(POLL_MS + 100);
-      expect(await screen.findByText(/Its work is committed/)).toBeTruthy();
+      expect(await screen.findByText('Work committed')).toBeTruthy();
       const settled = read.mock.calls.length;
       await vi.advanceTimersByTimeAsync(POLL_MS * 3);
       expect(read.mock.calls.length).toBe(settled);

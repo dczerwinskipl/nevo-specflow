@@ -379,8 +379,10 @@ export function attemptLine(
 export interface StepTrack {
   readonly position: ProgressPosition;
   readonly total: number;
-  /** The visible label beside the track ("Step 4 of 7 · next: Review the breakdown"). */
+  /** The full position ("Step 4 of 7 · next: Review the breakdown"), the count's tooltip. */
   readonly label: string;
+  /** The short position beside the step's title ("Step 4 of 7", "7 steps", "All 7 steps"). */
+  readonly count: string;
   /** The track's accessible name ("Step 4 of 7: Break the solution down"). */
   readonly ariaLabel: string;
 }
@@ -405,6 +407,10 @@ export function stepTrack(
       position: { state: 'current', step: outline.current.position },
       total,
       label: progressLine(t, outline) ?? '',
+      count: t('workflowExecution.now.progress', {
+        position: outline.current.position,
+        total,
+      }),
       ariaLabel: t('workflowExecution.now.track.current', {
         position: outline.current.position,
         total,
@@ -422,6 +428,7 @@ export function stepTrack(
       position: { state: 'not-started' },
       total,
       label: t('workflowExecution.now.firstStep', { title: firstStepTitle }),
+      count: t('workflowExecution.now.track.steps', { count: total }),
       ariaLabel: t('workflowExecution.now.track.notStarted', { total, title: firstStepTitle }),
     };
   }
@@ -429,7 +436,13 @@ export function stepTrack(
   if (position.kind === 'terminal' && position.outcome === 'completed') {
     const label = t('workflowExecution.now.track.completed', { total });
 
-    return { position: { state: 'completed' }, total, label, ariaLabel: label };
+    return {
+      position: { state: 'completed' },
+      total,
+      label,
+      count: t('workflowExecution.now.track.allSteps', { count: total }),
+      ariaLabel: label,
+    };
   }
 
   return undefined;

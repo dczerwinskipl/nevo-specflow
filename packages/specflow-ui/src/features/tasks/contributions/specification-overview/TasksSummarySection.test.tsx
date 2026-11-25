@@ -29,7 +29,7 @@ const rows = (container: HTMLElement) =>
   [...container.querySelectorAll<HTMLElement>('[data-row-task]')].map((row) => row.dataset.rowTask);
 
 describe('Overview Tasks summary', () => {
-  it('shows every row group as Task rows, without a column header or group headers', async () => {
+  it('shows every row group under its name and count, its rows not repeating the state', async () => {
     const { container } = await renderSummary(tasksPreviewFixtures.three);
 
     expect(rows(container)).toEqual(['oidc-callback', 'session-refresh', 'sign-in-screen']);
@@ -39,7 +39,10 @@ describe('Overview Tasks summary', () => {
     expect(
       container.querySelector('[data-row-task="sign-in-screen"] [data-task-status-cell]')
         ?.textContent,
-    ).toBe('On holdWaiting for the identity provider sandbox account from IT.');
+    ).toBe('Waiting for the identity provider sandbox account from IT.');
+    expect(screen.getByRole('heading', { name: 'On hold' })).not.toBeNull();
+    // The Task's key is left to the Tasks page.
+    expect(container.querySelector('[data-row-task="sign-in-screen"] .font-mono')).toBeNull();
     expect(container.querySelector('[data-summary-more]')).toBeNull();
   });
 
@@ -49,14 +52,12 @@ describe('Overview Tasks summary', () => {
     expect(rows(container)).toHaveLength(8);
     const held = container.querySelector<HTMLElement>('[data-row-task="T-07"]')!;
     expect(held.dataset.taskAttention).toBe('true');
-    expect(held.textContent).toContain('Requires attention · holds up T-12, T-13');
+    expect(held.textContent).toContain(
+      'Requires attention · holds up Sign-in button and provider redirect, Return users to where they were',
+    );
     expect(
       [...container.querySelectorAll('[data-summary-more]')].map((link) => link.textContent),
-    ).toEqual([
-      'Show 2 more tasks: In progress',
-      'Show 1 more task: Ready to start',
-      'Show 3 more tasks: Waiting',
-    ]);
+    ).toEqual(['Show 2 more', 'Show 1 more', 'Show 3 more']);
     expect(screen.getByRole('link', { name: 'Done 10' })).not.toBeNull();
     expect(screen.getByRole('link', { name: 'Cancelled 1' })).not.toBeNull();
   });

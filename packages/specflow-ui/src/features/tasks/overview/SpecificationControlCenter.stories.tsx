@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, within } from 'storybook/test';
 import { ControlCenterApp } from './ControlCenterApp.stories-support';
 
 const meta = {
@@ -11,6 +12,7 @@ const meta = {
       control: 'select',
       options: [
         'waiting',
+        'changes-requested',
         'blocked',
         'stuck',
         'empty',
@@ -27,11 +29,49 @@ const meta = {
 } satisfies Meta<typeof ControlCenterApp>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+const wait = { timeout: 5000 };
 
-/** Waiting for tasks: Now with the progress, Requires attention, the Tasks summary, Sessions. */
-export const Default: Story = {};
+/**
+ * Waiting for tasks: Now with the step and Task progress, the Last hand-off (an approved breakdown,
+ * its feedback collapsed, what it committed), Requires attention, the Tasks summary, Sessions.
+ */
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    const handoff = await within(canvasElement).findByRole(
+      'heading',
+      { name: 'Last hand-off' },
+      wait,
+    );
+    const block = handoff.closest<HTMLElement>('[data-now-handoff]')!;
+    await expect(within(block).getByText('Breakdown approved')).toBeVisible();
+    await expect(
+      await within(block).findByText('4 documents committed · 05f9d80', {}, wait),
+    ).toBeVisible();
+    await expect(within(block).queryByText(/No gaps or conflicts/)).toBeNull();
+    await expect(within(block).getByRole('button', { name: 'Show feedback' })).toBeVisible();
+  },
+};
 
 const capture = (args: Story['args']): Story => ({ tags: ['capture'], args });
+
+/**
+ * The review requested changes: the breakdown is ready to start again and the Last hand-off leads
+ * with the review's feedback, open and in the attention tone.
+ */
+export const ChangesRequested: Story = {
+  args: { scenario: 'changes-requested' },
+  play: async ({ canvasElement }) => {
+    const handoff = await within(canvasElement).findByRole(
+      'heading',
+      { name: 'Last hand-off' },
+      wait,
+    );
+    const block = handoff.closest<HTMLElement>('[data-now-handoff]')!;
+    await expect(within(block).getByText('Changes requested')).toBeVisible();
+    await expect(within(block).getByText(/misses the token refresh path/)).toBeVisible();
+    await expect(block.dataset.handoffTone).toBe('blocking');
+  },
+};
 
 export const Blocked = capture({ scenario: 'blocked' });
 export const Stuck = capture({ scenario: 'stuck' });

@@ -2467,7 +2467,7 @@
         "loadingAgents": "Loading the agents…",
         "chooseModel": "Choose a model",
         "modelUnassigned": "No model {{provider}} offers is set for the {{role}}. Choose one for this start.",
-        "workMode": "Work mode"
+        "workMode": "The agent works in the {{mode}} mode."
       },
       "commit": "When the agent finishes, SpecFlow commits its work on <code>{{branch}}</code> as one commit; changes of others are never included.",
       "commitNoBranch": "When the agent finishes, SpecFlow commits its work on the specification’s branch as one commit; changes of others are never included.",
@@ -2495,7 +2495,15 @@
       "track": {
         "current": "Step {{position}} of {{total}}: {{title}}",
         "notStarted": "Not started, {{total}} steps. First step: {{title}}",
-        "completed": "All {{total}} steps · completed"
+        "completed": "All {{total}} steps · completed",
+        "steps_one": "{{count}} step",
+        "steps_other": "{{count}} steps",
+        "allSteps_one": "{{count}} step done",
+        "allSteps_other": "All {{count}} steps done",
+        "steps_few": "{{count}} steps",
+        "steps_many": "{{count}} steps",
+        "allSteps_few": "All {{count}} steps done",
+        "allSteps_many": "All {{count}} steps done"
       },
       "newTask": "New task",
       "addSectionsToFinish_one": "Add the {{sections}} section to {{name}} to finish.",
@@ -2534,8 +2542,6 @@
       "postActionFailed": "The step is finished. Its workflow state was not committed ({{code}}): it stays uncommitted, and Close includes it.",
       "postActionAttemptCommit": "The change is saved, but its commit waits for the agent’s work in this specification to be committed first. Retry that commit; the next commit then takes this change too.",
       "postActionHeld": "The step is finished. {{edited}} changed outside SpecFlow after SpecFlow wrote it, so the files of its Task, and of Tasks added or removed since, stay uncommitted; the rest of the workflow state is committed. Commit those files with Git; otherwise Close includes them.",
-      "lastPrefix": "Last: {{step}} · ",
-      "handoffFrom": "{{step}} · ",
       "alreadyFinished": "This step was already finished. What you can do now is shown below.",
       "reevaluateWait": "End wait",
       "retryWait": "Retry ending wait",
@@ -2565,7 +2571,12 @@
       "handUnavailable": "Hand to agent cannot run now: {{why}}.",
       "personActs": "{{actor}} is doing this step; you can follow it here.",
       "feedbackAll": "Show the full feedback",
-      "feedbackLess": "Show less"
+      "feedbackLess": "Show less",
+      "handoffDetails": "{{outcome}}: open it in the work history",
+      "feedbackShow": "Show feedback",
+      "feedbackHide": "Hide feedback",
+      "handoffCommitted": "{{what}} committed",
+      "handoffCommittedAll": "Work committed"
     },
     "blocker": {
       "dependencies_one": "Waiting for {{count}} dependency",
@@ -3031,7 +3042,6 @@
     },
     "confirmation": {
       "line": "Waiting for your confirmation · the agent finished {{at}}",
-      "proposes": "The agent proposes",
       "applies": "Confirming {{what}}.",
       "movesTo": "moves to {{step}}",
       "ends": {
@@ -3053,7 +3063,8 @@
       "rejectDescription": "{{step}} goes back to ready to start, with your feedback as its hand-off. The agent’s proposal {{result}} is not applied.",
       "rejectDescriptionDrafts": "{{step}} goes back to ready to start, with your feedback as its hand-off. The agent’s proposal {{result}} is not applied; the draft tasks and documents it wrote stay as they are.",
       "feedbackLabel": "What should change (required)",
-      "feedbackHint": "The next attempt reads it first, whether you start it yourself or run it with an agent."
+      "feedbackHint": "The next attempt reads it first, whether you start it yourself or run it with an agent.",
+      "resultHeading": "The agent's result"
     },
     "attemptCommit": {
       "committed": "The agent finished {{step}}. Its work is committed.",
@@ -3176,11 +3187,15 @@
     },
     "summary": {
       "allTasks": "All tasks",
+      "moreActions": "Tasks: more actions",
+      "showMore_one": "Show {{count}} more",
+      "showMore_few": "Show {{count}} more",
+      "showMore_many": "Show {{count}} more",
+      "showMore_other": "Show {{count}} more",
       "moreIn_one": "Show {{count}} more task: {{group}}",
       "moreIn_other": "Show {{count}} more tasks: {{group}}",
       "moreIn_few": "Show {{count}} more tasks: {{group}}",
-      "moreIn_many": "Show {{count}} more tasks: {{group}}",
-      "moreActions": "Tasks: more actions"
+      "moreIn_many": "Show {{count}} more tasks: {{group}}"
     },
     "progress": {
       "tasksDone": "{{completed}} of {{total}} tasks done",
@@ -3191,14 +3206,16 @@
       "ended_other": "{{count}} ended",
       "onHold_one": "{{count}} on hold",
       "onHold_other": "{{count}} on hold",
-      "barNote": "The bar counts every task except cancelled ones.",
-      "barNoteEnded": "The bar counts every task except cancelled and ended ones.",
       "cancelled_few": "{{count}} cancelled",
       "cancelled_many": "{{count}} cancelled",
       "ended_few": "{{count}} ended",
       "ended_many": "{{count}} ended",
       "onHold_few": "{{count}} on hold",
-      "onHold_many": "{{count}} on hold"
+      "onHold_many": "{{count}} on hold",
+      "readyToStart_one": "{{count}} ready to start",
+      "readyToStart_other": "{{count}} ready to start",
+      "readyToStart_few": "{{count}} ready to start",
+      "readyToStart_many": "{{count}} ready to start"
     },
     "terminal": {
       "allDone_one": "The task is done",

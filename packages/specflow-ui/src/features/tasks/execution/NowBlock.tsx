@@ -1,6 +1,6 @@
-import { useState, type ComponentProps, type ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AccentBlock, Icon, InlineNote, Progress, Typography, cn } from '@nevo/ui';
+import { AccentBlock, Icon, InlineNote, Typography, cn } from '@nevo/ui';
 import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { GateList, type GateAction } from './GateList';
 import { InlineAction } from './InlineAction';
@@ -14,8 +14,10 @@ import {
   stepTrack,
   transitionLabel,
   type DoneWhen,
-  type StepTrack,
 } from './presentation';
+import { LastHandoff } from './progress/LastHandoff';
+import { StepProgress } from './progress/StepProgress';
+import { handoffView } from './progress/handoffView';
 import { StartBlockerLines, type NowLinks } from './StartBlockerLines';
 import { useViewer } from './useViewer';
 import { useModelTitle } from './agent/modelTitles';
@@ -26,36 +28,6 @@ function InlineIcon({ name }: { name: ComponentProps<typeof Icon>['name'] }) {
     <span className="mr-1 inline-flex h-[1lh] items-center align-top">
       <Icon name={name} size="sm" aria-hidden="true" />
     </span>
-  );
-}
-
-/**
- * Where the step sits among the workflow's steps: the DS Progress position track, then its label.
- * The track carries the accessible name; the visible label is not read twice. Below a 40rem page
- * the label goes under the track. On a wait step the track is compact: the Task progress dominates.
- */
-function StepTrackRow({ track, compact }: { track: StepTrack; compact: boolean }) {
-  return (
-    <div
-      className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 @max-[40rem]/app-content:flex-col @max-[40rem]/app-content:items-start"
-      data-now-track=""
-    >
-      <Progress
-        variant="segmented"
-        position={track.position}
-        total={track.total}
-        size={compact ? 'compact' : 'default'}
-        aria-label={track.ariaLabel}
-      />
-      <Typography
-        as="p"
-        variant="body-sm"
-        aria-hidden="true"
-        className="min-w-0 text-content-secondary [overflow-wrap:anywhere]"
-      >
-        {track.label}
-      </Typography>
-    </div>
   );
 }
 
@@ -157,58 +129,8 @@ export interface NowBlockProps {
    * Session link, a stop that waits for proof, an attempt that ended without a finish.
    */
   readonly positionLine?: ReactNode;
-}
-
-/** Feedback longer than this (or of more than one paragraph) opens with its first paragraph. */
-const FEEDBACK_SUMMARY_CHARS = 320;
-
-/**
- * A hand-off's feedback (how a review that requested changes reads on the next attempt): its first
- * paragraph as the summary, the rest behind "Show the full feedback".
- */
-function HandoffFeedback({ feedback }: { readonly feedback: string }) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const text = feedback.trim();
-  const first = text.split(/\n\s*\n/)[0] ?? text;
-  const summary =
-    first.length > FEEDBACK_SUMMARY_CHARS
-      ? `${first.slice(0, FEEDBACK_SUMMARY_CHARS).trimEnd()}…`
-      : first;
-  const long = summary !== text;
-
-  return (
-    <div className="grid justify-items-start gap-1" data-now-feedback="">
-      <Typography
-        as="p"
-        variant="body-sm"
-        className="whitespace-pre-line text-content-primary [overflow-wrap:anywhere]"
-      >
-        {open || !long ? text : summary}
-      </Typography>
-      {long ? (
-        <InlineAction onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-          {open ? t('workflowExecution.now.feedbackLess') : t('workflowExecution.now.feedbackAll')}
-        </InlineAction>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * Whether a hand-off carries what the next attempt must act on: a result that failed (a review that
- * requested changes) or feedback. The Specification's Now shows only such a hand-off; its other
- * hand-offs stay in the history.
- */
-export function handoffNeedsAction(handoff: WorkflowActionProjection['handoff']): boolean {
-  if (!handoff) {
-    return false;
-  }
-
-  return (
-    (handoff.feedback?.trim() ?? '') !== '' ||
-    (handoff.kind === 'transition' && handoff.result === 'fail')
-  );
+  /** What the attempt that handed over committed ("4 documents committed · 05f9d80"). */
+  readonly handoffCommit?: string;
 }
 
 /**
@@ -233,6 +155,7 @@ export function NowBlock({
   starting = false,
   hold,
   positionLine,
+  handoffCommit,
 }: NowBlockProps) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
@@ -384,6 +307,27 @@ export function NowBlock({
         )
       : [];
 
+  const titleTone =
+    position.kind === 'terminal' && position.outcome === 'completed'
+      ? 'text-status-success'
+      : undefined;
+  const quietLine = (
+    <Typography
+      as="p"
+      variant="body-sm"
+      className="text-content-muted [overflow-wrap:anywhere] empty:hidden"
+    >
+      {quiet}
+    </Typography>
+  );
+  // The Overview's wait step leads with its Task progress; "continues by itself" follows it.
+  const quietAfterWaiting =
+    position.kind === 'waiting' && waitingContent !== undefined && supporting === waitingContent;
+  const lastHandoff =
+    showHandoff && handoff && position.kind !== 'terminal'
+      ? handoffView(t, handoff, { locale: i18n.language, viewer, modelTitle })
+      : undefined;
+
   return (
     // Below a 40rem page the block is a flush band across the body padding, not a card in the sheet.
     <AccentBlock aria-labelledby={headingId} role="region" bleed="narrow" data-workflow-now="">
@@ -396,19 +340,19 @@ export function NowBlock({
         </div>
         {status}
         {/* A polite live region: a refresh after an action announces the new position. */}
-        <div className={cn('grid', track ? 'gap-1.5' : 'gap-0.5')} aria-live="polite">
-          <Typography
-            as="p"
-            variant="title-sm"
-            className={cn(
-              position.kind === 'terminal' &&
-                position.outcome === 'completed' &&
-                'text-status-success',
-              '[overflow-wrap:anywhere]',
-            )}
-          >
-            {current}
-          </Typography>
+        <div className={cn('grid', track ? 'gap-2' : 'gap-0.5')} aria-live="polite">
+          {track ? (
+            // The step and where it sits among the steps, on one line, the track under it.
+            <StepProgress title={current} track={track} titleClassName={titleTone} />
+          ) : (
+            <Typography
+              as="p"
+              variant="title-sm"
+              className={cn(titleTone, '[overflow-wrap:anywhere]')}
+            >
+              {current}
+            </Typography>
+          )}
           {titleNote}
           {hold?.reason ? (
             <Typography
@@ -420,14 +364,7 @@ export function NowBlock({
               {hold.reason}
             </Typography>
           ) : null}
-          {track ? <StepTrackRow track={track} compact={position.kind === 'waiting'} /> : null}
-          <Typography
-            as="p"
-            variant="body-sm"
-            className="text-content-muted [overflow-wrap:anywhere] empty:hidden"
-          >
-            {quiet}
-          </Typography>
+          {quietAfterWaiting ? null : quietLine}
         </div>
         {summary}
         {done ? (
@@ -438,6 +375,8 @@ export function NowBlock({
           />
         ) : null}
         {supporting}
+        {/* A wait step: what it waits for first (the Task progress), then how it continues. */}
+        {quietAfterWaiting ? quietLine : null}
         {tasksOpen.map((transition) => (
           <InlineNote key={transition.id} tone="attention" data-now-tasks-open="">
             {closableInFinishDialog(transition)
@@ -459,52 +398,13 @@ export function NowBlock({
             ) : null}
           </InlineNote>
         ))}
-        {showHandoff && handoff && position.kind !== 'terminal' ? (
-          // Inside the Narrow band (one bar already) the hand-off is a labelled paragraph; in the
-          // card it keeps its quote rule.
-          <div
-            className="grid gap-1 border-border-default @min-[40rem]/app-content:border-l-2 @min-[40rem]/app-content:pl-3"
-            data-now-handoff=""
-          >
-            <Typography
-              as="p"
-              variant="label-sm"
-              className="text-content-secondary @min-[40rem]/app-content:hidden"
-            >
-              {t('workflowExecution.now.lastHandoff')}
-            </Typography>
-            <Typography as="p" variant="body-sm" className="text-content-secondary">
-              {/* A neutral icon with the result: the projection gives no tone for results. */}
-              {handoff.kind === 'transition' ? (
-                <>
-                  {/* Under the band's "Last hand-off" label the step is not prefixed again. */}
-                  <span className="hidden @min-[40rem]/app-content:inline">
-                    {t('workflowExecution.now.lastPrefix', { step: handoff.from.title })}
-                  </span>
-                  <span className="@min-[40rem]/app-content:hidden">
-                    {t('workflowExecution.now.handoffFrom', { step: handoff.from.title })}
-                  </span>
-                  <span className="font-medium text-content-primary">
-                    <InlineIcon name="arrow-right" />
-                    {transitionLabel({ ...handoff, id: handoff.transition })}
-                  </span>
-                  {handoff.from.actor
-                    ? ` · ${actorLabel(t, handoff.from.actor, viewer, modelTitle)}`
-                    : null}
-                  {handoff.from.at ? `, ${when(handoff.from.at)}` : null}
-                </>
-              ) : (
-                <>
-                  <span className="font-medium text-content-primary">
-                    <InlineIcon name="undo" />
-                    {t('workflowExecution.now.returned')}
-                  </span>
-                  {` · ${when(handoff.at)}`}
-                </>
-              )}
-            </Typography>
-            {handoff.feedback ? <HandoffFeedback feedback={handoff.feedback} /> : null}
-          </div>
+        {lastHandoff ? (
+          <LastHandoff
+            heading={t('workflowExecution.now.lastHandoff')}
+            {...lastHandoff}
+            {...(handoffCommit ? { commit: handoffCommit } : {})}
+            {...(links.attempt ? { onOpenDetails: links.attempt } : {})}
+          />
         ) : null}
         {note}
         {actions ? (

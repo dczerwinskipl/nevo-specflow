@@ -270,9 +270,10 @@ export const FinishedCommitted: Story = {
   args: { scenario: 'finished-committed' },
   play: async ({ canvasElement }) => {
     const now = await findNow(canvasElement);
-    await expect(await within(now).findByText('3f9a1c7', {}, wait)).toBeVisible();
-    await expect(within(now).getByText(/2 documents and 3 files/)).toBeVisible();
-    await expect(within(now).getByText('nevo-1/single-sign-on')).toBeVisible();
+    // One line of the Last hand-off: what was committed and the commit's short id.
+    await expect(
+      await within(now).findByText('2 documents and 3 files committed · 3f9a1c7', {}, wait),
+    ).toBeVisible();
   },
 };
 
@@ -360,8 +361,10 @@ export const ConfirmationCommitted: Story = {
   args: { scenario: 'attempt-confirmation', confirmationCommit: 'committed' },
   play: async ({ canvasElement }) => {
     const now = await findNow(canvasElement);
-    await expect(await within(now).findByText('3f9c2a1', {}, wait)).toBeVisible();
-    await expect(within(now).getByText(/: 7 documents\./)).toBeVisible();
+    // The agent's result names what its commit holds and the commit's short id, on one line.
+    await expect(
+      await within(now).findByText('7 documents committed · 3f9c2a1', {}, wait),
+    ).toBeVisible();
     await expect(within(now).getByRole('button', { name: 'Confirm' })).toBeEnabled();
   },
 };

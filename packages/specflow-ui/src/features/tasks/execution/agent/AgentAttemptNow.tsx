@@ -38,7 +38,9 @@ import {
   useHeldAttemptCommit,
   type AttemptCommitHold,
 } from './useAttemptCommit';
-import { ConfirmApplies, ProposalQuote, RejectResultDialog } from './ConfirmationParts';
+import { ConfirmApplies, RejectResultDialog } from './ConfirmationParts';
+import { LastHandoff } from '../progress/LastHandoff';
+import { commitLine } from '../progress/handoffView';
 import { useAgentAttemptCommands } from './useAgentAttemptCommands';
 
 const MONO = 'font-mono text-content-primary [overflow-wrap:anywhere]';
@@ -105,6 +107,8 @@ export interface AgentNow {
   readonly keepsMenu: boolean;
   /** The proposal replaces the last hand-off while the owner decides. */
   readonly showHandoff: boolean;
+  /** What the attempt that handed over committed, said in the Last hand-off row. */
+  readonly handoffCommit?: string;
 }
 
 /** The agent's Session in a position line: its mark and its title as a link. */
@@ -388,6 +392,8 @@ export function useAgentAttemptNow({
         ? commands.confirm.error
         : undefined;
     const failed = confirmError ?? (commands.reject.isError ? commands.reject.error : undefined);
+    // A made commit is one line of the result; a running or failed one keeps its own note.
+    const committedLine = commitLine(t, confirmationCommit);
 
     return {
       positionLine:
@@ -401,10 +407,19 @@ export function useAgentAttemptNow({
         ),
       note: (
         <div className="grid gap-3">
-          <ProposalQuote proposal={proposal} agent={agentName(attempt.actor, modelTitle)} />
+          {/* The agent's result is the hand-off waiting for the owner: open, in the info tone. */}
+          <LastHandoff
+            heading={t('workflowExecution.confirmation.resultHeading')}
+            outcome={result}
+            meta={[agentName(attempt.actor, modelTitle), finished].filter(Boolean).join(' · ')}
+            {...(proposal.feedback ? { feedback: proposal.feedback } : {})}
+            {...(committedLine ? { commit: committedLine } : {})}
+            tone="waiting"
+            {...(links.attempt ? { onOpenDetails: links.attempt } : {})}
+          />
           <ConfirmApplies confirmation={position} links={links} />
           {heldElsewhere ? heldNote : null}
-          {confirmationCommit ? (
+          {confirmationCommit && !committedLine ? (
             <AttemptCommitNote
               commit={confirmationCommit}
               retrying={commands.retryCommit.isPending}
@@ -478,6 +493,12 @@ export function useAgentAttemptNow({
   }
 
   if (!view || position.kind !== 'active') {
+    // A made commit is a line of the Last hand-off; a failed one keeps its note and Retry commit.
+    const handoffCommit = commitLine(t, attemptCommit);
+    if (handoffCommit) {
+      return { note: null, keepsMenu: true, showHandoff: true, handoffCommit };
+    }
+
     return attemptCommit
       ? {
           note: (

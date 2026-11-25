@@ -175,7 +175,7 @@ describe('Tasks page', () => {
     const cell = row(container, 'T-05')!.querySelector('[data-task-status-cell]')!;
 
     expect(cell.querySelector('[data-task-overlay]')?.textContent).toBe(
-      'Requires attention · holds up T-03',
+      'Requires attention · holds up Sign-in button and provider redirect',
     );
     expect(cell.querySelector('[data-collection-supporting]')?.textContent).toBe(
       'Waiting for the retention policy from the security team.',

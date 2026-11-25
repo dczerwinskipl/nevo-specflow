@@ -145,7 +145,7 @@ describe('the Specification Now block', () => {
     expect(within(handoff).getByText(/CONFLICT, detached HEAD/)).toBeTruthy();
   });
 
-  it('leaves a hand-off with nothing to act on to the history', () => {
+  it('says the last hand-off, its feedback collapsed when there is nothing to act on', () => {
     renderNow(
       <OverviewNow
         projection={{
@@ -154,15 +154,21 @@ describe('the Specification Now block', () => {
             kind: 'transition',
             from: { step: 'design', attempt: 1, title: 'Design the solution' },
             transition: 'done',
-            label: 'Done',
+            label: 'Solution designed',
             result: 'done',
+            feedback: 'Covers every acceptance criterion.',
             artifacts: [],
           },
         }}
       />,
     );
 
-    expect(document.querySelector('[data-now-handoff]')).toBeNull();
+    const handoff = document.querySelector<HTMLElement>('[data-now-handoff]')!;
+    expect(handoff.dataset.handoffTone).toBe('done');
+    expect(within(handoff).getByText('Solution designed')).toBeTruthy();
+    expect(within(handoff).queryByText('Covers every acceptance criterion.')).toBeNull();
+    fireEvent.click(within(handoff).getByRole('button', { name: 'Show feedback' }));
+    expect(within(handoff).getByText('Covers every acceptance criterion.')).toBeTruthy();
   });
 
   it('is a card that becomes a flush band below a 40rem page (a container query)', () => {
@@ -178,8 +184,10 @@ describe('the Specification Now block', () => {
 
     const track = screen.getByRole('img', { name: 'Step 4 of 7: Break the solution down' });
     expect(track.getAttribute('data-progress-representation')).toBe('position');
-    const label = screen.getByText('Step 4 of 7 · next: Review the breakdown');
+    // The position beside the step's title; the next step is its tooltip.
+    const label = screen.getByText('Step 4 of 7');
     expect(label.getAttribute('aria-hidden')).toBe('true');
+    expect(label.getAttribute('title')).toBe('Step 4 of 7 · next: Review the breakdown');
 
     const region = screen.getByRole('region', { name: 'Now' });
     expect(within(region).getByText(/^In progress since .+ · started by /)).toBeTruthy();

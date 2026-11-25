@@ -96,8 +96,6 @@ describe('message catalogues', () => {
       'workflowExecution.exit.groupHeading',
       // " · {{count}}": the count after a linked group title, the same in both languages.
       'workflowExecution.exit.groupCount',
-      // "{{step}} · ": a hand-off prefix template, the same in both languages.
-      'workflowExecution.now.handoffFrom',
       // "{{content}} · {{relation}}": the document state label template (A6).
       'documents.state.withContent',
     ]);

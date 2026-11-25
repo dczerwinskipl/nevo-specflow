@@ -210,14 +210,11 @@ export function AgentSession({
                     />
                   </div>
                   {workMode ? (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <Typography as="span" variant="body-sm" className="text-content-secondary">
-                        {t('workflowExecution.agent.session.workMode')}
-                      </Typography>
-                      <Typography as="span" variant="body-sm" className="text-content-primary">
-                        {workMode}
-                      </Typography>
-                    </div>
+                    // Information, not a setting: the Runtime decides the mode for this launch, so
+                    // it is a sentence, never a label and value that read like a disabled picker.
+                    <Typography as="p" variant="body-sm" className="text-content-secondary">
+                      {t('workflowExecution.agent.session.workMode', { mode: workMode })}
+                    </Typography>
                   ) : null}
                 </>
               ) : null}

@@ -19,6 +19,12 @@ export interface TaskRowProps {
   readonly specificationTitle?: string;
   /** The titles of the Specification's Tasks the caller knows, for "Waiting for <title>". */
   readonly titleOf?: (taskId: string) => string | undefined;
+  /**
+   * The row inside a named group of the Overview: the group's heading already says the state, so
+   * the row says it only when it adds something ("Waiting for 4 other tasks"); the Task's key is
+   * left to the Tasks page.
+   */
+  readonly inGroup?: boolean;
 }
 
 /**
@@ -28,9 +34,18 @@ export interface TaskRowProps {
  * and a hold reason share two lines). Below 48rem of collection width it stacks in that order. The title is a real link
  * to the Full Task (a new window from the browser's own link menu). No row menu and no selection.
  */
-export function TaskRow({ row, fullTaskHref, onOpen, specificationTitle, titleOf }: TaskRowProps) {
+export function TaskRow({
+  row,
+  fullTaskHref,
+  onOpen,
+  specificationTitle,
+  titleOf,
+  inGroup = false,
+}: TaskRowProps) {
   const { t } = useTranslation();
   const lines = taskRowLines(row, t, specificationTitle, titleOf);
+  // In a group only a status that says more than the group's name ("Waiting for …") is repeated.
+  const showStatus = !inGroup || lines.statusAddsDetail;
   // Two supporting lines (an overlay and the hold reason) share the two-line budget.
   const both = lines.overlay !== undefined && lines.text !== undefined;
 
@@ -69,19 +84,26 @@ export function TaskRow({ row, fullTaskHref, onOpen, specificationTitle, titleOf
               className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 text-content-secondary"
               data-task-identity
             >
-              <span className="font-mono [overflow-wrap:anywhere]">{row.id}</span>
+              {inGroup ? null : (
+                <span className="font-mono [overflow-wrap:anywhere]">{row.id}</span>
+              )}
               {row.typeTitle ? (
                 <>
-                  <span aria-hidden="true">·</span>
+                  {inGroup ? null : <span aria-hidden="true">·</span>}
                   <span>{row.typeTitle}</span>
                 </>
               ) : null}
             </Typography>
           </div>
           <div className="grid min-w-0 content-start gap-1" data-task-status-cell>
-            <Typography as="div" variant="body-sm" className="min-w-0">
-              <SemanticSupportingLine line={lines.status} />
-            </Typography>
+            {!showStatus ? null : inGroup ? (
+              // The group's heading carries the mark; the row's line is plain supporting text.
+              <CollectionSupportingLine>{lines.status.text}</CollectionSupportingLine>
+            ) : (
+              <Typography as="div" variant="body-sm" className="min-w-0">
+                <SemanticSupportingLine line={lines.status} />
+              </Typography>
+            )}
             {lines.overlay ? (
               <Typography
                 as="p"

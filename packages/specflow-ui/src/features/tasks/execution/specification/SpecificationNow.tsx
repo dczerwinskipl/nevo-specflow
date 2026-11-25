@@ -1,21 +1,11 @@
-import { useId, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Alert,
-  Button,
-  InlineNote,
-  Link,
-  Progress,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-  Typography,
-} from '@nevo/ui';
+import { Alert, Button, InlineNote, Link, Typography } from '@nevo/ui';
 import type { GateStatus } from '@nevo/specflow-contracts/workflow';
 import type { TaskOverview } from '@nevo/specflow-contracts/specs/workspace';
 import type { TaskProgressData } from '../../../specs/read-model';
-import { tasksProgressText, terminalSummary } from '../../overview/progress';
+import { terminalSummary } from '../../overview/progress';
+import { TaskProgress } from '../progress/TaskProgress';
 import { WorkflowNow } from '../WorkflowNow';
 import { documentGateFix, stepPurpose } from '../presentation';
 import {
@@ -27,12 +17,6 @@ import {
 type StuckTask = NonNullable<TaskOverview['stuck']>[number];
 
 /**
- * The Tasks bar fills in the success tone: done work, told apart from the step track's info-toned
- * current step above it.
- */
-const doneFill = { '--color-progress-fill': 'var(--color-status-success)' } as CSSProperties;
-
-/**
  * The Specification's Now block on its Overview, in the preparation block's place: with a workflow
  * (project Runtime, current Specification) the block, else `fallback`. A `wait` step shows the Task
  * progress (only here) and, when it cannot continue, why, naming the Tasks; it offers no action.
@@ -42,6 +26,7 @@ export function SpecificationNow({
   documents,
   fallback,
   progress,
+  ready,
   stuck,
   fullTaskHref,
   onOpenTask,
@@ -55,6 +40,8 @@ export function SpecificationNow({
   readonly documentName: (documentId: string) => string | undefined;
   readonly fallback: ReactNode;
   readonly progress?: TaskProgressData;
+  /** The Tasks that can start now (the Runtime's "Ready to start" group count), when known. */
+  readonly ready?: number;
   /** Why the wait cannot continue (the Runtime's `tasks-stuck` Tasks). */
   readonly stuck?: TaskOverview['stuck'];
   readonly fullTaskHref: (taskId: string) => string;
@@ -63,7 +50,6 @@ export function SpecificationNow({
   readonly onOpenHistory: () => void;
 }) {
   const { t } = useTranslation();
-  const progressId = useId();
   const workflow = useSpecificationWorkflow();
   const visible = useSpecificationNowVisible();
   const projection = workflow?.projection;
@@ -104,50 +90,13 @@ export function SpecificationNow({
         onOpenTask(task.taskId);
       }}
     >
-      {task.taskId}
+      {task.title ?? task.taskId}
     </Link>
   );
   const waitingContent = (
     <>
       {progress && progress.total > 0 ? (
-        // One continuous bar with its label to the right, like the step track: never a second
-        // segmented track. What it counts is the label's tooltip.
-        <div
-          className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 @max-[40rem]/app-content:flex-col @max-[40rem]/app-content:items-start"
-          data-now-tasks-progress=""
-        >
-          {/* A bounded bar (the step track's width), so its label stays beside it. */}
-          <div className="w-40 max-w-full shrink-0">
-            <Progress
-              value={progress.completed}
-              max={progress.total}
-              style={doneFill}
-              aria-labelledby={progressId}
-            />
-          </div>
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Typography
-                  as="p"
-                  variant="body-sm"
-                  id={progressId}
-                  tabIndex={0}
-                  className="min-w-0 cursor-default text-content-secondary underline decoration-dotted decoration-content-muted underline-offset-4"
-                >
-                  {tasksProgressText(progress, t)}
-                </Typography>
-              </TooltipTrigger>
-              <TooltipContent>
-                {t(
-                  progress.ended
-                    ? 'taskOverview.progress.barNoteEnded'
-                    : 'taskOverview.progress.barNote',
-                )}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+        <TaskProgress progress={progress} {...(ready ? { ready } : {})} />
       ) : null}
       {stuck && stuck.length > 0 ? (
         <InlineNote tone="attention" icon="circle-alert" data-now-stuck="">

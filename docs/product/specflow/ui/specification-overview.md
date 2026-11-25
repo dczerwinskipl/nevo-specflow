@@ -57,24 +57,25 @@ and neutral Task facts), attention (the attention projection) and grouping (the 
 dashboard configuration). The Overview renders what the reads deliver.
 
 - **Now** — the Specification workflow's position, in this order: the step title; the **step
-  track** (the design system's `Progress` position mode) followed by its label "Step 2 of 7 · next:
-  Design the solution" (the projection's `outline`; "Step 7 of 7" at the last step); one quiet line
-  "In progress since 11:18 · started by you" ("Attempt 2 · …" only from a second attempt on, never
+  track** (the design system's `Progress` position mode): the step's title and its position
+  ("Step 2 of 7", the projection's `outline`) on one line, the track under it; the full position
+  ("Step 2 of 7 · next: Design the solution") is the count's tooltip. Then one quiet line "In
+  progress since 11:18 · started by you" ("Attempt 2 · …" only from a second attempt on, never
   "Attempt 1"); then the step's purpose. The track and the number show the step's position in the
   workflow definition, not progress (a workflow may loop or branch, and after a return the current
-  segment moves back), and "next" appears only when the step leads to one step only. The track is
-  one image named "Step 2 of 7: Write the specification"; its visible label is not read twice.
-  Before the first start the track outlines the first segment and its label reads "First step ·
-  Gather requirements"; a completed workflow fills every segment ("All 7 steps · completed"); an
-  abandoned one has no track (the outline no longer says where it stopped). On a `wait` step the
-  track is compact and the Task progress bar stays the dominant one. Below a 40rem page the label
-  goes under the track. For a `wait` step the Task progress appears here only,
-  once: a continuous bar filled in the success tone (never a second segmented track under the step
-  track) with its label to the right, "1 of 6 tasks done · 1 cancelled · 1 ended · 1 on hold" (zero
-  parts omitted; below a 40rem page it goes under the bar); the label's tooltip says that cancelled
-  (and ended) Tasks are not counted. When the wait cannot
-  continue, one note names the blocking Tasks as links ("It cannot continue now: T-04 is a draft,
-  T-05 is on hold and no other task is open."). Now offers the workflow's **main** action: Start
+  segment moves back). The track is one image named "Step 2 of 7: Write the specification"; its
+  visible count is not read twice. Before the first start the track outlines the first segment and
+  the count reads "7 steps"; a completed workflow fills every segment ("All 7 steps done"); an
+  abandoned one has no track (the outline no longer says where it stopped). For a `wait` step the
+  Task progress follows, once: "1 of 6 tasks done" with "5 ready to start · 1 cancelled · 1 on hold"
+  on the same line (zero parts omitted; the ready count is the Runtime's Ready to start group) and
+  one continuous bar under it in the success tone, then the quiet line "Continues by itself when
+  every task is done or cancelled". The step progress, the Task progress and the Last hand-off
+  ([workflow execution](workflow-execution.md)) are shared components the Specifications list can
+  reuse. When the wait cannot
+  continue, one note names the blocking Tasks as links, by title ("It cannot continue now: Return
+  users to where they were is a draft, Audit log of sign-in events is on hold and no other task is
+  open."). Now offers the workflow's **main** action: Start
   workflow, Finish step, or Close specification once it ended; none while the workflow waits by
   itself. While a start is being recorded the Start button reads "Starting…" (busy) and the quiet
   line says the same until the new position is read, never a stale "Ready to start". This
@@ -138,14 +139,16 @@ dashboard configuration). The Overview renders what the reads deliver.
   progress, then Task order) as the Tasks page's own **Task row** ([below](#tasks-page)), on the same
   tracks without a column header. The rows switch with the Tasks page's one 48rem container query
   (no second width switch): at a tablet's 834 px the section is wider than 48rem and keeps the
-  columns; on a phone the rows stack. There are no group headers: each row's status names its
-  group, and groups are divided like the rows inside them. A held Task that requires attention
+  columns; on a phone the rows stack. Each group opens with its name and count ("Ready to start
+  5", the Runtime's name, a status dot of the Tasks page's tone), so its rows never repeat the
+  state: a row shows its title and Task Type, and a status line only where it says more than the
+  group's name. The Task's key is left to the Tasks page. A held Task that requires attention
   shows the overlay and its hold reason, one line each. A waiting Task names the one Task it waits
   for by its title ("Waiting for Identity provider sandbox tenant"), several by count ("Waiting for
-  3 other tasks"), never a list of keys. Under a group's last row a link in the link colour
-  "Show 2 more tasks: Waiting" (the count beyond the preview and the
-  group's name as the Runtime delivers it; it says it counts Tasks and what it opens, so it never
-  reads as something the Task above waits on, owner 2026-11-25) opens the Tasks page filtered to that group
+  3 other tasks"), never a list of keys; "after …" and "holds up …" name Tasks by title too (the
+  Runtime's `taskTitles`; the key only when no title is readable). Under a group's last row a link
+  in the link colour "Show 2 more" (read out as "Show 2 more tasks: Waiting") opens the Tasks page
+  filtered to that group
   (`?group=<groupId>`); a group that fits shows no link. The section therefore never exceeds
   row groups × 2 rows. Compact groups (Done, Cancelled, Ended) share one line of the same
   links, "Done 2 · Cancelled 1", that open the Tasks page filtered to that group (owner decision at the final

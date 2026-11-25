@@ -23,6 +23,8 @@ export interface TaskRowLines {
    * it causes), and not for an escalation, whose overlay already quotes it.
    */
   readonly text?: string;
+  /** The status line says more than the status's name (the Tasks it waits for). */
+  readonly statusAddsDetail: boolean;
 }
 
 /** What the Engine reported about the row, for `taskRequiresAttention` and the overlay. */
@@ -51,7 +53,13 @@ export function taskRowLines(
   specificationTitle?: string,
   titleOf?: (taskId: string) => string | undefined,
 ): TaskRowLines {
-  const overlay = taskAttentionOverlay(taskRowAttention(row, specificationTitle), t);
+  const overlay = taskAttentionOverlay(
+    {
+      ...taskRowAttention(row, specificationTitle),
+      ...(titleOf ? { titleOf } : {}),
+    },
+    t,
+  );
   const waitingFor =
     row.statusId === 'waiting' && row.waitingFor && row.waitingFor.length > 0
       ? row.waitingFor
@@ -67,7 +75,10 @@ export function taskRowLines(
       : t(`taskAuthoring.status.${row.statusId}`, { defaultValue: row.statusId });
   const after =
     NAMES_DEPENDENCIES.has(row.statusId) && row.dependsOn && row.dependsOn.length > 0
-      ? t('taskAuthoring.tasks.after', { ids: row.dependsOn.join(', ') })
+      ? t('taskAuthoring.tasks.after', {
+          // Named by title when it is known (keys read as noise); the key only without one.
+          ids: row.dependsOn.map((id) => titleOf?.(id) ?? id).join(', '),
+        })
       : undefined;
   const holdReason = row.statusId === 'on-hold' ? row.holdReason : undefined;
   const text = overlay
@@ -80,5 +91,6 @@ export function taskRowLines(
     status: taskStatusSupporting(row.statusId, label),
     ...(overlay ? { overlay } : {}),
     ...(text ? { text } : {}),
+    statusAddsDetail: waitingFor !== undefined,
   };
 }

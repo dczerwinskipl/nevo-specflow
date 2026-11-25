@@ -142,6 +142,8 @@ export function WorkView({ specId, data }: WorkViewProps) {
           return document ? (document.filename ?? document.title) : undefined;
         }}
         progress={data.taskProgress}
+        // The Runtime's "Ready to start" group (default grouping id `ready`), as the Tasks list counts it.
+        ready={data.taskOverview?.rows.find((row) => row.groupId === 'ready')?.count}
         stuck={data.taskOverview?.stuck}
         fullTaskHref={runtime.fullTaskHref}
         onOpenTask={(taskId) => runtime.openTask(taskId)}

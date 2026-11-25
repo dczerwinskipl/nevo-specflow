@@ -120,12 +120,15 @@ describe('Specification control center', () => {
 
     await waitFor(() =>
       expect(now.querySelector('[data-now-stuck]')?.textContent).toBe(
-        'It cannot continue now: T-04 is a draft, T-05 is on hold and no other task is open.',
+        'It cannot continue now: Return users to where they were is a draft, Audit log of sign-in events is on hold and no other task is open.',
       ),
     );
-    expect(within(now).getByRole('link', { name: 'T-04' }).getAttribute('href')).toContain(
-      `/specs/${SPEC}/tasks/T-04`,
-    );
+    // The Tasks by their titles; their keys stay on the Tasks page.
+    expect(
+      within(now)
+        .getByRole('link', { name: 'Return users to where they were' })
+        .getAttribute('href'),
+    ).toContain(`/specs/${SPEC}/tasks/T-04`);
     // Now explains; it offers no action while the workflow waits by itself.
     expect(now.querySelector('[data-slot="workflow-actions"]')).toBeNull();
 
@@ -206,9 +209,8 @@ describe('Specification control center', () => {
     const row = document.querySelector<HTMLElement>(
       '[data-summary-group="in-progress"] [data-row-task="T-02"]',
     );
-    expect(row?.textContent).toBe(
-      'Token exchange endpoint and session cookieT-02·BackendIn progress',
-    );
+    // Under its group's heading the row names neither its state nor its key.
+    expect(row?.textContent).toBe('Token exchange endpoint and session cookieBackend');
     expect(row?.dataset.taskAttention).toBeUndefined();
   });
 

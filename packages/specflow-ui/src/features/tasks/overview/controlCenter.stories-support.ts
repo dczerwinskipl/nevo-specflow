@@ -27,7 +27,14 @@ import {
  */
 
 export type ControlCenterScenario =
-  'waiting' | 'blocked' | 'stuck' | 'empty' | 'completed' | 'abandoned' | 'no-task-workflow';
+  | 'waiting'
+  | 'changes-requested'
+  | 'blocked'
+  | 'stuck'
+  | 'empty'
+  | 'completed'
+  | 'abandoned'
+  | 'no-task-workflow';
 
 type Status = WorkspaceTask['status'];
 type Group =
@@ -146,6 +153,7 @@ function tasksOf(scenario: ControlCenterScenario): readonly FixtureTask[] {
     case 'waiting':
       return [T01, T02, T03, T04, T05, T06, T07];
     case 'blocked':
+    case 'changes-requested':
       return [
         { ...T04, group: 'ready', status: status.ready },
         { ...T07, status: status.broken, broken: true },
@@ -393,6 +401,7 @@ function sessionsOf(scenario: ControlCenterScenario): readonly WorkspaceSession[
     case 'waiting':
       return [sessions.implement, sessions.draft, sessions.review];
     case 'blocked':
+    case 'changes-requested':
       return [sessions.draft, sessions.review];
     case 'stuck':
       return [sessions.draft];
@@ -602,6 +611,38 @@ const workStep = (id: string, title: string) => ({
   executors: ['agent' as const, 'human' as const],
 });
 
+/** The agent that worked the Specification's steps (its model as the provider titles it). */
+const claude = {
+  class: 'agent' as const,
+  details: { provider: 'claude', model: 'Opus 5.5', archetype: 'reviewer' },
+};
+
+/** The Specification workflow's seven steps, as the outline names them. */
+const outlineStep = (position: number) =>
+  [
+    { step: 'requirements', title: 'Requirements' },
+    { step: 'specification', title: 'Specification' },
+    { step: 'solution', title: 'Solution' },
+    { step: 'breakdown', title: 'Break the solution down' },
+    { step: 'review-breakdown', title: 'Review the breakdown' },
+    { step: 'wait-for-tasks', title: 'Waiting for tasks' },
+    { step: 'close', title: 'Close' },
+  ].map((entry, index) => ({ ...entry, position: index + 1 }))[position - 1]!;
+
+const outlineAt = (position: number) => ({
+  stepCount: 7,
+  current: outlineStep(position),
+  ...(position < 7 ? { next: outlineStep(position + 1) } : {}),
+});
+
+const PARAGRAPH_BREAK = '\n\n';
+
+/** The review that requested changes: the breakdown goes back with what to change. */
+const changesRequestedFeedback = [
+  'The breakdown misses the token refresh path: when the cookie expires mid-request the refresh drops the original return URL. Add a task for it, with the expiry case in its acceptance.',
+  'T-04 and T-07 overlap on the rate-limit rules; merge them or say which one owns the limits.',
+].join(PARAGRAPH_BREAK);
+
 /** The Specification's workflow projection of the scenario. */
 export function controlCenterProjection(scenario: ControlCenterScenario): WorkflowActionProjection {
   return withExits(controlCenterFixture(scenario));
@@ -629,6 +670,37 @@ function controlCenterFixture(scenario: ControlCenterScenario): FixtureProjectio
           },
         },
         actions: { start: { step: 'requirements', firstStart: false } },
+        specification: running(),
+      };
+    case 'changes-requested':
+      return {
+        subject,
+        workflow: specWorkflow,
+        outline: outlineAt(4),
+        position: {
+          kind: 'ready',
+          next: {
+            step: workStep('breakdown', 'Break the solution down'),
+            human: true,
+            agent: { kind: 'unavailable', reason: 'provider-not-chosen' },
+          },
+        },
+        handoff: {
+          kind: 'transition',
+          from: {
+            step: 'review-breakdown',
+            attempt: 1,
+            title: 'Review the breakdown',
+            at: '2026-11-14T15:12:00Z',
+            actor: claude,
+          },
+          transition: 'changes-requested',
+          label: 'Changes requested',
+          result: 'fail',
+          feedback: changesRequestedFeedback,
+          artifacts: [],
+        },
+        actions: { start: { step: 'breakdown', firstStart: false } },
         specification: running(),
       };
     case 'blocked':
@@ -732,6 +804,23 @@ function controlCenterFixture(scenario: ControlCenterScenario): FixtureProjectio
       return {
         subject,
         workflow: specWorkflow,
+        outline: outlineAt(6),
+        handoff: {
+          kind: 'transition',
+          from: {
+            step: 'review-breakdown',
+            attempt: 1,
+            title: 'Review the breakdown',
+            at: '2026-11-14T01:12:00Z',
+            actor: claude,
+          },
+          transition: 'approved',
+          label: 'Breakdown approved',
+          result: 'pass',
+          feedback:
+            'No gaps or conflicts between the specification, the solution and the tasks. Coverage: every acceptance criterion maps to a task.',
+          artifacts: [],
+        },
         position: {
           kind: 'waiting',
           step: { id: 'wait-for-tasks', title: 'Waiting for tasks', kind: 'wait', purpose: '' },
@@ -759,4 +848,54 @@ function controlCenterFixture(scenario: ControlCenterScenario): FixtureProjectio
       };
     }
   }
+}
+
+/**
+ * The Specification's workflow history as far as the Now reads it: the agent's attempt that made the
+ * last hand-off, with the commit it made when it finished (its documents and the commit id).
+ */
+export function controlCenterHistory(scenario: ControlCenterScenario) {
+  const handoff = controlCenterProjection(scenario).handoff;
+  const from = handoff?.kind === 'transition' ? handoff.from : undefined;
+
+  return {
+    subject: { kind: 'specification' as const, specId: SPEC },
+    items: from
+      ? [
+          {
+            kind: 'attempt' as const,
+            sequence: 5,
+            step: from.step,
+            stepTitle: from.title,
+            attempt: from.attempt,
+            startedAt: '2026-11-14T00:40:00Z',
+            actor: claude,
+            agent: {
+              attemptId: 'attempt-review-breakdown-1',
+              provider: 'claude',
+              sessionId: 'session-review-breakdown',
+              turns: 1,
+              ended: 'finished' as const,
+              events: [],
+              work: {
+                documents: [
+                  'specs/active/single-sign-on/decisions.md',
+                  'specs/active/single-sign-on/architecture.md',
+                  'specs/active/single-sign-on/overview.md',
+                  'specs/active/single-sign-on/tasks/t-04/task.md',
+                ],
+                mixed: [],
+                tasks: [],
+                declared: [],
+                commit: {
+                  state: 'committed' as const,
+                  sha: '05f9d80c4e2a',
+                  documents: 4,
+                },
+              },
+            },
+          },
+        ]
+      : [],
+  };
 }

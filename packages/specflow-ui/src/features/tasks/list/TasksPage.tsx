@@ -103,11 +103,12 @@ export function TasksPage({
   }
 
   const { view } = state;
-  // Every Task of the Specification, for "Waiting for <title>".
+  // The Tasks the rows' facts name (the Runtime's `taskTitles`, also when a filter leaves them
+  // out), else the listed Tasks: "Waiting for <title>", "after <title>", "holds up <title>".
   const titles = new Map(
     view.groups.flatMap((group) => group.rows.map((row) => [row.id, row.title] as const)),
   );
-  const titleOf = (taskId: string) => titles.get(taskId) ?? undefined;
+  const titleOf = (taskId: string) => view.taskTitles?.[taskId] ?? titles.get(taskId);
   const needle = query.trim().toLowerCase();
   const groups = view.groups
     .map((group) => ({

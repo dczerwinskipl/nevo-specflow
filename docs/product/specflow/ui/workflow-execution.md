@@ -103,13 +103,16 @@ In reading order:
 5. **Blocking reasons**, one line each with a link to where it is fixed ("Waiting for 1 dependency ·
    See Depends on", a missing required context entry · See Context). An awaited process artifact is
    one neutral line.
-6. **Latest hand-off** (Task): the last step, its result, who and when, and its feedback (how a failed
-   review reads on the rework attempt). In the card it is a quote with a left rule ("Last: Review ·
-   …"); in the Narrow band it is a labelled paragraph ("Last hand-off", then "Review · …") with no
-   second rule inside the band's bar. The
-   Overview shows a hand-off only when it carries what the next attempt must act on (a failed result,
-   such as a review that requested changes, or any feedback); other hand-offs stay in the history.
-   Long feedback opens with its first paragraph and "Show the full feedback".
+6. **Last hand-off** (the Specification and the Task, one shared component): under a divider, the
+   label "Last hand-off", then one row: a status mark, the result as its title ("Breakdown
+   approved"), the step, who and when ("Review the breakdown · Claude · Opus 5.5 · Today, 1:12 AM")
+   and a chevron that opens the work history; under it what the attempt committed ("4 documents
+   committed · 05f9d80", from the history read, when an agent's attempt committed). A hand-off that
+   finished as expected keeps its feedback behind "Show feedback". A hand-off the next attempt must
+   act on (a `fail` result such as a review that requested changes, or a return) is marked in the
+   attention tone and shows its feedback open, in an attention note; long feedback opens with its
+   first paragraph and "Show the full feedback" (owner, 2026-11-25: Now says what happens now, the
+   hand-off is the context). The Now of a terminal run shows no hand-off.
 7. **The main action**, with at most one button-styled secondary, for the Specification and the Task
    alike (one rule, `nowActionPlan`). Finish step is the main action while some result can be taken.
    When every result waits for an unmet gate whose document exists, opening it is the main action
@@ -559,8 +562,9 @@ id>` on `<branch>`: N documents and N files." Without an id (every path already 
 The attempt is finished and committed before the owner decides.
 
 - "Waiting for your confirmation · the agent finished <time> · <Session>"; under the step's purpose
-  the proposal as a labelled quote ("The agent proposes → <result> · <provider> · <model>", then
-  its feedback) and an info note with what Confirm applies ("Confirming approves the 5 draft tasks
+  the agent's result in the Last hand-off component, labelled "The agent's result" (its result,
+  "<provider> · <model> · <time>", what its commit holds, its feedback open in an info note: the
+  owner decides on it), then an info note with what Confirm applies ("Confirming approves the 5 draft tasks
   (t-01 to t-05) and moves to <next>.", **See Tasks**; "records the agent's decisions on N tasks"
   when it proposes decisions on Tasks; "completes the workflow" or "ends the workflow as abandoned"
   when it ends the run). Actions **Confirm** (main) and **Reject**.

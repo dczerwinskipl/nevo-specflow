@@ -27,6 +27,8 @@ export interface TaskAttentionSource {
   readonly specificationTitle?: string;
   /** The escalation's feedback (the hold reason of an escalated Task), where the surface has it. */
   readonly feedback?: string;
+  /** Names the Tasks it holds up by title where the surface leaves keys out (the Overview). */
+  readonly titleOf?: (taskId: string) => string | undefined;
 }
 
 /** The Requires attention overlay: a line added under the row's status, never replacing it. */
@@ -36,8 +38,15 @@ export interface TaskAttentionOverlay {
   readonly tone: 'attention';
 }
 
-function named(ids: readonly string[], t: TFunction): string {
-  const shown = ids.slice(0, NAMED_TASKS).join(', ');
+function named(
+  ids: readonly string[],
+  t: TFunction,
+  titleOf?: (taskId: string) => string | undefined,
+): string {
+  const shown = ids
+    .slice(0, NAMED_TASKS)
+    .map((id) => titleOf?.(id) ?? id)
+    .join(', ');
   const more = ids.length - NAMED_TASKS;
 
   return more > 0
@@ -64,7 +73,7 @@ function reasonOf(item: TaskAttentionFacts, source: TaskAttentionSource, t: TFun
       }
 
       return item.blocks?.taskIds && item.blocks.taskIds.length > 0
-        ? named(item.blocks.taskIds, t)
+        ? named(item.blocks.taskIds, t, source.titleOf)
         : item.message;
     default:
       return item.message;

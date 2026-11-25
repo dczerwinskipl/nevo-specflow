@@ -73,7 +73,7 @@ export const TwentyFiveTasks: Story = {
     const held = canvasElement.querySelector<HTMLElement>('[data-row-task="T-07"]')!;
     // The overlay and the hold reason, one line each.
     await expect(held.querySelector('[data-task-overlay]')).toHaveTextContent(
-      'Requires attention · holds up T-12, T-13',
+      'Requires attention · holds up Sign-in button and provider redirect, Return users to where they were',
     );
     await expect(held.querySelector('[data-collection-supporting]')).toHaveTextContent(
       'Waiting for the identity provider sandbox account from IT.',

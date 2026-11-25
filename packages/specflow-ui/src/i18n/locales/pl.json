@@ -2467,7 +2467,7 @@
         "loadingAgents": "Wczytywanie agentów…",
         "chooseModel": "Wybierz model",
         "modelUnassigned": "Dla roli „{{role}}” nie ustawiono modelu, który oferuje {{provider}}. Wybierz model dla tego startu.",
-        "workMode": "Tryb pracy"
+        "workMode": "Agent pracuje w trybie „{{mode}}”."
       },
       "commit": "Gdy agent skończy, SpecFlow zacommituje jego pracę na <code>{{branch}}</code> jako jeden commit; zmiany innych osób nigdy nie są dołączane.",
       "commitNoBranch": "Gdy agent skończy, SpecFlow zacommituje jego pracę na gałęzi specyfikacji jako jeden commit; zmiany innych osób nigdy nie są dołączane.",
@@ -2495,7 +2495,15 @@
       "track": {
         "current": "Krok {{position}} z {{total}}: {{title}}",
         "notStarted": "Nie rozpoczęto, kroków: {{total}}. Pierwszy krok: {{title}}",
-        "completed": "Wszystkie kroki ({{total}}) · ukończone"
+        "completed": "Wszystkie kroki ({{total}}) · ukończone",
+        "steps_one": "{{count}} krok",
+        "steps_few": "{{count}} kroki",
+        "steps_many": "{{count}} kroków",
+        "steps_other": "{{count}} kroku",
+        "allSteps_one": "{{count}} krok wykonany",
+        "allSteps_few": "Wszystkie {{count}} kroki wykonane",
+        "allSteps_many": "Wszystkie {{count}} kroków wykonanych",
+        "allSteps_other": "Wszystkie {{count}} kroku wykonane"
       },
       "newTask": "Nowe zadanie",
       "addSectionsToFinish_one": "Dodaj sekcję {{sections}} do {{name}}, aby zakończyć.",
@@ -2534,8 +2542,6 @@
       "postActionFailed": "Krok jest zakończony. Stanu przepływu nie zatwierdzono ({{code}}): pozostaje niezatwierdzony, a Zamknięcie go obejmie.",
       "postActionAttemptCommit": "Zmiana jest zapisana, ale jej commit czeka, aż najpierw zostanie zatwierdzona praca agenta w tej specyfikacji. Ponów tamten commit; następny commit obejmie też tę zmianę.",
       "postActionHeld": "Krok jest zakończony. {{edited}} zmieniono poza SpecFlow po zapisaniu przez SpecFlow, więc pliki tego zadania oraz zadań dodanych lub usuniętych od tego czasu pozostają niezatwierdzone; reszta stanu przepływu jest zatwierdzona. Zatwierdź te pliki w Git; w przeciwnym razie obejmie je Zamknięcie.",
-      "lastPrefix": "Ostatnio: {{step}} · ",
-      "handoffFrom": "{{step}} · ",
       "alreadyFinished": "Ten krok został już zakończony. Poniżej widać, co można zrobić teraz.",
       "reevaluateWait": "Zakończ oczekiwanie",
       "retryWait": "Ponów zakończenie oczekiwania",
@@ -2565,7 +2571,12 @@
       "handUnavailable": "Przekazanie agentowi nie jest teraz możliwe: {{why}}.",
       "personActs": "Ten krok wykonuje {{actor}}; możesz śledzić go tutaj.",
       "feedbackAll": "Pokaż wszystkie uwagi",
-      "feedbackLess": "Pokaż mniej"
+      "feedbackLess": "Pokaż mniej",
+      "handoffDetails": "{{outcome}}: otwórz w historii pracy",
+      "feedbackShow": "Pokaż uwagi",
+      "feedbackHide": "Ukryj uwagi",
+      "handoffCommitted": "Zatwierdzono: {{what}}",
+      "handoffCommittedAll": "Praca zatwierdzona"
     },
     "blocker": {
       "dependencies_one": "Czeka na {{count}} zależność",
@@ -3031,7 +3042,6 @@
     },
     "confirmation": {
       "line": "Czeka na Twoje potwierdzenie · agent skończył {{at}}",
-      "proposes": "Agent proponuje",
       "applies": "Potwierdzenie {{what}}.",
       "movesTo": "przechodzi do: {{step}}",
       "ends": {
@@ -3053,7 +3063,8 @@
       "rejectDescription": "Krok {{step}} wraca do stanu gotowego do startu, a Twoja uwaga staje się jego przekazaniem. Propozycja agenta „{{result}}” nie jest stosowana.",
       "rejectDescriptionDrafts": "Krok {{step}} wraca do stanu gotowego do startu, a Twoja uwaga staje się jego przekazaniem. Propozycja agenta „{{result}}” nie jest stosowana; zadania robocze i dokumenty, które agent napisał, zostają bez zmian.",
       "feedbackLabel": "Co należy zmienić (wymagane)",
-      "feedbackHint": "Następne podejście przeczyta to jako pierwsze, niezależnie od tego, czy uruchomisz je sam, czy z agentem."
+      "feedbackHint": "Następne podejście przeczyta to jako pierwsze, niezależnie od tego, czy uruchomisz je sam, czy z agentem.",
+      "resultHeading": "Wynik agenta"
     },
     "attemptCommit": {
       "committed": "Agent skończył krok {{step}}. Jego praca jest zatwierdzona.",
@@ -3176,11 +3187,15 @@
     },
     "summary": {
       "allTasks": "Wszystkie zadania",
+      "moreActions": "Zadania: więcej akcji",
+      "showMore_one": "Pokaż jeszcze {{count}}",
+      "showMore_few": "Pokaż jeszcze {{count}}",
+      "showMore_many": "Pokaż jeszcze {{count}}",
+      "showMore_other": "Pokaż jeszcze {{count}}",
       "moreIn_one": "Pokaż jeszcze {{count}} zadanie: {{group}}",
       "moreIn_few": "Pokaż jeszcze {{count}} zadania: {{group}}",
       "moreIn_many": "Pokaż jeszcze {{count}} zadań: {{group}}",
-      "moreIn_other": "Pokaż jeszcze {{count}} zadań: {{group}}",
-      "moreActions": "Zadania: więcej akcji"
+      "moreIn_other": "Pokaż jeszcze {{count}} zadań: {{group}}"
     },
     "progress": {
       "tasksDone": "ukończone zadania: {{completed}} z {{total}}",
@@ -3197,8 +3212,10 @@
       "onHold_few": "{{count}} wstrzymane",
       "onHold_many": "{{count}} wstrzymanych",
       "onHold_other": "{{count}} wstrzymanych",
-      "barNote": "Pasek liczy wszystkie zadania oprócz anulowanych.",
-      "barNoteEnded": "Pasek liczy wszystkie zadania oprócz anulowanych i zakończonych."
+      "readyToStart_one": "{{count}} gotowe do startu",
+      "readyToStart_few": "{{count}} gotowe do startu",
+      "readyToStart_many": "{{count}} gotowych do startu",
+      "readyToStart_other": "{{count}} gotowego do startu"
     },
     "terminal": {
       "allDone_one": "Zadanie ukończone",

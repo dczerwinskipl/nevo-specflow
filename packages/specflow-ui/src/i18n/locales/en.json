@@ -1909,8 +1909,6 @@
       "detailedView": "Show every operation",
       "authorization": {
         "title": "Authorization",
-        "allowed": "Allowed",
-        "denied": "Denied",
         "byYou": "Your decision"
       }
     },

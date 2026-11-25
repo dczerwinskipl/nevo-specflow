@@ -20,6 +20,18 @@ import {
   WorkInspectorHost,
   openWork,
 } from './managedSession.workInspectorHost.stories-support';
+import { resetWorkHistoryView } from './workHistoryViewPreference';
+
+/** Every operation its own row (the detailed view), for a story that checks single rows. */
+function detailedView() {
+  window.localStorage.setItem('nevo:work-history:view', 'detailed');
+  resetWorkHistoryView();
+
+  return () => {
+    window.localStorage.removeItem('nevo:work-history:view');
+    resetWorkHistoryView();
+  };
+}
 
 /**
  * The MUST-FIX Work (L2) timeline rebuild: Commentary-grouped chapters, a distinct collapsible
@@ -121,11 +133,12 @@ export const Default: Story = {
         'Two approaches could fix this; the narrower one risks missing a related case.',
       ),
     ).toBeVisible();
-    // The three happy-path reads/searches right after Commentary are a short run (below
-    // `workGrouping.TOOL_BURST_MIN_SIZE`): live owner review #2 — don't wrap 1-4 operations in a
-    // synthetic "N tool actions" container, just show the rows. So every one of them is its own
-    // directly visible row, with no trigger to click first.
-    await expect(canvas.getByText('Read file admission.mjs')).toBeVisible();
+    // Compact by default (owner, PR 169): the happy-path reads/searches right after Commentary are
+    // one group row, collapsed; expanding it shows each of them as its own row.
+    const group = canvas.getByRole('button', { name: '3 działania narzędzia' });
+    await expect(canvas.getByText('Read file admission.mjs')).not.toBeVisible();
+    await userEvent.click(group);
+    await expect(await canvas.findByText('Read file admission.mjs')).toBeVisible();
     await expect(canvas.getByText('Search code WORKSPACE_WRITER_BLOCKED')).toBeVisible();
     await expect(canvas.getByText('Search code readiness-policy')).toBeVisible();
     // Never a fabricated "0 ms": every fixture item here has identical createdAt/updatedAt, which
@@ -181,6 +194,7 @@ export const LongRunGrouping: Story = {
  */
 export const TypeFilterShowsOnlyItsKind: Story = {
   tags: ['integration'],
+  beforeEach: detailedView,
   args: {
     api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
       [actionsWorkId]: mixedWorkTimelineActions(),
@@ -216,9 +230,7 @@ export const TypeFilterShowsOnlyItsKind: Story = {
       canvas.queryByText('Checking the implementation and locating the admission path…'),
     ).not.toBeInTheDocument();
 
-    // The three happy-path tool reads/searches left after filtering are a short run — below
-    // `workGrouping.TOOL_BURST_MIN_SIZE` — so they stay their own individually visible rows, with
-    // nothing to click first.
+    // In the detailed view the tool reads/searches left after filtering are their own visible rows.
     await expect(canvas.getByText('Read file admission.mjs')).toBeVisible();
     await expect(canvas.getByText('Search code WORKSPACE_WRITER_BLOCKED')).toBeVisible();
     await expect(canvas.getByText('Search code readiness-policy')).toBeVisible();
@@ -493,7 +505,8 @@ export const ClaudeTurn: Story = {
     const subjects = await canvas.findAllByText(
       'mkdir -p /tmp/dummy-job && cd /tmp/dummy-job && ./hello.sh …',
     );
-    await expect(subjects).toHaveLength(2);
+    // The command and the permission it needed are one row (`foldPermissions`).
+    await expect(subjects).toHaveLength(1);
     for (const subject of subjects) {
       await expect(subject).toHaveAttribute('data-work-subject');
       await expect(getComputedStyle(subject).fontWeight).toBe('400');

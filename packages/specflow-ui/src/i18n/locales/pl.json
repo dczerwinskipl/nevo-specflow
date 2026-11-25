@@ -1909,8 +1909,6 @@
       "detailedView": "Pokaż każdą operację",
       "authorization": {
         "title": "Autoryzacja",
-        "allowed": "Dozwolono",
-        "denied": "Odmówiono",
         "byYou": "Twoja decyzja"
       }
     },

@@ -99,7 +99,7 @@ function withAuthorization(meta: ReactNode, permission: WorkSummary | undefined)
 function AuthorizationWord({ decision }: { decision: 'allowed' | 'denied' }) {
   const { t } = useTranslation();
 
-  return <>{t(`managedSession.workInspector.authorization.${decision}`)}</>;
+  return <>{t(`managedSession.permissionState.${decision}`)}</>;
 }
 
 /** What a tool group holds by kind ("5 commands · 1 read"), from the Runtime's `operation`. */

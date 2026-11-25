@@ -38,7 +38,7 @@ export function AuthorizationSection({ permission }: { permission: WorkSummary |
         />
         <div className="grid min-w-0 gap-0.5">
           <Typography as="p" variant="label-md" className="text-content-primary">
-            {t(`managedSession.workInspector.authorization.${permission.decision}`)}
+            {t(`managedSession.permissionState.${permission.decision}`)}
           </Typography>
           <Typography as="p" variant="body-sm" className="text-content-muted">
             {[t('managedSession.workInspector.authorization.byYou'), duration]

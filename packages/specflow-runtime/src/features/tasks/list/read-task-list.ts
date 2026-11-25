@@ -3,7 +3,7 @@ import type { TaskListQuery, TaskListResponse } from '@nevo/specflow-contracts/t
 import { toWire } from '../../workflow';
 import { inspectSpecification, type TaskEngine } from '../engine/sources';
 import type { InspectionBasis } from '../engine/projection';
-import { taskBoardOf } from '../presentation/board';
+import { namedTaskTitles, taskBoardOf } from '../presentation/board';
 import {
   DEFAULT_DASHBOARD_GROUPING,
   type DashboardGrouping,
@@ -37,6 +37,14 @@ export function taskListOf(
     progress: { ...board.progress },
     attention: board.attention.map((item) => structuredClone(toWire(item))),
   };
+  const titled = (groups: TaskListResponse['groups']) => ({
+    groups,
+    ...namedTaskTitles(
+      board.rows,
+      groups.flatMap((group) => group.tasks),
+      board.attention,
+    ),
+  });
   const counts = (groups: TaskListResponse['groups']) => ({
     matched: groups.reduce((sum, group) => sum + group.tasks.length, 0),
     total: board.rows.length,
@@ -44,11 +52,11 @@ export function taskListOf(
   if (query.group !== undefined) {
     const groups = board.groups.filter((group) => group.id === query.group);
 
-    return { ...common, groups, filter: { group: query.group, ...counts(groups) } };
+    return { ...common, ...titled(groups), filter: { group: query.group, ...counts(groups) } };
   }
 
   if (query.blocking !== 'specification') {
-    return { ...common, groups: board.groups };
+    return { ...common, ...titled(board.groups) };
   }
 
   const groups = board.groups.flatMap((group) => {
@@ -57,7 +65,11 @@ export function taskListOf(
     return tasks.length > 0 ? [{ ...group, tasks }] : [];
   });
 
-  return { ...common, groups, filter: { blocking: 'specification', ...counts(groups) } };
+  return {
+    ...common,
+    ...titled(groups),
+    filter: { blocking: 'specification', ...counts(groups) },
+  };
 }
 
 /** Project mode: one Engine reading per request. */

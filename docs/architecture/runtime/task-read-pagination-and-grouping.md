@@ -140,6 +140,13 @@ HTTP methods, parameters, response and errors are generated from TypeBox in
   A held Task needing intervention has an item only when a dependent/open
   completion actually waits on it; neutral `facts.attention` differs from
   the row's derived display attention.
+- Blocker and dependency lines are **structured facts**: the item's
+  `reason` with `blocks`, `taskIds` or `blocking`, and a row's `dependsOn`
+  and `facts.dependencyWait`, all Task ids. The list and the Overview
+  summary add `taskTitles` (id to title of every readable Task those facts
+  name, also one not listed), so a client words "holds up <title>" in its
+  own language. The item's `message` is the English text the CLI shows,
+  composed by the Engine from the same facts.
 
 ## Task commands and inputs
 

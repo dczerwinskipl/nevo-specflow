@@ -93,6 +93,15 @@ const BlocksSpecification = Type.Optional(
  */
 const RowAttention = Type.Optional(WorkflowAttentionItemSchema);
 
+/**
+ * The titles of the Tasks the response's structured facts name (a row's `dependsOn` and
+ * `facts.dependencyWait`, an attention item's `blocks`, `taskIds` and `blocking`), keyed by Task
+ * id, readable ones only, so a client words "holds up <title>" or "waits for <title>" from the facts
+ * in its own language, also for a Task the response does not list. Absent when they name none.
+ * The attention `message` stays the English fallback the CLI shows, worded from the same facts.
+ */
+export const NamedTaskTitlesSchema = Type.Record(TaskIdSchema, Type.String());
+
 /** A readable Task: its neutral facts and the status line derived from them. */
 export const TaskListRowSchema = Type.Object({
   id: TaskIdSchema,
@@ -155,6 +164,7 @@ export const TaskListResponseSchema = Type.Object({
   progress: TaskProgressSchema,
   /** The attention projection (broken Tasks, the Specification, then Tasks in id order). */
   attention: Type.Array(WorkflowAttentionItemSchema),
+  taskTitles: Type.Optional(NamedTaskTitlesSchema),
   /**
    * Present with a filter (`?blocking=specification` or `?group=<groupId>`, as requested): how
    * many Tasks match out of all listed (broken too).
@@ -213,5 +223,7 @@ export const TaskOverviewSchema = Type.Object({
       }),
     ),
   ),
+  /** The titles of the Tasks the facts of `rows[].tasks` name (see `NamedTaskTitlesSchema`). */
+  taskTitles: Type.Optional(NamedTaskTitlesSchema),
 });
 export type TaskOverview = Static<typeof TaskOverviewSchema>;

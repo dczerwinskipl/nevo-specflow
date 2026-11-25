@@ -11,7 +11,7 @@ import {
   type TaskEngine,
 } from '../engine/sources';
 import type { InspectionBasis } from '../engine/projection';
-import { isReadable, namedTaskIds, taskBoardOf } from '../presentation/board';
+import { isReadable, namedTaskIds, namedTaskTitles, taskBoardOf } from '../presentation/board';
 import {
   DEFAULT_DASHBOARD_GROUPING,
   type DashboardGrouping,
@@ -135,10 +135,27 @@ export function workspaceTasksOf(
         groups,
         ...board.progress,
         attention: board.attention.map((item) => workspaceAttentionOf(item, titles)),
-        overview: { ...overviewSummary(board.groups), ...(stuck ? { stuck } : {}) },
+        overview: overviewOf(board, stuck),
       },
     },
     preparationState: basis.reading.preparation,
+  };
+}
+
+/** The Overview summary with the titles of the Tasks its rows' facts name. */
+function overviewOf(
+  board: ReturnType<typeof taskBoardOf>,
+  stuck: TaskOverview['stuck'],
+): TaskOverview {
+  const summary = overviewSummary(board.groups);
+
+  return {
+    ...summary,
+    ...(stuck ? { stuck } : {}),
+    ...namedTaskTitles(
+      board.rows,
+      summary.rows.flatMap((row) => row.tasks),
+    ),
   };
 }
 

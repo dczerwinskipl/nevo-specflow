@@ -450,6 +450,28 @@ describe('the Overview preview of the A3 examples', () => {
       status: { id: 'on-hold' },
       attention: { reason: 'on-hold-blocking', blocks: { taskIds: ['w-4', 'w-5'] } },
     });
+    // The held Task's line is worded from its facts: the titles of the Tasks it holds up come
+    // with the Overview, though the Overview lists neither.
+    expect(overview.taskTitles).toMatchObject({ 'w-4': 'Title w-4', 'w-5': 'Title w-5' });
+  });
+});
+
+describe('the titles of the Tasks the facts name', () => {
+  it('come with a filtered list for the Tasks it names but does not list, and only those', () => {
+    const tasks = mix(
+      { progress: 1, waiting: 1, hold: 1, done: 1 },
+      { 'w-1': kinds.waiting('h-1') },
+    );
+    const list = taskListOf(basisOf(tasks, [heldBlocking('h-1', ['w-1'])]), { group: 'on-hold' });
+
+    expect(groupIds(list.groups)).toEqual({ 'on-hold': ['h-1'] });
+    expect(list.taskTitles).toEqual({ 'w-1': 'Title w-1' });
+  });
+
+  it('are absent when the facts name no Task', () => {
+    const list = taskListOf(basisOf(mix({ done: 2 })), {});
+
+    expect(list.taskTitles).toBeUndefined();
   });
 });
 

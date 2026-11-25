@@ -39067,6 +39067,12 @@
                         }
                       }
                     },
+                    "taskTitles": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
                     "filter": {
                       "anyOf": [
                         {
@@ -64962,6 +64968,12 @@
                                                 ]
                                               }
                                             }
+                                          }
+                                        },
+                                        "taskTitles": {
+                                          "type": "object",
+                                          "additionalProperties": {
+                                            "type": "string"
                                           }
                                         }
                                       }

@@ -6,6 +6,7 @@ import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import {
   createArchiveItem,
   createSpecItem,
+  startReviewAttention,
   waitingForTasks,
   workflowFixtures,
 } from '../../../../../test-support/specs/overview/fixtures';
@@ -130,16 +131,22 @@ describe('SpecListRow situation', () => {
   const situation = (item: Parameters<typeof createSpecItem>[0]) => {
     renderRow({ item: currentRow(createSpecItem(item)) });
 
-    // One line per part: the step, its track label, the detail.
-    return [...document.querySelectorAll('[data-spec-reason] > span:not([data-spec-track])')]
+    // One line per part: a signal that is not the workflow's, the title, the track's line.
+    return [
+      ...document.querySelectorAll(
+        '[data-spec-reason] > span:not([data-step-progress]), [data-step-progress-title], [data-step-progress-detail]',
+      ),
+    ]
       .map((part) => part.textContent)
       .join(' | ');
   };
 
+  const progress = () => document.querySelector('[data-spec-progress]')?.textContent ?? '';
+
   it('names the step the workflow waits on and the Tasks the owner can start', () => {
     expect(
       situation({ workflow: waitingForTasks(), classification: { section: 'in-progress' } }),
-    ).toBe('Waiting for Tasks | Step 6 of 7 · 5 Tasks ready to start');
+    ).toBe('Waiting for Tasks | Step 6 of 7 · 5 ready to start');
     // The Overview's segmented step track, named for assistive technology.
     expect(screen.getByRole('img', { name: 'Step 6 of 7: Waiting for Tasks' })).toBeTruthy();
   });
@@ -153,7 +160,33 @@ describe('SpecListRow situation', () => {
     ).toBe('Not started | First step · Gather requirements');
   });
 
-  it('keeps the step under an attention summary', () => {
+  it('says who works on the step and what a review handed back, as the Now does', () => {
+    expect(
+      situation({
+        workflow: workflowFixtures.agentWorking,
+        classification: { section: 'in-progress' },
+      }),
+    ).toMatch(/^Break the solution down \| Step 4 of 7 · Attempt 1 · agent working since /);
+    cleanup();
+    expect(
+      situation({
+        workflow: workflowFixtures.changesRequested,
+        classification: { section: 'in-progress' },
+      }),
+    ).toBe('Break the solution down | Step 4 of 7 · Changes requested');
+  });
+
+  it('leads a row that requires attention with what to do, then how many more', () => {
+    expect(
+      situation({
+        workflow: workflowFixtures.readyForNextStep,
+        classification: { section: 'requires-attention', count: 2 },
+        attention: startReviewAttention,
+      }),
+    ).toBe('Start Review the breakdown | Step 5 of 7 · 1 more item requires attention');
+  });
+
+  it('keeps the step under an attention signal that is not the workflow’s', () => {
     expect(
       situation({
         workflow: workflowFixtures.readyForNextStep,
@@ -162,17 +195,34 @@ describe('SpecListRow situation', () => {
     ).toBe('1 item requires attention | Review the breakdown | Step 5 of 7 · Ready to start');
   });
 
-  it('tells a completed run from an abandoned one', () => {
+  it('tells a completed run, with its Tasks done, from an abandoned one, with its date', () => {
     expect(
       situation({
-        workflow: { kind: 'ended', outcome: 'completed', stepCount: 7 },
+        workflow: workflowFixtures.completed,
         classification: { section: 'ended' },
+        progress: { completed: 12, total: 12 },
       }),
-    ).toBe('Completed | All 7 steps · completed');
+    ).toBe('Completed');
+    expect(progress()).toBe('12 of 12 tasks done');
     cleanup();
     expect(
       situation({ workflow: workflowFixtures.abandoned, classification: { section: 'ended' } }),
-    ).toBe('Abandoned');
-    expect(document.querySelector('[data-spec-track]')).toBeNull();
+    ).toMatch(/^Abandoned \| \S/);
+    expect(
+      document.querySelector('[data-step-progress-detail] time')?.getAttribute('dateTime'),
+    ).toBe('2026-11-20T15:40:00Z');
+    expect(document.querySelector('[data-step-progress-track]')).toBeNull();
+    // No Task progress for an abandoned run.
+    expect(progress()).toBe('');
+  });
+
+  it('says a Specification could not be read, and why', () => {
+    expect(
+      situation({
+        workflow: null,
+        classification: { section: 'unknown' },
+        unreadable: { reason: 'filesystem' },
+      }),
+    ).toBe('Could not read this Specification | Its workflow files could not be read.');
   });
 });

@@ -267,16 +267,6 @@
       "active_other": "{{count}} active sessions",
       "active_few": "{{count}} active sessions",
       "active_many": "{{count}} active sessions",
-      "agentWorking": "agent working",
-      "stepInProgress": "in progress",
-      "tasksReady_one": "1 Task ready to start",
-      "tasksReady_few": "{{count}} Tasks ready to start",
-      "tasksReady_many": "{{count}} Tasks ready to start",
-      "tasksReady_other": "{{count}} Tasks ready to start",
-      "tasksInProgress_one": "1 Task in progress",
-      "tasksInProgress_few": "{{count}} Tasks in progress",
-      "tasksInProgress_many": "{{count}} Tasks in progress",
-      "tasksInProgress_other": "{{count}} Tasks in progress",
       "attentionItems_one": "1 item requires attention",
       "attentionItems_few": "{{count}} items require attention",
       "attentionItems_many": "{{count}} items require attention",
@@ -287,7 +277,12 @@
       "concurrent_few": "{{count}} sessions active",
       "concurrent_many": "{{count}} sessions active",
       "attention": "Human attention required",
-      "unknown": "Work status not available yet"
+      "unknown": "Work status not available yet",
+      "moreAttention_one": "{{count}} more item requires attention",
+      "moreAttention_other": "{{count}} more items require attention",
+      "moreAttention_few": "{{count}} more items require attention",
+      "moreAttention_many": "{{count}} more items require attention",
+      "attentionOnTask": "{{action}} · {{task}}"
     },
     "forbidden": {
       "title": "Access denied",
@@ -308,6 +303,15 @@
     "milestone": {
       "completed": "Completed",
       "archived": "Archived"
+    },
+    "unreadable": {
+      "title": "Could not read this Specification",
+      "reason": {
+        "invalid": "Its workflow files are not valid.",
+        "filesystem": "Its workflow files could not be read.",
+        "busy": "The project was busy with another change. Try again in a moment.",
+        "unexpected": "Something unexpected went wrong; the Runtime log has the details."
+      }
     }
   },
   "taskWorkspace": {

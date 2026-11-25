@@ -8,21 +8,51 @@ import type { TaskProgressData } from '../../../specs/read-model';
 const doneFill = { '--color-progress-fill': 'var(--color-status-success)' } as CSSProperties;
 
 /**
- * A Specification's Task progress: "0 of 12 tasks done" with what else matters about its Tasks
- * ("5 ready to start · 1 on hold") on one line, one continuous bar under it. The counts are the
+ * A Specification's Task progress: "0 of 12 tasks done", one continuous bar. The counts are the
  * Runtime's; nothing is recounted here. Shared by the Specification's Now and the Specifications
  * list.
+ *
+ * - `block` (the Now): the count with what else matters about its Tasks ("5 ready to start · 1 on
+ *   hold") on one line, the bar under it;
+ * - `compact` (a list row's progress column): a short bar beside the count; `label` names the
+ *   Specification for assistive technology, which does not see the row.
  */
 export function TaskProgress({
   progress,
   ready,
+  variant = 'block',
+  label,
 }: {
   readonly progress: TaskProgressData;
-  /** Tasks that can start now (the Runtime's "Ready to start" group), when known. */
+  /** Block only: Tasks that can start now (the Runtime's "Ready to start" group), when known. */
   readonly ready?: number;
+  readonly variant?: 'block' | 'compact';
+  /** Compact only: the bar's accessible name. */
+  readonly label?: string;
 }) {
   const { t } = useTranslation();
   const labelId = useId();
+  const count = t('taskOverview.progress.tasksDone', {
+    completed: progress.completed,
+    total: progress.total,
+  });
+  if (variant === 'compact') {
+    return (
+      <>
+        <div className="w-20 shrink-0">
+          <Progress
+            value={progress.completed}
+            max={progress.total}
+            style={doneFill}
+            aria-label={label ?? count}
+            aria-valuetext={count}
+          />
+        </div>
+        <span>{count}</span>
+      </>
+    );
+  }
+
   const side = [
     ...(ready ? [t('taskOverview.progress.readyToStart', { count: ready })] : []),
     ...(progress.cancelled
@@ -36,10 +66,7 @@ export function TaskProgress({
     <div className="grid min-w-0 gap-2" data-now-tasks-progress="">
       <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <Typography as="p" variant="title-sm" id={labelId} className="min-w-0">
-          {t('taskOverview.progress.tasksDone', {
-            completed: progress.completed,
-            total: progress.total,
-          })}
+          {count}
         </Typography>
         {side ? (
           <Typography as="p" variant="body-sm" className="min-w-0 text-content-secondary">

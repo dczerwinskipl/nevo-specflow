@@ -12,7 +12,12 @@ import type {
 import { translateNow } from '../../../i18n/message';
 
 function mapAttention(items: readonly WorkspaceAttention[]): AttentionItem[] {
-  return items.map((item) => ({
+  return items.map(mapAttentionItem);
+}
+
+/** One attention record of the Runtime as the UI's item (the Overview's and the list's). */
+export function mapAttentionItem(item: WorkspaceAttention): AttentionItem {
+  return {
     id: item.id,
     kind: item.kind,
     title: item.title,
@@ -30,7 +35,7 @@ function mapAttention(items: readonly WorkspaceAttention[]): AttentionItem[] {
     ...(item.brokenTaskIds ? { brokenTaskIds: item.brokenTaskIds } : {}),
     ...(item.blocking ? { blocking: item.blocking } : {}),
     ...(item.blocks ? { blocks: item.blocks } : {}),
-  }));
+  };
 }
 
 function mapFeatureAttention(

@@ -388,6 +388,72 @@ export interface StepTrack {
 }
 
 /**
+ * Where a run sits among its declared steps, as facts both screens have: at a step (`current`, with
+ * the next step's title when known), before the first start (`not-started`, the first step) or
+ * `completed`. The Overview's Now reads them from the outline, a Specifications list row from the
+ * list's workflow position.
+ */
+export type TrackFacts =
+  | {
+      readonly kind: 'current';
+      readonly position: number;
+      readonly total: number;
+      readonly title: string;
+      readonly next?: string;
+    }
+  | { readonly kind: 'not-started'; readonly total: number; readonly firstStep: string }
+  | { readonly kind: 'completed'; readonly total: number };
+
+/** The step track of {@link TrackFacts}: one wording for the Overview's Now and the list rows. */
+export function positionTrack(t: TFunction, facts: TrackFacts): StepTrack {
+  const { total } = facts;
+  switch (facts.kind) {
+    case 'current': {
+      const count = t('workflowExecution.now.progress', { position: facts.position, total });
+
+      return {
+        position: { state: 'current', step: facts.position },
+        total,
+        label:
+          facts.next !== undefined
+            ? t('workflowExecution.now.progressNext', {
+                position: facts.position,
+                total,
+                next: facts.next,
+              })
+            : count,
+        count,
+        ariaLabel: t('workflowExecution.now.track.current', {
+          position: facts.position,
+          total,
+          title: facts.title,
+        }),
+      };
+    }
+
+    case 'not-started':
+      return {
+        position: { state: 'not-started' },
+        total,
+        label: t('workflowExecution.now.firstStep', { title: facts.firstStep }),
+        count: t('workflowExecution.now.track.steps', { count: total }),
+        ariaLabel: t('workflowExecution.now.track.notStarted', { total, title: facts.firstStep }),
+      };
+    case 'completed': {
+      const label = t('workflowExecution.now.track.completed', { total });
+
+      return {
+        position: { state: 'completed' },
+        total,
+        label,
+        count: t('workflowExecution.now.track.allSteps', { count: total }),
+        ariaLabel: label,
+      };
+    }
+  }
+}
+
+/**
  * Where the run sits among its declared steps, from the outline only: at a step, before the first
  * start (the first step outlined) or completed. None without an outline and for an abandoned run
  * (the outline no longer says where it stopped).
@@ -403,20 +469,13 @@ export function stepTrack(
 
   const total = outline.stepCount;
   if (outline.current) {
-    return {
-      position: { state: 'current', step: outline.current.position },
+    return positionTrack(t, {
+      kind: 'current',
+      position: outline.current.position,
       total,
-      label: progressLine(t, outline) ?? '',
-      count: t('workflowExecution.now.progress', {
-        position: outline.current.position,
-        total,
-      }),
-      ariaLabel: t('workflowExecution.now.track.current', {
-        position: outline.current.position,
-        total,
-        title: outline.current.title,
-      }),
-    };
+      title: outline.current.title,
+      ...(outline.next ? { next: outline.next.title } : {}),
+    });
   }
 
   const firstStepTitle =
@@ -424,28 +483,12 @@ export function stepTrack(
       ? position.preview?.firstStepTitle
       : undefined;
   if (firstStepTitle !== undefined) {
-    return {
-      position: { state: 'not-started' },
-      total,
-      label: t('workflowExecution.now.firstStep', { title: firstStepTitle }),
-      count: t('workflowExecution.now.track.steps', { count: total }),
-      ariaLabel: t('workflowExecution.now.track.notStarted', { total, title: firstStepTitle }),
-    };
+    return positionTrack(t, { kind: 'not-started', total, firstStep: firstStepTitle });
   }
 
-  if (position.kind === 'terminal' && position.outcome === 'completed') {
-    const label = t('workflowExecution.now.track.completed', { total });
-
-    return {
-      position: { state: 'completed' },
-      total,
-      label,
-      count: t('workflowExecution.now.track.allSteps', { count: total }),
-      ariaLabel: label,
-    };
-  }
-
-  return undefined;
+  return position.kind === 'terminal' && position.outcome === 'completed'
+    ? positionTrack(t, { kind: 'completed', total })
+    : undefined;
 }
 
 /**

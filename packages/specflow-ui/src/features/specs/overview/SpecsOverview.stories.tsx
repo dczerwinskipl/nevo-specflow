@@ -24,6 +24,7 @@ import {
   createSpecItem,
   createSpecsFixture,
   createArchiveItem,
+  startReviewAttention,
   waitingForTasks,
   workflowFixtures,
 } from '../../../../test-support/specs/overview/fixtures';
@@ -472,20 +473,18 @@ export const CurrentContract: Story = {
     canvas.getByText('Agent input required');
     // Each row says where its workflow stands, in the Overview's own words.
     await expect(situationOf(canvasElement, 'admission')).toBe(
-      'Agent input required | Waiting for Tasks | Step 6 of 7 · 2 Tasks in progress',
+      'Agent input required | Waiting for Tasks | Step 6 of 7 · Waiting for 4 of 9 tasks',
     );
     await expect(situationOf(canvasElement, 'packaging')).toBe(
-      'Waiting for Tasks | Step 6 of 7 · 2 Tasks ready to start',
+      'Waiting for Tasks | Step 6 of 7 · 2 ready to start',
     );
-    await expect(situationOf(canvasElement, 'providers')).toBe(
-      'Breakdown | Step 4 of 7 · agent working',
+    await expect(situationOf(canvasElement, 'providers')).toMatch(
+      /^Break the solution down \| Step 4 of 7 · Attempt 1 · agent working since /,
     );
     await expect(situationOf(canvasElement, 'localization')).toBe(
       'Not started | First step · Gather requirements',
     );
-    await expect(situationOf(canvasElement, 'delivery')).toBe(
-      'Completed | All 7 steps · completed',
-    );
+    await expect(situationOf(canvasElement, 'delivery')).toBe('Completed');
     if (canvasElement.textContent?.includes('In preparation')) {
       throw new Error('The manifest status is not progress.');
     }
@@ -699,11 +698,13 @@ export const NotStartedAndEnded: Story = {
  * One row per place a workflow run can be, each in its section: the row names the current step and
  * who or what it waits for, as the Specification's Overview says it (never the manifest status).
  */
-/** A row's situation, one part per line: the summary, the step, its track label, the detail. */
+/** A row's situation, one part per line: a signal that is not the workflow's, the title, the line. */
 function situationOf(canvasElement: HTMLElement, specId: string): string {
+  const row = `[data-spec-id="${specId}"]`;
+
   return [
     ...canvasElement.querySelectorAll(
-      `[data-spec-id="${specId}"] [data-spec-reason] > span:not([data-spec-track])`,
+      `${row} [data-spec-reason] > span:not([data-step-progress]), ${row} [data-step-progress-title], ${row} [data-step-progress-detail]`,
     ),
   ]
     .map((part) => part.textContent)
@@ -731,6 +732,7 @@ const workflowPhasesState: SpecsOverviewState = {
   ...loaded,
   projection: {
     ...createSpecsFixture(),
+    sections: ['requires-attention', 'in-progress', 'not-started', 'ended', 'unknown'],
     items: [
       createSpecItem({
         id: 'stuck',
@@ -738,6 +740,18 @@ const workflowPhasesState: SpecsOverviewState = {
         title: 'Agent workflow entry points and portable skill',
         workflow: waitingForTasks({ readyToStart: 0 }),
         classification: { section: 'requires-attention', count: 2 },
+        attention: {
+          first: {
+            id: 'specification-attention',
+            kind: 'specification',
+            title: 'Waiting for Tasks',
+            reason: 'No open Task can progress without the owner.',
+            code: 'tasks-stuck',
+            actor: 'owner',
+            action: 'review-tasks',
+            taskIds: ['api', 'screen'],
+          },
+        },
         progress: { completed: 0, total: 12 },
       }),
       phase('waiting', 'Payment limits', workflowFixtures.waiting, 'in-progress', {
@@ -767,7 +781,19 @@ const workflowPhasesState: SpecsOverviewState = {
         // The owner confirms the breakdown: the run waits for them to start its review.
         workflow: workflowFixtures.readyForNextStep,
         classification: { section: 'requires-attention', count: 1 },
+        attention: startReviewAttention,
         progress: { completed: 0, total: 5 },
+      }),
+      phase('changes', 'Webhook retries', workflowFixtures.changesRequested, 'in-progress'),
+      createSpecItem({
+        id: 'unreadable',
+        key: 'BROKEN',
+        title: 'Search filters',
+        workflow: null,
+        classification: { section: 'unknown' },
+        unreadable: { reason: 'invalid' },
+        progress: null,
+        signals: null,
       }),
       phase('next', 'Usage reports', workflowFixtures.readyForNextStep, 'in-progress'),
       phase('new', 'Single sign-on', workflowFixtures.notStarted, 'not-started'),
@@ -789,28 +815,33 @@ export const WorkflowPhases: Story = {
     await canvas.findByRole('heading', { name: 'In progress' });
     const headings = [...canvasElement.querySelectorAll('[data-spec-section-header] h2')];
     await expect(headings.map((element) => element.textContent).join('|')).toBe(
-      'Requires attention|In progress|Not started|Ended',
+      'Requires attention|In progress|Not started|Ended|Status unavailable',
     );
+    // An abandoned run shows no Task progress; a completed one shows its Tasks done.
+    await expect(
+      canvasElement.querySelector('[data-spec-id="dropped"] [data-spec-progress]')?.textContent,
+    ).toBe('');
+    await expect(
+      canvasElement.querySelector('[data-spec-id="done"] [data-spec-progress]')?.textContent,
+    ).toBe('4 of 4 tasks done');
     for (const [specId, situation] of [
-      [
-        'stuck',
-        '2 items require attention | Waiting for Tasks | Step 6 of 7 · Waiting for 12 of 12 tasks',
-      ],
-      [
-        'confirm',
-        '1 item requires attention | Review the breakdown | Step 5 of 7 · Ready to start',
-      ],
-      ['waiting', 'Waiting for Tasks | Step 6 of 7 · 5 Tasks ready to start'],
-      ['running', 'Waiting for Tasks | Step 6 of 7 · 2 Tasks in progress'],
+      ['stuck', 'Resolve 2 blocking tasks | Step 6 of 7 · 1 more item requires attention'],
+      ['confirm', 'Start Review the breakdown | Step 5 of 7'],
+      ['waiting', 'Waiting for Tasks | Step 6 of 7 · 5 ready to start'],
+      ['running', 'Waiting for Tasks | Step 6 of 7 · Waiting for 3 of 4 tasks'],
       ['remaining', 'Waiting for Tasks | Step 6 of 7 · Waiting for 2 of 4 tasks'],
-      ['agent', 'Breakdown | Step 4 of 7 · agent working'],
-      ['owner', 'Solution | Step 3 of 7 · in progress'],
+      ['agent', /^Break the solution down \| Step 4 of 7 · Attempt 1 · agent working since /],
+      ['owner', /^Design the solution \| Step 3 of 7 · In progress since .+ · started by /],
+      ['changes', 'Break the solution down | Step 4 of 7 · Changes requested'],
       ['next', 'Review the breakdown | Step 5 of 7 · Ready to start'],
       ['new', 'Not started | First step · Gather requirements'],
-      ['done', 'Completed | All 7 steps · completed'],
-      ['dropped', 'Abandoned'],
+      ['done', 'Completed'],
+      ['unreadable', 'Could not read this Specification | Its workflow files are not valid.'],
+      ['dropped', /^Abandoned \| \S/],
     ] as const) {
-      await expect(situationOf(canvasElement, specId)).toBe(situation);
+      await (typeof situation === 'string'
+        ? expect(situationOf(canvasElement, specId)).toBe(situation)
+        : expect(situationOf(canvasElement, specId)).toMatch(situation));
     }
   },
 };
@@ -822,7 +853,9 @@ export const WorkflowPhasesMobile: Story = {
   play: async ({ canvas, canvasElement }) => {
     await settleViewport(375, 812);
     await canvas.findByRole('heading', { name: 'In progress' });
-    for (const detail of canvasElement.querySelectorAll<HTMLElement>('[data-spec-step-detail]')) {
+    for (const detail of canvasElement.querySelectorAll<HTMLElement>(
+      '[data-step-progress-title], [data-step-progress-detail]',
+    )) {
       await expect(detail.getBoundingClientRect().right).toBeLessThanOrEqual(375);
     }
   },

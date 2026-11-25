@@ -267,16 +267,6 @@
       "active_few": "{{count}} aktywne sesje",
       "active_many": "{{count}} aktywnych sesji",
       "active_other": "{{count}} aktywnych sesji",
-      "agentWorking": "pracuje agent",
-      "stepInProgress": "w toku",
-      "tasksReady_one": "1 zadanie gotowe do rozpoczęcia",
-      "tasksReady_few": "{{count}} zadania gotowe do rozpoczęcia",
-      "tasksReady_many": "{{count}} zadań gotowych do rozpoczęcia",
-      "tasksReady_other": "{{count}} zadań gotowych do rozpoczęcia",
-      "tasksInProgress_one": "1 zadanie w toku",
-      "tasksInProgress_few": "{{count}} zadania w toku",
-      "tasksInProgress_many": "{{count}} zadań w toku",
-      "tasksInProgress_other": "{{count}} zadań w toku",
       "attentionItems_one": "1 sprawa wymaga uwagi",
       "attentionItems_few": "{{count}} sprawy wymagają uwagi",
       "attentionItems_many": "{{count}} spraw wymaga uwagi",
@@ -287,7 +277,12 @@
       "concurrent_many": "{{count}} sesji w toku",
       "concurrent_other": "{{count}} sesji w toku",
       "attention": "Wymagana uwaga człowieka",
-      "unknown": "Stan pracy jeszcze nieustalony"
+      "unknown": "Stan pracy jeszcze nieustalony",
+      "moreAttention_one": "Jeszcze {{count}} element wymaga uwagi",
+      "moreAttention_few": "Jeszcze {{count}} elementy wymagają uwagi",
+      "moreAttention_many": "Jeszcze {{count}} elementów wymaga uwagi",
+      "moreAttention_other": "Jeszcze {{count}} elementu wymaga uwagi",
+      "attentionOnTask": "{{action}} · {{task}}"
     },
     "forbidden": {
       "title": "Brak dostępu",
@@ -308,6 +303,15 @@
     "milestone": {
       "completed": "Ukończono",
       "archived": "Zarchiwizowano"
+    },
+    "unreadable": {
+      "title": "Nie udało się odczytać tej specyfikacji",
+      "reason": {
+        "invalid": "Jej pliki przepływu pracy są nieprawidłowe.",
+        "filesystem": "Nie udało się odczytać jej plików przepływu pracy.",
+        "busy": "Projekt był zajęty inną zmianą. Spróbuj ponownie za chwilę.",
+        "unexpected": "Wystąpił nieoczekiwany błąd; szczegóły są w logu Runtime."
+      }
     }
   },
   "taskWorkspace": {

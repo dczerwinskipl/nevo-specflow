@@ -1,11 +1,12 @@
-import { InformationList, Progress, Typography, cn } from '@nevo/ui';
+import { InformationList, Typography, cn } from '@nevo/ui';
 import {
   CollectionRow,
   collectionWide,
   type CollectionTracks,
 } from '../../../../shared/operational-list';
 import { useTranslation } from 'react-i18next';
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import { TaskProgress } from '../../../tasks';
 import {
   rowMetadata,
   rowProgress,
@@ -18,9 +19,6 @@ import { SpecRowSummary } from './SpecRowSummary';
 import { SpecPrimaryLink, type RenderSpecificationLink } from './SpecPrimaryLink';
 import { SpecPullRequests } from './SpecPullRequests';
 import { formatSpecDate } from './specDate';
-
-/** The Overview's done fill of the Task progress bar (`SpecificationNow`). */
-const doneFill = { '--color-progress-fill': 'var(--color-status-success)' } as CSSProperties;
 
 export interface SpecListRowProps {
   readonly item: SpecRowModel;
@@ -189,10 +187,6 @@ function SpecUpdated({ item }: { item: CurrentSpecRowModel }) {
 function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
   const { t } = useTranslation();
   const details = item.progress;
-  // The Overview's words and bar for the same count (`taskOverview.progress.tasksDone`).
-  const count = details
-    ? t('taskOverview.progress.tasksDone', details)
-    : t('specifications.progressUnknown');
   const progress = rowProgress(details);
 
   return (
@@ -207,7 +201,7 @@ function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
       )}
       data-spec-progress
     >
-      {progress === 'unknown' ? (
+      {item.hideProgress ? null : progress === 'unknown' ? (
         t('specifications.progressUnknown')
       ) : progress === 'invalid' ? (
         t('specifications.invalidProgress')
@@ -217,19 +211,12 @@ function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
           {t('specifications.noTasks')}
         </span>
       ) : details ? (
-        <>
-          {/* One continuous bar, as the Overview's Task progress: never a second segmented track. */}
-          <div className="w-20 shrink-0">
-            <Progress
-              value={details.completed}
-              max={details.total}
-              style={doneFill}
-              aria-label={t('specifications.progressLabel', { title: item.title })}
-              aria-valuetext={count}
-            />
-          </div>
-          <span>{count}</span>
-        </>
+        // The Overview's Task progress, compact: one continuous bar, never a second step track.
+        <TaskProgress
+          variant="compact"
+          progress={details}
+          label={t('specifications.progressLabel', { title: item.title })}
+        />
       ) : null}
     </Typography>
   );

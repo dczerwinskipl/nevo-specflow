@@ -7,3 +7,8 @@ export {
 } from './execution/specification/SpecificationWorkflow';
 export { SpecificationAgentAttempts } from './execution/agent/SpecificationAgentAttempts';
 export { SpecificationNow } from './execution/specification/SpecificationNow';
+export {
+  SpecificationSituation,
+  type SituationAttention,
+} from './execution/progress/SpecificationSituation';
+export { TaskProgress } from './execution/progress/TaskProgress';

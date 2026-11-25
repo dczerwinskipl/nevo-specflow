@@ -1,3 +1,5 @@
+import type { SituationAttention } from '../../tasks';
+import { mapAttentionItem } from '../read-model';
 import type {
   ArchivedSpecOverviewItem,
   CurrentSpecOverviewItem,
@@ -12,33 +14,26 @@ type Tags = readonly [] | readonly [string] | readonly [string, string];
 type PullRequests =
   { kind: 'single'; number: number; href: string } | { kind: 'multiple'; count: number };
 
-type WorkflowStep = Extract<CurrentSpecWorkflow, { kind: 'step' }>;
-
 /**
- * What the row says about where the Specification's workflow stands, the Overview's Now in one or
- * two lines: the step title, then its place and who or what it waits for.
+ * What a current row says about its Specification:
+ *
+ * - `workflow`: where its workflow run stands, the Overview's Now in a few lines; with `attention`
+ *   when the workflow needs a person (the item the Overview's Requires attention lists first);
+ * - `attention`: an attention signal that is not the workflow's (a Session, demo evidence only);
+ * - `sessions`: Sessions execute while the workflow position is unknown (demo evidence only);
+ * - `unreadable`: the workflow could not be read, and why;
+ * - `unknown`: no work status.
  */
-export type WorkflowLine =
-  | { kind: 'not-started'; stepCount?: number; firstStep?: string }
-  | {
-      kind: 'step';
-      title?: string;
-      position?: { position: number; total: number };
-      detail?:
-        | { kind: 'agent-working' }
-        | { kind: 'in-progress' }
-        | { kind: 'ready' }
-        | { kind: 'tasks-ready'; count: number }
-        | { kind: 'tasks-in-progress'; count: number }
-        | { kind: 'waiting-for'; count: number; total: number };
-    }
-  | { kind: 'ended'; outcome: 'completed' | 'abandoned'; stepCount?: number };
-
-type CurrentSummary =
+export type CurrentSummary =
+  | { kind: 'workflow'; workflow: CurrentSpecWorkflow; attention?: SituationAttention }
   | { kind: 'attention'; reason?: CurrentSpecAttentionReason; count?: number }
   | { kind: 'sessions'; executionCount: number }
-  | { kind: 'workflow'; line: WorkflowLine }
+  | { kind: 'unreadable'; reason: CurrentSpecUnreadableReason }
   | { kind: 'unknown' };
+
+export type CurrentSpecUnreadableReason = NonNullable<
+  CurrentSpecOverviewItem['unreadable']
+>['reason'];
 
 interface RowIdentity {
   readonly id: string;
@@ -56,9 +51,11 @@ export interface CurrentSpecRowModel extends RowIdentity {
   readonly collection: 'current';
   readonly sectionId: CurrentSpecSectionId;
   readonly summary: CurrentSummary;
-  /** Under an attention summary: where the workflow stands, so the row still names the step. */
-  readonly workflow?: WorkflowLine;
+  /** Under an attention signal: where the workflow stands, so the row still names the step. */
+  readonly workflow?: CurrentSpecWorkflow;
   readonly qualifier?: { executionCount: number };
+  /** An abandoned run shows no Task progress: it says it was abandoned, and when. */
+  readonly hideProgress?: boolean;
 }
 
 export interface ArchiveSpecRowModel extends RowIdentity {
@@ -94,8 +91,7 @@ function identity(item: SpecOverviewItem): RowIdentity {
 export function currentRow(item: CurrentSpecOverviewItem): CurrentSpecRowModel {
   const executionCount = item.currentExecutions?.length ?? 0;
   const summary = currentSummary(item);
-  const workflow =
-    summary.kind === 'attention' && item.workflow ? workflowLine(item.workflow) : undefined;
+  const workflow = summary.kind === 'attention' && item.workflow ? item.workflow : undefined;
 
   return {
     ...identity(item),
@@ -103,56 +99,17 @@ export function currentRow(item: CurrentSpecOverviewItem): CurrentSpecRowModel {
     collection: 'current',
     sectionId: item.classification.section,
     summary,
-    // One concurrent qualifier at most, under an attention summary only: the workflow position
+    // One concurrent qualifier at most, under an attention signal only: the workflow position
     // wins over the Session count.
     ...(workflow ? { workflow } : {}),
     qualifier:
       summary.kind === 'attention' && !workflow && executionCount > 0
         ? { executionCount }
         : undefined,
-  };
-}
-
-/** The row's words for where the workflow stands; never the manifest status. Pure. */
-export function workflowLine(workflow: CurrentSpecWorkflow): WorkflowLine {
-  if (workflow.kind !== 'step') {
-    return workflow;
-  }
-
-  const detail = stepDetail(workflow);
-
-  return {
-    kind: 'step',
-    ...(workflow.step
-      ? {
-          title: workflow.step.title,
-          position: { position: workflow.step.position, total: workflow.step.count },
-        }
+    ...(item.workflow?.kind === 'ended' && item.workflow.outcome === 'abandoned'
+      ? { hideProgress: true }
       : {}),
-    ...(detail ? { detail } : {}),
   };
-}
-
-function stepDetail(workflow: WorkflowStep): Extract<WorkflowLine, { kind: 'step' }>['detail'] {
-  switch (workflow.state) {
-    case 'active':
-      return workflow.actor === 'agent' ? { kind: 'agent-working' } : { kind: 'in-progress' };
-    case 'ready':
-      return { kind: 'ready' };
-    case 'waiting': {
-      const tasks = workflow.tasks;
-      if (!tasks) {
-        return undefined;
-      }
-
-      // What the owner can do first (start a Task), then what runs, then what is left.
-      return tasks.readyToStart > 0
-        ? { kind: 'tasks-ready', count: tasks.readyToStart }
-        : tasks.inProgress > 0
-          ? { kind: 'tasks-in-progress', count: tasks.inProgress }
-          : { kind: 'waiting-for', count: tasks.open, total: tasks.total };
-    }
-  }
 }
 
 export function archiveRow(item: ArchivedSpecOverviewItem): ArchiveSpecRowModel {
@@ -182,8 +139,25 @@ export function sortArchiveItems(items: readonly ArchivedSpecOverviewItem[]) {
 }
 
 function currentSummary(item: CurrentSpecOverviewItem): CurrentSummary {
+  if (item.unreadable) {
+    return { kind: 'unreadable', reason: item.unreadable.reason };
+  }
+
   switch (item.classification.section) {
     case 'requires-attention':
+      // The workflow's own attention: the row names the item the Overview lists first.
+      if (item.workflow && item.attention) {
+        return {
+          kind: 'workflow',
+          workflow: item.workflow,
+          attention: {
+            first: mapAttentionItem(item.attention.first),
+            ...(item.attention.taskTitles ? { taskTitles: item.attention.taskTitles } : {}),
+            count: item.classification.count ?? 1,
+          },
+        };
+      }
+
       return {
         kind: 'attention',
         ...(item.classification.reason === undefined ? {} : { reason: item.classification.reason }),
@@ -193,14 +167,12 @@ function currentSummary(item: CurrentSpecOverviewItem): CurrentSummary {
     case 'in-progress':
       // A Session executes while the workflow position is unknown (demo evidence only).
       return item.workflow?.kind === 'step'
-        ? { kind: 'workflow', line: workflowLine(item.workflow) }
+        ? { kind: 'workflow', workflow: item.workflow }
         : { kind: 'sessions', executionCount: item.currentExecutions?.length ?? 0 };
 
     case 'not-started':
     case 'ended':
-      return item.workflow
-        ? { kind: 'workflow', line: workflowLine(item.workflow) }
-        : { kind: 'unknown' };
+      return item.workflow ? { kind: 'workflow', workflow: item.workflow } : { kind: 'unknown' };
 
     case 'unknown':
       return { kind: 'unknown' };

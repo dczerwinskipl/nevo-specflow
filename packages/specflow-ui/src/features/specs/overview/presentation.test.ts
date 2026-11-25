@@ -4,9 +4,11 @@ import {
   createArchiveItem,
   createSpecItem,
   createSpecsFixture,
+  startReviewAttention,
   waitingForTasks,
   workflowFixtures,
 } from '../../../../test-support/specs/overview/fixtures';
+import { mapAttentionItem } from '../read-model';
 import { sectionTranslationKey } from './model';
 import {
   archiveRow,
@@ -15,7 +17,6 @@ import {
   sortArchiveItems,
   rowMetadata,
   rowProgress,
-  workflowLine,
 } from './presentation';
 
 describe('Specs Overview presentation boundary', () => {
@@ -66,12 +67,7 @@ describe('Specs Overview presentation boundary', () => {
     expect(row.sectionId).toBe('requires-attention');
     expect(row.summary).toEqual({ kind: 'attention', reason: 'input' });
     // The workflow position is the one qualifier under attention; it wins over the Session count.
-    expect(row.workflow).toEqual({
-      kind: 'step',
-      title: 'Waiting for Tasks',
-      position: { position: 6, total: 7 },
-      detail: { kind: 'tasks-in-progress', count: 2 },
-    });
+    expect(row.workflow).toEqual(source.workflow);
     expect(row.qualifier).toBeUndefined();
     expect(currentRow({ ...source, workflow: null }).qualifier).toEqual({ executionCount: 1 });
     expect(row).not.toHaveProperty('signals');
@@ -89,7 +85,10 @@ describe('Specs Overview presentation boundary', () => {
   });
 
   it('says where the workflow stands, never what the manifest status says', () => {
-    const summary = (workflow: Parameters<typeof workflowLine>[0], section = 'in-progress') =>
+    const summary = (
+      workflow: NonNullable<ReturnType<typeof createSpecItem>['workflow']>,
+      section = 'in-progress',
+    ) =>
       currentRow(
         createSpecItem({
           workflow,
@@ -97,43 +96,55 @@ describe('Specs Overview presentation boundary', () => {
         }),
       ).summary;
 
-    expect(summary(workflowFixtures.notStarted, 'not-started')).toEqual({
+    for (const [workflow, section] of [
+      [workflowFixtures.notStarted, 'not-started'],
+      [waitingForTasks(), 'in-progress'],
+      [workflowFixtures.completed, 'ended'],
+    ] as const) {
+      expect(summary(workflow, section)).toEqual({ kind: 'workflow', workflow });
+    }
+  });
+
+  it('leads a row that requires attention with the item its Overview lists first', () => {
+    const row = currentRow(
+      createSpecItem({
+        workflow: workflowFixtures.readyForNextStep,
+        classification: { section: 'requires-attention', count: 2 },
+        attention: startReviewAttention,
+      }),
+    );
+    expect(row.summary).toEqual({
       kind: 'workflow',
-      line: { kind: 'not-started', stepCount: 7, firstStep: 'Gather requirements' },
-    });
-    expect(summary(workflowFixtures.waiting)).toEqual({
-      kind: 'workflow',
-      line: {
-        kind: 'step',
-        title: 'Waiting for Tasks',
-        position: { position: 6, total: 7 },
-        detail: { kind: 'tasks-ready', count: 5 },
-      },
-    });
-    expect(summary(workflowFixtures.completed, 'ended')).toEqual({
-      kind: 'workflow',
-      line: { kind: 'ended', outcome: 'completed', stepCount: 7 },
+      workflow: workflowFixtures.readyForNextStep,
+      attention: { first: mapAttentionItem(startReviewAttention.first), count: 2 },
     });
   });
 
-  it.each([
-    [workflowFixtures.agentWorking, { kind: 'agent-working' }],
-    [workflowFixtures.ownerWorking, { kind: 'in-progress' }],
-    [workflowFixtures.readyForNextStep, { kind: 'ready' }],
-    [waitingForTasks({ readyToStart: 0, inProgress: 3 }), { kind: 'tasks-in-progress', count: 3 }],
-    [
-      waitingForTasks({ readyToStart: 0, inProgress: 0, open: 2, total: 12 }),
-      { kind: 'waiting-for', count: 2, total: 12 },
-    ],
-  ] as const)('names what step %j waits for', (workflow, detail) => {
-    expect(workflowLine(workflow)).toMatchObject({ kind: 'step', detail });
-  });
-
-  it('names no step whose workflow changed under the run', () => {
-    expect(workflowLine({ kind: 'step', state: 'ready' })).toEqual({
-      kind: 'step',
-      detail: { kind: 'ready' },
-    });
+  it('says a workflow could not be read, and shows no Task progress for an abandoned run', () => {
+    expect(
+      currentRow(
+        createSpecItem({
+          workflow: null,
+          classification: { section: 'unknown' },
+          unreadable: { reason: 'invalid' },
+        }),
+      ).summary,
+    ).toEqual({ kind: 'unreadable', reason: 'invalid' });
+    const abandoned = currentRow(
+      createSpecItem({
+        workflow: workflowFixtures.abandoned,
+        classification: { section: 'ended' },
+      }),
+    );
+    expect(abandoned.hideProgress).toBe(true);
+    expect(
+      currentRow(
+        createSpecItem({
+          workflow: workflowFixtures.completed,
+          classification: { section: 'ended' },
+        }),
+      ).hideProgress,
+    ).toBeUndefined();
   });
 
   it('keeps unknown status and progress explicit in the presentation model', () => {

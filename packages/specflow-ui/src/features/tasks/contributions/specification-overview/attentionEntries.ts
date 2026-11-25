@@ -4,7 +4,13 @@ import type {
   SpecificationWorkSectionContext,
 } from '../../../specs';
 import type { AttentionItem, SpecificationWorkspaceData } from '../../../specs/read-model';
-import { message, type Message } from '../../../../i18n/message';
+import { message } from '../../../../i18n/message';
+import {
+  attentionActionHasFlow,
+  attentionActionLabel,
+  attentionReason,
+  attentionStuckTitle,
+} from '../../overview/attentionWording';
 import { goToHeading } from '../../execution/InlineAction';
 import { SPECIFICATION_NOW_HEADING } from '../../execution/specification/SpecificationWorkflow';
 import {
@@ -29,19 +35,12 @@ function actionOf(
   item: AttentionItem,
   { specId, actions }: Context,
 ): SpecificationAttentionAction | undefined {
-  if (
-    code === 'answer-session' ||
-    code === 'open-project-settings' ||
-    code === 'configure-archetype'
-  ) {
+  if (!attentionActionHasFlow(code)) {
     // A Session's item belongs to the Sessions owner; settings have no UI yet.
     return undefined;
   }
 
-  const label =
-    code === 'start-step' && item.stepTitle
-      ? message('taskOverview.attention.startNamed', { step: item.stepTitle })
-      : message(`taskOverview.attention.action.${code}`);
+  const label = attentionActionLabel(code, item);
   const taskId = item.kind === 'task' ? item.targetId : undefined;
   const onTask = (run: (id: string) => void) =>
     taskId ? { label, onClick: () => run(taskId) } : undefined;
@@ -115,71 +114,6 @@ function typeTitleOf(data: SpecificationWorkspaceData, taskId: string): string |
   return undefined;
 }
 
-/** Tasks by title (a list the message joins in the reader's language); the key only without one. */
-function namedTasks(ids: readonly string[], data: SpecificationWorkspaceData): readonly string[] {
-  const titles = data.taskOverview?.taskTitles;
-
-  return ids.map((id) => titles?.[id] ?? id);
-}
-
-/**
- * The reason of an item whose facts name Tasks, worded here from those facts and the Tasks'
- * titles; the Engine's `message` (the CLI's English, with Task keys) stays for the others.
- */
-function reasonFromFacts(
-  item: AttentionItem,
-  data: SpecificationWorkspaceData,
-): Message | undefined {
-  switch (item.code) {
-    case 'on-hold-blocking': {
-      const held = item.blocks && 'taskIds' in item.blocks ? item.blocks.taskIds : [];
-      const finish = item.blocks?.finish !== undefined;
-      if (held.length === 0 && !finish) {
-        return undefined;
-      }
-
-      const step = item.stepTitle;
-
-      return held.length > 0 && finish
-        ? message('taskOverview.attention.reason.holdsTasksAndFinish', {
-            tasks: namedTasks(held, data),
-            step: step ?? message('taskOverview.attention.reason.theStep'),
-          })
-        : held.length > 0
-          ? message('taskOverview.attention.reason.holdsTasks', { tasks: namedTasks(held, data) })
-          : message('taskOverview.attention.reason.holdsFinish', {
-              step: step ?? message('taskOverview.attention.reason.theStep'),
-            });
-    }
-
-    case 'dependency-unsatisfiable': {
-      const broken = item.brokenTaskIds ?? [];
-      if (broken.length > 0) {
-        return message('taskOverview.attention.reason.dependsOnBroken', {
-          tasks: namedTasks(broken, data),
-        });
-      }
-
-      return item.taskIds && item.taskIds.length > 0
-        ? message('taskOverview.attention.reason.dependsOnEnded', {
-            tasks: namedTasks(item.taskIds, data),
-          })
-        : undefined;
-    }
-
-    case 'task-escalated':
-      return item.taskIds && item.taskIds.length > 0
-        ? message('taskOverview.attention.reason.escalated', {
-            tasks: namedTasks(item.taskIds, data),
-          })
-        : undefined;
-    case 'task-broken':
-      return message('taskOverview.attention.reason.broken');
-    default:
-      return undefined;
-  }
-}
-
 /**
  * One workflow attention item on the Overview: what it is about (`T-07 · Backend`, Specification),
  * its reason in the attention tone (danger for a broken Task) and its action. `tasks-stuck` states
@@ -190,8 +124,8 @@ export function taskAttentionEntry(
   context: Context & { readonly data: SpecificationWorkspaceData },
 ): SpecificationAttentionEntry {
   const broken = item.code === 'task-broken';
-  const factsReason = reasonFromFacts(item, context.data);
-  const stuck = item.code === 'tasks-stuck' && (item.taskIds?.length ?? 0) > 0;
+  const factsReason = attentionReason(item, context.data.taskOverview?.taskTitles);
+  const stuckTitle = attentionStuckTitle(item);
   const typeTitle =
     item.kind === 'task' && item.targetId ? typeTitleOf(context.data, item.targetId) : undefined;
   // An item without a workflow action opens its Task.
@@ -221,19 +155,10 @@ export function taskAttentionEntry(
           ? [typeTitle]
           : []
         : [message('taskOverview.attention.specification')],
-    ...(stuck
-      ? {
-          title: message('taskOverview.attention.stuckTitle', { count: item.taskIds!.length }),
-          reason: message('taskOverview.attention.stuckReason'),
-        }
+    ...(stuckTitle
+      ? { title: stuckTitle, reason: message('taskOverview.attention.stuckReason') }
       : {}),
     ...(factsReason ? { reason: factsReason } : {}),
-    ...(item.code === 'wait-transition-missing'
-      ? { reason: message('workflowExecution.now.waitTransitionMissing') }
-      : {}),
-    ...(item.code === 'wait-ready-to-settle'
-      ? { reason: message('workflowExecution.now.waitReadyToSettle') }
-      : {}),
     tone: broken ? 'danger' : 'attention',
     reasonIcon: broken ? 'circle-alert' : 'triangle-alert',
     ...(action ? { action } : {}),

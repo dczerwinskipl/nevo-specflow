@@ -98,6 +98,8 @@ describe('message catalogues', () => {
       'workflowExecution.exit.groupCount',
       // "{{content}} · {{relation}}": the document state label template (A6).
       'documents.state.withContent',
+      // "{{action}} · {{task}}": a list row's attention action on a Task.
+      'specifications.summary.attentionOnTask',
     ]);
     const identical = plKeys.filter(
       (key) =>

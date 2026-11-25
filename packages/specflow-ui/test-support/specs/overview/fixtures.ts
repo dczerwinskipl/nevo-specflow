@@ -28,14 +28,64 @@ export function waitingForTasks(
   };
 }
 
+const agentActor = {
+  class: 'agent',
+  details: { provider: 'claude', model: 'claude-opus-5-5', sessionId: 'session-a' },
+} as const;
+const ownerActor = {
+  class: 'human',
+  details: { actorId: 'runtime:trusted-local', trust: 'local' },
+} as const;
+
+/**
+ * The first workflow attention item of a Specification as its Overview lists it: the review of the
+ * breakdown waits for its start (step 5 of 7).
+ */
+export const startReviewAttention = {
+  first: {
+    id: 'specification-attention',
+    kind: 'specification',
+    title: 'Review the breakdown',
+    reason: 'The owner starts Review the breakdown.',
+    priority: 'normal',
+    code: 'owner-action',
+    stepTitle: 'Review the breakdown',
+    actor: 'owner',
+    action: 'start-step',
+  },
+} as const satisfies CurrentSpecOverviewItem['attention'];
+
 export const workflowFixtures = {
   notStarted: { kind: 'not-started', stepCount: 7, firstStep: 'Gather requirements' },
-  agentWorking: { kind: 'step', state: 'active', step: step(4, 'Breakdown'), actor: 'agent' },
-  ownerWorking: { kind: 'step', state: 'active', step: step(3, 'Solution'), actor: 'human' },
+  agentWorking: {
+    kind: 'step',
+    state: 'active',
+    step: step(4, 'Break the solution down'),
+    attempt: { number: 1, startedAt: '2026-11-25T09:18:00Z', actor: agentActor },
+  },
+  ownerWorking: {
+    kind: 'step',
+    state: 'active',
+    step: step(3, 'Design the solution'),
+    attempt: { number: 1, startedAt: '2026-11-25T08:05:00Z', actor: ownerActor },
+  },
   readyForNextStep: { kind: 'step', state: 'ready', step: step(5, 'Review the breakdown') },
+  changesRequested: {
+    kind: 'step',
+    state: 'ready',
+    step: step(4, 'Break the solution down'),
+    handoff: {
+      kind: 'transition',
+      from: { step: 'breakdown-review', attempt: 1, title: 'Review the breakdown' },
+      transition: 'changes',
+      label: 'Changes requested',
+      result: 'fail',
+      artifacts: [],
+    },
+  },
   waiting: waitingForTasks(),
   completed: { kind: 'ended', outcome: 'completed', stepCount: 7 },
-  abandoned: { kind: 'ended', outcome: 'abandoned' },
+  abandoned: { kind: 'ended', outcome: 'abandoned', abandonedAt: '2026-11-20T15:40:00Z' },
 } as const satisfies Record<string, CurrentSpecWorkflow>;
 
 function signal(

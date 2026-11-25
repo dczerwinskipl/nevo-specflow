@@ -50,7 +50,7 @@ function manifest(index: number): TaskManifest {
 }
 
 const median = (values: number[]) =>
-  [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)]!;
+  [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)] ?? Number.NaN;
 
 interface LockSection {
   readonly waitMs: number;
@@ -159,33 +159,46 @@ describe.skipIf(!process.env.SPECFLOW_READ_BENCH)('the Specs list read', () => {
     // writing): how long each write takes, against the same write with no list read.
     const writeTimes = async () => {
       const times: number[] = [];
+      const failures: string[] = [];
       // Five Specifications: hold a Task, then resume it (ten writes).
       for (const specId of specIds.slice(0, 5)) {
         for (const status of ['on-hold', 'ready'] as const) {
           const started = performance.now();
-          await setTaskStatus(opened, { specId, taskId: 'task-4', status, actor: owner });
-          times.push(performance.now() - started);
+          try {
+            await setTaskStatus(opened, { specId, taskId: 'task-4', status, actor: owner });
+            times.push(performance.now() - started);
+          } catch (error) {
+            // A write that waited longer than the lock's wait (5 s) is refused: say so.
+            failures.push((error as { code?: string }).code ?? String(error));
+            break;
+          }
         }
       }
 
-      return times;
+      return { times, failures };
     };
 
-    const quiet = await writeTimes();
+    const quiet = (await writeTimes()).times;
     const whileListing = async (read: () => Promise<unknown>) => {
       let listing = true;
       let refreshes = 0;
+      const readFailures: string[] = [];
       const refreshing = (async () => {
         while (listing) {
-          await read();
+          try {
+            await read();
+          } catch (error) {
+            readFailures.push((error as { code?: string }).code ?? String(error));
+          }
+
           refreshes += 1;
         }
       })();
-      const times = await writeTimes();
+      const { times, failures } = await writeTimes();
       listing = false;
       await refreshing;
 
-      return { times, refreshes };
+      return { times, failures, readFailures, refreshes };
     };
 
     const perRowBusy = await whileListing(() => readSpecificationListingsForRead(opened, specIds));
@@ -201,9 +214,11 @@ describe.skipIf(!process.env.SPECFLOW_READ_BENCH)('the Specs list read', () => {
         `one lock for the list: held ${max(whole.map((s) => s.heldMs)).toFixed(1)} ms; ` +
         `a write takes median ${median(quiet).toFixed(1)} / max ${max(quiet).toFixed(1)} ms alone, ` +
         `${median(perRowBusy.times).toFixed(1)} / ${max(perRowBusy.times).toFixed(1)} ms while the ` +
-        `list refreshes (${perRowBusy.refreshes} refreshes), ` +
+        `list refreshes (${perRowBusy.refreshes} refreshes, write failures ` +
+        `[${perRowBusy.failures.join(', ')}], read failures [${perRowBusy.readFailures.join(', ')}]), ` +
         `${median(wholeBusy.times).toFixed(1)} / ${max(wholeBusy.times).toFixed(1)} ms while a ` +
-        `one-lock list refreshes (${wholeBusy.refreshes} refreshes)`,
+        `one-lock list refreshes (${wholeBusy.refreshes} refreshes, write failures ` +
+        `[${wholeBusy.failures.join(', ')}], read failures [${wholeBusy.readFailures.join(', ')}])`,
     );
     expect(specIds).toHaveLength(count);
   });

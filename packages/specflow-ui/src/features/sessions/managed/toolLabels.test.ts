@@ -61,7 +61,7 @@ describe('Work history labels', () => {
           reason: 'outside-worktree',
         },
       }),
-    ).toBe('Outside the worktree: agents can only write files inside the worktree.');
+    ).toBe('Outside the worktree: the agent can read and write files only inside the worktree.');
     expect(
       workFailureText(t, {
         ...base,

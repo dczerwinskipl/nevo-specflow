@@ -53,6 +53,8 @@ export function createClaudeDriver(
     executable?: string;
     environment?: ProviderEnvironment;
     managedWrites?: boolean;
+    /** The Runtime log: why SpecFlow stopped a Claude process for output it does not support. */
+    logRejection?: (reason: string) => void;
   },
   dependencies: {
     inspect?: (
@@ -662,6 +664,7 @@ export function createClaudeDriver(
             requireAuthentication(current.authenticationFingerprint);
             expectedVersion = claudeVersion(payload);
           },
+          ...(options.logRejection ? { onRejected: options.logRejection } : {}),
           productCli: productCliGuard({
             pathValue: Object.entries(environment.values).find(
               ([name]) => name.toUpperCase() === 'PATH',

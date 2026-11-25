@@ -1843,7 +1843,7 @@
       "andMore": "{{label}} i {{count}} więcej"
     },
     "failureReason": {
-      "outside-worktree": "Poza worktree: agenci mogą zapisywać pliki tylko wewnątrz worktree."
+      "outside-worktree": "Poza worktree: agent może czytać i zapisywać pliki tylko wewnątrz worktree."
     },
     "permissionState": {
       "allowed": "Zezwolono",

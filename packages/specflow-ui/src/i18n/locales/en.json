@@ -1843,7 +1843,7 @@
       "andMore": "{{label}} and {{count}} more"
     },
     "failureReason": {
-      "outside-worktree": "Outside the worktree: agents can only write files inside the worktree."
+      "outside-worktree": "Outside the worktree: the agent can read and write files only inside the worktree."
     },
     "permissionState": {
       "allowed": "Allowed",

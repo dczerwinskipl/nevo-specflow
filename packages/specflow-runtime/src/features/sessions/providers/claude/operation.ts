@@ -8,6 +8,7 @@ import { ProviderTimeouts } from '../driver';
 import type { launchOwnedProcess } from '../process';
 import { ProviderProcessError } from '../process';
 import {
+  claudeFrameName,
   createClaudeProtocol,
   ClaudeProtocolError,
   claudeToolOperations,
@@ -18,7 +19,6 @@ import type { ProductCliTrust } from './cli-path';
 import { claudeUserMessage } from './requests';
 import { prepareClaudeRequest } from './permissions';
 import { claudeMode, toolsForClaudeMode } from './modes';
-import { ClaudeRestrictionError } from './discovery';
 import { claudeToolSubject } from './subjects';
 import { nativeToolOperation } from '../tool-operations';
 
@@ -56,6 +56,26 @@ export function timeoutMessage(reason: unknown): string {
   return `Claude could not be checked and started within ${seconds(ProviderTimeouts.discoveryMs)} s. Send again.`;
 }
 
+/**
+ * The loss reason of a refused Claude output: the generic sentence and what exactly was refused, by
+ * identifiers only (a restriction, the refused field, or else the frame being read). Undefined for a
+ * failure that is not a refusal.
+ */
+export function rejection(failure: unknown, reading?: string): string | undefined {
+  if (failure instanceof SyntaxError) {
+    return claudeLoss.rejected + ' It sent a line that is not JSON.';
+  }
+
+  if (!(failure instanceof ClaudeProtocolError)) {
+    return undefined;
+  }
+
+  const detail =
+    failure.detail ?? (reading ? `SpecFlow could not accept its ${reading} frame.` : undefined);
+
+  return detail ? claudeLoss.rejected + ' ' + detail : claudeLoss.rejected;
+}
+
 /** One owner for the bidirectional transport. Waiting for user input never blocks the
  * reader; only persistence and bounded writes apply backpressure. Outcomes are held
  * until process-tree disposal supplies settlement evidence.
@@ -73,6 +93,8 @@ export function createClaudeOperation(
      * auto-approval decision (see `productCliGuard`). Absent: not trusted, the owner decides.
      */
     productCli?: () => Promise<ProductCliTrust>;
+    /** Records why SpecFlow refused Claude's output (the Runtime log); the Turn keeps it too. */
+    onRejected?: (reason: string) => void;
   },
 ): ProviderOperation {
   const context = invocation.providerContext;
@@ -90,6 +112,8 @@ export function createClaudeOperation(
   let dispatched = false;
   let pendingOutcome: Extract<DriverFact, { kind: 'outcome' }> | undefined;
   let lost = false;
+  /** The frame being read, by its identifiers, so a refusal can name it. */
+  let reading: string | undefined;
   let writes = Promise.resolve();
   let queued = 0;
   let queuedBytes = 0;
@@ -222,7 +246,9 @@ export function createClaudeOperation(
         request: { subtype: 'initialize' },
       });
       for await (const line of owner.lines()) {
+        reading = undefined;
         const frame = object(JSON.parse(line));
+        reading = claudeFrameName(frame);
         if (frame.type === 'control_response') {
           const response = object(frame.response);
           if (
@@ -235,11 +261,13 @@ export function createClaudeOperation(
           }
 
           if (initialized) {
-            throw new ClaudeProtocolError();
+            throw new ClaudeProtocolError(
+              'It answered a control request SpecFlow did not send or no longer waits for.',
+            );
           }
 
           if (response.request_id !== initializeId || response.subtype !== 'success') {
-            throw new ClaudeProtocolError();
+            throw new ClaudeProtocolError('It did not accept its initialization.');
           }
 
           // Claude answered its handshake: the host's own checks that follow (installation identity,
@@ -402,7 +430,9 @@ export function createClaudeOperation(
         }
 
         if (frame.type === 'result' && pending.size) {
-          throw new ClaudeProtocolError();
+          throw new ClaudeProtocolError(
+            'It ended the Turn while a question or permission was open.',
+          );
         }
 
         await protocol.accept(line);
@@ -485,16 +515,17 @@ export function createClaudeOperation(
       } else if (result) {
         await outcome(result);
       } else if (!lost) {
+        const rejected = rejection(failure, reading);
+        if (rejected) {
+          options.onRejected?.(rejected);
+        }
+
         await protocol.end(
           failure === undefined
             ? claudeLoss.exited
             : failure instanceof ProviderProcessError
               ? claudeLoss.connection
-              : failure instanceof ClaudeRestrictionError
-                ? claudeLoss.rejected + ' ' + failure.message
-                : failure instanceof ClaudeProtocolError || failure instanceof SyntaxError
-                  ? claudeLoss.rejected
-                  : undefined,
+              : rejected,
         );
       }
     }

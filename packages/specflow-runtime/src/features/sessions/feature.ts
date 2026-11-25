@@ -121,6 +121,7 @@ export function createSessionsFeature(
             temporaryRoot: join(options.storage!.directory, 'provider-temporary'),
             executable: claude.executable,
             managedWrites: effects !== undefined,
+            logRejection: (reason) => app.log.warn({ provider: 'claude' }, reason),
           }),
         );
       }

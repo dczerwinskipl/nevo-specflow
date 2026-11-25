@@ -1,7 +1,7 @@
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { resolve } from 'node:path';
 import type { Invocation } from '../driver';
-import { object, ClaudeProtocolError } from './protocol';
+import { object, ClaudeProtocolError, shown } from './protocol';
 import { partitionAgentPermissionRules } from '@nevo/specflow-contracts/documents';
 import { claudeMode, toolsForClaudeMode, type ClaudeMode } from './modes';
 
@@ -118,16 +118,13 @@ export function claudeModels(
  */
 export class ClaudeRestrictionError extends ClaudeProtocolError {
   constructor(reason: string) {
-    super();
+    super(reason);
     this.name = 'ClaudeRestrictionError';
     this.message = reason;
   }
 }
 
 const builtinPlugins = ['cc-plugin-agents-md', 'cc-plugin-telemetry', 'cc-plugin-plugin-authoring'];
-/** Native values in a reason are short identifiers only, never free native prose. */
-const shown = (value: unknown) =>
-  typeof value === 'string' && /^[A-Za-z0-9_.:@/-]{1,64}$/.test(value) ? value : 'an unknown value';
 
 /**
  * Claude reports the permission mode it applies in `system/status`, also before `system/init`. It

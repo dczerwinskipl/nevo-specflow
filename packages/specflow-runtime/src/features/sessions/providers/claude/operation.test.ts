@@ -23,6 +23,7 @@ function fixture(
     productCli?: () => Promise<ProductCliTrust>;
   } = {},
 ) {
+  const rejected: string[] = [];
   const { disposeOnCancel = true, launchDelay = 0, initializeError } = options;
   const facts: DriverFact[] = [];
   const sent: Record<string, unknown>[] = [];
@@ -132,6 +133,7 @@ function fixture(
       },
       verifyFrame: options.verifyFrame,
       ...(options.productCli ? { productCli: options.productCli } : {}),
+      onRejected: (reason) => rejected.push(reason),
     },
   );
   const ready = () =>
@@ -172,6 +174,7 @@ function fixture(
 
   return {
     facts,
+    rejected,
     sent,
     invocation,
     operation,
@@ -187,8 +190,11 @@ function fixture(
 }
 
 describe('Claude bidirectional operation', () => {
+  const unsupported =
+    claudeLoss.rejected +
+    ' It sent a system frame of subtype unsupported_frame, which SpecFlow does not know.';
   it.each([
-    ['an unsupported frame', claudeLoss.rejected],
+    ['an unsupported frame', unsupported],
     ['the end of its output', claudeLoss.exited],
     ['a failed connection', claudeLoss.connection],
   ] as const)(
@@ -196,7 +202,7 @@ describe('Claude bidirectional operation', () => {
     async (_, reason) => {
       const f = fixture();
       await f.ready();
-      if (reason === claudeLoss.rejected) {
+      if (reason === unsupported) {
         f.push({ type: 'system', subtype: 'unsupported_frame' });
       } else {
         f.endOutput(
@@ -222,8 +228,20 @@ describe('Claude bidirectional operation', () => {
         },
         { kind: 'lost', message: reason },
       ]);
+      // The Runtime log records a refusal with its reason, and nothing else.
+      expect(f.rejected).toEqual(reason === unsupported ? [reason] : []);
     },
   );
+  it('names the frame it was reading when a refusal has no own reason', async () => {
+    const f = fixture();
+    await f.ready();
+    f.push({ type: 'rate_limit_event', uuid: 'r1', session_id: 'another-session' });
+    await f.operation.done;
+    expect(f.facts.at(-1)).toEqual({
+      kind: 'lost',
+      message: claudeLoss.rejected + ' SpecFlow could not accept its rate_limit_event frame.',
+    });
+  });
   it('verifies native inventory before accepting a host permission or question request', async () => {
     const verifyFrame = vi.fn(() => {
       throw new Error('Inventory not verified');

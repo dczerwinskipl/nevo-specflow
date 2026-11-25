@@ -979,11 +979,16 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
         );
       }
 
-      // The launch as judged: a configured model the provider offers under an alias runs as it.
-      launch = option.launch;
-      const modelTitle = sessions
+      // The configured model as judged (one the provider offers under an alias runs as it); the
+      // owner's own model as chosen, judged by the provider below (`refuseUnrunnable`).
+      launch = request.model === undefined ? option.launch : chosen;
+      // Recorded only as the attempt records can hold it (1 to 200 characters).
+      const listedTitle = sessions
         ?.provider(launch.provider)
-        ?.models.find((model) => model.modelId === launch.model)?.title;
+        ?.models.find((model) => model.modelId === launch.model)
+        ?.title.trim();
+      const modelTitle =
+        listedTitle && Array.from(listedTitle).length <= 200 ? listedTitle : undefined;
       actor = {
         class: 'agent',
         details: {

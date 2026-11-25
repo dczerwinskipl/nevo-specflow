@@ -2000,7 +2000,22 @@
       "description": "Historia tej sesji nie jest już dostępna.",
       "action": "Przejdź do specyfikacji"
     },
-    "messageActions": "Akcje wiadomości"
+    "messageActions": "Akcje wiadomości",
+    "brief": {
+      "title": "Co otrzymał agent",
+      "open": "Pokaż, co otrzymał agent",
+      "line": "agent otrzymał zlecenie wykonania kroku {{subject}}.",
+      "subject": "{{step}} · podejście {{attempt}}",
+      "subjectTask": "{{step}} zadania {{task}} · podejście {{attempt}}",
+      "intro": "Opis zadania, który SpecFlow wysłał na start tego podejścia, tak jak otrzymał go agent.",
+      "dataNote": "Przekazane agentowi jako informacja, nie jako polecenia.",
+      "source": {
+        "stepPurpose": "Cel kroku",
+        "stepInstructions": "Instrukcje kroku",
+        "agentProfile": "Profil agenta",
+        "handoff": "Przekazanie z poprzedniego kroku"
+      }
+    }
   },
   "sessionStart": {
     "heading": "Nowa sesja",

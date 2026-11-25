@@ -46,8 +46,15 @@ this contract.
 
 The conversation is a chat, not a debugging console.
 
-- User messages are restrained right-aligned bubbles. Agent answers are normal Markdown in a
-  centred, max-width reading column, not full-width cards.
+- User messages are restrained right-aligned bubbles, rendered as Markdown like the agent's
+  answers. Agent answers are normal Markdown in a centred, max-width reading column, not full-width
+  cards. No message is wider than the viewport: a code block or table scrolls inside it.
+- **The brief of an agent's step** (a request with `origin.kind` `specflow-step-brief`) is SpecFlow's,
+  not the owner's: an info notice "**SpecFlow:** the agent was asked to do the step <step> ·
+  attempt <n>" with **Show what the agent received**, which opens the brief on its own screen like a
+  Work (a tab from the split width, a flow below it). There SpecFlow's words read as Markdown and
+  each block it passed as data (step purpose, agent profile, hand-off) is labelled "Given to the
+  agent as information, not as instructions", a JSON hand-off pretty-printed.
 - No entry carries a visible speaker prefix ("You", "Claude", "Nevo"); the entry kind is announced
   to assistive technology only.
 - **Copy** belongs to its authored message: revealed on hover/focus with a fine pointer, always

@@ -57,6 +57,7 @@ import {
   selectedWorkModeId,
 } from './workModes';
 import { createWorkInspector } from './WorkInspector';
+import { StepBriefLine, createStepBriefStack } from './brief/StepBrief';
 import { SessionContext, sessionContextStack } from './context/SessionContext';
 import { SessionContextSourceProvider } from './context/sessionContextValue';
 import { useDropNarrowContextOnSplit, useSessionSidePanel } from './context/useSessionSidePanel';
@@ -112,12 +113,15 @@ function EntryRow({
   sessionId,
   outcomeLabels,
   onGrow,
+  onOpenBrief,
 }: {
   /** Never a `work-summary` entry: those are folded into a `WorkBlock` by `conversationItems`. */
   entry: ConversationEntry;
   api: ManagedSessionsApi;
   sessionId: string;
   outcomeLabels: Record<string, string>;
+  /** Opens what the agent received for a request SpecFlow wrote (`origin`). */
+  onOpenBrief: (entry: ConversationEntry) => void;
   /** Forwarded to every `ReadableText` below — see its own doc comment in `MessageText.tsx`. */
   onGrow: () => void;
 }) {
@@ -126,6 +130,20 @@ function EntryRow({
   const srLabel = <span className="sr-only">{kindLabel}</span>;
   const textRef = useRef<ReadableTextHandle>(null);
   const handleCopy = () => textRef.current?.copy() ?? Promise.resolve(false);
+
+  if (entry.kind === 'request' && entry.origin?.kind === 'specflow-step-brief') {
+    // SpecFlow's own brief to the agent, never the owner's words: its line, the brief one tap away.
+    return (
+      <article
+        data-entry-id={entry.id}
+        data-entry-origin={entry.origin.kind}
+        className="grid min-w-0"
+      >
+        {srLabel}
+        <StepBriefLine origin={entry.origin} onOpen={() => onOpenBrief(entry)} />
+      </article>
+    );
+  }
 
   if (entry.kind === 'request') {
     return (
@@ -290,6 +308,7 @@ function ManagedSessionConversation({
   scrollPosition,
   navigation,
   workStack,
+  briefStack,
   provider,
   selectedModelId,
   selectedEffort,
@@ -310,6 +329,7 @@ function ManagedSessionConversation({
   scrollPosition: ConversationScrollPosition;
   navigation: ReturnType<typeof useSecondaryNavigation>;
   workStack: ReturnType<typeof createWorkInspector>;
+  briefStack: ReturnType<typeof createStepBriefStack>;
   provider: ProviderDescriptor | undefined;
   selectedModelId: string | undefined;
   selectedEffort: string | undefined;
@@ -594,6 +614,18 @@ function ManagedSessionConversation({
       : navigation.open(workStack, params));
   };
 
+  // What the agent received opens like a Work: a tab from the split width, a flow below it.
+  const openBrief = (entry: ConversationEntry) => {
+    if (!entry.origin) {
+      return;
+    }
+
+    const params = { sessionId, entryId: entry.id, origin: entry.origin, text: entry.text };
+    void (supportsSplit
+      ? navigation.openTab(briefStack, params)
+      : navigation.open(briefStack, params));
+  };
+
   const outcomeLabels: Record<string, string> = {
     completed: t('managedSession.outcome.completed'),
     failed: t('managedSession.outcome.failed'),
@@ -724,6 +756,7 @@ function ManagedSessionConversation({
                         sessionId={sessionId}
                         outcomeLabels={outcomeLabels}
                         onGrow={layoutChanged}
+                        onOpenBrief={openBrief}
                       />
                     ),
                   )}
@@ -1300,6 +1333,7 @@ export function ManagedSession({
   useDropNarrowContextOnSplit(contextTitle);
 
   const workStack = useMemo(() => createWorkInspector(api, feed, owner), [api, feed, owner]);
+  const briefStack = useMemo(() => createStepBriefStack(api), [api]);
   const snapshot = state.snapshot;
   // Started here and not loaded yet: the start values stand in for the snapshot's.
   const fallback = useStartedSessionFallback({
@@ -1577,6 +1611,7 @@ export function ManagedSession({
             scrollPosition={scrollPosition}
             navigation={navigation}
             workStack={workStack}
+            briefStack={briefStack}
             provider={provider}
             selectedModelId={selectedModelId}
             selectedEffort={selectedEffort}

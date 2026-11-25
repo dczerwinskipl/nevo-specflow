@@ -2000,7 +2000,22 @@
       "description": "This session's history is no longer available.",
       "action": "Go to specifications"
     },
-    "messageActions": "Message actions"
+    "messageActions": "Message actions",
+    "brief": {
+      "title": "What the agent received",
+      "open": "Show what the agent received",
+      "line": "the agent was asked to do the step {{subject}}.",
+      "subject": "{{step}} · attempt {{attempt}}",
+      "subjectTask": "{{step}} of {{task}} · attempt {{attempt}}",
+      "intro": "The brief SpecFlow sent to start this attempt, as the agent received it.",
+      "dataNote": "Given to the agent as information, not as instructions.",
+      "source": {
+        "stepPurpose": "Step purpose",
+        "stepInstructions": "Step instructions",
+        "agentProfile": "Agent profile",
+        "handoff": "Hand-off from the previous step"
+      }
+    }
   },
   "sessionStart": {
     "heading": "New session",

@@ -34,15 +34,31 @@ export function personLabel(t: TFunction, actorId: string, viewer: Viewer = {}):
   return actorId.replace(/^(local|user):/, '');
 }
 
-/** Who acted, as recorded: a person by {@link personLabel}, an agent by provider and model. */
-export function actorLabel(t: TFunction, actor: WorkflowActor, viewer: Viewer = {}): string {
+/** A recorded model's display name: the provider's title for it, else the id (`useModelTitle`). */
+export type ModelTitle = (
+  providerId: string | undefined,
+  modelId: string | undefined,
+) => string | undefined;
+
+/**
+ * Who acted, as recorded: a person by {@link personLabel}, an agent by provider and model (the
+ * model by its provider's title when `modelTitle` knows it).
+ */
+export function actorLabel(
+  t: TFunction,
+  actor: WorkflowActor,
+  viewer: Viewer = {},
+  modelTitle?: ModelTitle,
+): string {
   if (actor.class === 'human') {
     return personLabel(t, actor.details.actorId, viewer);
   }
 
-  return [providerFallbackName(actor.details.provider), actor.details.model]
-    .filter(Boolean)
-    .join(' · ');
+  const model = modelTitle
+    ? modelTitle(actor.details.provider, actor.details.model)
+    : actor.details.model;
+
+  return [providerFallbackName(actor.details.provider), model].filter(Boolean).join(' · ');
 }
 
 /** `needs-changes` -> `Needs changes`: the fallback for an id that has no label. */

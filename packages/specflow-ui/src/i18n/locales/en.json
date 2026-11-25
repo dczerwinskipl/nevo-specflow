@@ -2413,7 +2413,8 @@
         "providerNotReady": {
           "title": "The agent is not ready",
           "body": "The agent the workflow chose cannot start now.",
-          "hint": "Fix that, then check again."
+          "hint": "Fix that, then check again.",
+          "bodyRefused": "SpecFlow did not start the agent: the agent or model chosen below cannot run now."
         },
         "sessionUnavailable": {
           "title": "The session to continue is gone",
@@ -2434,6 +2435,11 @@
           "title": "An agent cannot run this step now",
           "body": "The step changed since you opened it, or no agent does it.",
           "hint": "Check again to read it once more."
+        },
+        "modelNotOfferedSettings": {
+          "title": "The model set for the {{role}} is not offered",
+          "body": "The agent settings name a model the agent does not offer, so it would not start.",
+          "hint": "Choose another model below, or change it in the project’s agent settings, then check again."
         }
       },
       "session": {
@@ -2448,7 +2454,9 @@
         "preselected": "Preselected from the {{role}} settings. Your choice applies to this attempt only.",
         "independent": "{{step}} is done independently: it always starts in a new session, never in the one that wrote the change. Preselected from the {{role}} settings.",
         "catalogueFailed": "The agents could not be listed, so the attempt starts with {{agent}} from the {{role}} settings.",
-        "loadingAgents": "Loading the agents…"
+        "loadingAgents": "Loading the agents…",
+        "chooseModel": "Choose a model",
+        "modelUnassigned": "No model {{provider}} offers is set for the {{role}}. Choose one for this start."
       },
       "commit": "When the agent finishes, SpecFlow commits its work on <code>{{branch}}</code> as one commit; changes of others are never included.",
       "commitNoBranch": "When the agent finishes, SpecFlow commits its work on the specification’s branch as one commit; changes of others are never included.",

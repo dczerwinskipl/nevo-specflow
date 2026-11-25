@@ -311,6 +311,63 @@ describe('Run with agent dialog', () => {
     );
   });
 
+  it('treats a model the agent does not offer as not chosen, never naming its id', async () => {
+    const startAgent = vi.fn(never);
+    renderNow(agentOptions['model-not-offered'], {
+      checkAgentExecution: () => Promise.resolve(checkOf(agentOptions['model-not-offered'])),
+      startAgentExecution: startAgent,
+    });
+
+    const dialog = await openDialog();
+    const trigger = await within(dialog).findByRole('button', { name: /Choose a model/ });
+    expect(within(dialog).getByText(/No model Claude offers is set/)).toBeTruthy();
+    expect(within(dialog).queryByText(/\bsonnet\b/)).toBeNull();
+    expect((footerOf(dialog)[1] as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.pointerDown(trigger, { button: 0, pointerType: 'mouse' });
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole('menuitemradio', { name: /Claude Sonnet/ }));
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+    await waitFor(() => expect((footerOf(dialog)[1] as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(footerOf(dialog)[1]!);
+    await waitFor(() =>
+      expect(startAgent).toHaveBeenCalledWith(
+        { specId: SPEC, taskId: TASK },
+        expect.objectContaining({ provider: 'claude', model: 'claude-sonnet' }),
+      ),
+    );
+  });
+
+  it('says a refused start even when another agent could be picked', async () => {
+    renderNow(agentOptions.fresh, {
+      checkAgentExecution: () => Promise.resolve(checkOf(agentOptions.fresh)),
+      startAgentExecution: () =>
+        Promise.reject(
+          refusal('WORKFLOW_AGENT_UNAVAILABLE', {
+            details: {
+              agent: {
+                kind: 'unavailable',
+                reason: 'provider-not-ready',
+                launch: agentOptions.fresh.launch,
+              },
+            },
+          }),
+        ),
+    });
+
+    const dialog = await openDialog();
+    await within(dialog).findByRole('radio', { name: /Claude/ });
+    fireEvent.click(footerOf(dialog)[1]!);
+    const alert = await within(dialog).findByRole('alert');
+    expect(within(alert).getByText('The agent is not ready')).toBeTruthy();
+    expect(within(alert).getByText(/SpecFlow did not start the agent/)).toBeTruthy();
+    expect((footerOf(dialog)[1] as HTMLButtonElement).disabled).toBe(true);
+    // Another choice is a new start: the refusal of the earlier one no longer blocks it.
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Codex/ }));
+    await waitFor(() => expect(within(dialog).queryByRole('alert')).toBeNull());
+    expect((footerOf(dialog)[1] as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('retries a lost answer with the same request, and resolves it before another choice', async () => {
     const lostAnswer = new ApiError({
       kind: 'network',

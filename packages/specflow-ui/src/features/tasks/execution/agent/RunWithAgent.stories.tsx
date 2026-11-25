@@ -138,6 +138,27 @@ export const ProviderNotReady: Story = {
   },
 };
 
+/**
+ * The role's settings name a model the agent does not offer: the model is not chosen ("Choose a
+ * model", the configured id never shown) and Start waits until one of the agent's models is picked.
+ */
+export const ModelNotOffered: Story = {
+  args: { scenario: 'agent-model-not-offered' },
+  play: async ({ canvasElement }) => {
+    const dialog = await openDialog(canvasElement);
+    const trigger = await within(dialog).findByRole('button', { name: /Choose a model/ }, wait);
+    await expect(within(dialog).getByText(/No model Claude offers is set/)).toBeVisible();
+    await expect(within(dialog).queryByText(/\bsonnet\b/)).toBeNull();
+    await expectFooter(dialog, false);
+    await userEvent.click(trigger);
+    await userEvent.click(
+      await within(document.body).findByRole('menuitemradio', { name: /Claude Sonnet/ }, wait),
+    );
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expectFooter(dialog, true), wait);
+  },
+};
+
 /** The Session to continue no longer exists; SpecFlow does not start another in its place. */
 export const SessionUnavailable: Story = {
   args: { scenario: 'agent-session-gone' },

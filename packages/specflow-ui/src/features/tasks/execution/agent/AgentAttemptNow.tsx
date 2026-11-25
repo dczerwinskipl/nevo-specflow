@@ -11,7 +11,14 @@ import { useAppServices } from '../../../../app/useAppServices';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
 import { SessionProviderIcon } from '../../../sessions';
 import type { WorkflowSubjectRef } from '../api';
-import { formatWhen, humanizeId, providerFallbackName, transitionLabel } from '../presentation';
+import {
+  formatWhen,
+  humanizeId,
+  providerFallbackName,
+  transitionLabel,
+  type ModelTitle,
+} from '../presentation';
+import { useModelTitle } from './modelTitles';
 import type { NowLinks } from '../StartBlockerLines';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
 import { workflowRefusalOf } from '../refusal';
@@ -222,9 +229,12 @@ function ContinueRefused({
 }
 
 /** Name of the agent behind a position's actor, as the quote and the finished line say it. */
-function agentName(actor: WorkflowActor | undefined): string {
+function agentName(actor: WorkflowActor | undefined, modelTitle: ModelTitle): string {
   return actor?.class === 'agent'
-    ? [providerFallbackName(actor.details.provider), actor.details.model]
+    ? [
+        providerFallbackName(actor.details.provider),
+        modelTitle(actor.details.provider, actor.details.model),
+      ]
         .filter(Boolean)
         .join(' · ')
     : '';
@@ -256,6 +266,7 @@ export function useAgentAttemptNow({
   const confirmationCommit = useConfirmationAttemptCommit(subject, projection);
   const { t, i18n } = useTranslation();
   const commands = useAgentAttemptCommands(subject, headingId);
+  const modelTitle = useModelTitle(subject.specId);
   // The attempt whose commit holds the specification's workflow: this subject's or another's.
   const heldStepTitle = (hold: AttemptCommitHold) =>
     hold.subject.taskId !== undefined && hold.subject.taskId !== subject.taskId
@@ -339,7 +350,7 @@ export function useAgentAttemptNow({
         ),
       note: (
         <div className="grid gap-3">
-          <ProposalQuote proposal={proposal} agent={agentName(attempt.actor)} />
+          <ProposalQuote proposal={proposal} agent={agentName(attempt.actor, modelTitle)} />
           <ConfirmApplies confirmation={position} links={links} />
           {heldElsewhere ? heldNote : null}
           {confirmationCommit ? (

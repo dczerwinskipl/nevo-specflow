@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Button } from '@nevo/ui';
 import { useWorkspaces } from '../../../workspaces/read-model';
 import { CopyAction } from '../specification/CopyAction';
-import { NO_AGENT_REASONS, type UnavailableAgent } from './agentOption';
+import { MODEL_NOT_OFFERED, NO_AGENT_REASONS, type UnavailableAgent } from './agentOption';
 
 const MONO = 'font-mono text-content-primary [overflow-wrap:anywhere]';
 /** At most this many changed files are named, as the Close dialog lists them; the rest are counted. */
@@ -39,6 +39,10 @@ export function blockerKeyOf(option: UnavailableAgent): string {
 
   if ((NO_AGENT_REASONS as readonly string[]).includes(option.reason)) {
     return 'noAgent';
+  }
+
+  if ((option.reason as string) === MODEL_NOT_OFFERED) {
+    return 'modelNotOfferedSettings';
   }
 
   const keys: Partial<Record<UnavailableAgent['reason'], string>> = {
@@ -117,6 +121,9 @@ export function AgentBlocker({
   } else if (option.reason === 'provider-not-ready') {
     key = 'providerNotReady';
     detail = true;
+  } else if ((option.reason as string) === MODEL_NOT_OFFERED) {
+    // Its `detail` names the configured model id: never shown (owner, 2026-11-25).
+    key = 'modelNotOfferedSettings';
   } else if (option.reason === 'session-unavailable') {
     key = 'sessionUnavailable';
   } else if (option.reason === 'project-busy') {
@@ -141,10 +148,12 @@ export function AgentBlocker({
         <p>
           {detail && option.detail
             ? option.detail
-            : t(
-                `${base}.body${key === 'noAgent' && unnamed ? 'Unnamed' : ''}` as 'workflowExecution.agent.blocker.dirty.body',
-                values,
-              )}
+            : urgent && key === 'providerNotReady'
+              ? t('workflowExecution.agent.blocker.providerNotReady.bodyRefused', values)
+              : t(
+                  `${base}.body${key === 'noAgent' && unnamed ? 'Unnamed' : ''}` as 'workflowExecution.agent.blocker.dirty.body',
+                  values,
+                )}
         </p>
         {extra}
         <p>

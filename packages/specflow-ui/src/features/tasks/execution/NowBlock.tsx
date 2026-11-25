@@ -18,6 +18,7 @@ import {
 } from './presentation';
 import { StartBlockerLines, type NowLinks } from './StartBlockerLines';
 import { useViewer } from './useViewer';
+import { useModelTitle } from './agent/modelTitles';
 
 /** An icon inside running text: on the text line, no flex box that would shift the line. */
 function InlineIcon({ name }: { name: ComponentProps<typeof Icon>['name'] }) {
@@ -183,6 +184,8 @@ export function NowBlock({
 }: NowBlockProps) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
+  // Agents by their provider's model title ("Opus 5.5"), not the recorded id.
+  const modelTitle = useModelTitle(undefined);
   const { position, handoff } = projection;
   const when = (at: string) => formatWhen(t, at, i18n.language);
   // A Specification's Now places the step among the workflow's steps (Tasks have no outline).
@@ -210,7 +213,7 @@ export function NowBlock({
       facts = attemptLine(t, {
         number: position.attempt.number,
         since: formatWhen(t, position.attempt.startedAt, i18n.language, { timeOnlyToday: true }),
-        actor: actorLabel(t, position.attempt.actor, viewer),
+        actor: actorLabel(t, position.attempt.actor, viewer, modelTitle),
       });
       if (position.attempt.takenOverFrom) {
         facts += ` · ${t('workflowExecution.now.takenOverFrom')}`;
@@ -294,7 +297,7 @@ export function NowBlock({
       facts = position.abandonment
         ? t('workflowExecution.now.abandonedBy', {
             at: when(position.abandonment.at),
-            actor: actorLabel(t, position.abandonment.actor, viewer),
+            actor: actorLabel(t, position.abandonment.actor, viewer, modelTitle),
           })
         : undefined;
       break;
@@ -433,7 +436,9 @@ export function NowBlock({
                     <InlineIcon name="arrow-right" />
                     {transitionLabel({ ...handoff, id: handoff.transition })}
                   </span>
-                  {handoff.from.actor ? ` · ${actorLabel(t, handoff.from.actor, viewer)}` : null}
+                  {handoff.from.actor
+                    ? ` · ${actorLabel(t, handoff.from.actor, viewer, modelTitle)}`
+                    : null}
                   {handoff.from.at ? `, ${when(handoff.from.at)}` : null}
                 </>
               ) : (

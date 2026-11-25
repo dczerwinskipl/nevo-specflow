@@ -2413,7 +2413,8 @@
         "providerNotReady": {
           "title": "Agent nie jest gotowy",
           "body": "Agent wybrany przez przepływ nie może teraz wystartować.",
-          "hint": "Napraw to i sprawdź ponownie."
+          "hint": "Napraw to i sprawdź ponownie.",
+          "bodyRefused": "SpecFlow nie uruchomił agenta: wybrany niżej agent lub model nie może teraz działać."
         },
         "sessionUnavailable": {
           "title": "Sesji do kontynuacji już nie ma",
@@ -2434,6 +2435,11 @@
           "title": "Agent nie może teraz wykonać tego kroku",
           "body": "Krok zmienił się od otwarcia albo nie wykonuje go agent.",
           "hint": "Sprawdź ponownie, żeby odczytać go jeszcze raz."
+        },
+        "modelNotOfferedSettings": {
+          "title": "Model ustawiony dla roli „{{role}}” nie jest oferowany",
+          "body": "Ustawienia agentów wskazują model, którego agent nie oferuje, więc agent by nie wystartował.",
+          "hint": "Wybierz niżej inny model albo zmień go w ustawieniach agentów projektu i sprawdź ponownie."
         }
       },
       "session": {
@@ -2448,7 +2454,9 @@
         "preselected": "Wstępnie wybrane z ustawień roli „{{role}}”. Twój wybór dotyczy tylko tej próby.",
         "independent": "Krok {{step}} jest wykonywany niezależnie: zawsze startuje w nowej sesji, nigdy w tej, która napisała zmianę. Wstępnie wybrane z ustawień roli „{{role}}”.",
         "catalogueFailed": "Nie udało się wyświetlić listy agentów, więc próba wystartuje z agentem {{agent}} z ustawień roli „{{role}}”.",
-        "loadingAgents": "Wczytywanie agentów…"
+        "loadingAgents": "Wczytywanie agentów…",
+        "chooseModel": "Wybierz model",
+        "modelUnassigned": "Dla roli „{{role}}” nie ustawiono modelu, który oferuje {{provider}}. Wybierz model dla tego startu."
       },
       "commit": "Gdy agent skończy, SpecFlow zacommituje jego pracę na <code>{{branch}}</code> jako jeden commit; zmiany innych osób nigdy nie są dołączane.",
       "commitNoBranch": "Gdy agent skończy, SpecFlow zacommituje jego pracę na gałęzi specyfikacji jako jeden commit; zmiany innych osób nigdy nie są dołączane.",

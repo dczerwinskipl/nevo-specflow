@@ -105,6 +105,7 @@ export function ModelEffortPicker({
   disabled = false,
   compact = false,
   modelIds,
+  placeholder,
 }: {
   provider: ModelEffortProvider | undefined;
   value: ModelEffortValue | undefined;
@@ -124,6 +125,11 @@ export function ModelEffortPicker({
    * typical content, not the point past which truncation kicks in.
    */
   compact?: boolean;
+  /**
+   * Shown when no listed model is selected, instead of the value's id or the provider default: a
+   * start that must name one of the provider's models ("Choose a model").
+   */
+  placeholder?: string;
 }) {
   const { t } = useTranslation();
   const modelItems = useMemo(() => modelSectionItems(provider), [provider]);
@@ -136,9 +142,11 @@ export function ModelEffortPicker({
     ? value?.effort
       ? `${selectedModel.label} · ${value.effort}`
       : selectedModel.label
-    : // A session model the catalogue no longer lists is still shown (its raw id), and a session
+    : (placeholder ??
+      // A session model the catalogue no longer lists is still shown (its raw id), and a session
       // with none chosen runs the provider's default: neither is a "select a model" prompt.
-      (value?.modelId ?? t('managedSession.model.default'));
+      value?.modelId ??
+      t('managedSession.model.default'));
   const showEffortSection = selectedModel?.hasEfforts ?? false;
 
   return (

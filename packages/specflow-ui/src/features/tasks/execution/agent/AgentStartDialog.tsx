@@ -28,7 +28,12 @@ import {
   type FreshChoice,
   type SessionMode,
 } from './AgentSession';
-import { NO_AGENT_REASONS, archetypeTitle, optionOfRefusal } from './agentOption';
+import {
+  MODEL_NOT_OFFERED,
+  NO_AGENT_REASONS,
+  archetypeTitle,
+  optionOfRefusal,
+} from './agentOption';
 import { useAgentStart } from './useAgentStart';
 
 const CODE = <span className="font-mono whitespace-nowrap text-content-primary" />;
@@ -150,18 +155,50 @@ export function AgentStartDialog({
     catalogue.catalogue.providers.some(
       (provider) => provider.id === choice.providerId && provider.available,
     );
+  // A new Session's model the chosen provider does not offer (the role's settings name an id the
+  // catalogue does not list, or the check says a model must be chosen) is not assigned: the picker
+  // asks for one of the provider's models and Start waits for it. The unknown id is never shown
+  // (owner, 2026-11-25).
+  const chosenProvider =
+    catalogue.status === 'ready'
+      ? catalogue.providers.find((provider) => provider.providerId === choice.providerId)
+      : undefined;
+  const modelRequired =
+    chosen === undefined &&
+    (option as { modelRequired?: boolean } | undefined)?.modelRequired === true;
+  const modelUnassigned =
+    fresh &&
+    chosenProvider !== undefined &&
+    // A provider that lists no models runs its own default: nothing to choose.
+    chosenProvider.models.length > 0 &&
+    (modelRequired || !chosenProvider.models.some((model) => model.modelId === choice.modelId));
+  const pickerChoice: FreshChoice = modelUnassigned
+    ? { providerId: choice.providerId, modelId: '' }
+    : choice;
+  const choose = (next: FreshChoice) => {
+    // A refusal was for the earlier choice: another one is checked again by its own start.
+    start.reset();
+    setChosen(next);
+  };
 
-  // A provider that is not ready only blocks the agent the workflow preselected: for a new Session the
-  // owner may pick a ready one (D18), and the start checks it again. A continued Session has no picker.
+  // A provider that is not ready, or a model it does not offer, only blocks the agent the workflow
+  // preselected: for a new Session the owner may pick a ready one (D18), and the start checks it
+  // again. A continued Session has no picker.
   const pickable =
     option?.kind === 'unavailable' &&
-    option.reason === 'provider-not-ready' &&
+    (option.reason === 'provider-not-ready' || (option.reason as string) === MODEL_NOT_OFFERED) &&
     fresh &&
     launch !== undefined &&
     catalogue.status === 'ready';
-  const blocked = option?.kind === 'unavailable' && !(pickable && chosenReady);
+  // A refused start is always said, even when the owner could pick another agent (dogfood #189: a
+  // refusal of the preselected model left the dialog silent). A model that is not offered is the
+  // picker's empty choice, not a blocker.
+  const blocked =
+    option?.kind === 'unavailable' && (refusedOption !== undefined || !(pickable && chosenReady));
   const canStart =
     !start.isPending &&
+    !modelUnassigned &&
+    refusedOption === undefined &&
     ((option?.kind === 'available' && (!fresh || chosenReady)) || (pickable && chosenReady));
   const otherRefusal = start.isError && !refusedOption;
   const reused = launch?.session.mode === 'reuse' ? launch.session.sessionId : undefined;
@@ -269,8 +306,9 @@ export function AgentStartDialog({
                   launch={launch}
                   {...(sessionTitle ? { sessionTitle } : {})}
                   catalogue={catalogue}
-                  choice={choice}
-                  onChoice={setChosen}
+                  choice={pickerChoice}
+                  modelUnassigned={modelUnassigned}
+                  onChoice={choose}
                 />
               </>
             ) : null}

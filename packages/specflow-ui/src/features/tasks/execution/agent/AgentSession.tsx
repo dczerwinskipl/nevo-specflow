@@ -121,6 +121,7 @@ export function AgentSession({
   sessionTitle,
   catalogue,
   choice,
+  modelUnassigned = false,
   onChoice,
 }: {
   readonly mode: SessionMode;
@@ -131,6 +132,11 @@ export function AgentSession({
   readonly sessionTitle?: string;
   readonly catalogue: AgentCatalogue;
   readonly choice: FreshChoice;
+  /**
+   * The role's settings name no model the chosen provider offers: the picker asks for one ("Choose a
+   * model") and says why; the configured id is never shown.
+   */
+  readonly modelUnassigned?: boolean;
   readonly onChoice: (choice: FreshChoice) => void;
 }) {
   const { t } = useTranslation();
@@ -183,6 +189,9 @@ export function AgentSession({
                   </Typography>
                   <ModelEffortPicker
                     provider={provider}
+                    {...(modelUnassigned
+                      ? { placeholder: t('workflowExecution.agent.session.chooseModel') }
+                      : {})}
                     value={{
                       modelId: choice.modelId,
                       ...(choice.effort ? { effort: choice.effort } : {}),
@@ -207,7 +216,15 @@ export function AgentSession({
               {t('workflowExecution.agent.session.catalogueFailed', { agent: agentLine, role })}
             </Typography>
           )}
-          {ready || independent ? (
+          {modelUnassigned && provider ? (
+            <Typography as="p" variant="body-sm" className="text-content-primary" role="status">
+              {t('workflowExecution.agent.session.modelUnassigned', {
+                role,
+                provider: provider.title,
+              })}
+            </Typography>
+          ) : null}
+          {(ready && !modelUnassigned) || independent ? (
             <Typography as="p" variant="body-sm" className="text-content-secondary">
               {independent
                 ? t('workflowExecution.agent.session.independent', { step, role })

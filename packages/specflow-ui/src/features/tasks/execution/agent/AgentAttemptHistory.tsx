@@ -11,6 +11,7 @@ import {
   providerFallbackName,
 } from '../presentation';
 import { useSessionFacts } from './useSessionFacts';
+import { useModelTitle } from './modelTitles';
 import { useViewer } from '../useViewer';
 import type { WorkflowSubjectRef } from '../api';
 import { InlineAction } from '../InlineAction';
@@ -93,12 +94,14 @@ export function AgentAttemptMeta({
 }) {
   const { t, i18n } = useTranslation();
   const session = useSessionFacts(specId, item.agent.sessionId);
+  const modelTitle = useModelTitle(specId);
   const parts = [
     item.endedAt
       ? formatRange(t, item.startedAt, item.endedAt, i18n.language)
       : formatWhen(t, item.startedAt, i18n.language),
     session.providerTitle ?? providerFallbackName(item.agent.provider),
-    session.modelTitle ?? item.agent.model,
+    // The recorded model by its provider's title; the Session's own model only names the same one.
+    modelTitle(item.agent.provider, item.agent.model),
     t('taskDetails.attempt', { count: item.attempt }),
   ];
 

@@ -24,7 +24,14 @@ export function stepOfAgentCase(agentCase: AgentCase): { id: string; title: stri
 }
 
 export type AgentCase =
-  'fresh' | 'reuse' | 'independent' | 'dirty' | 'no-agent' | 'provider-not-ready' | 'session-gone';
+  | 'fresh'
+  | 'reuse'
+  | 'independent'
+  | 'dirty'
+  | 'no-agent'
+  | 'provider-not-ready'
+  | 'model-not-offered'
+  | 'session-gone';
 
 /**
  * Hand to agent from the owner's own attempt while the owner's changes are not committed: the check
@@ -64,6 +71,13 @@ export const agentOptions: Record<AgentCase, AgentOption> = {
     reason: 'provider-not-ready',
     detail: 'Claude is not signed in on this machine. Sign in with the Claude CLI, then try again.',
     launch: fresh,
+  },
+  // The role's settings name a model id the provider's catalogue lists under its alias (dogfood
+  // #189: `claude-opus-5-5` while Claude Code offers `opus`); the projection still says available.
+  'model-not-offered': {
+    kind: 'available',
+    launch: { ...fresh, model: 'sonnet' },
+    baseline: 'unchecked',
   },
   'session-gone': {
     kind: 'unavailable',

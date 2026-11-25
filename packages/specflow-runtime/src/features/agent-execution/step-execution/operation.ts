@@ -911,7 +911,9 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
         unavailable(option, 'An agent cannot do this step now.');
       }
 
-      if (option.modelRequired) {
+      // Only the configured model counts as not assigned: the owner's own choice is judged by the
+      // provider (`refuseUnrunnable`), with its own reason.
+      if (option.modelRequired && request.model === undefined) {
         invalid(
           `Choose one of the models ${chosen.provider} offers; this agent has none assigned.`,
         );

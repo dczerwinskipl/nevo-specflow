@@ -2,6 +2,12 @@ import type { CurrentSpecClassification } from '@nevo/specflow-contracts/specs/o
 
 import type { CurrentSpecRecord, CurrentSpecSignalRecord } from '../repository/model';
 
+/**
+ * The Current section of a Specification, from where its workflow run stands: what needs a person
+ * first (an attention signal, among them the workflow's attention items), then a run at a step or a
+ * Session executing (in progress), then a run not started, then an ended run. The manifest status is
+ * never read: it is not progress.
+ */
 export function classifyCurrentSpec(spec: CurrentSpecRecord): CurrentSpecClassification {
   const attention = [...(spec.signals ?? [])]
     .filter(isAttentionSignal)
@@ -16,14 +22,21 @@ export function classifyCurrentSpec(spec: CurrentSpecRecord): CurrentSpecClassif
   }
 
   if (spec.currentExecutions && spec.currentExecutions.length > 0) {
-    return { section: 'active' };
+    return { section: 'in-progress' };
   }
 
-  if (spec.signals === null || spec.currentExecutions === null || spec.readyForWork === null) {
+  if (spec.signals === null || spec.currentExecutions === null || spec.workflow === null) {
     return { section: 'unknown' };
   }
 
-  return spec.readyForWork ? { section: 'ready' } : { section: 'draft' };
+  switch (spec.workflow.kind) {
+    case 'not-started':
+      return { section: 'not-started' };
+    case 'step':
+      return { section: 'in-progress' };
+    case 'ended':
+      return { section: 'ended' };
+  }
 }
 
 function isAttentionSignal(signal: CurrentSpecSignalRecord): boolean {

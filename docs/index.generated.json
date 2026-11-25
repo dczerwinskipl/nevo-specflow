@@ -6136,7 +6136,7 @@
         "deciding what a Specification row may show or link to",
         "adding a state or a responsive rule to the Specifications list"
       ],
-      "summary": "The Specifications list at \"/\": backend-owned Current sections (Requires attention, Active, Ready, Draft) or a flat list when the Runtime has no work status, the row anatomy and its information budget, Archive milestones, search with filtered counts and forced disclosure, responsive behaviour and states.",
+      "summary": "The Specifications list at \"/\": backend-owned Current sections from where each Specification's workflow run stands (Requires attention, In progress, Not started, Ended) or a flat list when the Runtime has no work status, the row anatomy (the current step, as the Overview's Now names it) and its information budget, Archive milestones, search with filtered counts and forced disclosure, responsive behaviour and states.",
       "related": [
         "product.specflow.ui.interaction-model",
         "product.specflow.ui.shell-geometry",

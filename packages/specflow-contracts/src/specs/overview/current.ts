@@ -41,9 +41,9 @@ export type CurrentSpecSignal = Static<typeof CurrentSpecSignalSchema>;
 
 export const CurrentSpecSectionIdSchema = Type.Union([
   Type.Literal('requires-attention'),
-  Type.Literal('active'),
-  Type.Literal('ready'),
-  Type.Literal('draft'),
+  Type.Literal('in-progress'),
+  Type.Literal('not-started'),
+  Type.Literal('ended'),
   Type.Literal('unknown'),
 ]);
 export type CurrentSpecSectionId = Static<typeof CurrentSpecSectionIdSchema>;
@@ -55,26 +55,80 @@ export const CurrentSpecClassificationSchema = Type.Union(
       reason: Type.Optional(CurrentSpecAttentionReasonSchema),
       count: Type.Optional(Type.Integer({ minimum: 1 })),
     }),
-    Type.Object({ section: Type.Literal('active') }),
-    Type.Object({ section: Type.Literal('ready') }),
-    Type.Object({ section: Type.Literal('draft') }),
+    Type.Object({ section: Type.Literal('in-progress') }),
+    Type.Object({ section: Type.Literal('not-started') }),
+    Type.Object({ section: Type.Literal('ended') }),
     Type.Object({ section: Type.Literal('unknown') }),
   ],
   {
     description:
-      'Single server-owned Current classification: requires-attention takes precedence over active, then ready, then draft. Unknown is used when classification cannot be established. Reason is optional for attention.',
+      'Single server-owned Current classification from the Specification workflow run: requires-attention (an attention item or signal) takes precedence over in-progress (the run is at a step, or a Session executes), then not-started and ended. Unknown is used when the workflow cannot be read. Reason is optional for attention.',
   },
 );
+const CountSchema = Type.Integer({ minimum: 0 });
+
+/**
+ * Where the Specification's workflow run stands, the same position its Overview's Now shows: not
+ * started, at a step (with the step's title and its place among the workflow's declared steps), or
+ * ended. A wait step carries the Task counts the Overview groups its Tasks by.
+ */
+export const CurrentSpecWorkflowSchema = Type.Union(
+  [
+    Type.Object({ kind: Type.Literal('not-started') }, { additionalProperties: false }),
+    Type.Object(
+      {
+        kind: Type.Literal('step'),
+        state: Type.Union([Type.Literal('active'), Type.Literal('ready'), Type.Literal('waiting')]),
+        /** Absent when the pinned workflow is missing or changed. */
+        step: Type.Optional(
+          Type.Object(
+            {
+              title: Type.String(),
+              position: Type.Integer({ minimum: 1 }),
+              count: Type.Integer({ minimum: 1 }),
+            },
+            { additionalProperties: false },
+          ),
+        ),
+        /** `active`: who started the attempt that works on the step. */
+        actor: Type.Optional(Type.Union([Type.Literal('agent'), Type.Literal('human')])),
+        /** `waiting`: the Tasks the wait step waits for. */
+        tasks: Type.Optional(
+          Type.Object(
+            {
+              open: CountSchema,
+              total: CountSchema,
+              inProgress: CountSchema,
+              readyToStart: CountSchema,
+            },
+            { additionalProperties: false },
+          ),
+        ),
+      },
+      { additionalProperties: false },
+    ),
+    Type.Object(
+      {
+        kind: Type.Literal('ended'),
+        outcome: Type.Union([Type.Literal('completed'), Type.Literal('abandoned')]),
+      },
+      { additionalProperties: false },
+    ),
+  ],
+  {
+    description:
+      "Where the Specification's workflow run stands (the Overview's Now position): not-started, a step with its state, or ended.",
+  },
+);
+export type CurrentSpecWorkflow = Static<typeof CurrentSpecWorkflowSchema>;
 export type CurrentSpecClassification = Static<typeof CurrentSpecClassificationSchema>;
 
 export const CurrentSpecOverviewItemSchema = Type.Object(
   {
     ...SpecOverviewItemSchema.properties,
-    /**
-     * Workflow status of the Specification. Additive and optional; project mode answers `draft` for
-     * every Specification until a workflow defines other values.
-     */
-    status: Type.Optional(Type.String({ minLength: 1 })),
+    workflow: Type.Union([CurrentSpecWorkflowSchema, Type.Null()], {
+      description: 'Null when the workflow run cannot be read.',
+    }),
     classification: CurrentSpecClassificationSchema,
     signals: Type.Union([Type.Array(CurrentSpecSignalSchema), Type.Null()], {
       description:

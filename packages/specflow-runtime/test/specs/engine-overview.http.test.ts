@@ -104,10 +104,10 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
         expect(value.items[0]).toMatchObject({
           id: created.specId,
           title: 'Actual canonical Spec',
-          // Every Specification is `draft` until a workflow exists; progress counts its Task resources.
-          status: 'draft',
+          // Where its workflow run stands, never the manifest status; progress counts its Task resources.
+          workflow: { kind: 'not-started' },
           progress: { completed: 0, total: 0 },
-          classification: { section: 'draft' },
+          classification: { section: 'not-started' },
           // Sessions cannot be bound to a Specification: no execution or attention belongs to it.
           signals: [],
           currentExecutions: [],
@@ -141,7 +141,7 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
         expect(updated.json<CurrentSpecsOverview>().revision).not.toBe(value.revision);
 
         // A populated non-draft manifest is NOT evidence of verified execution progress, and its
-        // free status string does not change the read-model status.
+        // free status string does not change where the workflow stands.
         await writeFile(
           manifestPath,
           (await readFile(manifestPath, 'utf8'))
@@ -152,9 +152,9 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
         const populated = await app.inject('/api/specs/overview');
         expect(populated.statusCode, populated.body).toBe(200);
         expect(populated.json<CurrentSpecsOverview>().items[0]).toMatchObject({
-          status: 'draft',
+          workflow: { kind: 'not-started' },
           progress: { completed: 0, total: 0 },
-          classification: { section: 'draft' },
+          classification: { section: 'not-started' },
           signals: [],
           currentExecutions: [],
         });
@@ -177,27 +177,30 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
     completeOverviewTimeoutMs,
   );
 
-  it('lists a created Specification under a project that configures legacy sections', async () => {
+  it('lists a created Specification under a project that configures its own sections', async () => {
     const { engine } = await fixture();
     const created = await createSpecificationFromRequest(engine, {
       archetype: { id: 'minimal', version: 1 },
       operationId: randomUUID(),
-      title: 'Legacy section config must not hide me',
+      title: 'Section config must not hide me',
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
     });
     const config = trustedLocalConfig();
     const app = await createRuntimeApp(
       {
         ...config,
-        specs: { overview: { current: { sections: ['draft', 'ready'] } } },
+        specs: { overview: { current: { sections: ['not-started', 'in-progress'] } } },
       },
       { specs: { engine } },
     );
     try {
       const response = await app.inject('/api/specs/overview');
       expect(response.statusCode, response.body).toBe(200);
-      // Every project-mode Specification is Draft, so no `unknown` section is added.
-      expect(response.json<CurrentSpecsOverview>().sections).toEqual(['draft', 'ready']);
+      // Its workflow has not started, a configured section, so no `unknown` section is added.
+      expect(response.json<CurrentSpecsOverview>().sections).toEqual([
+        'not-started',
+        'in-progress',
+      ]);
       expect(response.json<CurrentSpecsOverview>().items.map((item) => item.id)).toEqual([
         created.specId,
       ]);

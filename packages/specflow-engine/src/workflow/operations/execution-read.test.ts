@@ -1,13 +1,18 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { ExecutionCatalogue } from '../definitions/catalogue';
-import { readExecution, readTaskProgress } from './execution-read';
+import { readExecution, readSpecificationListing } from './execution-read';
+import { inspectActions } from './actions';
+import { abandonSpecification } from './abandon';
+import { startTaskExecution } from './start';
 import { inspectExecution } from './inspect';
 import {
   memoryDependencies,
   owner,
+  runToBreakdown,
   seedExecutionCatalogue,
   SPEC,
+  specification,
   specificationWithTasks,
 } from './operations.test-support';
 import { createTask, editTask } from './task-resource';
@@ -189,23 +194,90 @@ describe('readExecution', () => {
       (await readExecution(dependencies, SPEC, { tasks: 'all' })).inspection.attention,
     ).toEqual([]);
   });
+});
 
-  it('reads the progress alone without any document read', async () => {
+describe('readSpecificationListing', () => {
+  it('says the Specification has not started before its first start', async () => {
+    const { dependencies, create, decide } = scenario();
+    await create('base');
+    await decide('base', 'ready');
+
+    expect(await readSpecificationListing(dependencies, SPEC)).toEqual({
+      standing: { kind: 'not-started' },
+      tasks: { open: 1, total: 1, inProgress: 0, readyToStart: 1 },
+      attention: 0,
+      progress: { completed: 0, total: 1, cancelled: 0, ended: 0, onHold: 0 },
+      preparation: 'prepared',
+    });
+  });
+
+  it('names the active step, its place in the workflow and who works on it', async () => {
+    const { dependencies } = scenario();
+    await runToBreakdown(dependencies);
+
+    const listing = await readSpecificationListing(dependencies, SPEC);
+    const outline = (await inspectActions(dependencies, specification)).outline;
+    expect(listing.standing).toEqual({
+      kind: 'step',
+      state: 'active',
+      step: {
+        title: outline?.current?.title,
+        position: outline?.current?.position,
+        count: outline?.stepCount,
+      },
+      actor: 'agent',
+    });
+    expect(listing.attention).toBe(0);
+  });
+
+  it('counts the Tasks of a wait step as the Overview groups them, with the same attention', async () => {
+    const { dependencies, decide } = scenario();
+    await specificationWithTasks(dependencies);
+
+    const waiting = await readSpecificationListing(dependencies, SPEC);
+    const projection = await inspectActions(dependencies, specification);
+    expect(projection.position.kind).toBe('waiting');
+    expect(waiting.standing).toMatchObject({
+      kind: 'step',
+      state: 'waiting',
+      step: { position: projection.outline?.current?.position },
+    });
+    // `screen` waits for `api`: only `api` can start.
+    expect(waiting.tasks).toEqual({ open: 2, total: 2, inProgress: 0, readyToStart: 1 });
+    expect(waiting.attention).toBe(0);
+
+    await decide('api', 'on-hold');
+    const stuck = await readSpecificationListing(dependencies, SPEC);
+    const full = await readExecution(dependencies, SPEC, { tasks: 'all' });
+    expect(stuck.attention).toBe(full.inspection.attention.length);
+    expect(stuck.attention).toBeGreaterThan(0);
+    expect(stuck.tasks).toEqual({ open: 2, total: 2, inProgress: 0, readyToStart: 0 });
+  });
+
+  it('counts a started Task as in progress and an unresolved context as attention', async () => {
     const { dependencies, create, decide } = scenario();
     dependencies.references.paths.add('src/gone.ts');
     await create('context', { context: [{ kind: 'path', path: 'src/gone.ts', required: true }] });
     await decide('context', 'ready');
-    await create('draft');
-    const full = await readExecution(dependencies, SPEC, { tasks: 'all' });
+    await create('base');
+    await decide('base', 'ready');
+    await startTaskExecution(dependencies, { specId: SPEC, taskId: 'base', actor: owner });
 
-    // Every document reference fails: the progress-only read must not need one.
-    const references = new Proxy(dependencies.references, {
-      get: () => () => {
-        throw new Error('A document was read.');
-      },
+    const listing = await readSpecificationListing(dependencies, SPEC);
+    const full = await readExecution(dependencies, SPEC, { tasks: 'all' });
+    expect(listing.tasks).toMatchObject({ inProgress: 1 });
+    expect(listing.attention).toBe(full.inspection.attention.length);
+    expect(full.facts.get('context')?.startable).toBe(listing.tasks.readyToStart === 1);
+  });
+
+  it('says how the run ended', async () => {
+    const { dependencies } = scenario();
+    await runToBreakdown(dependencies);
+    await abandonSpecification(dependencies, { specId: SPEC, reason: 'Not needed.', actor: owner });
+
+    expect((await readSpecificationListing(dependencies, SPEC)).standing).toEqual({
+      kind: 'ended',
+      outcome: 'abandoned',
     });
-    const withoutDocuments = { ...dependencies, references };
-    const progress = await readTaskProgress(withoutDocuments, SPEC);
-    expect(progress).toEqual({ progress: full.progress, preparation: full.preparation });
   });
 });

@@ -4,9 +4,9 @@ import { RuntimeConfigError } from '../../../../config/parsing/runtime-config-er
 
 export const DEFAULT_CURRENT_SECTIONS: readonly CurrentSpecSectionId[] = [
   'requires-attention',
-  'active',
-  'ready',
-  'draft',
+  'in-progress',
+  'not-started',
+  'ended',
   'unknown',
 ];
 
@@ -34,9 +34,9 @@ export function parseCurrentOverviewSections(
 function parseSection(value: unknown, path: string): CurrentSpecSectionId {
   if (
     value === 'requires-attention' ||
-    value === 'active' ||
-    value === 'ready' ||
-    value === 'draft' ||
+    value === 'in-progress' ||
+    value === 'not-started' ||
+    value === 'ended' ||
     value === 'unknown'
   ) {
     return value;

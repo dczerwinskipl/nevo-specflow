@@ -17,7 +17,7 @@ import {
   inspectActionsForRead,
   openWorkflow,
   readExecutionForRead,
-  readTaskProgressForRead,
+  readSpecificationListingForRead,
   startTaskExecution,
 } from '../src/workflow';
 import { removeTrackedRoots } from './support/documents-fixture';
@@ -67,7 +67,7 @@ async function measure(read: () => Promise<unknown>): Promise<number> {
 }
 
 describe.skipIf(!process.env.SPECFLOW_READ_BENCH)('presentation reads of 200 Tasks', () => {
-  it('reads the Overview, the progress and one Task detail', { timeout: 600_000 }, async () => {
+  it('reads the Overview, a Specs list row and one Task detail', { timeout: 600_000 }, async () => {
     const project = await writableProject({ git: false, notes: 1 });
     await installDefinitionsForTesting(project.engine);
     await mkdir(join(project.root, 'src'), { recursive: true });
@@ -106,13 +106,13 @@ describe.skipIf(!process.env.SPECFLOW_READ_BENCH)('presentation reads of 200 Tas
     const overview = await measure(() =>
       readExecutionForRead(workflow, project.specId, { tasks: 'all' }),
     );
-    const progress = await measure(() => readTaskProgressForRead(workflow, project.specId));
+    const listing = await measure(() => readSpecificationListingForRead(workflow, project.specId));
     const detail = await measure(() =>
       inspectActionsForRead(workflow, { kind: 'task', specId: project.specId, taskId: id(199) }),
     );
     console.info(
       `200 Tasks (${started} started), median of 10: Overview ${overview.toFixed(1)} ms, ` +
-        `progress ${progress.toFixed(1)} ms, Task detail ${detail.toFixed(1)} ms`,
+        `list row ${listing.toFixed(1)} ms, Task detail ${detail.toFixed(1)} ms`,
     );
     expect(started).toBe(5);
   });

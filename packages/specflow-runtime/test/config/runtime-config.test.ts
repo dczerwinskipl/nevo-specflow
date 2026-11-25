@@ -49,12 +49,12 @@ it('loads project-owned Current Overview sections in declared order', async () =
   await mkdir(join(cwd, '.nevo/local'), { recursive: true });
   await writeFile(
     join(cwd, '.nevo/config.yaml'),
-    `${PROJECT_CONFIG}\nspecs:\n  overview:\n    current:\n      sections:\n        - draft\n        - active\n`,
+    `${PROJECT_CONFIG}\nspecs:\n  overview:\n    current:\n      sections:\n        - not-started\n        - in-progress\n`,
     'utf8',
   );
   expect((await loadFrom(cwd)).config.specs?.overview.current.sections).toEqual([
-    'draft',
-    'active',
+    'not-started',
+    'in-progress',
   ]);
   await writeFile(
     join(cwd, '.nevo/local/config.yaml'),

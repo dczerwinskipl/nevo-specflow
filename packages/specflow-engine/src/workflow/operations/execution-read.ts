@@ -1,11 +1,22 @@
-import type { RunPosition } from '@nevo/workflow';
+import {
+  activeAttempt,
+  type ExecutorClass,
+  type RunPosition,
+  type TerminalOutcome,
+} from '@nevo/workflow';
 
 import type { AttentionItem } from '../attention/model';
-import { taskPosition, type ExecutionTask, type TaskStatus } from '../state/model';
+import {
+  taskPosition,
+  type ExecutionTask,
+  type TaskStatus,
+  type WorkflowRun,
+} from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
+import { isTaskClosed } from '../tasks/tasks';
 import type { ActionDependencies, ActionProjection } from './actions';
 import { inspectSnapshot, type ExecutionInspection } from './inspect';
-import { executionTasks } from './loaded-execution';
+import { pinnedDefinitionIfUnchanged } from './loaded-execution';
 import type { StartBlocker } from './start-blockers';
 import { forOneRead } from './task-references';
 
@@ -163,23 +174,125 @@ export function readExecution(
 }
 
 /**
- * The progress and preparation of a Specification's Tasks alone (the Specs list): the same values
- * as {@link readExecution}, from one snapshot read under `serialize`, but without the inspection,
- * so no action projection is made and no document is read (context and gates are not evaluated).
- * It needs no document references at all.
+ * Where a Specification's own run stands, for a list row: the same position the action projection
+ * gives the Specification (`not-started`, at a step, `terminal`), without gates or actions.
+ *
+ * - `not-started`: no run yet;
+ * - `step`: the run is at a step: `active` (an attempt works on it; `actor` is who started it),
+ *   `ready` (between attempts) or `waiting` (active on a wait step, which only Tasks end). `step` is
+ *   absent when the pinned workflow is missing or changed (its title cannot be resolved);
+ * - `ended`: the run ended with `outcome`.
  */
-export function readTaskProgress(
-  dependencies: Pick<ActionDependencies, 'store' | 'serialize' | 'catalogue'>,
-  specId: string,
-): Promise<Pick<ExecutionReading, 'progress' | 'preparation'>> {
-  return dependencies.serialize(async () => {
-    const { tasks, broken } = executionTasks(
-      dependencies.catalogue,
-      await dependencies.store.read(specId),
-    );
+export type SpecificationStanding =
+  | { readonly kind: 'not-started' }
+  | {
+      readonly kind: 'step';
+      readonly state: 'active' | 'ready' | 'waiting';
+      readonly step?: { readonly title: string; readonly position: number; readonly count: number };
+      readonly actor?: ExecutorClass;
+    }
+  | { readonly kind: 'ended'; readonly outcome: TerminalOutcome };
 
-    return progressAndPreparation(tasks, broken.length);
+/**
+ * The Tasks as the Specification's Overview groups them (`DEFAULT_DASHBOARD_GROUPING`): `open`
+ * Tasks keep a wait step waiting (neither terminal nor cancelled; a broken Task counts), of `total`
+ * (as the waiting position counts them); `inProgress` are approved Tasks with a started run that
+ * has not ended; `readyToStart` approved Tasks that have not started and can start now.
+ */
+export interface SpecificationListingTasks {
+  readonly open: number;
+  readonly total: number;
+  readonly inProgress: number;
+  readonly readyToStart: number;
+}
+
+/** One Specification row of the Specs list (`readSpecificationListing`). */
+export interface SpecificationListing extends Pick<ExecutionReading, 'progress' | 'preparation'> {
+  readonly standing: SpecificationStanding;
+  readonly tasks: SpecificationListingTasks;
+  /** How many attention items the Specification's execution has (the Overview's Requires attention). */
+  readonly attention: number;
+}
+
+/**
+ * What the Specs list shows of one Specification, from ONE snapshot read under `serialize`: the
+ * Specification's standing, its Task counts, its attention item count, progress and preparation. It
+ * makes the inspection the Overview makes (attention with the start blockers of approved Tasks that
+ * have not started, read from the documents) and no other action projection; it reads no Git.
+ * Read-only.
+ */
+export function readSpecificationListing(
+  outer: ActionDependencies,
+  specId: string,
+): Promise<SpecificationListing> {
+  return outer.serialize(async () => {
+    const dependencies = forOneRead(outer);
+    const snapshot = await dependencies.store.read(specId);
+    // Projects exactly the approved Tasks that have not started (their start blockers).
+    const { inspection, projections } = await inspectSnapshot(dependencies, snapshot);
+    const tasks = inspection.tasks.map((entry) => entry.record);
+    const broken = inspection.brokenTasks.length;
+    let inProgress = 0;
+    let readyToStart = 0;
+    for (const record of tasks) {
+      if (record.status !== 'ready') {
+        continue;
+      }
+
+      const position = taskPosition(record).state;
+      if (position === 'active' || position === 'ready') {
+        inProgress += 1;
+      } else if (position === 'not-started') {
+        const kind = projections.get(record.taskId)?.position.kind;
+        readyToStart += kind === 'not-started' || kind === 'ready' ? 1 : 0;
+      }
+    }
+
+    return {
+      standing: standingOf(outer.catalogue, snapshot.specification?.value.run),
+      tasks: {
+        open: tasks.filter((record) => !isTaskClosed(record)).length + broken,
+        total: tasks.length + broken,
+        inProgress,
+        readyToStart,
+      },
+      attention: inspection.attention.length,
+      ...progressAndPreparation(tasks, broken),
+    };
   });
+}
+
+function standingOf(
+  catalogue: ActionDependencies['catalogue'],
+  run: WorkflowRun | undefined,
+): SpecificationStanding {
+  const position = run?.position;
+  if (!run || !position || position.state === 'not-started') {
+    return { kind: 'not-started' };
+  }
+
+  if (position.state === 'terminal') {
+    return { kind: 'ended', outcome: position.outcome };
+  }
+
+  const definition = pinnedDefinitionIfUnchanged(catalogue, run);
+  const index = definition?.steps.findIndex((step) => step.id === position.step) ?? -1;
+  const step = index >= 0 ? definition?.steps[index] : undefined;
+  const described =
+    definition && step
+      ? { step: { title: step.title, position: index + 1, count: definition.steps.length } }
+      : {};
+  if (position.state === 'ready') {
+    return { kind: 'step', state: 'ready', ...described };
+  }
+
+  if (step?.kind === 'wait') {
+    return { kind: 'step', state: 'waiting', ...described };
+  }
+
+  const actor = activeAttempt(run)?.actor?.class;
+
+  return { kind: 'step', state: 'active', ...described, ...(actor ? { actor } : {}) };
 }
 
 /** What is readable of each broken Task: its manifest's title and why it is broken. */

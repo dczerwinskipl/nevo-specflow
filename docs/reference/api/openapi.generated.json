@@ -24241,19 +24241,19 @@
                               {
                                 "type": "string",
                                 "enum": [
-                                  "active"
+                                  "in-progress"
                                 ]
                               },
                               {
                                 "type": "string",
                                 "enum": [
-                                  "ready"
+                                  "not-started"
                                 ]
                               },
                               {
                                 "type": "string",
                                 "enum": [
-                                  "draft"
+                                  "ended"
                                 ]
                               },
                               {
@@ -24275,6 +24275,7 @@
                               "title",
                               "updatedAt",
                               "progress",
+                              "workflow",
                               "classification",
                               "signals",
                               "currentExecutions"
@@ -24341,9 +24342,169 @@
                                 ],
                                 "description": "Task progress: null means unavailable/unknown, not zero completed Tasks. A real empty Task set is completed=0 and total=0."
                               },
-                              "status": {
-                                "type": "string",
-                                "minLength": 1
+                              "workflow": {
+                                "anyOf": [
+                                  {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "kind"
+                                        ],
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "not-started"
+                                            ]
+                                          }
+                                        },
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "kind",
+                                          "state"
+                                        ],
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "step"
+                                            ]
+                                          },
+                                          "state": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "active"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "ready"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "waiting"
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          "step": {
+                                            "type": "object",
+                                            "required": [
+                                              "title",
+                                              "position",
+                                              "count"
+                                            ],
+                                            "properties": {
+                                              "title": {
+                                                "type": "string"
+                                              },
+                                              "position": {
+                                                "type": "integer",
+                                                "minimum": 1
+                                              },
+                                              "count": {
+                                                "type": "integer",
+                                                "minimum": 1
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          },
+                                          "actor": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "agent"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "human"
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          "tasks": {
+                                            "type": "object",
+                                            "required": [
+                                              "open",
+                                              "total",
+                                              "inProgress",
+                                              "readyToStart"
+                                            ],
+                                            "properties": {
+                                              "open": {
+                                                "type": "integer",
+                                                "minimum": 0
+                                              },
+                                              "total": {
+                                                "type": "integer",
+                                                "minimum": 0
+                                              },
+                                              "inProgress": {
+                                                "type": "integer",
+                                                "minimum": 0
+                                              },
+                                              "readyToStart": {
+                                                "type": "integer",
+                                                "minimum": 0
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
+                                        },
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "object",
+                                        "required": [
+                                          "kind",
+                                          "outcome"
+                                        ],
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "ended"
+                                            ]
+                                          },
+                                          "outcome": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "completed"
+                                                ]
+                                              },
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "abandoned"
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "additionalProperties": false
+                                      }
+                                    ],
+                                    "description": "Where the Specification's workflow run stands (the Overview's Now position): not-started, a step with its state, or ended."
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Null when the workflow run cannot be read."
                               },
                               "classification": {
                                 "anyOf": [
@@ -24408,7 +24569,7 @@
                                       "section": {
                                         "type": "string",
                                         "enum": [
-                                          "active"
+                                          "in-progress"
                                         ]
                                       }
                                     }
@@ -24422,7 +24583,7 @@
                                       "section": {
                                         "type": "string",
                                         "enum": [
-                                          "ready"
+                                          "not-started"
                                         ]
                                       }
                                     }
@@ -24436,7 +24597,7 @@
                                       "section": {
                                         "type": "string",
                                         "enum": [
-                                          "draft"
+                                          "ended"
                                         ]
                                       }
                                     }
@@ -24456,7 +24617,7 @@
                                     }
                                   }
                                 ],
-                                "description": "Single server-owned Current classification: requires-attention takes precedence over active, then ready, then draft. Unknown is used when classification cannot be established. Reason is optional for attention."
+                                "description": "Single server-owned Current classification from the Specification workflow run: requires-attention (an attention item or signal) takes precedence over in-progress (the run is at a step, or a Session executes), then not-started and ended. Unknown is used when the workflow cannot be read. Reason is optional for attention."
                               },
                               "signals": {
                                 "anyOf": [

@@ -1,3 +1,5 @@
+import type { CurrentSpecWorkflow } from '@nevo/specflow-contracts/specs/overview';
+
 export interface SpecProgressRecord {
   readonly completed: number;
   readonly total: number;
@@ -39,10 +41,16 @@ export interface CurrentSpecSignalRecord {
   readonly target: CurrentSpecTargetRecord;
 }
 
+/** Where the Specification's workflow run stands (the Overview's Now position). */
+export type CurrentSpecWorkflowRecord = CurrentSpecWorkflow;
+
 export interface CurrentSpecRecord extends SpecOverviewRecord {
-  /** Workflow status; project mode: `draft` (the read-model constant `OVERVIEW_SPEC_STATUS`). */
-  readonly status?: string;
-  readonly readyForWork: boolean | null;
+  /**
+   * Where the Specification's workflow run stands; `null` when it cannot be read. The manifest's
+   * `status` is not progress (it stays `draft` until Close archives the Specification), so it is not
+   * read here.
+   */
+  readonly workflow: CurrentSpecWorkflowRecord | null;
   readonly signals: readonly CurrentSpecSignalRecord[] | null;
   readonly currentExecutions:
     | readonly {

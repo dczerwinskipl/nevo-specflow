@@ -5,7 +5,7 @@ export {
   inspectActionsForRead,
   openWorkflow,
   readExecutionForRead,
-  readTaskProgressForRead,
+  readSpecificationListingForRead,
   type OpenWorkflowOptions,
   type SpecificationCheckout,
 } from './composition';
@@ -124,8 +124,11 @@ export {
 export { inspectExecution, type ExecutionInspection } from './operations/inspect';
 export {
   readExecution,
-  readTaskProgress,
+  readSpecificationListing,
   type ExecutionReading,
+  type SpecificationListing,
+  type SpecificationListingTasks,
+  type SpecificationStanding,
   type ReadExecutionOptions,
   taskFactsOf,
   type BrokenTaskFacts,

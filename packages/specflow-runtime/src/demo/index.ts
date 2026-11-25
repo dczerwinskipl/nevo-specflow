@@ -20,7 +20,7 @@ import {
 } from '../features/specs';
 import {
   createDemoTaskEngine,
-  createEngineTaskProgress,
+  createEngineOverviewExecution,
   createEngineTaskSources,
   createEngineWorkspaceTasks,
   seedDemoWorkflow,
@@ -78,7 +78,7 @@ export function createDemoRuntime(environment: DemoEnvironment) {
     sessions,
     tasks: {
       section: (specId) => workspaceTasks(specId),
-      progress: (specIds) => taskProgress(specIds),
+      execution: (specIds) => overviewExecution(specIds),
     },
   });
   const find = (specId: string) => repositories.catalogue.find(specId);
@@ -137,7 +137,7 @@ export function createDemoRuntime(environment: DemoEnvironment) {
     mainDocument: (specId, taskId) => taskDocuments.mainDocument(specId, taskId),
   });
   const workspaceTasks = createEngineWorkspaceTasks(taskEngine);
-  const taskProgress = createEngineTaskProgress(taskEngine);
+  const overviewExecution = createEngineOverviewExecution(taskEngine);
   const taskReads = createEngineTaskSources(taskEngine);
   const sessionReferences = sessions.overlayReferences(
     createDemoSessionReferences(repositories.catalogue),

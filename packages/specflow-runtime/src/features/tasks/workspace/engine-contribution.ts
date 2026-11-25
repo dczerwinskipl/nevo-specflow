@@ -1,4 +1,9 @@
-import { readTaskProgressForRead, type AttentionItem } from '@nevo/specflow-engine';
+import {
+  readSpecificationListingForRead,
+  type AttentionItem,
+  type SpecificationListing,
+} from '@nevo/specflow-engine';
+import type { CurrentSpecWorkflow } from '@nevo/specflow-contracts/specs/overview';
 import type { TaskOverview } from '@nevo/specflow-contracts/tasks';
 import type {
   WorkspaceAttention,
@@ -169,21 +174,44 @@ export function createEngineWorkspaceTasks(
   };
 }
 
-export type TaskProgressSource = (
+/** The Specs list facts of one Specification's execution (`OverviewExecutionRecord` of the Specs feature). */
+export interface OverviewExecutionFacts {
+  readonly progress: { readonly completed: number; readonly total: number };
+  readonly workflow: CurrentSpecWorkflow;
+  readonly attention: number;
+}
+
+export type OverviewExecutionSource = (
   specIds: readonly string[],
-) => Promise<ReadonlyMap<string, { completed: number; total: number } | null>>;
+) => Promise<ReadonlyMap<string, OverviewExecutionFacts | null>>;
+
+/** Where the Specification's run stands, as the Specs list contract carries it. Pure. */
+export function overviewWorkflowOf(listing: SpecificationListing): CurrentSpecWorkflow {
+  const { standing } = listing;
+  if (standing.kind !== 'step') {
+    return standing;
+  }
+
+  return {
+    kind: 'step',
+    state: standing.state,
+    ...(standing.step ? { step: { ...standing.step } } : {}),
+    ...(standing.actor ? { actor: standing.actor } : {}),
+    ...(standing.state === 'waiting' ? { tasks: { ...listing.tasks } } : {}),
+  };
+}
 
 /**
- * The Specs Overview `progress` of the listed Specifications, the Engine's `TaskProgress`
- * (`readTaskProgress`: no action projection, no document read): the definitions are loaded once,
- * each Specification is read on its own. One whose execution cannot be
- * read has `null` (not projected), never a guessed count; the other rows are unaffected.
+ * The Specs list facts of the listed Specifications, one Engine read of each
+ * (`readSpecificationListing`: the Overview's inspection, no other action projection, no Git): the
+ * definitions are loaded once. One whose execution cannot be read has `null` (not projected), never
+ * a guessed position or count; the other rows are unaffected.
  */
-export function createEngineTaskProgress(source: TaskEngine): TaskProgressSource {
+export function createEngineOverviewExecution(source: TaskEngine): OverviewExecutionSource {
   return async (specIds) => {
-    const progress = new Map<string, { completed: number; total: number } | null>();
+    const facts = new Map<string, OverviewExecutionFacts | null>();
     if (specIds.length === 0) {
-      return progress;
+      return facts;
     }
 
     let workflow;
@@ -195,13 +223,17 @@ export function createEngineTaskProgress(source: TaskEngine): TaskProgressSource
 
     for (const specId of specIds) {
       try {
-        const { completed, total } = (await readTaskProgressForRead(workflow, specId)).progress;
-        progress.set(specId, { completed, total });
+        const listing = await readSpecificationListingForRead(workflow, specId);
+        facts.set(specId, {
+          progress: { completed: listing.progress.completed, total: listing.progress.total },
+          workflow: overviewWorkflowOf(listing),
+          attention: listing.attention,
+        });
       } catch {
-        progress.set(specId, null);
+        facts.set(specId, null);
       }
     }
 
-    return progress;
+    return facts;
   };
 }

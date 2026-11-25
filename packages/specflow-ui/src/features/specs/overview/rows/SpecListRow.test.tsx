@@ -6,6 +6,8 @@ import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import {
   createArchiveItem,
   createSpecItem,
+  waitingForTasks,
+  workflowFixtures,
 } from '../../../../../test-support/specs/overview/fixtures';
 import { stubLayoutApis } from '../../../../../test-support/app/stubLayoutApis';
 import { archiveRow, currentRow } from '../presentation';
@@ -121,5 +123,43 @@ describe('SpecListRow pull requests', () => {
   it('shows nothing when there is none', () => {
     archived({ pullRequests: [] });
     expect(screen.queryByText(/PR/)).toBeNull();
+  });
+});
+
+describe('SpecListRow situation', () => {
+  const situation = (item: Parameters<typeof createSpecItem>[0]) => {
+    renderRow({ item: currentRow(createSpecItem(item)) });
+
+    return document.querySelector('[data-spec-reason]')?.textContent;
+  };
+
+  it('names the step the workflow waits on and the Tasks the owner can start', () => {
+    expect(
+      situation({ workflow: waitingForTasks(), classification: { section: 'in-progress' } }),
+    ).toBe('Waiting for TasksStep 6 of 7 · 5 Tasks ready to start');
+  });
+
+  it('says a workflow that has not started is not started, never "In preparation"', () => {
+    expect(
+      situation({
+        workflow: workflowFixtures.notStarted,
+        classification: { section: 'not-started' },
+      }),
+    ).toBe('Not started');
+  });
+
+  it('keeps the step under an attention summary', () => {
+    expect(
+      situation({
+        workflow: workflowFixtures.readyForNextStep,
+        classification: { section: 'requires-attention', count: 1 },
+      }),
+    ).toBe('1 item requires attentionReview the breakdown · Step 5 of 7 · Ready to start');
+  });
+
+  it('says how an ended run ended', () => {
+    expect(
+      situation({ workflow: workflowFixtures.abandoned, classification: { section: 'ended' } }),
+    ).toBe('Abandoned');
   });
 });

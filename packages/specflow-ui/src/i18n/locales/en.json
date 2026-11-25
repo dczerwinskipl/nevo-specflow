@@ -2450,11 +2450,6 @@
           "title": "An agent cannot run this step now",
           "body": "The step changed since you opened it, or no agent does it.",
           "hint": "Check again to read it once more."
-        },
-        "modelNotOfferedSettings": {
-          "title": "The model set for the {{role}} is not offered",
-          "body": "The agent settings name a model the agent does not offer, so it would not start.",
-          "hint": "Choose another model below, or change it in the project’s agent settings, then check again."
         }
       },
       "session": {

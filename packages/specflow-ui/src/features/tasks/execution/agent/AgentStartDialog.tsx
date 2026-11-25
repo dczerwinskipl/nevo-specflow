@@ -28,12 +28,7 @@ import {
   type FreshChoice,
   type SessionMode,
 } from './AgentSession';
-import {
-  MODEL_NOT_OFFERED,
-  NO_AGENT_REASONS,
-  archetypeTitle,
-  optionOfRefusal,
-} from './agentOption';
+import { NO_AGENT_REASONS, archetypeTitle, optionOfRefusal } from './agentOption';
 import { useAgentStart } from './useAgentStart';
 
 const CODE = <span className="font-mono whitespace-nowrap text-content-primary" />;
@@ -164,8 +159,7 @@ export function AgentStartDialog({
       ? catalogue.providers.find((provider) => provider.providerId === choice.providerId)
       : undefined;
   const modelRequired =
-    chosen === undefined &&
-    (option as { modelRequired?: boolean } | undefined)?.modelRequired === true;
+    chosen === undefined && option?.kind === 'available' && option.modelRequired === true;
   const modelUnassigned =
     fresh &&
     chosenProvider !== undefined &&
@@ -181,12 +175,12 @@ export function AgentStartDialog({
     setChosen(next);
   };
 
-  // A provider that is not ready, or a model it does not offer, only blocks the agent the workflow
+  // A provider that is not ready only blocks the agent the workflow
   // preselected: for a new Session the owner may pick a ready one (D18), and the start checks it
   // again. A continued Session has no picker.
   const pickable =
     option?.kind === 'unavailable' &&
-    (option.reason === 'provider-not-ready' || (option.reason as string) === MODEL_NOT_OFFERED) &&
+    option.reason === 'provider-not-ready' &&
     fresh &&
     launch !== undefined &&
     catalogue.status === 'ready';
@@ -205,7 +199,7 @@ export function AgentStartDialog({
   // mode, so it is shown only for that one.
   const sameAsLaunch =
     !modelUnassigned && choice.providerId === launch?.provider && choice.modelId === launch.model;
-  const workModeTitle = (option as { workMode?: { title: string } } | undefined)?.workMode?.title;
+  const workModeTitle = option?.kind === 'available' ? option.workMode?.title : undefined;
   const reused = launch?.session.mode === 'reuse' ? launch.session.sessionId : undefined;
   const sessionTitle =
     reused !== undefined

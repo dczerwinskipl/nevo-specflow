@@ -58,8 +58,7 @@ function waitingForOwnerOf(
   view: AgentAttemptView,
   sessionStatus: string | undefined,
 ): WaitingForOwner | undefined {
-  const projected = (view.turn as { waitingForOwner?: { kind: 'question' | 'permission' } })
-    .waitingForOwner;
+  const projected = view.turn.waitingForOwner;
   if (projected) {
     return { kind: projected.kind };
   }

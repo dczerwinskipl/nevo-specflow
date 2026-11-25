@@ -51,7 +51,7 @@ export const agentOptions: Record<AgentCase, AgentOption> = {
     launch: fresh,
     baseline: 'unchecked',
     // The Runtime names the work mode a new Session of this launch runs in.
-    ...({ workMode: { providerModeId: 'acceptEdits', title: 'Accept edits' } } as object),
+    workMode: { providerModeId: 'acceptEdits', title: 'Accept edits' },
   },
   reuse: {
     kind: 'available',
@@ -78,11 +78,12 @@ export const agentOptions: Record<AgentCase, AgentOption> = {
     detail: 'Claude is not signed in on this machine. Sign in with the Claude CLI, then try again.',
     launch: fresh,
   },
-  // The role's settings name a model id the provider's catalogue lists under its alias (dogfood
-  // #189: `claude-opus-5-5` while Claude Code offers `opus`); the projection still says available.
+  // The role's settings name a model the provider does not offer (dogfood #189:
+  // `claude-opus-5-5` while Claude Code offers `opus`): no model is assigned and the owner chooses.
   'model-not-offered': {
     kind: 'available',
-    launch: { ...fresh, model: 'sonnet' },
+    launch: { ...fresh, model: '' },
+    modelRequired: true,
     baseline: 'unchecked',
   },
   'session-gone': {

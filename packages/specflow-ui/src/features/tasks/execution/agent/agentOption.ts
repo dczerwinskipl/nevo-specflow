@@ -25,13 +25,6 @@ export function offersAgent(option: AgentOption | undefined): boolean {
   );
 }
 
-/**
- * The Runtime's reason for a launch whose model the provider does not offer (`detail` names the
- * configured model and the closest offered one). Compared as a string: the contract adds it with
- * the Runtime's model check.
- */
-export const MODEL_NOT_OFFERED = 'model-not-offered';
-
 /** The reasons whose fix is a choice of agent and model in the project's agent settings. */
 export const NO_AGENT_REASONS = [
   'archetype-missing',

@@ -2450,11 +2450,6 @@
           "title": "Agent nie może teraz wykonać tego kroku",
           "body": "Krok zmienił się od otwarcia albo nie wykonuje go agent.",
           "hint": "Sprawdź ponownie, żeby odczytać go jeszcze raz."
-        },
-        "modelNotOfferedSettings": {
-          "title": "Model ustawiony dla roli „{{role}}” nie jest oferowany",
-          "body": "Ustawienia agentów wskazują model, którego agent nie oferuje, więc agent by nie wystartował.",
-          "hint": "Wybierz niżej inny model albo zmień go w ustawieniach agentów projektu i sprawdź ponownie."
         }
       },
       "session": {

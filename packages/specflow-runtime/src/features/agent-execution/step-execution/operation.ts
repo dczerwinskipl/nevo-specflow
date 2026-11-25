@@ -635,6 +635,31 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
   }
 
   /**
+   * The owner's message hold of a Session (`AgentTurnAdmission.ownerTurnHold`): the Session is the
+   * one the subject's open agent attempt works in.
+   */
+  async function ownerTurnHold(
+    subject: WorkflowSubject,
+    sessionId: string,
+  ): Promise<string | undefined> {
+    const active = await engine.activeAttempt(subject);
+    if (active?.journal.actor.details.sessionId !== sessionId) {
+      return undefined;
+    }
+
+    const attempt =
+      (await stepTitleOf(subject, active.step, active.attempt)) ??
+      sessionTitleOf({ step: { id: active.step, title: active.step }, attempt: active.attempt });
+
+    return (
+      `This session belongs to the agent's attempt ${attempt}, which is still open. A message ` +
+      'here would run outside that attempt: it could not finish the step, and the files it ' +
+      'changed would stop Continue. Use Continue or Take over on the specification; you can write ' +
+      'here again once the attempt has ended.'
+    );
+  }
+
+  /**
    * The fresh Session of an attempt, created by whichever request comes first (the start, its retry,
    * or a Continue after a create that failed): keyed on the attempt and created with the id its
    * agent actor names, so it exists at most once and never under another id.
@@ -1059,7 +1084,15 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     return engine.takeOver(input);
   }
 
-  return { decorate, check, startAgentStepExecution, stopAgentStepExecution, returnStep, takeOver };
+  return {
+    decorate,
+    check,
+    startAgentStepExecution,
+    stopAgentStepExecution,
+    returnStep,
+    takeOver,
+    ownerTurnHold,
+  };
 }
 
 export type AgentStepExecution = ReturnType<typeof createAgentStepExecution>;

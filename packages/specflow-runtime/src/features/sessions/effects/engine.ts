@@ -55,6 +55,13 @@ export type AgentAttemptSettlement = (
 export interface AgentTurnAdmission {
   admissible(attemptId: string, invocationId: string): Promise<() => Promise<void>>;
   abandoned(attemptId: string): Promise<void>;
+  /**
+   * Why the owner cannot send a message in this Session now, in plain words with what to do: it is
+   * the Session of an agent attempt that is still open. An owner Turn there would run outside the
+   * attempt (without its scope or baseline): it could not finish the step and its changes would
+   * stop Continue. Undefined: the owner may send.
+   */
+  ownerTurnHold?(specId: string, sessionId: string): Promise<string | undefined>;
 }
 
 export function createEngineSessionEffects(

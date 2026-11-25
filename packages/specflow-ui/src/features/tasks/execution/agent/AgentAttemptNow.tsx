@@ -28,6 +28,7 @@ import { KeptDocuments } from './KeptDocuments';
 import { AgentBlocker, Paths } from './AgentBlocker';
 import { SessionLink } from './AgentSession';
 import { agentStageOf, continueRefusal, needsPolling, ownRefusal } from './agentAttempt';
+import type { UnavailableAgent } from './agentOption';
 import { usePolling } from './usePolling';
 import { useSessionFacts } from './useSessionFacts';
 import { AttemptCommitNote } from './AttemptCommitNote';
@@ -225,22 +226,19 @@ function RefusalReasons({
 }
 
 function ContinueRefused({
-  view,
+  refusal,
   specId,
   step,
   onCheckAgain,
 }: {
-  readonly view: AgentAttemptView;
+  /** Why Continue is refused: the projection's, or the one a refused Continue answered with. */
+  readonly refusal: UnavailableAgent;
   readonly specId: string;
   readonly step: string;
   readonly onCheckAgain: () => void;
 }) {
   const { t } = useTranslation();
-  const refusal = continueRefusal(view);
-  const own = ownRefusal(view.continue);
-  if (!refusal) {
-    return null;
-  }
+  const own = ownRefusal(refusal);
 
   if (own === 'baseline-changed') {
     return (
@@ -756,6 +754,13 @@ export function useAgentAttemptNow({
         </InlineNote>
       );
       const continuing = commands.continueAttempt.isPending;
+      // The projection does not read the checkout: a Continue the start refused (its baseline)
+      // answers with the reason, shown here in place of a generic refusal.
+      const answered = commands.continueAttempt.isError
+        ? workflowRefusalOf(commands.continueAttempt.error).agent
+        : undefined;
+      const answeredRefusal = answered?.kind === 'unavailable' ? answered : undefined;
+      const shownRefusal = refusal ?? answeredRefusal;
       const { work } = view;
       const docNames = work.documents.map((path) => path.split('/').at(-1) ?? path);
       const filePaths = [...new Set([...(work.changed?.paths ?? []), ...work.declared])].filter(
@@ -801,16 +806,16 @@ export function useAgentAttemptNow({
                 })}
               </InlineNote>
             ) : null}
-            {refusal ? (
+            {shownRefusal ? (
               <ContinueRefused
-                view={view}
+                refusal={shownRefusal}
                 specId={subject.specId}
                 step={stepTitle}
                 onCheckAgain={() => void commands.refresh()}
               />
             ) : null}
             {kept}
-            {failed ? <WorkflowRefusalAlert error={failed} /> : null}
+            {failed && !answeredRefusal ? <WorkflowRefusalAlert error={failed} /> : null}
           </div>
         ),
         actions: (

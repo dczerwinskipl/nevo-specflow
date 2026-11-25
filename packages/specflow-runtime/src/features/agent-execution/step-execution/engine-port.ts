@@ -228,6 +228,8 @@ export function createAgentStepEngine(dependencies: {
         if (error instanceof AttributionRefusalError && reason !== undefined) {
           return {
             reason,
+            // The Engine's sentence: which files and what to do about them.
+            detail: error.message,
             paths: [...error.attribution.paths],
             count: error.attribution.count,
           };

@@ -20,6 +20,8 @@ export interface AgentRuntimeFacts {
    */
   readonly baseline?: {
     readonly reason: 'dirty-baseline' | 'baseline-changed' | 'owner-work-uncommitted';
+    /** What changed and the remedy, in plain words. */
+    readonly detail?: string;
     readonly paths: readonly string[];
     readonly count: number;
   };
@@ -68,6 +70,7 @@ export function withRuntimeReasons(option: AgentOption, facts: AgentRuntimeFacts
 
   if (facts.baseline) {
     return unavailable(facts.baseline.reason, {
+      ...(facts.baseline.detail ? { detail: facts.baseline.detail } : {}),
       paths: facts.baseline.paths,
       count: facts.baseline.count,
     });

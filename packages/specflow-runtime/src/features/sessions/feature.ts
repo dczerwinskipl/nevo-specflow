@@ -221,6 +221,9 @@ export function createSessionsFeature(
         ...(options.demoList ? { demoList: options.demoList } : {}),
         ...(options.demoReads ? { demoReads: options.demoReads } : {}),
         ...(options.agentStepOrigins ? { agentStepOrigins: options.agentStepOrigins } : {}),
+        ...(options.agentTurns?.ownerTurnHold
+          ? { ownerTurnHold: options.agentTurns.ownerTurnHold.bind(options.agentTurns) }
+          : {}),
       });
     },
   };

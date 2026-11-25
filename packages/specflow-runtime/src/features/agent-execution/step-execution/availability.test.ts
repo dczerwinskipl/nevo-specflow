@@ -38,8 +38,20 @@ describe('the agent option with the Runtime reasons', () => {
     ],
     [
       'files changed since the last Turn',
-      { ...ready, baseline: { reason: 'baseline-changed', paths: ['b.md'], count: 1 } },
-      { reason: 'baseline-changed', paths: ['b.md'] },
+      {
+        ...ready,
+        baseline: {
+          reason: 'baseline-changed',
+          detail: '1 file(s) changed since the agent stopped: b.md. Undo or commit, then continue.',
+          paths: ['b.md'],
+          count: 1,
+        },
+      },
+      {
+        reason: 'baseline-changed',
+        detail: '1 file(s) changed since the agent stopped: b.md. Undo or commit, then continue.',
+        paths: ['b.md'],
+      },
     ],
   ])('is unavailable for %s, keeping the launch', (_name, facts, expected) => {
     expect(withRuntimeReasons(available, facts)).toEqual(

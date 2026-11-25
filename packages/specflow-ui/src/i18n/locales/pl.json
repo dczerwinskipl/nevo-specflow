@@ -2945,7 +2945,7 @@
       "tasksOpen": "Specyfikacja nie może się zakończyć, dopóki zadania są otwarte: {{tasks}}. Najpierw je ukończ lub anuluj.",
       "confirmationChanged": "To, co zastosowałoby potwierdzenie, zmieniło się od otwarcia tego widoku. Przeczytaj podsumowanie jeszcze raz i potwierdź.",
       "attemptCommitRequired": "Praca agenta w tej specyfikacji nie jest jeszcze zatwierdzona, więc w jej przepływie nic nie może się zmienić. Ponów jej commit (powyżej), a potem spróbuj ponownie.",
-      "agentUnavailable": "Agent nie może teraz kontynuować. Powód jest pokazany wyżej."
+      "agentUnavailable": "Agent nie może teraz kontynuować. Odśwież stronę, aby zobaczyć dlaczego."
     },
     "time": {
       "today": "Dziś {{time}}",

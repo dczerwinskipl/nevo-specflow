@@ -311,6 +311,19 @@ describe('agent step execution', () => {
     expect(attempt()?.launch).toEqual({ session: 'fresh' });
   });
 
+  it('holds owner messages in the Session of the open attempt, and only there', async () => {
+    const { execution, attempt } = fakes();
+    const id = '00000000-0000-4000-8000-00000000000d';
+    expect(await execution.ownerTurnHold(subject, derivedId(id, 'session'))).toBeUndefined();
+
+    await execution.startAgentStepExecution(request(id));
+
+    const hold = await execution.ownerTurnHold(subject, attempt()!.journal.actor.details.sessionId);
+    expect(hold).toContain('still open');
+    expect(hold).toContain('Continue or Take over');
+    expect(await execution.ownerTurnHold(subject, 'another-session')).toBeUndefined();
+  });
+
   it('refuses a selection the provider cannot run before the Engine starts an attempt', async () => {
     const reason =
       'The installed Claude has no auto mode for this model; choose another model or mode.';

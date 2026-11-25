@@ -2945,7 +2945,7 @@
       "tasksOpen": "The specification cannot complete while tasks are open: {{tasks}}. Finish or cancel them first.",
       "confirmationChanged": "What Confirm would apply changed since you opened this. Read the summary again, then confirm.",
       "attemptCommitRequired": "The agent’s work in this specification is not committed yet, so nothing in its workflow can change. Retry its commit (shown above), then try again.",
-      "agentUnavailable": "The agent cannot continue now. The reason is shown above."
+      "agentUnavailable": "The agent cannot continue now. Refresh the page to see why."
     },
     "time": {
       "today": "Today {{time}}",

@@ -8,6 +8,7 @@ import {
   finalizeAgentAttempt,
   openAgentAttempts,
   openWorkflow,
+  readAgentSessionOrigins,
   recoverAgentAttempts,
   type AgentWriteActor,
   type AgentWriteScope,
@@ -212,6 +213,13 @@ export function createAgentExecutionFeature(
       return () => assertAgentTurnAdmissible(attempts, attemptId, invocationId);
     },
     abandoned: async (attemptId) => settleAbandonedAgentTurn(await openAttempts(), attemptId),
+    async ownerTurnHold(specId, sessionId) {
+      const origin = (
+        await readAgentSessionOrigins(await openWorkflow(engine, workflowOptions()), specId)
+      ).get(sessionId);
+
+      return origin ? agentStepExecution.ownerTurnHold(origin.subject, sessionId) : undefined;
+    },
   };
 
   return {

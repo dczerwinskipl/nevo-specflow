@@ -218,6 +218,32 @@ describe('an agent that stopped', () => {
     expect(start).not.toHaveBeenCalled();
   });
 
+  it('shows why a Continue the start refused was refused, with the files, not a pointer to nothing', async () => {
+    const start = vi.fn(() =>
+      Promise.reject(
+        refusal('WORKFLOW_AGENT_UNAVAILABLE', {
+          details: {
+            agent: {
+              kind: 'unavailable',
+              reason: 'baseline-changed',
+              paths: ['.scratch/tasks/a.md'],
+              count: 1,
+            },
+          },
+        }),
+      ),
+    );
+    renderNow('stopped', { startAgentExecution: start });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'The agent cannot continue: 1 file changed since it stopped.',
+    );
+    expect(screen.getByText('.scratch/tasks/a.md')).toBeTruthy();
+    expect(screen.queryByText(/Refresh the page to see why/)).toBeNull();
+  });
+
   it('says the Session is gone when it is', () => {
     renderNow('session-gone');
 

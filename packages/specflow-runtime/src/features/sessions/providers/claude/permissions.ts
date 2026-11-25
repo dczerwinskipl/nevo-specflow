@@ -1,4 +1,4 @@
-import { AGENT_COMMAND_MAX_BYTES } from '@nevo/specflow-contracts/runtime';
+import { AGENT_COMMAND_MAX_BYTES, AGENT_SCRATCH_DIRECTORY } from '@nevo/specflow-contracts/runtime';
 import type { RespondInteraction } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../../errors';
 import { validateDriverFact } from '../facts';
@@ -60,7 +60,7 @@ export function prepareClaudeRequest(frame: unknown, writable: boolean) {
     ) {
       return deniedWith(
         fallback.response,
-        `This command is ${String(Buffer.byteLength(input.command))} bytes; a command may be at most ${String(AGENT_COMMAND_MAX_BYTES)} bytes. Write the text to a file first (with the file tool) and pass it with --content-file <file> (a Task list with --tasks-file <file>) instead of putting it in the command.`,
+        `This command is ${String(Buffer.byteLength(input.command))} bytes; a command may be at most ${String(AGENT_COMMAND_MAX_BYTES)} bytes. Write the text with the file tool to a file under ${AGENT_SCRATCH_DIRECTORY}/ in the worktree (Git ignores it; SpecFlow never commits it) and pass that file with --content-file <file> (a Task list with --tasks-file <file>) instead of putting it in the command.`,
       );
     }
 

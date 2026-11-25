@@ -60,7 +60,7 @@ describe('agent brief', () => {
       - A new document needs a type: register it with \`--type\`, or classify it afterwards. A file that is not registered blocks the finish.
       - Decisions stay with the owner: when a choice is open, ask in the Session and do not decide it for them.
       - Save with the revision you read; if it changed, read again before writing.
-      - A shell command may be at most 7000 bytes; a longer one is refused before it runs. Write document text to a file and pass it with \`--content-file <file>\` (Task lists with \`--tasks-file <file>\`) instead of putting it in the command.
+      - A shell command may be at most 7000 bytes; a longer one is refused before it runs. Write document text with your file tool to a file under \`.nevo/local/scratch/\` in this worktree (Git ignores it; SpecFlow never commits it; your file tools reach nothing outside the worktree) and pass it with \`--content-file <file>\` (Task lists with \`--tasks-file <file>\`) instead of putting it in the command.
       - Document paths (\`--path\`) are relative to the Specification folder (or the Task folder with \`--task\`), for example \`architecture.md\`; never start them with \`specs/\`.
       "
     `);
@@ -124,7 +124,7 @@ describe('agent brief', () => {
       - A new document needs a type: register it with \`--type\`, or classify it afterwards. A file that is not registered blocks the finish.
       - Decisions stay with the owner: when a choice is open, ask in the Session and do not decide it for them.
       - Save with the revision you read; if it changed, read again before writing.
-      - A shell command may be at most 7000 bytes; a longer one is refused before it runs. Write document text to a file and pass it with \`--content-file <file>\` (Task lists with \`--tasks-file <file>\`) instead of putting it in the command.
+      - A shell command may be at most 7000 bytes; a longer one is refused before it runs. Write document text with your file tool to a file under \`.nevo/local/scratch/\` in this worktree (Git ignores it; SpecFlow never commits it; your file tools reach nothing outside the worktree) and pass it with \`--content-file <file>\` (Task lists with \`--tasks-file <file>\`) instead of putting it in the command.
       - Document paths (\`--path\`) are relative to the Specification folder (or the Task folder with \`--task\`), for example \`architecture.md\`; never start them with \`specs/\`.
       "
     `);
@@ -210,6 +210,31 @@ describe('agent brief', () => {
     expect(brief).toMatch(/tasks remove S1 <task-id>/);
     expect(brief).toMatch(/at most 7000 bytes.*--content-file/);
     expect(brief).toMatch(/relative to the Specification folder/);
+    expect(brief).toMatch(/under `\.nevo\/local\/scratch\/` in this worktree/);
+  });
+
+  it('says what a --tasks-file holds for a step that produces Tasks', () => {
+    const context = {
+      ...base,
+      subject: { specId: 'S1' },
+      agent,
+      finish: { transitions: [], tasks: { rule: 'The finish lists every draft Task.' } },
+    } as unknown as StepContext;
+    const brief = renderAgentBrief({
+      context,
+      scope: deriveAgentScope({
+        kind: 'attempt',
+        specId: 'S1',
+        attemptId: '00000000-0000-4000-8000-000000000001',
+        step: 'breakdown',
+        attempt: 1,
+        producesTasks: true,
+      }),
+    });
+
+    expect(brief).toContain('Tasks: The finish lists every draft Task.');
+    expect(brief).toMatch(/--tasks-file <file>`: a YAML \(or JSON\) list.*`id`.*`title`.*`type`/);
+    expect(brief).toContain('  dependsOn: [create-adapter]');
   });
 
   it('tells a single-exit step to finish without --result', () => {

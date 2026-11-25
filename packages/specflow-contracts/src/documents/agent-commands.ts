@@ -61,6 +61,13 @@ const finishResult = (context: AgentFormContext): string =>
  */
 export const AGENT_COMMAND_MAX_BYTES = 7000;
 
+/**
+ * Where an agent writes the files it passes with `--content-file` / `--tasks-file`: inside its
+ * worktree (its file tools reach nothing outside), under `.nevo/local/`, which a Project Home must
+ * have Git-ignored, so the files never count as changes nor land in a commit.
+ */
+export const AGENT_SCRATCH_DIRECTORY = '.nevo/local/scratch';
+
 export const AGENT_COMMANDS: Readonly<Record<string, AgentCommandEntry>> = {
   'specs list': { placement: 'read', form: () => 'specs list', purpose: 'List Specifications.' },
   'specs documents list': {

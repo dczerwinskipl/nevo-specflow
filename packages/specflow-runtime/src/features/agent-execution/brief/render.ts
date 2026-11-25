@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto';
 
-import { AGENT_COMMAND_MAX_BYTES, type AgentFormContext } from '@nevo/specflow-contracts/runtime';
+import {
+  AGENT_COMMAND_MAX_BYTES,
+  AGENT_SCRATCH_DIRECTORY,
+  type AgentFormContext,
+} from '@nevo/specflow-contracts/runtime';
 import type {
   AgentWriteScope,
   ContextDocument,
@@ -101,7 +105,22 @@ function renderFinish(context: StepContext): string[] {
       ? 'This step has one result: finish it without `--result`.'
       : 'Finish with exactly one of these `--result` values; no other value is accepted:',
     ...lines,
-    ...(context.finish.tasks ? [`Tasks: ${context.finish.tasks.rule}`] : []),
+    ...(context.finish.tasks
+      ? [
+          `Tasks: ${context.finish.tasks.rule}`,
+          'Pass the list with `--tasks-file <file>`: a YAML (or JSON) list, one entry per draft Task: `id` (its key, for example `create-adapter`), `title`, `type` (a Task type of this Specification), and optionally `summary` (one line) and `dependsOn` (ids of other Tasks). For example:',
+          '```yaml',
+          '- id: create-adapter',
+          '  title: Create the in-memory adapter',
+          '  type: implementation',
+          '  summary: One line on what it delivers.',
+          '- id: wire-routes',
+          '  title: Serve the routes through the adapter',
+          '  type: implementation',
+          '  dependsOn: [create-adapter]',
+          '```',
+        ]
+      : []),
   ];
 }
 
@@ -257,7 +276,7 @@ export function renderAgentBrief(input: BriefInput): string {
     '- A new document needs a type: register it with `--type`, or classify it afterwards. A file that is not registered blocks the finish.',
     '- Decisions stay with the owner: when a choice is open, ask in the Session and do not decide it for them.',
     '- Save with the revision you read; if it changed, read again before writing.',
-    `- A shell command may be at most ${AGENT_COMMAND_MAX_BYTES} bytes; a longer one is refused before it runs. Write document text to a file and pass it with \`--content-file <file>\` (Task lists with \`--tasks-file <file>\`) instead of putting it in the command.`,
+    `- A shell command may be at most ${AGENT_COMMAND_MAX_BYTES} bytes; a longer one is refused before it runs. Write document text with your file tool to a file under \`${AGENT_SCRATCH_DIRECTORY}/\` in this worktree (Git ignores it; SpecFlow never commits it; your file tools reach nothing outside the worktree) and pass it with \`--content-file <file>\` (Task lists with \`--tasks-file <file>\`) instead of putting it in the command.`,
     '- Document paths (`--path`) are relative to the Specification folder (or the Task folder with `--task`), for example `architecture.md`; never start them with `specs/`.',
   );
 

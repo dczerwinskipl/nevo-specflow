@@ -84,6 +84,7 @@ export {
   type WorkflowHistory,
   type WorkflowHistoryItem,
 } from './history/workflow';
+export { readAgentSessionOrigins, type AgentSessionOrigin } from './history/sessions';
 export { returnDuringAgentAttempt, type OwnerReturnResult } from './owner/return';
 export { assertAgentTurnAdmissible, settleAbandonedAgentTurn } from './owner/settle';
 export {

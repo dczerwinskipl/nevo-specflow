@@ -39,8 +39,10 @@ import {
   type WorkflowFeatureDependencies,
 } from '../features/workflow';
 import {
+  agentSessionTitles,
   createAgentExecutionFeature,
   createUnavailableAgentStepExecutionFeature,
+  shownSessionTitle,
 } from '../features/agent-execution';
 import {
   createDocsFeature,
@@ -321,6 +323,16 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
               sessions: createWorkspaceSessionContribution({
                 sessions: sessionsFeature.runtime,
                 projectId,
+                ...(taskEngine
+                  ? {
+                      sessionTitles: async (specId: string) => {
+                        const derived = await agentSessionTitles(taskEngine.openWorkflow, specId);
+
+                        return (sessionId: string, stored: string | undefined) =>
+                          shownSessionTitle(stored, derived.get(sessionId));
+                      },
+                    }
+                  : {}),
               }),
             }
           : {}),

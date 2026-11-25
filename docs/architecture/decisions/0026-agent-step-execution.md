@@ -296,8 +296,11 @@ projection and the check report the option `available` with an empty `launch.mod
 `modelRequired: true`, never the unknown id, and a start without the owner's choice from the
 provider's list is refused. A fresh Session runs in the provider's `auto` work mode when the provider
 lists it ready and authorized for the model (`providerModes[].modelIds`), otherwise in
-`acceptEdits`; the option names it (`workMode`). Its title is the step and attempt it was made for
-("Break the solution down · attempt 2", with the Task title for a Task subject).
+`acceptEdits`; the option names it (`workMode`), for information only: the start request has no
+mode field. Its title is the step and attempt it was made for ("Break the solution down · attempt 2",
+with the Task title for a Task subject). A Session created before it was titled so (titled "Agent
+step execution", or untitled) is named so at read time in the Specification Overview, from the
+committed attempt records that name its Session; nothing is migrated.
 
 ### D19 — Stop, Return, Take over
 

@@ -29,6 +29,10 @@ interface WorkspaceSessionItem {
 }
 export type StartSessionReason = 'sessions_disabled' | 'forbidden' | 'no_provider';
 
+/** The title a Session is shown with, from its stored one (see `sessionTitles`). */
+type SessionTitleOf = (sessionId: string, stored: string | undefined) => string | undefined;
+const storedTitle: SessionTitleOf = (_sessionId, stored) => stored;
+
 /** Effective Session readiness only; an Engine attempt never colours a Session row. */
 export function workspaceSessionStatus(readiness: SessionInfo['readiness']): Status {
   switch (readiness) {
@@ -73,6 +77,7 @@ export function sessionAttentionOf(
 async function waitingSessions(
   coordinator: SessionCoordinator,
   specId: string,
+  titleOf: SessionTitleOf,
 ): Promise<{ readonly row: SessionListRow; readonly title?: string }[]> {
   const candidates: SessionListRow[] = [];
   let after: number | undefined;
@@ -101,7 +106,7 @@ async function waitingSessions(
     })) {
       const listed = listedSession(summary, coordinator.provider);
       if (workspaceSessionStatus(listed.readiness) === 'attention') {
-        waiting.set(summary.sessionId, listed.title);
+        waiting.set(summary.sessionId, titleOf(summary.sessionId, listed.title));
       }
     }
   }
@@ -140,6 +145,11 @@ export function recommendSessions(
 export function createWorkspaceSessionContribution(options: {
   sessions: SessionsRuntime;
   projectId: ProjectIdSource;
+  /**
+   * How a Specification's Sessions are titled at read time (agent step Sessions by their step and
+   * attempt); absent: their stored titles. A failure keeps the stored titles.
+   */
+  sessionTitles?: (specId: string) => Promise<SessionTitleOf>;
 }) {
   function startSession(
     specId: string,
@@ -169,6 +179,9 @@ export function createWorkspaceSessionContribution(options: {
       };
     }
 
+    const titleOf = options.sessionTitles
+      ? await options.sessionTitles(specId).catch(() => storedTitle)
+      : storedTitle;
     try {
       const scan = await coordinator.store.call<SessionListScan>({
         op: 'list',
@@ -194,10 +207,11 @@ export function createWorkspaceSessionContribution(options: {
       const more = scan.rows.length > WORKSPACE_SESSION_LIMIT;
       const items: WorkspaceSessionItem[] = rows.map((row) => {
         const summary = byId.get(row.sessionId)!;
+        const title = titleOf(row.sessionId, summary.title);
 
         return {
           id: row.sessionId,
-          ...(summary.title ? { title: summary.title } : {}),
+          ...(title ? { title } : {}),
           taskIds: row.taskIds ?? [],
           status: workspaceSessionStatus(summary.readiness),
           providerId: summary.providerId,
@@ -209,7 +223,7 @@ export function createWorkspaceSessionContribution(options: {
       });
       // Every Session that waits for input, also one beyond the rows (only scanned when more exist).
       const waiting = more
-        ? await waitingSessions(coordinator, specId)
+        ? await waitingSessions(coordinator, specId, titleOf)
         : rows.flatMap((row, index) =>
             items[index]!.status === 'attention'
               ? [{ row, ...(items[index]!.title ? { title: items[index]!.title } : {}) }]
@@ -246,12 +260,13 @@ export function createWorkspaceSessionContribution(options: {
           ...(row.specId !== undefined ? { specId: row.specId } : {}),
         })),
         // The "Session started" events of the activity history: bounded by the same 100 rows.
-        sessionStarts: rows.map((row) => {
+        sessionStarts: rows.map((row, index) => {
           const summary = byId.get(row.sessionId)!;
+          const title = items[index]!.title;
 
           return {
             sessionId: row.sessionId,
-            ...(summary.title ? { title: summary.title } : {}),
+            ...(title ? { title } : {}),
             createdAt: summary.createdAt,
           };
         }),

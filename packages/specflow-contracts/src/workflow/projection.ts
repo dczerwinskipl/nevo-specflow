@@ -194,6 +194,9 @@ export const AgentOptionSchema = Type.Union([
      * The provider work mode a fresh Session of this launch runs in, with its title: Claude's `auto`
      * when the provider lists it as ready for the model (`providerModes[].modelIds`), otherwise
      * `acceptEdits`. Absent for a continued Session (it keeps its own) or while no model is assigned.
+     * Informational only: the start request has no mode field (the Runtime chooses the mode when it
+     * creates the Session), and no work mode approves a product CLI command; the archetype's
+     * allowlist does, on the host (ADR 0026, D20).
      */
     workMode: Type.Optional(Type.Object({ providerModeId: Type.String(), title: Type.String() })),
   }),

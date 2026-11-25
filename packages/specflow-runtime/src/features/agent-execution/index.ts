@@ -5,3 +5,4 @@ export {
   agentBrokerEnvironment,
   sendAgentBrokerRequest,
 } from './broker/client';
+export { agentSessionTitles, shownSessionTitle } from './step-execution/session-titles';

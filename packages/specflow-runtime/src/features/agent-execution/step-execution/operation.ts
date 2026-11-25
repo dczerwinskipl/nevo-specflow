@@ -182,6 +182,13 @@ export function sessionTitleOf(brief: Pick<AgentBrief, 'step' | 'attempt' | 'tas
   return title.length > 256 ? `${title.slice(0, 255)}…` : title;
 }
 
+/**
+ * The title of a fresh agent Session when no step title was at hand, and the one Sessions were
+ * created with before they were named by their step and attempt: a Session still carrying it (or
+ * none) is named at read time instead (`session-titles.ts`).
+ */
+export const GENERIC_AGENT_SESSION_TITLE = 'Agent step execution';
+
 const titled = (title: string | undefined) => (title !== undefined ? { title } : {});
 
 /** The marker of a Turn's request that is SpecFlow's brief of the step (sessions `RequestOrigin`). */
@@ -660,7 +667,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
         ...(attempt.effort !== undefined ? { effort: attempt.effort } : {}),
         mode: 'workspace-write',
         ...freshWorkMode(sessions, attempt.actor),
-        title: attempt.title ?? 'Agent step execution',
+        title: attempt.title ?? GENERIC_AGENT_SESSION_TITLE,
       },
       {
         specId: subject.specId,

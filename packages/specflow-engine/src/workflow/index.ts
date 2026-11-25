@@ -184,6 +184,8 @@ export {
   readAgentAttemptHistory,
   readAgentAttemptWork,
   readWorkflowHistory,
+  readAgentSessionOrigins,
+  type AgentSessionOrigin,
   returnDuringAgentAttempt,
   assertAgentTurnAdmissible,
   settleAbandonedAgentTurn,

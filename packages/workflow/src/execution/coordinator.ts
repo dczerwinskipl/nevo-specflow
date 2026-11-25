@@ -292,7 +292,11 @@ function selectTransition<A extends HostAnnotations>(
   const [only] = step.transitions;
   if (only && only.result === undefined) {
     if (result !== undefined) {
-      invalidInput(`The step "${step.id}" takes no result, but "${result}" was given.`);
+      invalidInput(
+        `The step "${step.id}" takes no result, but "${result.slice(0, 80)}" was given; finish it without a result${
+          only.label !== undefined ? ` (it finishes as "${only.label}")` : ''
+        }.`,
+      );
     }
 
     return only;
@@ -300,9 +304,19 @@ function selectTransition<A extends HostAnnotations>(
 
   const selected = step.transitions.find((transition) => transition.result === result);
   if (!selected) {
-    const allowed = step.transitions.map((transition) => transition.result).join(', ');
+    // Each allowed value with its label and whether it needs feedback, so the caller can choose.
+    const allowed = step.transitions
+      .map(
+        (transition) =>
+          `${String(transition.result)}${transition.label !== undefined ? ` ("${transition.label}"` : ' ('}${
+            transition.label !== undefined ? ', ' : ''
+          }feedback ${transition.feedback})`,
+      )
+      .join(', ');
     invalidInput(
-      `The step "${step.id}" needs one of the results ${allowed}; got ${result ?? 'none'}.`,
+      `The step "${step.id}" needs one of the results ${allowed}; got ${
+        result === undefined ? 'none' : `"${result.slice(0, 80)}"`
+      }.`,
     );
   }
 

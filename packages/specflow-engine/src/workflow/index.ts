@@ -258,6 +258,7 @@ export type {
   TransitionDescription,
 } from './operations/step-context';
 export {
+  assertAgentDraftTask,
   createTask,
   editTask,
   removeTask,

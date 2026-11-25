@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type { AgentFormContext } from '@nevo/specflow-contracts/runtime';
+import { AGENT_COMMAND_MAX_BYTES, type AgentFormContext } from '@nevo/specflow-contracts/runtime';
 import type {
   AgentWriteScope,
   ContextDocument,
@@ -76,6 +76,35 @@ function renderEntry(entry: ContextEntry): string {
   return `- ${entry.kind} ${oneLine(entry.ref)} (${need}${facts.length ? '; ' + facts.join(', ') : ''})`;
 }
 
+/**
+ * How the attempt finishes: each result value with its label, where it leads and whether it needs
+ * feedback, exactly as the step declares them, so the agent never guesses a value (`--result`).
+ */
+function renderFinish(context: StepContext): string[] {
+  const transitions = context.finish.transitions;
+  const lines = transitions.map((transition) => {
+    const value =
+      transition.result === undefined ? 'no --result' : `--result ${oneLine(transition.result)}`;
+    const label = transition.label !== undefined ? ` "${oneLine(transition.label)}"` : '';
+    const target =
+      transition.target.kind === 'step'
+        ? `goes to ${oneLine(transition.targetTitle ?? transition.target.step)}`
+        : `ends the workflow (${transition.target.outcome})`;
+
+    return `- ${value}${label} (transition ${oneLine(transition.id)}): ${target}; feedback ${transition.feedback}.`;
+  });
+  const single = transitions.length === 1 && transitions[0]?.result === undefined;
+
+  return [
+    '## Finishing this step',
+    single
+      ? 'This step has one result: finish it without `--result`.'
+      : 'Finish with exactly one of these `--result` values; no other value is accepted:',
+    ...lines,
+    ...(context.finish.tasks ? [`Tasks: ${context.finish.tasks.rule}`] : []),
+  ];
+}
+
 const renderDocument = (document: ContextDocument): string =>
   `- ${oneLine(document.id)} [${oneLine(document.type)}] ${oneLine(document.title)} - ${oneLine(
     document.path,
@@ -93,6 +122,14 @@ export function renderAgentBrief(input: BriefInput): string {
       : {}),
     ...(taskId === undefined && agent?.archetype?.templates.length
       ? { templateIds: agent.archetype.templates.map((template) => template.id) }
+      : {}),
+    ...(scope.draftTasks ? { draftTasks: true } : {}),
+    ...(scope.attempt !== undefined
+      ? {
+          results: context.finish.transitions.flatMap((transition) =>
+            transition.result === undefined ? [] : [transition.result],
+          ),
+        }
       : {}),
   };
   const sections: string[] = [];
@@ -202,6 +239,17 @@ export function renderAgentBrief(input: BriefInput): string {
   }
 
   sections.push('', renderOperations(scope, formContext));
+  if (scope.attempt !== undefined) {
+    sections.push('', ...renderFinish(context));
+  }
+
+  if (scope.draftTasks) {
+    sections.push(
+      '',
+      'Task drafts of this step, from any attempt, are yours to rework: edit them (`tasks edit`, their documents with `--task <task-id>`) or delete them (`tasks remove`). A Task that is approved or started is not yours: leave it, and to drop it propose a task decision with the status cancelled in your finish; the owner confirms it.',
+    );
+  }
+
   sections.push(
     '',
     '## Rules',
@@ -209,6 +257,8 @@ export function renderAgentBrief(input: BriefInput): string {
     '- A new document needs a type: register it with `--type`, or classify it afterwards. A file that is not registered blocks the finish.',
     '- Decisions stay with the owner: when a choice is open, ask in the Session and do not decide it for them.',
     '- Save with the revision you read; if it changed, read again before writing.',
+    `- A shell command may be at most ${AGENT_COMMAND_MAX_BYTES} bytes; a longer one is refused before it runs. Write document text to a file and pass it with \`--content-file <file>\` (Task lists with \`--tasks-file <file>\`) instead of putting it in the command.`,
+    '- Document paths (`--path`) are relative to the Specification folder (or the Task folder with `--task`), for example `architecture.md`; never start them with `specs/`.',
   );
 
   return sections.join('\n') + '\n';

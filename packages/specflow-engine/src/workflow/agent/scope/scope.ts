@@ -8,9 +8,13 @@
  * - `ad-hoc`: a Turn of a Session associated with a Specification, without an agent attempt (D11b):
  *   it may create, save and classify documents of that home Specification;
  * - `attempt`: a Turn of an agent attempt of a step (agent step execution): the documents of its subject
- *   Specification, Task drafts (create, edit) only when the step declares `produces: tasks`, and the
- *   finish proposal of the bound attempt. A Task subject writes its Task's documents, never the
- *   Specification's own.
+ *   Specification, Task drafts (create, edit, remove, and the documents of a draft) only when the
+ *   step declares `produces: tasks`, and the finish proposal of the bound attempt. A Task subject
+ *   writes its Task's documents, never the Specification's own.
+ *
+ * Which Task is a draft of the step (owned by it, still a draft) is the Engine's state, not the
+ * binding's: the scope admits a draft's documents by shape (`draftTask` on the decision), and the
+ * Engine's write judges the Task itself (`assertAgentDraftTask`).
  */
 
 /** Every write an agent may be granted. A scope admits a subset. */
@@ -20,6 +24,7 @@ export const AGENT_WRITE_OPERATIONS = [
   'documents.classify',
   'tasks.create',
   'tasks.edit',
+  'tasks.remove',
   'workflow.finish',
 ] as const;
 export type AgentWriteOperation = (typeof AGENT_WRITE_OPERATIONS)[number];
@@ -56,6 +61,11 @@ export interface AgentWriteScope {
   };
   /** The writes the Turn may make, in {@link AGENT_WRITE_OPERATIONS} order. */
   readonly operations: readonly AgentWriteOperation[];
+  /**
+   * The step produces Tasks (a Specification subject): the document writes may also name one of
+   * its Task drafts (`taskId`), for example to rework a draft of an earlier attempt after a review.
+   */
+  readonly draftTasks?: true;
 }
 
 /** The scope of a binding. Pure: the same binding always yields the same scope. */
@@ -66,7 +76,7 @@ export function deriveAgentScope(binding: AgentScopeBinding): AgentWriteScope {
 
   const operations: AgentWriteOperation[] = [
     ...DOCUMENT_OPERATIONS,
-    ...(binding.producesTasks ? (['tasks.create', 'tasks.edit'] as const) : []),
+    ...(binding.producesTasks ? (['tasks.create', 'tasks.edit', 'tasks.remove'] as const) : []),
     'workflow.finish',
   ];
 
@@ -76,6 +86,7 @@ export function deriveAgentScope(binding: AgentScopeBinding): AgentWriteScope {
     ...(binding.taskId !== undefined ? { taskId: binding.taskId } : {}),
     attempt: { attemptId: binding.attemptId, step: binding.step, attempt: binding.attempt },
     operations,
+    ...(binding.producesTasks && binding.taskId === undefined ? { draftTasks: true as const } : {}),
   };
 }
 
@@ -95,7 +106,15 @@ export type AgentScopeRefusalReason =
   'operation-not-in-scope' | 'other-specification' | 'task-not-in-scope';
 
 export type AgentScopeDecision =
-  | { readonly admitted: true; readonly operation: AgentWriteOperation }
+  | {
+      readonly admitted: true;
+      readonly operation: AgentWriteOperation;
+      /**
+       * A document write of this Task draft of the step (`draftTasks` scope): admitted by shape; the
+       * caller asks the Engine whether the Task is one of the step's drafts before it writes.
+       */
+      readonly draftTask?: string;
+    }
   | {
       readonly admitted: false;
       readonly reason: AgentScopeRefusalReason;
@@ -136,6 +155,15 @@ export function admitAgentOperation(
   // Documents and the finish proposal name the attempt's own subject (a Task's documents for a Task
   // subject); a Task draft names no subject.
   const expectedTask = target.operation.startsWith('tasks.') ? undefined : scope.taskId;
+  if (
+    scope.draftTasks &&
+    target.taskId !== undefined &&
+    expectedTask === undefined &&
+    (DOCUMENT_OPERATIONS as readonly string[]).includes(target.operation)
+  ) {
+    return { admitted: true, operation: target.operation, draftTask: target.taskId };
+  }
+
   if (target.taskId !== expectedTask) {
     return {
       admitted: false,

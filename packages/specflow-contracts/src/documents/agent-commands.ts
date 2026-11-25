@@ -15,6 +15,13 @@ export interface AgentFormContext {
   readonly attempt?: { readonly step: string; readonly attempt: number };
   /** Archetype template ids `documents add --template` may name (Specification subject only). */
   readonly templateIds?: readonly string[];
+  /** The step produces Tasks: the document writes may name one of its Task drafts (`--task`). */
+  readonly draftTasks?: boolean;
+  /**
+   * The result values `workflow finish --result` takes for the bound step, in declared order; empty:
+   * the step has a single exit and the finish names no result.
+   */
+  readonly results?: readonly string[];
 }
 
 export interface AgentCommandEntry {
@@ -26,6 +33,7 @@ export interface AgentCommandEntry {
     | 'documents.classify'
     | 'tasks.create'
     | 'tasks.edit'
+    | 'tasks.remove'
     | 'workflow.finish';
   /** The exact CLI form the brief shows (without the executable); absent: not shown in the brief. */
   readonly form?: (context: AgentFormContext) => string;
@@ -34,6 +42,24 @@ export interface AgentCommandEntry {
 
 const task = (context: AgentFormContext): string =>
   context.taskId === undefined ? '' : ` --task ${context.taskId}`;
+
+/** A document write: the Task subject, or optionally a Task draft of a producing step. */
+const documentTask = (context: AgentFormContext): string =>
+  context.taskId === undefined && context.draftTasks ? ' [--task <draft-task-id>]' : task(context);
+
+/** `--result` with the step's values, or nothing for a step with a single exit. */
+const finishResult = (context: AgentFormContext): string =>
+  context.results === undefined
+    ? ' --result <result>'
+    : context.results.length === 0
+      ? ''
+      : ` --result ${context.results.length === 1 ? context.results[0]! : `(${context.results.join(' | ')})`}`;
+
+/**
+ * The longest shell command an agent's provider approves (Claude Code's Bash tool; bytes of UTF-8).
+ * A longer one is refused before it runs, so document text goes in a file (`--content-file`).
+ */
+export const AGENT_COMMAND_MAX_BYTES = 7000;
 
 export const AGENT_COMMANDS: Readonly<Record<string, AgentCommandEntry>> = {
   'specs list': { placement: 'read', form: () => 'specs list', purpose: 'List Specifications.' },
@@ -95,23 +121,24 @@ export const AGENT_COMMANDS: Readonly<Record<string, AgentCommandEntry>> = {
     placement: 'brokered',
     operation: 'documents.create',
     form: (c) =>
-      `specs documents add ${c.specId}${task(c)} --path <path> (--stdin | --content-file <file>${
+      `specs documents add ${c.specId}${documentTask(c)} --path <path> (--content-file <file> | --stdin${
         c.taskId === undefined && c.templateIds?.length ? ' | --template <template-id>' : ''
       }) [--type <type>]`,
-    purpose: 'Create a document and register it.',
+    purpose:
+      'Create a document and register it. --path is relative to the Specification folder (the Task folder with --task), for example architecture.md, never specs/active/....',
   },
   'specs documents save': {
     placement: 'brokered',
     operation: 'documents.save',
     form: (c) =>
-      `specs documents save ${c.specId} <document-id>${task(c)} --expected-revision <revision> (--stdin | --content-file <file>)`,
+      `specs documents save ${c.specId} <document-id>${documentTask(c)} --expected-revision <revision> (--content-file <file> | --stdin)`,
     purpose: 'Replace the content of a registered document; the revision comes from a read.',
   },
   'specs documents classify': {
     placement: 'brokered',
     operation: 'documents.classify',
     form: (c) =>
-      `specs documents classify ${c.specId} <document-id>${task(c)} --type <type> --expected-revision <revision>`,
+      `specs documents classify ${c.specId} <document-id>${documentTask(c)} --type <type> --expected-revision <revision>`,
     purpose: 'Give a registered document its type.',
   },
   'tasks create': {
@@ -127,7 +154,15 @@ export const AGENT_COMMANDS: Readonly<Record<string, AgentCommandEntry>> = {
     operation: 'tasks.edit',
     form: (c) =>
       `tasks edit ${c.specId} <task-id> --expected-revision <revision> [--title <title>] [--summary <text>] [--depends-on <task-id>]`,
-    purpose: 'Change a draft Task this step drafted; the revision comes from "tasks inspect".',
+    purpose:
+      'Change a draft Task this step drafted (in any attempt); the revision comes from "tasks inspect".',
+  },
+  'tasks remove': {
+    placement: 'brokered',
+    operation: 'tasks.remove',
+    form: (c) => `tasks remove ${c.specId} <task-id> --expected-revision <revision>`,
+    purpose:
+      'Delete a draft Task this step drafted (in any attempt). An approved or started Task stays: propose closing it in your finish instead.',
   },
   'workflow finish': {
     placement: 'brokered',
@@ -135,7 +170,7 @@ export const AGENT_COMMANDS: Readonly<Record<string, AgentCommandEntry>> = {
     form: (c) =>
       `workflow finish ${c.specId}${task(c)} --step ${c.attempt?.step ?? '<step-id>'} --attempt ${
         c.attempt !== undefined ? String(c.attempt.attempt) : '<number>'
-      } --result <result> [--feedback <text>] [--artifact <ref>] [--tasks-file <file>] [--changed <path>]`,
+      }${finishResult(c)} [--feedback <text>] [--artifact <ref>] [--tasks-file <file>] [--changed <path>]`,
     purpose:
       'Propose the result of your attempt once its work is done; name every file you changed outside SpecFlow with --changed. It is applied after you stop.',
   },

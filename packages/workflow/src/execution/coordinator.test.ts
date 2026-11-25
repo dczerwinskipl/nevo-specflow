@@ -262,6 +262,23 @@ describe('decide', () => {
     );
   });
 
+  it('names the allowed results, with whether each needs feedback, when a finish guesses one', () => {
+    expect(() =>
+      decide(
+        DEFINITION,
+        run(...draftedByAgent, start(person)),
+        finish('review', 1, person, { result: 'approved' }),
+      ),
+    ).toThrow(
+      'The step "review" needs one of the results pass (feedback optional), fail (feedback required); got "approved".',
+    );
+    expect(() =>
+      decide(DEFINITION, run(start(person)), finish('draft', 1, person, { result: 'done' })),
+    ).toThrow(
+      'The step "draft" takes no result, but "done" was given; finish it without a result.',
+    );
+  });
+
   it('lets a person do a step an agent may also do, and records who did it', () => {
     const decided = decide(DEFINITION, run(start(person)), finish('draft', 1, person));
     expect(decided.finished).toMatchObject({ actor: person, finishedBy: person });

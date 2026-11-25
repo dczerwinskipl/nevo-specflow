@@ -59,8 +59,10 @@ describe('agent write scope', () => {
       'documents.classify',
       'tasks.create',
       'tasks.edit',
+      'tasks.remove',
       'workflow.finish',
     ]);
+    expect(attempt({ producesTasks: true }).draftTasks).toBe(true);
     // A Task subject writes its Task's documents; its finish names the Task.
     expect(attempt({ taskId: 'T1' }).operations).toEqual([
       'documents.create',
@@ -106,5 +108,18 @@ describe('agent write scope', () => {
         specId: 'S1',
       }),
     ).toMatchObject({ admitted: true, operation: 'tasks.edit' });
+  });
+
+  it("admits a producing step's document write of a Task draft by shape, for the Engine to judge", () => {
+    expect(
+      admitAgentOperation(attempt({ producesTasks: true }), {
+        operation: 'documents.save',
+        specId: 'S1',
+        taskId: 'api',
+      }),
+    ).toEqual({ admitted: true, operation: 'documents.save', draftTask: 'api' });
+    expect(
+      admitAgentOperation(attempt(), { operation: 'documents.save', specId: 'S1', taskId: 'api' }),
+    ).toMatchObject({ admitted: false, reason: 'task-not-in-scope' });
   });
 });

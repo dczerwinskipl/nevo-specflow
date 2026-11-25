@@ -18,6 +18,7 @@ import type {
   CreateTaskInput,
   EditTaskInput,
   TaskChangeResult,
+  TaskRemoveResult,
 } from '@nevo/specflow-contracts/tasks';
 import type { AgentFinishProposalRequest } from '@nevo/specflow-contracts/workflow';
 import { DocumentError, admitAgentOperation, type OwnedExecution } from '@nevo/specflow-engine';
@@ -72,6 +73,12 @@ export interface BrokerWorkflow {
     binding: CapabilityBinding,
     input: EditTaskInput & { readonly specId: string; readonly taskId: string },
   ): Promise<TaskChangeResult>;
+  removeTask(
+    binding: CapabilityBinding,
+    input: { readonly specId: string; readonly taskId: string; readonly expectedRevision: string },
+  ): Promise<TaskRemoveResult>;
+  /** Refuses (throws the Engine's refusal) unless `taskId` is a draft Task the bound step owns. */
+  assertDraftTask(binding: CapabilityBinding, specId: string, taskId: string): Promise<void>;
   propose(
     binding: CapabilityBinding,
     input: AgentFinishProposalRequest,
@@ -260,6 +267,15 @@ export function createBrokerDispatcher(options: {
       );
     }
 
+    // A Task draft's documents: the Engine judges whether the Task is one of the step's drafts.
+    if (decision.draftTask !== undefined) {
+      await (options.workflow ?? unavailable()).assertDraftTask(
+        binding,
+        operation.specId,
+        decision.draftTask,
+      );
+    }
+
     const operationId = brokerOperationId(binding.invocationId, request.requestId);
     const owned: OwnedExecution = { operationId: binding.invocationId, actor: binding.actor };
     let value: AgentBrokerResult;
@@ -330,6 +346,15 @@ export function createBrokerDispatcher(options: {
         value = {
           operation: operation.name,
           result: await (options.workflow ?? unavailable()).editTask(binding, input),
+        };
+        break;
+      }
+
+      case 'tasks.remove': {
+        const { name: _name, ...input } = operation;
+        value = {
+          operation: operation.name,
+          result: await (options.workflow ?? unavailable()).removeTask(binding, input),
         };
         break;
       }

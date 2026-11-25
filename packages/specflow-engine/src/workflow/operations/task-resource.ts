@@ -120,7 +120,9 @@ export interface RemoveTaskInput {
   readonly taskId: string;
   /** The manifest revision the removal was planned against. */
   readonly expectedRevision: string;
-  readonly actor: OwnerActor;
+  /** The owner; or the agent of `agentAttempt`, which removes only the drafts its step owns. */
+  readonly actor: OwnerActor | AgentActor;
+  readonly agentAttempt?: AgentDraftAttempt;
 }
 
 function invalid(message: string): never {
@@ -208,6 +210,55 @@ function draftingAttempt(
   return position.state === 'active'
     ? { step: position.step, attempt: position.attempt }
     : refuse('in the active attempt it works on');
+}
+
+/**
+ * An agent of a producing step changes only the drafts its step owns (`ownsDraft`, any attempt of
+ * the step: a later attempt reworks the drafts of an earlier one). A Task that is approved or started
+ * is never changed silently: the agent proposes closing it in its finish instead (`taskDecisions`),
+ * which the owner confirms.
+ */
+function assertOwnedDraft(
+  producing: { readonly step: string },
+  task: ExecutionTask,
+  action: string,
+): void {
+  if (ownsDraft(producing, task)) {
+    return;
+  }
+
+  throw new WorkflowError(
+    'WORKFLOW_EXECUTOR_NOT_ALLOWED',
+    task.status !== 'draft'
+      ? `An agent ${action} only a draft Task of the step "${producing.step}"; "${task.taskId}" is ${task.status}, so leave it as it is. To drop it, propose closing it in your finish (a task decision with the status cancelled); the owner confirms that decision.`
+      : `An agent ${action} only the draft Tasks its step "${producing.step}" drafted; "${task.taskId}" is not one. Ask the owner to change it.`,
+  );
+}
+
+/**
+ * Refuses an agent's document write of the Task `taskId` unless it is a draft its producing step
+ * owns, written in that step's active agent attempt (D11 points 6 and 7): the broker asks this
+ * before it writes a Task draft's documents (`draftTask` of the scope decision).
+ */
+export async function assertAgentDraftTask(
+  dependencies: Pick<WorkflowDependencies, 'catalogue' | 'store'>,
+  input: {
+    readonly specId: string;
+    readonly taskId: string;
+    readonly actor: AgentActor;
+    readonly agentAttempt: AgentDraftAttempt;
+  },
+): Promise<void> {
+  const snapshot = await dependencies.store.read(input.specId);
+  const producing = draftingAttempt(
+    dependencies,
+    snapshot,
+    input,
+    "changes a Task draft's documents",
+  );
+  assertSpecificationOpen(snapshot);
+  const { task } = loadTask(dependencies.catalogue, snapshot, input.taskId);
+  assertOwnedDraft(producing!, task, 'changes the documents of');
 }
 
 /** Title and summary as stored: trimmed, an empty summary is none. */
@@ -374,11 +425,8 @@ export function editTask(
     const producing = draftingAttempt(dependencies, snapshot, input, 'edits a Task');
     assertSpecificationOpen(snapshot);
     const { task, manifest: stored } = loadTask(dependencies.catalogue, snapshot, input.taskId);
-    if (producing && !ownsDraft({ step: producing.step }, task)) {
-      throw new WorkflowError(
-        'WORKFLOW_EXECUTOR_NOT_ALLOWED',
-        `An agent edits only the draft Tasks its step "${producing.step}" drafted; "${input.taskId}" is not one. Ask the owner to change it.`,
-      );
+    if (producing) {
+      assertOwnedDraft(producing, task, 'edits');
     }
 
     if (stored.revision !== input.expectedRevision) {
@@ -479,11 +527,15 @@ export function removeTask(
   input: RemoveTaskInput,
 ): Promise<{ readonly subject: WorkflowSubject }> {
   return dependencies.serialize(async () => {
-    assertOwner(input.actor, 'removes a Task');
     const snapshot = await dependencies.store.read(input.specId);
+    const producing = draftingAttempt(dependencies, snapshot, input, 'removes a Task');
     // Abandoned or completed work stays readable for audit: an ended Specification keeps its Tasks.
     assertSpecificationOpen(snapshot);
-    const { manifest, run } = loadTask(dependencies.catalogue, snapshot, input.taskId);
+    const { manifest, run, task } = loadTask(dependencies.catalogue, snapshot, input.taskId);
+    if (producing) {
+      assertOwnedDraft(producing, task, 'removes');
+    }
+
     if (manifest.revision !== input.expectedRevision) {
       throw new WorkflowError(
         'WORKFLOW_TASK_REVISION_CONFLICT',

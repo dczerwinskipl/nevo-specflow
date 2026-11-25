@@ -1,7 +1,9 @@
 import {
+  assertAgentDraftTask,
   createTask,
   editTask,
   proposeAgentFinish,
+  removeTask,
   type AgentAttemptDependencies,
   type WorkflowDependencies,
   type OwnedExecution,
@@ -11,7 +13,8 @@ import type { CapabilityBinding } from '../capability/registry';
 import type { BrokerWorkflow } from './dispatch';
 
 /**
- * The broker's workflow writes of an agent attempt's Turn: Task drafts of its producing step and its
+ * The broker's workflow writes of an agent attempt's Turn: Task drafts of its producing step (create,
+ * edit, remove, and the check before a draft's documents are written) and its
  * finish proposal, through the same Engine use cases as the owner's, as the Turn's owned execution
  * with the attempt's agent (from the capability binding, never from the request).
  */
@@ -54,6 +57,25 @@ export function createEngineBrokerWorkflow(open: {
       });
 
       return { taskId: result.task.taskId, revision: result.revision };
+    },
+    async removeTask(binding, input) {
+      const { attemptId } = attemptOf(binding);
+      const result = await removeTask(await open.workflow(owned(binding)), {
+        ...input,
+        actor: binding.actor,
+        agentAttempt: { attemptId },
+      });
+
+      return { taskId: result.subject.kind === 'task' ? result.subject.taskId : input.taskId };
+    },
+    async assertDraftTask(binding, specId, taskId) {
+      const { attemptId } = attemptOf(binding);
+      await assertAgentDraftTask(await open.workflow(owned(binding)), {
+        specId,
+        taskId,
+        actor: binding.actor,
+        agentAttempt: { attemptId },
+      });
     },
     async propose(binding, request) {
       const attempt = attemptOf(binding);

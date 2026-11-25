@@ -9,7 +9,9 @@ import { CatalogueIdSchema, IdSchema } from '../documents/vocabulary';
 import {
   CreateTaskInputSchema,
   EditTaskInputSchema,
+  RemoveTaskQuerySchema,
   TaskChangeResultSchema,
+  TaskRemoveResultSchema,
 } from '../tasks/task-resource';
 import { AgentFinishProposalRequestSchema } from '../workflow/commands';
 
@@ -56,9 +58,12 @@ export const AGENT_BROKER_LIMITS = {
 /**
  * Agent operations the broker knows. The scope of a Turn admits a subset: an ad-hoc Turn (D11b)
  * the documents of its home Specification; an agent attempt (agent step execution) the documents of a
- * Specification subject, Task drafts for a step that produces Tasks (`tasks.create`, `tasks.edit`)
- * and the finish proposal of the bound attempt (`workflow.finish`). `scope.describe` is always
- * admitted and answers the Turn's scope.
+ * Specification subject, Task drafts for a step that produces Tasks (`tasks.create`, `tasks.edit`,
+ * `tasks.remove`, and the documents of a draft: a document operation naming the draft's `taskId`)
+ * and the finish proposal of the bound attempt (`workflow.finish`). An agent changes only the drafts
+ * its step owns (any attempt of the step); an approved or started Task is closed only by a task
+ * decision in the finish, which the owner confirms. `scope.describe` is always admitted and answers
+ * the Turn's scope.
  */
 export const AGENT_BROKER_OPERATIONS = [
   'scope.describe',
@@ -67,6 +72,7 @@ export const AGENT_BROKER_OPERATIONS = [
   'documents.classify',
   'tasks.create',
   'tasks.edit',
+  'tasks.remove',
   'workflow.finish',
 ] as const;
 export type AgentBrokerOperationName = (typeof AGENT_BROKER_OPERATIONS)[number];
@@ -87,7 +93,10 @@ export const AgentBrokerOperationSchema = Type.Union([
     {
       name: Type.Literal('documents.create'),
       specId: SpecIdSchema,
-      /** A Task's documents (the Turn's Task subject); absent: the Specification's own. */
+      /**
+       * A Task's documents: the Turn's Task subject, or a Task draft of a step that produces Tasks;
+       * absent: the Specification's own.
+       */
       taskId: Type.Optional(TaskSubjectIdSchema),
       documents: Type.Array(CreateDocumentEntrySchema, { minItems: 1 }),
       folders: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
@@ -133,6 +142,16 @@ export const AgentBrokerOperationSchema = Type.Union([
       specId: SpecIdSchema,
       taskId: Type.String({ minLength: 1, maxLength: 128 }),
       ...EditTaskInputSchema.properties,
+    },
+    { additionalProperties: false },
+  ),
+  /** The removal of a draft Task the bound attempt's step drafted (it never started). */
+  Type.Object(
+    {
+      name: Type.Literal('tasks.remove'),
+      specId: SpecIdSchema,
+      taskId: Type.String({ minLength: 1, maxLength: 128 }),
+      ...RemoveTaskQuerySchema.properties,
     },
     { additionalProperties: false },
   ),
@@ -195,6 +214,7 @@ export const AgentBrokerScopeSchema = Type.Object(
         Type.Literal('documents.classify'),
         Type.Literal('tasks.create'),
         Type.Literal('tasks.edit'),
+        Type.Literal('tasks.remove'),
         Type.Literal('workflow.finish'),
       ]),
     ),
@@ -257,6 +277,10 @@ export const AgentBrokerResultSchema = Type.Union([
       operation: Type.Union([Type.Literal('tasks.create'), Type.Literal('tasks.edit')]),
       result: TaskChangeResultSchema,
     },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { operation: Type.Literal('tasks.remove'), result: TaskRemoveResultSchema },
     { additionalProperties: false },
   ),
   /**

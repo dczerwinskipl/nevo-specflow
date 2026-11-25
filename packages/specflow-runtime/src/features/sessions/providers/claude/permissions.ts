@@ -1,3 +1,4 @@
+import { AGENT_COMMAND_MAX_BYTES } from '@nevo/specflow-contracts/runtime';
 import type { RespondInteraction } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../../errors';
 import { validateDriverFact } from '../facts';
@@ -51,10 +52,21 @@ export function prepareClaudeRequest(frame: unknown, writable: boolean) {
       }
     | undefined;
   if (request.tool_name === 'Bash') {
+    // Too large to show the owner for approval: refused with the limit and the remedy, so the agent
+    // does not have to find out by trial (data goes in a file, not in the command).
+    if (
+      typeof input.command === 'string' &&
+      Buffer.byteLength(input.command) > AGENT_COMMAND_MAX_BYTES
+    ) {
+      return deniedWith(
+        fallback.response,
+        `This command is ${String(Buffer.byteLength(input.command))} bytes; a command may be at most ${String(AGENT_COMMAND_MAX_BYTES)} bytes. Write the text to a file first (with the file tool) and pass it with --content-file <file> (a Task list with --tasks-file <file>) instead of putting it in the command.`,
+      );
+    }
+
     if (
       typeof input.command !== 'string' ||
       !input.command.trim() ||
-      Buffer.byteLength(input.command) > 7000 ||
       input.run_in_background === true ||
       input.dangerouslyDisableSandbox === true ||
       (input.timeout !== undefined &&
@@ -150,6 +162,20 @@ export function prepareClaudeRequest(frame: unknown, writable: boolean) {
               : { behavior: 'deny', message: 'The user denied this operation.' },
         },
       };
+    },
+  };
+}
+
+/** The provider's denial with its own reason in place of the generic capability message. */
+function deniedWith<T extends { response: { response: { message: string } } }>(
+  deny: T,
+  message: string,
+) {
+  return {
+    kind: 'denied' as const,
+    response: {
+      ...deny,
+      response: { ...deny.response, response: { ...deny.response.response, message } },
     },
   };
 }

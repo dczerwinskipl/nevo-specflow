@@ -340,6 +340,23 @@ export function createTasksCommand(context: TasksCommandContext): Command {
       taskId: string,
       options: CommonOptions & { expectedRevision: string },
     ) => {
+      if (context.broker !== undefined) {
+        await runBrokeredWrite(
+          context,
+          context.broker,
+          options,
+          {
+            name: 'tasks.remove',
+            specId,
+            taskId,
+            expectedRevision: options.expectedRevision,
+          },
+          () => [`Removed: Task ${taskId}`],
+        );
+
+        return;
+      }
+
       await run(options, 'change', async ({ workflow }) => {
         const result = await removeTask(workflow, {
           specId,

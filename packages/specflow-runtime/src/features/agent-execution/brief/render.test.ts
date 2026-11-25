@@ -60,6 +60,8 @@ describe('agent brief', () => {
       - A new document needs a type: register it with \`--type\`, or classify it afterwards. A file that is not registered blocks the finish.
       - Decisions stay with the owner: when a choice is open, ask in the Session and do not decide it for them.
       - Save with the revision you read; if it changed, read again before writing.
+      - A shell command may be at most 7000 bytes; a longer one is refused before it runs. Write document text to a file and pass it with \`--content-file <file>\` (Task lists with \`--tasks-file <file>\`) instead of putting it in the command.
+      - Document paths (\`--path\`) are relative to the Specification folder (or the Task folder with \`--task\`), for example \`architecture.md\`; never start them with \`specs/\`.
       "
     `);
   });
@@ -122,6 +124,8 @@ describe('agent brief', () => {
       - A new document needs a type: register it with \`--type\`, or classify it afterwards. A file that is not registered blocks the finish.
       - Decisions stay with the owner: when a choice is open, ask in the Session and do not decide it for them.
       - Save with the revision you read; if it changed, read again before writing.
+      - A shell command may be at most 7000 bytes; a longer one is refused before it runs. Write document text to a file and pass it with \`--content-file <file>\` (Task lists with \`--tasks-file <file>\`) instead of putting it in the command.
+      - Document paths (\`--path\`) are relative to the Specification folder (or the Task folder with \`--task\`), for example \`architecture.md\`; never start them with \`specs/\`.
       "
     `);
   });
@@ -159,5 +163,82 @@ describe('agent brief', () => {
     expect(renderAgentBrief({ context, scope })).toMatch(
       /\[truncated at 4000 of 4010 characters; sha256 [0-9a-f]{64}\]/,
     );
+  });
+
+  it('lists the exact result values of the step, with labels and feedback, and the draft rework rule', () => {
+    const attemptScope = deriveAgentScope({
+      kind: 'attempt',
+      specId: 'S1',
+      attemptId: '00000000-0000-4000-8000-000000000001',
+      step: 'review',
+      attempt: 1,
+      producesTasks: true,
+    });
+    const context = {
+      ...base,
+      subject: { specId: 'S1' },
+      agent,
+      finish: {
+        transitions: [
+          {
+            id: 'approved',
+            result: 'pass',
+            label: 'Breakdown approved',
+            target: { kind: 'step', step: 'implementation' },
+            targetTitle: 'Implement the Tasks',
+            feedback: 'optional',
+          },
+          {
+            id: 'changes-requested',
+            result: 'fail',
+            label: 'Changes requested',
+            target: { kind: 'step', step: 'breakdown' },
+            targetTitle: 'Break the solution down',
+            feedback: 'required',
+          },
+        ],
+      },
+    } as unknown as StepContext;
+    const brief = renderAgentBrief({ context, scope: attemptScope });
+
+    expect(brief).toContain(
+      '- --result pass "Breakdown approved" (transition approved): goes to Implement the Tasks; feedback optional.\n' +
+        '- --result fail "Changes requested" (transition changes-requested): goes to Break the solution down; feedback required.',
+    );
+    expect(brief).toContain('--result (pass | fail) [--feedback <text>]');
+    expect(brief).toContain('[--task <draft-task-id>]');
+    expect(brief).toMatch(/tasks remove S1 <task-id>/);
+    expect(brief).toMatch(/at most 7000 bytes.*--content-file/);
+    expect(brief).toMatch(/relative to the Specification folder/);
+  });
+
+  it('tells a single-exit step to finish without --result', () => {
+    const attemptScope = deriveAgentScope({
+      kind: 'attempt',
+      specId: 'S1',
+      attemptId: '00000000-0000-4000-8000-000000000001',
+      step: 'draft',
+      attempt: 1,
+      producesTasks: false,
+    });
+    const context = {
+      ...base,
+      subject: { specId: 'S1' },
+      agent,
+      finish: {
+        transitions: [
+          {
+            id: 'drafted',
+            label: 'Drafted',
+            target: { kind: 'terminal', outcome: 'completed' },
+            feedback: 'optional',
+          },
+        ],
+      },
+    } as unknown as StepContext;
+    const brief = renderAgentBrief({ context, scope: attemptScope });
+
+    expect(brief).toContain('This step has one result: finish it without `--result`.');
+    expect(brief).toMatch(/workflow finish S1 --step draft --attempt 1 \[--feedback/);
   });
 });

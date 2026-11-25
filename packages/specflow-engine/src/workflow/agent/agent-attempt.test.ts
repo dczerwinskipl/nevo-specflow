@@ -17,7 +17,14 @@ import {
   startSpecification,
   work,
 } from '../operations/operations.test-support';
-import { createTask, editTask } from '../operations/task-resource';
+import {
+  assertAgentDraftTask,
+  createTask,
+  editTask,
+  removeTask,
+} from '../operations/task-resource';
+import { setTaskStatus } from '../operations/task-status';
+import { loadTask } from '../operations/loaded-execution';
 import type { WorkflowDependencies } from '../operations/loaded-execution';
 import type { AgentActor } from '../state/model';
 import { memoryAgentDependencies } from './memory.test-support';
@@ -555,5 +562,58 @@ describe('Task drafts of an agent attempt (D11 point 7)', () => {
     await expect(
       createTask(workflow, { ...draft, actor: writer, agentAttempt: { attemptId: ATTEMPT_ID } }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED' });
+  });
+
+  it('reworks the drafts of an earlier attempt after a review: edit, delete, their documents; never an approved Task', async () => {
+    const { dependencies, workflow } = agentDependencies();
+    await specificationWithDrafts(workflow);
+    await work(workflow, specification, { result: 'fail', feedback: 'Split the API.' });
+    await startAgentAttempt(
+      dependencies,
+      startInput({ actor: planner, expected: { step: 'breakdown' } }),
+    );
+    const turn = { actor: planner, agentAttempt: { attemptId: ATTEMPT_ID } };
+    const revision = async (taskId: string) =>
+      loadTask(workflow.catalogue, await workflow.store.read(SPEC), taskId).manifest.revision;
+
+    // Attempt 2 reworks the attempt-1 drafts of its step.
+    await expect(
+      assertAgentDraftTask(workflow, { specId: SPEC, taskId: 'screen', ...turn }),
+    ).resolves.toBeUndefined();
+    await expect(
+      editTask(workflow, {
+        specId: SPEC,
+        taskId: 'api',
+        expectedRevision: await revision('api'),
+        title: 'API, split',
+        ...turn,
+      }),
+    ).resolves.toMatchObject({ task: { title: 'API, split' } });
+    await expect(
+      removeTask(workflow, {
+        specId: SPEC,
+        taskId: 'screen',
+        expectedRevision: await revision('screen'),
+        ...turn,
+      }),
+    ).resolves.toMatchObject({ subject: { taskId: 'screen' } });
+
+    // An approved Task is not a draft any more: it is closed through the finish, never edited.
+    await setTaskStatus(workflow, { specId: SPEC, taskId: 'api', status: 'ready', actor: owner });
+    for (const write of [
+      () => assertAgentDraftTask(workflow, { specId: SPEC, taskId: 'api', ...turn }),
+      async () =>
+        removeTask(workflow, {
+          specId: SPEC,
+          taskId: 'api',
+          expectedRevision: await revision('api'),
+          ...turn,
+        }),
+    ]) {
+      await expect(write()).rejects.toMatchObject({
+        code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED',
+        message: expect.stringMatching(/is ready, so leave it as it is.*task decision/) as unknown,
+      });
+    }
   });
 });

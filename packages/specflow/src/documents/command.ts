@@ -291,7 +291,10 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       .command('add')
       .description('Create a document from text (--content-file or --stdin) or from a template')
       .argument('<spec-id>', 'Specification UUID')
-      .option('--path <path>', 'Path in the Specification (required without --template)')
+      .option(
+        '--path <path>',
+        'Path relative to the Specification folder (the Task folder with --task), e.g. architecture.md, never specs/active/...; required without --template',
+      )
       .option(
         '--type <typeId>',
         'Document type id; omitted: unclassified (a template brings its own)',

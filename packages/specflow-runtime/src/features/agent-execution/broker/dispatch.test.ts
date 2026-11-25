@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { DocumentError, deriveAgentScope, type OwnedExecution } from '@nevo/specflow-engine';
 
 import { createCapabilityRegistry, type CapabilityBinding } from '../capability/registry';
-import { createBrokerDispatcher, type BrokerDocuments } from './dispatch';
+import { createBrokerDispatcher, type BrokerDocuments, type BrokerWorkflow } from './dispatch';
 import { brokerOperationId } from './operation-id';
 
 const commit = { state: 'not-applicable' } as const;
@@ -297,5 +297,117 @@ describe('agent broker dispatch', () => {
     expect(
       await f.dispatcher.handle(f.request(a.value, { ...f.saveOf(), content: 42 })),
     ).toMatchObject({ error: { code: 'AGENT_REQUEST_INVALID' } });
+  });
+
+  describe('a later attempt of a step that produces Tasks', () => {
+    function attemptFixture(refuseDraft?: Error) {
+      const registry = createCapabilityRegistry();
+      const save = vi.fn((_spec: string, documentId: string, input: { operationId: string }) =>
+        Promise.resolve({
+          operationId: input.operationId,
+          document: { id: documentId, path: 'task.md', revision: 'r2' },
+          commit,
+        }),
+      );
+      const documents: BrokerDocuments = {
+        workspaceOf: () => Promise.resolve('/work/one'),
+        create: vi.fn(() => Promise.reject(new Error('unused'))),
+        save,
+        operate: vi.fn(() => Promise.reject(new Error('unused'))),
+      };
+      const assertDraftTask = vi.fn(() =>
+        refuseDraft ? Promise.reject(refuseDraft) : Promise.resolve(),
+      );
+      const removeTask = vi.fn((_binding: unknown, input: { taskId: string }) =>
+        Promise.resolve({ taskId: input.taskId }),
+      );
+      const workflow: BrokerWorkflow = {
+        createTask: vi.fn(() => Promise.reject(new Error('unused'))),
+        editTask: vi.fn(() => Promise.reject(new Error('unused'))),
+        removeTask,
+        assertDraftTask,
+        propose: vi.fn(() => Promise.reject(new Error('unused'))),
+      };
+      const dispatcher = createBrokerDispatcher({
+        registry,
+        documents,
+        workflow,
+        refusalOf: (error) =>
+          error instanceof Error && error.name === 'WorkflowRefusal'
+            ? { code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED', message: error.message }
+            : undefined,
+      });
+      const handle = registry.mint({
+        invocationId: 'inv-b',
+        sessionId: 'session-b',
+        turnId: 'turn-b',
+        specId: 'S1',
+        workspace: '/work/one',
+        scope: deriveAgentScope({
+          kind: 'attempt',
+          specId: 'S1',
+          attemptId: '00000000-0000-4000-8000-000000000002',
+          step: 'breakdown',
+          attempt: 2,
+          producesTasks: true,
+        }),
+        actor: {
+          class: 'agent',
+          details: { provider: 'claude', model: 'm1', sessionId: 'session-b' },
+        },
+      });
+      handle.activate();
+      const request = (operation: object) =>
+        JSON.stringify({
+          protocol: 1,
+          capability: handle.value,
+          requestId: 'request-0002',
+          operation,
+        });
+
+      return { save, assertDraftTask, removeTask, dispatcher, request };
+    }
+
+    const draftSave = {
+      name: 'documents.save',
+      specId: 'S1',
+      taskId: 'api',
+      documentId: 'task',
+      content: 'reworked',
+      expectedRevision: 'r1',
+    };
+
+    it("saves a draft Task's document once the Engine confirms it is the step's draft", async () => {
+      const f = attemptFixture();
+      expect(await f.dispatcher.handle(f.request(draftSave))).toMatchObject({ ok: true });
+      expect(f.assertDraftTask).toHaveBeenCalledWith(expect.anything(), 'S1', 'api');
+      expect(f.save.mock.calls[0]!.slice(0, 2)).toEqual(['S1', 'task']);
+    });
+
+    it('refuses the document of a Task that is not a draft of the step, and writes nothing', async () => {
+      const refusal = Object.assign(new Error('"api" is ready, so leave it as it is.'), {
+        name: 'WorkflowRefusal',
+      });
+      const f = attemptFixture(refusal);
+      expect(await f.dispatcher.handle(f.request(draftSave))).toMatchObject({
+        ok: false,
+        error: { code: 'WORKFLOW_EXECUTOR_NOT_ALLOWED', message: /leave it as it is/ },
+      });
+      expect(f.save).not.toHaveBeenCalled();
+    });
+
+    it('removes a draft Task of the step', async () => {
+      const f = attemptFixture();
+      expect(
+        await f.dispatcher.handle(
+          f.request({ name: 'tasks.remove', specId: 'S1', taskId: 'api', expectedRevision: 'r1' }),
+        ),
+      ).toEqual({ ok: true, value: { operation: 'tasks.remove', result: { taskId: 'api' } } });
+      expect(f.removeTask).toHaveBeenCalledWith(expect.anything(), {
+        specId: 'S1',
+        taskId: 'api',
+        expectedRevision: 'r1',
+      });
+    });
   });
 });

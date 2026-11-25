@@ -60,7 +60,6 @@ export const REFUSED: ReadonlySet<string> = new Set([
   'specs workspace inspect',
   'specs worktree close',
   'start',
-  'tasks remove',
   'tasks status',
   'workflow confirm',
   'workflow reevaluate-wait',
@@ -123,7 +122,7 @@ export function refuse(
   return report(output, json, {
     code: 'AGENT_SCOPE_REFUSED',
     message: why ?? `"nevo-specflow ${path}" is not available to an agent in this Turn.`,
-    hint: 'This Turn can read, and write only what its scope admits: documents of its Specification (specs documents add, save, classify) and, in an agent attempt, Task drafts of a step that produces Tasks (tasks create, edit) and its finish proposal (workflow finish). Anything else is for the owner.',
+    hint: 'This Turn can read, and write only what its scope admits: documents of its Specification (specs documents add, save, classify) and, in an agent attempt, Task drafts of a step that produces Tasks (tasks create, edit, remove, and their documents with --task) and its finish proposal (workflow finish). Anything else is for the owner.',
   });
 }
 

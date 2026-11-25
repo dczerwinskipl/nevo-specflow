@@ -37,9 +37,8 @@ Classification, ordering and section membership are Runtime-owned; the UI MUST N
 from raw statuses, readiness from lifecycle strings, current execution from historical Session
 associations, or a representative Task for a batch.
 
-**Progress is the workflow run, never the manifest status.** The manifest `status` stays `draft`
-until Close archives the Specification (by design: the workflow never changes it), so the list does
-not read it. Sections and the situation follow the Specification's workflow run, the same position
+**Progress is the workflow run.** The manifest has no status (an older manifest's `status` key is
+ignored); archived is the `specs/archive` location, the Archive collection. Sections and the situation follow the Specification's workflow run, the same position
 its [Overview](specification-overview.md)'s **Now** shows, so the two screens never contradict each
 other. The Runtime reads it for every row in one Engine read per Specification without Git (the
 Overview's own inspection: Tasks, attention, start blockers), never one request per row from the

@@ -25,7 +25,7 @@ only Specifications allowed by `spec.view`.
 A Current item's `workflow` is where the Specification's workflow run stands (not started, at a
 step with its title, place and state, or ended), the position its Overview's Now shows; `null` when
 the run cannot be read. Its classification follows that position and the workflow's attention items,
-never the manifest `status`, which stays `draft` until Close archives the Specification.
+never a stored status: the manifest has none.
 
 The Overview response does not contain the separate operation list. Use
 [`GET /api/specs/operations`](specs-operations-list.md) for background Create operations.

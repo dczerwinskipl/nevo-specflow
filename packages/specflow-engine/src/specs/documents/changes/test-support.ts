@@ -51,7 +51,6 @@ export function buildSnapshot(
     },
     documents,
     folders: [...(input.folders ?? [])],
-    status: 'draft',
     location,
   };
   const manifestText = serializeSpecificationManifest(manifest);

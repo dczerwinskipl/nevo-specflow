@@ -128,7 +128,6 @@ export interface PublicWorkspaceClosePreview {
     specId: string;
     slug: string;
     location: 'active' | 'archive';
-    status: string;
   }[];
 }
 
@@ -163,12 +162,7 @@ export function projectWorkspaceClosePreview(plan: ClosePlan): PublicWorkspaceCl
     targetBranch: plan.targetBranch,
     wholeBranchIntegration: true,
     occupantCount: plan.occupants.length,
-    occupants: plan.occupants.map(({ specId, slug, location, status }) => ({
-      specId,
-      slug,
-      location,
-      status,
-    })),
+    occupants: plan.occupants.map(({ specId, slug, location }) => ({ specId, slug, location })),
   };
 }
 

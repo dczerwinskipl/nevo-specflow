@@ -93,7 +93,7 @@ describe('E2.T03 — canonical Specification binding and discovery (real Git)', 
     await persist(root, source);
     const linkedManifestPath = await persist(linked.root, source);
     const linkedContent = await readFile(linkedManifestPath, 'utf8');
-    await writeFile(linkedManifestPath, linkedContent.replace('status: draft', 'status: approved'));
+    await writeFile(linkedManifestPath, linkedContent.replace('priority: 10', 'priority: 20'));
     await updateWorkspaceRegistry(engine.context, (registry) =>
       bindSpecToWorkspace(registry, specId, linked.workspaceId),
     );
@@ -107,7 +107,7 @@ describe('E2.T03 — canonical Specification binding and discovery (real Git)', 
       workspaceId: linked.workspaceId,
       workspaceRoot: linked.root,
       binding: 'explicit',
-      specification: { specId, status: 'approved' },
+      specification: { specId, priority: 20 },
     });
     expect(await resolveSpecification(engine, specId)).toEqual(results[0]);
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
@@ -251,13 +251,10 @@ describe('E2.T03 — canonical Specification binding and discovery (real Git)', 
     const specId = randomUUID();
     const path = await persist(root, scaffold(specId, 'Fresh title'));
     expect((await resolveSpecification(engine, specId)).status).toBe('available');
-    await writeFile(
-      path,
-      (await readFile(path, 'utf8')).replace('status: draft', 'status: approved'),
-    );
+    await writeFile(path, (await readFile(path, 'utf8')).replace('priority: 10', 'priority: 20'));
     expect(await resolveSpecification(engine, specId)).toMatchObject({
       status: 'available',
-      specification: { status: 'approved' },
+      specification: { priority: 20 },
     });
   });
 
@@ -381,7 +378,7 @@ describe('E2.T07 — canonical reads across concurrent source changes (real Git)
     const prior = await readFile(originalPath, 'utf8');
     const updated = prior
       .replace('title: Before atomic replacement', 'title: After atomic replacement')
-      .replace('status: draft', 'status: approved');
+      .replace('priority: 10', 'priority: 20');
     const temporary = originalPath + '.replacement';
     await writeFile(temporary, updated);
 
@@ -403,7 +400,7 @@ describe('E2.T07 — canonical reads across concurrent source changes (real Git)
     expect(sources).toMatchObject([
       {
         status: 'available',
-        specification: { title: 'After atomic replacement', status: 'approved' },
+        specification: { title: 'After atomic replacement', priority: 20 },
         sourceRevision: createHash('sha256').update(updated, 'utf8').digest('hex'),
       },
     ]);

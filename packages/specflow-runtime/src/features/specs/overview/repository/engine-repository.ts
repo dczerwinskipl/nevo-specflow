@@ -137,7 +137,7 @@ function project(
   };
   const current: CurrentSpecRecord = {
     ...common,
-    // Where the workflow run stands, never the manifest `status` (it stays `draft` until Close).
+    // Where the workflow run stands (the manifest has no status).
     workflow: execution?.workflow ?? null,
     // A project-mode Session can be associated with a Specification (and its Tasks), but an
     // association is not an execution: it says what the Session is about, not that it runs a step

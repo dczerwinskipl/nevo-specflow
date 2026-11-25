@@ -88,7 +88,6 @@ describe('createSpecificationScaffold', () => {
           specId: SPEC_ID,
           slug: scaffold.slug,
           title: 'My feature',
-          status: 'draft',
           priority: 10,
           created: '2026-10-24',
           location: 'active',
@@ -481,7 +480,7 @@ describe('createSpecificationScaffold', () => {
 });
 
 describe('archive preserves archetype and documents', () => {
-  it('keeps the registry and unknown keys when only the status changes', () => {
+  it('keeps the registry and unknown keys, and drops a legacy status', () => {
     const scaffold = createSpecificationScaffold(
       input({
         archetypeId: 'feature',
@@ -490,10 +489,11 @@ describe('archive preserves archetype and documents', () => {
       }),
     );
     const parsed = parse(scaffold.files[0]!.content) as Record<string, unknown>;
-    const archived = archivedManifestText({ ...parsed, 'x-owner': 'core' });
+    const archived = archivedManifestText({ ...parsed, status: 'draft', 'x-owner': 'core' });
     const before = manifestOf(scaffold);
     const after = parseSpecificationManifestText(archived, scaffold.slug, 'archive');
-    expect(after).toEqual({ ...before, status: 'archived', location: 'archive' });
+    expect(after).toEqual({ ...before, location: 'archive' });
+    expect(archived).not.toMatch(/^status:/m);
     expect(archived).toContain('x-owner: core');
   });
 });

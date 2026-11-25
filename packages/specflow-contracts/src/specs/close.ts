@@ -410,7 +410,6 @@ export const CloseWorkspacePreviewSchema = Type.Object(
           specId: CloseUuidSchema,
           slug: Type.String(),
           location: Type.Union([Type.Literal('active'), Type.Literal('archive')]),
-          status: Type.String(),
         },
         { additionalProperties: false },
       ),

@@ -140,12 +140,12 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
         expect(updated.json<CurrentSpecsOverview>().items[0]?.title).toBe('Updated canonical Spec');
         expect(updated.json<CurrentSpecsOverview>().revision).not.toBe(value.revision);
 
-        // A populated non-draft manifest is NOT evidence of verified execution progress, and its
-        // free status string does not change where the workflow stands.
+        // A populated manifest is NOT evidence of verified execution progress: the status key of an
+        // older manifest is ignored, whatever it says.
         await writeFile(
           manifestPath,
           (await readFile(manifestPath, 'utf8'))
-            .replace('status: draft', 'status: impl-verified')
+            .concat('status: impl-verified\n')
             // A stale manifest `tasks` list is not read: progress counts the Task resources.
             .concat('tasks:\n  - id: TASK-01\n    status: done\n'),
         );

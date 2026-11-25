@@ -77,7 +77,6 @@ export interface CloseOccupant {
   readonly specId: string;
   readonly slug: string;
   readonly location: 'active' | 'archive';
-  readonly status: string;
   readonly bindingGeneration: number;
 }
 

@@ -409,7 +409,6 @@ function buildManifest(
     },
     documents: [...parts.documents],
     folders: [...parts.folders],
-    status: 'draft',
     location: 'active',
     priority: 10,
     created: input.created,

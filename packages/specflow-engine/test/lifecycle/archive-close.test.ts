@@ -331,7 +331,9 @@ describe('E2.T14 physical archive and exact scoped Git commit', () => {
     const archived = await readWorkspaceSpecification(root, spec.specId);
     expect(archived.specId).toBe(spec.specId);
     expect(archived.location).toBe('archive');
-    expect(archived.status).toBe('archived');
+    expect(await readFile(join(root, newPath, 'specification.yaml'), 'utf8')).not.toMatch(
+      /^status:/m,
+    );
     expect(await readFile(join(root, newPath, 'overview.md'), 'utf8')).toContain(spec.slug);
     expect(await inspectArchiveRecovery(engine, operationId)).toBe('committed');
     await expect(archiveSpecificationWithCommit(engine, operationId)).rejects.toMatchObject({

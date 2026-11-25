@@ -5,8 +5,7 @@ import type { CurrentSpecRecord, CurrentSpecSignalRecord } from '../repository/m
 /**
  * The Current section of a Specification, from where its workflow run stands: what needs a person
  * first (an attention signal, among them the workflow's attention items), then a run at a step or a
- * Session executing (in progress), then a run not started, then an ended run. The manifest status is
- * never read: it is not progress.
+ * Session executing (in progress), then a run not started, then an ended run.
  */
 export function classifyCurrentSpec(spec: CurrentSpecRecord): CurrentSpecClassification {
   const attention = [...(spec.signals ?? [])]

@@ -181,11 +181,14 @@ async function archiveCommitPaths(
 }
 
 /**
- * The archived manifest: the parsed source with only `status` replaced, so `archetype`, `documents`,
- * `folders` and any unknown top-level key survive archival unchanged.
+ * The archived manifest: the parsed source without the legacy `status` key (archived is the
+ * `specs/archive` location, not a field), so `archetype`, `documents`, `folders` and any unknown
+ * top-level key survive archival unchanged.
  */
 export function archivedManifestText(parsed: object): string {
-  return stringify({ ...parsed, status: 'archived' });
+  const { status: _legacy, ...manifest } = parsed as Record<string, unknown>;
+
+  return stringify(manifest);
 }
 
 export async function assertArchivedFiles(root: string, archive: CloseArchiveMove): Promise<void> {
@@ -204,18 +207,6 @@ export async function assertArchivedFiles(root: string, archive: CloseArchiveMov
   const observed = await physicalInventory(root, archive.destinationPath);
   if (!isDeepStrictEqual(observed, expected)) {
     throw failure('Archived file inventory differs from durable intent.');
-  }
-
-  const manifest = parse(
-    await readFile(join(root, archive.destinationPath, 'specification.yaml'), 'utf8'),
-  ) as unknown;
-  if (
-    typeof manifest !== 'object' ||
-    manifest === null ||
-    !('status' in manifest) ||
-    manifest.status !== 'archived'
-  ) {
-    throw failure('Archived manifest does not declare archived status.');
   }
 }
 
@@ -271,9 +262,7 @@ export async function planArchiveMove(
     !('spec_id' in parsed) ||
     parsed.spec_id !== plan.specId ||
     !('id' in parsed) ||
-    parsed.id !== plan.slug ||
-    !('status' in parsed) ||
-    typeof parsed.status !== 'string'
+    parsed.id !== plan.slug
   ) {
     throw invalid('Canonical source manifest identity cannot be proved.');
   }

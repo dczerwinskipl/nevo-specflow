@@ -46,9 +46,8 @@ export type CurrentSpecWorkflowRecord = CurrentSpecWorkflow;
 
 export interface CurrentSpecRecord extends SpecOverviewRecord {
   /**
-   * Where the Specification's workflow run stands; `null` when it cannot be read. The manifest's
-   * `status` is not progress (it stays `draft` until Close archives the Specification), so it is not
-   * read here.
+   * Where the Specification's workflow run stands; `null` when it cannot be read. It is the only
+   * progress there is: the manifest has no status.
    */
   readonly workflow: CurrentSpecWorkflowRecord | null;
   readonly signals: readonly CurrentSpecSignalRecord[] | null;

@@ -485,7 +485,7 @@ export async function settleArchivedLinkedConflict(
   }
 
   const archived = await readWorkspaceSpecification(record.plan.source.root, record.plan.specId);
-  if (archived.location !== 'archive' || archived.status !== 'archived') {
+  if (archived.location !== 'archive') {
     throw recovery('Cannot settle conflict without a canonical archived source.');
   }
 
@@ -636,7 +636,7 @@ export async function reconcileArchivedConflictScratch(
   }
 
   const archived = await readWorkspaceSpecification(record.plan.source.root, record.plan.specId);
-  if (archived.location !== 'archive' || archived.status !== 'archived') {
+  if (archived.location !== 'archive') {
     throw recovery('Archived linked canonical source is no longer available.');
   }
 

@@ -755,10 +755,6 @@ function isCoherentOccupants(plan: Record<string, unknown>): boolean {
         typeof entry.slug !== 'string' ||
         !isCanonicalSlug(entry.slug) ||
         (entry.location !== 'active' && entry.location !== 'archive') ||
-        typeof entry.status !== 'string' ||
-        !entry.status.trim() ||
-        entry.status.length > 256 ||
-        (entry.location === 'archive' && entry.status !== 'archived') ||
         typeof entry.bindingGeneration !== 'number' ||
         !Number.isSafeInteger(entry.bindingGeneration)
       ) {

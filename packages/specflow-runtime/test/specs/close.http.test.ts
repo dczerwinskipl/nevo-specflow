@@ -634,8 +634,8 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
         occupantCount: 2,
       });
       expect(completed.body).not.toContain(a.specId);
-      expect((await readWorkspaceSpecification(root, a.specId)).status).toBe('draft');
-      expect((await readWorkspaceSpecification(root, b.specId)).status).toBe('draft');
+      expect((await readWorkspaceSpecification(root, a.specId)).location).toBe('active');
+      expect((await readWorkspaceSpecification(root, b.specId)).location).toBe('active');
       const inspection = await admin.app.inject({
         method: 'GET',
         url: url + '/operations/' + operationId,

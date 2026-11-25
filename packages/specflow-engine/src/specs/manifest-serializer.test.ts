@@ -21,7 +21,6 @@ const manifest: SpecificationManifest = {
     { id: 'behaviour', path: 'behaviour.md', type: 'behaviour' },
   ],
   folders: ['research'],
-  status: 'draft',
   location: 'active',
   priority: 10,
   created: '2026-10-24',
@@ -31,6 +30,15 @@ describe('serializeSpecificationManifest', () => {
   it('round-trips through the strict parser', () => {
     const text = serializeSpecificationManifest(manifest);
     expect(parseSpecificationManifestText(text, 'my-spec', 'active')).toEqual(manifest);
+  });
+
+  it('writes no status and drops the status key of an older manifest', () => {
+    const text = serializeSpecificationManifest(manifest, { status: 'draft', 'x-owner': 'core' });
+    expect(text).not.toMatch(/^status:/m);
+    expect(text).toMatch(/^x-owner: core$/m);
+    expect(
+      parseSpecificationManifestText(text + 'status: archived\n', 'my-spec', 'active'),
+    ).toEqual(manifest);
   });
 
   it('is deterministic and omits empty folders and absent optional fields', () => {
@@ -74,7 +82,6 @@ describe('updateManifestRegistry', () => {
   const source = `# keep this comment
 id: my-spec
 title: My spec
-status: draft
 tasks: []
 spec_id: 11111111-2222-4333-8444-555555555555
 x-owner: core # trailing comment

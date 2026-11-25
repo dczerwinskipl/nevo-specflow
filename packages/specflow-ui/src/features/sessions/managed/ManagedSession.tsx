@@ -145,6 +145,9 @@ function EntryRow({
               api={api}
               sessionId={sessionId}
               value={entry.text}
+              // The owner's own words render like the agent's (headings, lists, code), a code
+              // block or table scrolling inside the bubble.
+              markdown
               onGrow={onGrow}
             />
           </div>

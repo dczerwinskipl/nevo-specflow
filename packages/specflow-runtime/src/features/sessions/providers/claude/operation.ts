@@ -68,8 +68,11 @@ export function createClaudeOperation(
     launch(signal: AbortSignal): Promise<ClaudeProcess>;
     initialize(payload: Record<string, unknown>): void | Promise<void>;
     verifyFrame?(frame: Record<string, unknown>): void;
-    /** Whether a bare nevo-specflow can only be the product CLI (see cli-path.ts); absent: trusted. */
-    productCli?: ProductCliTrust;
+    /**
+     * Whether a bare nevo-specflow is still the product CLI trusted at Turn start, asked at each
+     * auto-approval decision (see `productCliGuard`). Absent: not trusted, the owner decides.
+     */
+    productCli?: () => Promise<ProductCliTrust>;
   },
 ): ProviderOperation {
   const context = invocation.providerContext;
@@ -82,7 +85,7 @@ export function createClaudeOperation(
   const seen = new Map<string, string>();
   let owner: ClaudeProcess | undefined;
   let closed = false;
-  let distrustReported = false;
+  const distrustReported = new Set<string>();
   let initialized = false;
   let dispatched = false;
   let pendingOutcome: Extract<DriverFact, { kind: 'outcome' }> | undefined;
@@ -305,8 +308,10 @@ export function createClaudeOperation(
             throw new ClaudeProtocolError();
           }
 
-          // An agent step execution Turn: one exact product CLI call of its allowlist is approved here, never
-          // by the provider's own rules (Bash always asks), and recorded in the Turn. Anything else
+          // An agent step execution Turn: one exact product CLI call of its allowlist is approved here,
+          // by Nevo's allowlist only, never by the provider's own rules or work mode (Bash always
+          // asks, also in Claude's auto mode), and recorded in the Turn. It fails closed: without a
+          // product CLI identity verified for this very decision, the owner decides. Anything else
           // goes to the owner.
           const action = request.questions[0]?.interaction;
           if (
@@ -315,20 +320,28 @@ export function createClaudeOperation(
             action.action?.operation === 'command' &&
             isAllowlistedCliCommand(action.action.command, invocation.permissions.allow)
           ) {
-            const trust = options.productCli;
-            if (trust?.trusted === false) {
-              // The owner decides; say once why the allowlist is off for this Turn.
-              if (!distrustReported) {
-                distrustReported = true;
+            const trust: ProductCliTrust = options.productCli
+              ? await options.productCli()
+              : {
+                  trusted: false,
+                  reason: 'SpecFlow has no product CLI trust information for this Turn.',
+                };
+            if (!trust.trusted) {
+              // The owner decides; say once per reason why the allowlist is off.
+              if (!distrustReported.has(trust.reason)) {
+                const key =
+                  'auto-approval-off' +
+                  (distrustReported.size ? ':' + String(distrustReported.size) : '');
+                distrustReported.add(trust.reason);
                 await publish({
                   kind: 'work-open',
-                  key: 'auto-approval-off',
+                  key,
                   workKind: 'commentary',
                   title: 'Product CLI approval off',
                 });
                 await publish({
                   kind: 'text',
-                  key: 'auto-approval-off',
+                  key,
                   channel: 'commentary',
                   text:
                     'Allowlisted product CLI commands are not approved automatically in this Turn: ' +

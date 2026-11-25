@@ -337,6 +337,23 @@ environment it builds, never from the user's own PATH), so its shell never resol
 `nevo-specflow` against the current directory, and the host-side approval of allowlisted calls is
 judged on that PATH.
 
+The host-side approval **fails closed**. At Turn start the Runtime resolves which file a bare
+`nevo-specflow` runs on that PATH and binds the trust to its identity: its canonical real path
+(links and junctions resolved, the file system's case on Windows), size, modification time and
+sha256 (cached by real path, size, modification and status-change time). It is not trusted, and the
+owner approves each command, when PATH has an empty or relative entry, a PATH entry lies inside the
+Turn's workspace as written or as its real path, the executable is not found or cannot be read, or
+its real path lies inside the workspace. Each auto-approval decision resolves the identity again:
+a file swapped, a link repointed or a PATH directory created ahead of it during the Turn is not
+auto-approved. A Turn without this trust information approves nothing automatically. The reason is
+recorded in the Turn once per reason. The re-check narrows, but cannot close, the window between
+the decision and the shell running the file; the trust model below applies.
+
+Nevo's allowlist decision is separate from the provider's work mode. Claude's `auto` (or any other
+native mode) never approves a Bash command: the launch settings ask for every Bash call
+(`permissions.ask: [Bash]`, no `Bash(...)` rule is ever forwarded as a native allow rule), so every
+call reaches the host, where only the allowlist and the verified product CLI identity approve it.
+
 ### Access is the configured authentication mode (D21 superseded)
 
 Owner routes are protected by the configured authentication mode only (IdP, password, `none`); no

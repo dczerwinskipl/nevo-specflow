@@ -6,6 +6,7 @@ import { validateDriverFact } from '../facts';
 import { claudeLoss, createClaudeOperation, type ClaudeProcess } from './operation';
 import { ProviderProcessError } from '../process';
 import { SessionError } from '../../errors';
+import type { ProductCliTrust } from './cli-path';
 
 function fixture(
   disposition: 'stopped' | 'unknown' = 'stopped',
@@ -19,7 +20,7 @@ function fixture(
     silent?: boolean;
     verifyFrame?: (frame: Record<string, unknown>) => void;
     invocation?: Partial<Invocation>;
-    productCli?: { trusted: false; reason: string };
+    productCli?: () => Promise<ProductCliTrust>;
   } = {},
 ) {
   const { disposeOnCancel = true, launchDelay = 0, initializeError } = options;
@@ -531,11 +532,16 @@ describe('Claude bidirectional operation', () => {
       selection: { providerId: 'claude', mode: 'workspace-write' as const, providerModeId },
       permissions: { allow },
     });
+    const trusted = () =>
+      Promise.resolve<ProductCliTrust>({
+        trusted: true,
+        identity: { real: '/opt/bin/nevo-specflow', size: 1, mtimeMs: 1, sha256: 'sha' },
+      });
 
     it.each(['manual', 'acceptEdits', 'auto'])(
       'approves one exact allowlisted command in %s mode, records it, and sends the rest to the owner',
       async (mode) => {
-        const f = fixture('stopped', { invocation: turn(mode) });
+        const f = fixture('stopped', { invocation: turn(mode), productCli: trusted });
         await f.ready();
         f.push(bash('ok', 'nevo-specflow tasks list SPEC-1 --json'));
         await vi.waitFor(() =>
@@ -577,7 +583,11 @@ describe('Claude bidirectional operation', () => {
     it('sends an allowlisted command to the owner and records why when PATH is not trusted', async () => {
       const f = fixture('stopped', {
         invocation: turn('manual'),
-        productCli: { trusted: false, reason: 'A PATH entry lies inside the Turn workspace.' },
+        productCli: () =>
+          Promise.resolve({
+            trusted: false,
+            reason: 'A PATH entry lies inside the Turn workspace.',
+          }),
       });
       await f.ready();
       f.push(bash('a', 'nevo-specflow tasks list SPEC-1'));
@@ -595,8 +605,64 @@ describe('Claude bidirectional operation', () => {
       await f.operation.done;
     });
 
+    it.each(['manual', 'auto'])(
+      'fails closed in %s mode: without trust information the owner approves each command',
+      async (mode) => {
+        // Claude's own work mode never substitutes Nevo's allowlist decision.
+        const f = fixture('stopped', { invocation: turn(mode) });
+        await f.ready();
+        f.push(bash('a', 'nevo-specflow tasks list SPEC-1'));
+        await vi.waitFor(() =>
+          expect(f.facts.filter((fact) => fact.kind === 'interaction')).toHaveLength(1),
+        );
+        expect(f.sent.some((frame) => frame.type === 'control_response')).toBe(false);
+        expect(f.facts).toContainEqual(
+          expect.objectContaining({
+            kind: 'text',
+            text: expect.stringContaining('no product CLI trust information') as string,
+          }),
+        );
+        f.controller.abort();
+        await f.operation.done;
+      },
+    );
+
+    it('re-checks the product CLI at each decision: one swapped mid-Turn goes to the owner', async () => {
+      const answers: ProductCliTrust[] = [
+        {
+          trusted: true,
+          identity: { real: '/opt/bin/nevo-specflow', size: 1, mtimeMs: 1, sha256: 'sha' },
+        },
+        { trusted: false, reason: 'nevo-specflow on PATH changed since the Turn started.' },
+      ];
+      const check = vi.fn(() => Promise.resolve(answers.shift() ?? answers[0]!));
+      const f = fixture('stopped', { invocation: turn('auto'), productCli: check });
+      await f.ready();
+      f.push(bash('a', 'nevo-specflow tasks list SPEC-1'));
+      await vi.waitFor(() =>
+        expect(f.sent.filter((frame) => frame.type === 'control_response')).toHaveLength(1),
+      );
+      f.push(bash('b', 'nevo-specflow tasks list SPEC-2'));
+      await vi.waitFor(() =>
+        expect(f.facts.filter((fact) => fact.kind === 'interaction')).toHaveLength(1),
+      );
+      expect(check).toHaveBeenCalledTimes(2);
+      expect(f.sent.filter((frame) => frame.type === 'control_response')).toHaveLength(1);
+      expect(f.facts).toContainEqual(
+        expect.objectContaining({
+          kind: 'text',
+          text: expect.stringContaining('changed since the Turn started') as string,
+        }),
+      );
+      f.controller.abort();
+      await f.operation.done;
+    });
+
     it('asks the owner for every command of a Turn without an allowlist', async () => {
-      const f = fixture('stopped', { invocation: { ...turn('manual'), permissions: undefined } });
+      const f = fixture('stopped', {
+        invocation: { ...turn('manual'), permissions: undefined },
+        productCli: trusted,
+      });
       await f.ready();
       f.push(bash('ok', 'nevo-specflow tasks list SPEC-1'));
       await vi.waitFor(() =>

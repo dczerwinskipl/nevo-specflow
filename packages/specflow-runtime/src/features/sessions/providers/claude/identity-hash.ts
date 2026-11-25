@@ -8,7 +8,12 @@ const HASH_BUDGET_BYTES = 512 * 1024 * 1024;
 /** What the identity of an executable file is read from. */
 export interface IdentityFiles {
   realpath(path: string): Promise<string>;
-  stat(path: string): Promise<{ readonly size: number; readonly mtimeMs: number }>;
+  stat(path: string): Promise<{
+    readonly size: number;
+    readonly mtimeMs: number;
+    /** The status-change time, which a process cannot set back like the modification time. */
+    readonly ctimeMs?: number;
+  }>;
   /** The file's sha256, streamed (never read whole, never synchronously). */
   hash(path: string): Promise<string>;
 }
@@ -33,7 +38,7 @@ const nativeFiles: IdentityFiles = {
 };
 
 /**
- * The sha256 of an executable, cached by its identity: its real path, size and modification time.
+ * The sha256 of an executable, cached by its identity: its real path, size, modification and status-change time.
  * A binary that changed (replaced, updated in place, a link pointing elsewhere) has another
  * identity and is hashed again, so the hash always describes the file as it is; an unchanged one is
  * hashed once (Claude's executable is about 300 MB). The identity is read again before and after the
@@ -46,7 +51,7 @@ export function createIdentityHash(files: IdentityFiles = nativeFiles) {
     const real = await files.realpath(path);
     const stat = await files.stat(real);
 
-    return { real, key: JSON.stringify([real, stat.size, stat.mtimeMs]) };
+    return { real, key: JSON.stringify([real, stat.size, stat.mtimeMs, stat.ctimeMs ?? null]) };
   };
 
   return async function identityHash(path: string): Promise<string> {

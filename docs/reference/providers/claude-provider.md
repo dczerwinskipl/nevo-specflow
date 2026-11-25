@@ -106,7 +106,12 @@ without a native mode runs in it. Agent step execution creates its fresh Session
 catalogue lists `auto` ready and authorized for the chosen model (`providerModes[].modelIds`), and
 in `acceptEdits` otherwise; the agent option names it as `workMode`. Claude is launched with a PATH
 from which the Runtime drops empty and relative entries (the user's PATH is not changed), so the
-host-side approval of allowlisted product CLI calls is judged on that PATH. A Bash command above
+host-side approval of allowlisted product CLI calls is judged on that PATH. That approval fails
+closed (ADR 0026, D20): it is bound to the identity of the file a bare `nevo-specflow` resolves to
+at Turn start (canonical real path, size, modification time, sha256), re-verified at each decision,
+and withheld when the executable is missing, unreadable or inside the workspace, or when trust
+information is missing. Claude's `auto` mode never approves a Bash call itself: Bash always asks the
+host, which alone applies the allowlist. A Bash command above
 7000 bytes is denied with its size, the limit and `--content-file` as the remedy. Each mode is probed and can be unavailable
 independently. When native initialization reports `supportsAutoMode` (Claude 2.1.312 and later),
 `auto` offers only the models it marks; Claude would run any other model in `default`, so such a

@@ -4491,6 +4491,27 @@
                                 "enum": [
                                   "unchecked"
                                 ]
+                              },
+                              "modelRequired": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "workMode": {
+                                "type": "object",
+                                "required": [
+                                  "providerModeId",
+                                  "title"
+                                ],
+                                "properties": {
+                                  "providerModeId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  }
+                                }
                               }
                             }
                           },
@@ -5012,6 +5033,27 @@
                                 "enum": [
                                   "unchecked"
                                 ]
+                              },
+                              "modelRequired": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "workMode": {
+                                "type": "object",
+                                "required": [
+                                  "providerModeId",
+                                  "title"
+                                ],
+                                "properties": {
+                                  "providerModeId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  }
+                                }
                               }
                             }
                           },
@@ -7318,6 +7360,27 @@
                                 "enum": [
                                   "unchecked"
                                 ]
+                              },
+                              "modelRequired": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "workMode": {
+                                "type": "object",
+                                "required": [
+                                  "providerModeId",
+                                  "title"
+                                ],
+                                "properties": {
+                                  "providerModeId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  }
+                                }
                               }
                             }
                           },
@@ -8651,6 +8714,27 @@
                             "enum": [
                               "unchecked"
                             ]
+                          },
+                          "modelRequired": {
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
+                          "workMode": {
+                            "type": "object",
+                            "required": [
+                              "providerModeId",
+                              "title"
+                            ],
+                            "properties": {
+                              "providerModeId": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            }
                           }
                         }
                       },
@@ -12019,6 +12103,34 @@
                   },
                   "endedAt": {
                     "type": "string"
+                  },
+                  "waitingForOwner": {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "interactionId"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "question"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              "permission"
+                            ]
+                          }
+                        ]
+                      },
+                      "interactionId": {
+                        "type": "string"
+                      }
+                    }
                   }
                 }
               },
@@ -12171,6 +12283,27 @@
                         "enum": [
                           "unchecked"
                         ]
+                      },
+                      "modelRequired": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      },
+                      "workMode": {
+                        "type": "object",
+                        "required": [
+                          "providerModeId",
+                          "title"
+                        ],
+                        "properties": {
+                          "providerModeId": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          }
+                        }
                       }
                     }
                   },
@@ -13811,6 +13944,27 @@
                         "enum": [
                           "unchecked"
                         ]
+                      },
+                      "modelRequired": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      },
+                      "workMode": {
+                        "type": "object",
+                        "required": [
+                          "providerModeId",
+                          "title"
+                        ],
+                        "properties": {
+                          "providerModeId": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          }
+                        }
                       }
                     }
                   },
@@ -18389,6 +18543,131 @@
                             },
                             "additionalProperties": false
                           },
+                          "origin": {
+                            "type": "object",
+                            "required": [
+                              "kind",
+                              "specId",
+                              "step",
+                              "attempt"
+                            ],
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "specflow-step-brief"
+                                ]
+                              },
+                              "specId": {
+                                "type": "string",
+                                "maxLength": 128
+                              },
+                              "task": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "title"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "maxLength": 128
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "maxLength": 512
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "step": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "title"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "maxLength": 128
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "maxLength": 512
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "attempt": {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              "handoff": {
+                                "type": "object",
+                                "required": [
+                                  "kind"
+                                ],
+                                "properties": {
+                                  "kind": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "transition"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "return"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "from": {
+                                    "type": "object",
+                                    "required": [
+                                      "step",
+                                      "attempt"
+                                    ],
+                                    "properties": {
+                                      "step": {
+                                        "type": "string",
+                                        "maxLength": 128
+                                      },
+                                      "attempt": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "transition": {
+                                    "type": "string",
+                                    "maxLength": 128
+                                  },
+                                  "result": {
+                                    "type": "string",
+                                    "maxLength": 128
+                                  },
+                                  "feedback": {
+                                    "type": "string",
+                                    "maxLength": 8192
+                                  },
+                                  "artifacts": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "maxLength": 1024
+                                    },
+                                    "maxItems": 64
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "additionalProperties": false
+                          },
                           "createdAt": {
                             "type": "string",
                             "maxLength": 40
@@ -19903,6 +20182,131 @@
                                     ]
                                   }
                                 ]
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "origin": {
+                            "type": "object",
+                            "required": [
+                              "kind",
+                              "specId",
+                              "step",
+                              "attempt"
+                            ],
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "specflow-step-brief"
+                                ]
+                              },
+                              "specId": {
+                                "type": "string",
+                                "maxLength": 128
+                              },
+                              "task": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "title"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "maxLength": 128
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "maxLength": 512
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "step": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "title"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "maxLength": 128
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "maxLength": 512
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "attempt": {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              "handoff": {
+                                "type": "object",
+                                "required": [
+                                  "kind"
+                                ],
+                                "properties": {
+                                  "kind": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "transition"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "return"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "from": {
+                                    "type": "object",
+                                    "required": [
+                                      "step",
+                                      "attempt"
+                                    ],
+                                    "properties": {
+                                      "step": {
+                                        "type": "string",
+                                        "maxLength": 128
+                                      },
+                                      "attempt": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  },
+                                  "transition": {
+                                    "type": "string",
+                                    "maxLength": 128
+                                  },
+                                  "result": {
+                                    "type": "string",
+                                    "maxLength": 128
+                                  },
+                                  "feedback": {
+                                    "type": "string",
+                                    "maxLength": 8192
+                                  },
+                                  "artifacts": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "maxLength": 1024
+                                    },
+                                    "maxItems": 64
+                                  }
+                                },
+                                "additionalProperties": false
                               }
                             },
                             "additionalProperties": false
@@ -46960,6 +47364,27 @@
                               "enum": [
                                 "unchecked"
                               ]
+                            },
+                            "modelRequired": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            },
+                            "workMode": {
+                              "type": "object",
+                              "required": [
+                                "providerModeId",
+                                "title"
+                              ],
+                              "properties": {
+                                "providerModeId": {
+                                  "type": "string"
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              }
                             }
                           }
                         },
@@ -54329,6 +54754,27 @@
                               "enum": [
                                 "unchecked"
                               ]
+                            },
+                            "modelRequired": {
+                              "type": "boolean",
+                              "enum": [
+                                true
+                              ]
+                            },
+                            "workMode": {
+                              "type": "object",
+                              "required": [
+                                "providerModeId",
+                                "title"
+                              ],
+                              "properties": {
+                                "providerModeId": {
+                                  "type": "string"
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              }
                             }
                           }
                         },

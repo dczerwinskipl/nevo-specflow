@@ -177,7 +177,8 @@ case runs with operation id `uuidv8(sha256(invocationId, requestId))`, so a clie
 replay and the same request id under another invocation is another operation.
 
 **Operations** (`AGENT_BROKER_OPERATIONS`): `scope.describe` (always), `documents.create`,
-`documents.save`, `documents.classify`, `tasks.create`, `tasks.edit`, `workflow.finish`. A
+`documents.save`, `documents.classify`, `tasks.create`, `tasks.edit`, `tasks.remove`,
+`workflow.finish`. A
 `workflow.finish` answers `recorded`, `replaced` or `replayed`; it is applied only by the finalize.
 
 **Refusals.** An Engine refusal of an admitted operation keeps its own code and details
@@ -197,13 +198,17 @@ Every message says what the agent can do and never carries the capability or an 
 
 Derived by the Engine (`workflow/agent/scope/`), enforced by the broker:
 
-| Turn                                         | Writes                                                                                                                                                                                   |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ad-hoc` (an associated Session, no attempt) | `documents.create`, `documents.save`, `documents.classify` of the home Specification                                                                                                     |
-| `attempt`                                    | documents of the subject (a Task subject: its Task's documents only); `tasks.create`, `tasks.edit` only when the step declares `produces: tasks`; `workflow.finish` of the bound attempt |
+| Turn                                         | Writes                                                                                                                                                                                                                                               |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ad-hoc` (an associated Session, no attempt) | `documents.create`, `documents.save`, `documents.classify` of the home Specification                                                                                                                                                                 |
+| `attempt`                                    | documents of the subject (a Task subject: its Task's documents only); `tasks.create`, `tasks.edit`, `tasks.remove` and the documents of the step's Task drafts only when the step declares `produces: tasks`; `workflow.finish` of the bound attempt |
 
 A Task drafted in an attempt is recorded with origin `produced` by that step and attempt; an agent
-edits only drafts its step produced. An agent write that would build on another author's
+edits, removes and rewrites the documents of only the drafts its step produced, in any attempt of
+the step (a later attempt reworks them after a review). The broker asks the Engine
+(`assertAgentDraftTask`) before it writes a draft's documents; an approved or started Task is refused
+`WORKFLOW_EXECUTOR_NOT_ALLOWED` with the remedy: propose a `cancelled` task decision in the finish,
+which the owner confirms. An agent write that would build on another author's
 uncommitted change of the same path is refused (`foreign-uncommitted`, "commit it first"); two Turns
 of one attempt, or two ad-hoc Turns of one Session, are the same author. Conversely, while a finished
 attempt's own commit waits, any other write to a path that commit takes (the owner's included) is
@@ -218,15 +223,30 @@ set, every command is placed before its action runs:
   `workflow actions|context`, `project inspect`, `definitions list|show|validate`, `commit status`,
   `docs list|get|find|context|search`; `docs search` starts no index catch-up);
 - `BROKERED` (from `AGENT_BROKERED_COMMANDS`): `specs documents add|save|classify`,
-  `tasks create|edit`, `workflow finish` (with `--changed <path>`), sent to the broker;
+  `tasks create|edit|remove`, `workflow finish` (with `--changed <path>`), sent to the broker;
 - everything else is refused with `AGENT_SCOPE_REFUSED` before an Engine opens, including the owner
-  commands `workflow confirm|reject|retry-commit|take-over|return|start`, `tasks status|remove`,
+  commands `workflow confirm|reject|retry-commit|take-over|return|start`, `tasks status`,
   `specs close|abandon` and `commit`. A table test requires every registered command to be in
   exactly one of `READS`, `BROKERED` and `REFUSED`, so a new command is closed to agents until it is
   placed.
 
 The brief (`brief/render.ts`, `operations.ts`) lists the writes the scope admits and the reads,
 with their exact forms, from the same table (`AGENT_COMMANDS`), so it never names a refused command.
+Its "Finishing this step" section lists every result of the bound step (`--result` value, label,
+transition, target, feedback); the `workflow finish` form shows `--result (pass | fail)`, or no
+`--result` for a single-exit step. Its rules name the command size limit (7000 bytes; a longer Bash
+command is denied with its size, the limit and `--content-file` as the remedy) and that `--path` is
+relative to the Specification folder.
+
+**What the owner sees.** The Turn's request entry carries `origin` (`specflow-step-brief`: subject,
+optional Task, step, attempt, handoff as data); the entry's text is the full brief (its content
+reference reads all of it). A fresh Session is titled "<step title> · attempt <n>" (and the Task
+title), created in `auto` when the provider runs the model in auto, else `acceptEdits` (the option's
+`workMode`). While the Turn waits on a pending question or permission of its Session,
+`agentAttempt.turn.waitingForOwner` names it (`kind`, `interactionId`). A configured model the
+provider does not list is reported as `modelRequired` with an empty model. After a step returned
+(for example a review that requested changes), `handoff` on the projection names the step that
+finished, its transition, label, result and feedback.
 
 ## Proposal, attribution and finalize
 

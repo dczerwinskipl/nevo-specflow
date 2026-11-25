@@ -18,6 +18,7 @@ import type {
   ToolOperation,
   SessionListFilter,
   NoticeSeverity,
+  RequestOrigin,
 } from '@nevo/specflow-contracts/sessions';
 import type { NativeProcessIdentity } from '../providers/process/process-identity';
 import type { WorkAggregate } from '../lifecycle/work-aggregate';
@@ -164,6 +165,8 @@ export type StoreCommand =
        * Turn exists, because the Engine binds them to an agent attempt first. Never from a request.
        */
       ids?: { turnId: string; invocationId: string };
+      /** In-process only (agent step execution): the Turn's `request` entry is SpecFlow's brief. */
+      origin?: RequestOrigin;
     }
   | { op: 'dispatch-intent'; sessionId: string; turnId: string; invocationId: string }
   /** The invocation's native-stop evidence, recorded once, before the dispatch barrier. */

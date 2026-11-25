@@ -180,6 +180,17 @@ export type AgentOption =
        * Git); its explicit check and the start judge the baseline.
        */
       readonly baseline?: 'unchecked';
+      /**
+       * The provider does not offer the model the definitions configure, so no model is assigned
+       * (`launch.model` is empty): the owner chooses one of the provider's models before the start.
+       * Only the Runtime sets it.
+       */
+      readonly modelRequired?: true;
+      /**
+       * The provider work mode a fresh Session would run in (Claude: `auto` when the model has
+       * it, else `acceptEdits`), with its title. Only the Runtime sets it.
+       */
+      readonly workMode?: { readonly providerModeId: string; readonly title: string };
     }
   | {
       readonly kind: 'unavailable';
@@ -245,6 +256,14 @@ export interface AgentAttemptView {
     readonly state: 'working' | 'stopping' | 'unknown' | 'ended' | 'session-missing';
     readonly boundAt: string;
     readonly endedAt?: string;
+    /**
+     * The working Turn waits for the owner: a question or a permission of its Session is pending
+     * (the Session's `interaction`), so nothing moves until the owner answers it.
+     */
+    readonly waitingForOwner?: {
+      readonly kind: 'question' | 'permission';
+      readonly interactionId: string;
+    };
   };
   readonly turns: number;
   readonly proposal?: {

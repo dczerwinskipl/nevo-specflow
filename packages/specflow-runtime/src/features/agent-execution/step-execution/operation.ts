@@ -25,8 +25,15 @@ import { defaultAgentAllowlist } from '@nevo/specflow-contracts/runtime';
 import { SessionError, type SessionCoordinator } from '../../sessions';
 import { AgentUnavailableError } from '../../workflow';
 import { untrusted } from '../brief/render';
-import { chosenLaunch, withRuntimeReasons, type AgentRuntimeFacts } from './availability';
+import {
+  chosenLaunch,
+  withOfferedModel,
+  withRuntimeReasons,
+  workModeFor,
+  type AgentRuntimeFacts,
+} from './availability';
 import type { ActiveAgentAttempt, AgentBrief, AgentStepEngine } from './engine-port';
+import type { RequestOrigin } from '@nevo/specflow-contracts/sessions';
 
 /** The Session operations agent step execution uses. */
 export type AgentStepSessions = Pick<
@@ -164,6 +171,51 @@ function isSameSubject(
 }
 
 /**
+ * The title of a fresh Session made for an agent attempt: the step and attempt it works on, and the
+ * Task's title for a Task subject ("Break the solution down · attempt 2").
+ */
+export function sessionTitleOf(brief: Pick<AgentBrief, 'step' | 'attempt' | 'task'>): string {
+  const title = `${brief.step.title} · attempt ${String(brief.attempt)}${
+    brief.task ? ` · ${brief.task.title}` : ''
+  }`;
+
+  return title.length > 256 ? `${title.slice(0, 255)}…` : title;
+}
+
+const titled = (title: string | undefined) => (title !== undefined ? { title } : {});
+
+/** The marker of a Turn's request that is SpecFlow's brief of the step (sessions `RequestOrigin`). */
+export function requestOriginOf(subject: WorkflowSubject, brief: AgentBrief): RequestOrigin {
+  const handoff = brief.handoff;
+
+  return {
+    kind: 'specflow-step-brief',
+    specId: subject.specId,
+    ...(brief.task ? { task: brief.task } : {}),
+    step: brief.step,
+    attempt: brief.attempt,
+    ...(handoff
+      ? {
+          handoff:
+            handoff.kind === 'transition'
+              ? {
+                  kind: 'transition' as const,
+                  from: handoff.from,
+                  transition: handoff.transition,
+                  ...(handoff.result !== undefined ? { result: handoff.result } : {}),
+                  ...(handoff.feedback !== undefined ? { feedback: handoff.feedback } : {}),
+                  artifacts: [...handoff.artifacts],
+                }
+              : {
+                  kind: 'return' as const,
+                  ...(handoff.feedback !== undefined ? { feedback: handoff.feedback } : {}),
+                },
+        }
+      : {}),
+  };
+}
+
+/**
  * Agent step execution (D12, D18, D19): the Runtime side of one agent attempt. Every refusal that
  * can be known comes before anything exists (the Runtime's reasons, the Engine's start checks); the
  * Engine starts the attempt with the trusted agent actor and binds the Turn; only then is a fresh
@@ -199,15 +251,27 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
    * explicit check and the start; the projection never does and says `baseline: unchecked`.
    */
   async function judged(
-    option: AgentOption,
+    given: AgentOption,
     subject: WorkflowSubject,
     expected: ExpectedPosition,
     checkout: boolean,
   ): Promise<AgentOption> {
-    if (option.kind === 'unavailable') {
-      return option;
+    if (given.kind === 'unavailable') {
+      return given;
     }
 
+    // A configured model the provider does not offer is no model: the owner chooses one, and the
+    // unknown id is never shown.
+    const described = dependencies.sessions()?.provider(given.launch.provider);
+    const offered = withOfferedModel(
+      given,
+      described?.models.map((model) => model.modelId),
+    );
+    const mode =
+      offered.launch.session.mode === 'fresh' && offered.launch.model
+        ? workModeFor(described, offered.launch.model)
+        : undefined;
+    const option = mode ? { ...offered, workMode: mode } : offered;
     const facts: AgentRuntimeFacts = {
       sessions: dependencies.sessions() !== undefined,
       provider: providerFacts(option.launch.provider),
@@ -266,6 +330,27 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     return phase !== undefined && phase !== 'settled' ? 'working' : 'ended';
   }
 
+  /** The pending question or permission of the attempt's working Turn, if its Session has one. */
+  async function ownerWait(
+    active: ActiveAgentAttempt,
+    state: AgentAttemptView['turn']['state'],
+  ): Promise<AgentAttemptView['turn']['waitingForOwner']> {
+    const sessions = dependencies.sessions();
+    if (!sessions || state !== 'working') {
+      return undefined;
+    }
+
+    const turn = active.journal.turns.at(-1)!;
+    const { interaction } = await sessions.snapshot(
+      active.journal.actor.details.sessionId ?? '',
+      RUNTIME_ACTOR,
+    );
+
+    return interaction?.turnId === turn.turnId
+      ? { kind: interaction.kind, interactionId: interaction.interactionId }
+      : undefined;
+  }
+
   /** Whether Continue can start now: only once the Turn ended. */
   async function continueOption(
     active: ActiveAgentAttempt,
@@ -311,6 +396,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     const turn = journal.turns.at(-1)!;
     const actor = journal.actor;
     const state = await turnState(active);
+    const waitingForOwner = await ownerWait(active, state);
     const proposal = journal.proposal;
 
     return {
@@ -325,6 +411,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
         state,
         boundAt: turn.boundAt,
         ...(turn.finalizedAt !== undefined ? { endedAt: turn.finalizedAt } : {}),
+        ...(waitingForOwner ? { waitingForOwner } : {}),
       },
       turns: journal.turns.length,
       ...(proposal
@@ -517,6 +604,29 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       : defaultAgentAllowlist(actor.details.provider);
   }
 
+  /** The provider mode a fresh Session of `actor` is created in (`workModeFor`), as a selection field. */
+  function freshWorkMode(
+    sessions: AgentStepSessions,
+    actor: AgentActor,
+  ): { readonly providerModeId?: string } {
+    const mode = workModeFor(sessions.provider(actor.details.provider), actor.details.model ?? '');
+
+    return mode ? { providerModeId: mode.providerModeId } : {};
+  }
+
+  /** A Session title from the projection, when no brief is at hand (a create a failure left out). */
+  async function stepTitleOf(
+    subject: WorkflowSubject,
+    step: string,
+    attempt: number,
+  ): Promise<string | undefined> {
+    const position = (await engine.actions(subject)).position;
+
+    return position.kind === 'active' && position.step.id === step
+      ? sessionTitleOf({ step: { id: step, title: position.step.title }, attempt })
+      : undefined;
+  }
+
   /**
    * The fresh Session of an attempt, created by whichever request comes first (the start, its retry,
    * or a Continue after a create that failed): keyed on the attempt and created with the id its
@@ -525,7 +635,13 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
   async function ensureFreshSession(
     sessions: AgentStepSessions,
     request: Pick<AgentStepExecutionRequest, 'principal' | 'subject'>,
-    attempt: { readonly attemptId: string; readonly actor: AgentActor; readonly effort?: string },
+    attempt: {
+      readonly attemptId: string;
+      readonly actor: AgentActor;
+      readonly effort?: string;
+      /** The Session's title: the step and attempt it was made for (`sessionTitleOf`). */
+      readonly title?: string;
+    },
   ): Promise<void> {
     const sessionId = attempt.actor.details.sessionId!;
     if (await sessions.hasSession(sessionId)) {
@@ -543,7 +659,8 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
           : {}),
         ...(attempt.effort !== undefined ? { effort: attempt.effort } : {}),
         mode: 'workspace-write',
-        title: 'Agent step execution',
+        ...freshWorkMode(sessions, attempt.actor),
+        title: attempt.title ?? 'Agent step execution',
       },
       {
         specId: subject.specId,
@@ -575,6 +692,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       selection = {
         providerId: launch.provider,
         mode: 'workspace-write',
+        ...freshWorkMode(sessions, actor),
         ...(launch.model ? { modelId: launch.model } : {}),
         ...(launch.effort !== undefined ? { effort: launch.effort } : {}),
       };
@@ -633,6 +751,11 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
         attemptId: bound.attemptId,
         actor: bound.actor,
         ...(bound.effort !== undefined ? { effort: bound.effort } : {}),
+        ...titled(
+          bound.brief
+            ? sessionTitleOf(bound.brief)
+            : await stepTitleOf(subject, bound.step, bound.attempt),
+        ),
       });
     } else if (subject.kind === 'task') {
       // A Session that continues into a Task's step belongs to that Task too.
@@ -663,6 +786,9 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
           // The archetype's allowlist for this provider, else the default (D20): only for this
           // Turn. An absent or empty allow means no list of its own.
           agentPermissions: { allow: await allowlistOf(bound.actor) },
+          // The request is SpecFlow's brief, marked so a client shows it as such (the agent's
+          // message is unchanged).
+          origin: requestOriginOf(subject, brief),
         },
       );
     }
@@ -747,6 +873,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
           attemptId: active.attemptId,
           actor,
           ...(active.launch.effort !== undefined ? { effort: active.launch.effort } : {}),
+          ...titled(await stepTitleOf(subject, active.step, active.attempt)),
         });
       }
     } else {
@@ -782,6 +909,12 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       const option = await judged({ ...next.agent, launch: chosen }, subject, next.expected, true);
       if (option.kind === 'unavailable') {
         unavailable(option, 'An agent cannot do this step now.');
+      }
+
+      if (option.modelRequired) {
+        invalid(
+          `Choose one of the models ${chosen.provider} offers; this agent has none assigned.`,
+        );
       }
 
       launch = chosen;

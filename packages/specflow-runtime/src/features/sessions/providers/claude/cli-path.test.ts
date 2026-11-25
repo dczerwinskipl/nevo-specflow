@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { productCliTrust } from './cli-path';
+import { absolutePathEntries, productCliTrust, withAbsolutePath } from './cli-path';
 
 const trust = (input: Parameters<typeof productCliTrust>[0]) => productCliTrust(input).trusted;
 
@@ -48,4 +48,38 @@ it('does not trust a product CLI that resolves, through a link, into the workspa
       real: (p) => p,
     }).trusted,
   ).toBe(true);
+});
+
+it.each([
+  ['linux', '/usr/bin:.::./x:bin:/opt/bin:', '/usr/bin:/opt/bin'],
+  ['darwin', ':/usr/local/bin', '/usr/local/bin'],
+  [
+    'win32',
+    'C:\\Windows;;.;tools;C:relative;"C:\\Program Files\\nodejs";D:/bin;',
+    'C:\\Windows;C:\\Program Files\\nodejs;D:/bin',
+  ],
+] as const)(
+  'drops empty and relative PATH entries on %s, so the launched shell can be trusted',
+  (platform, value, expected) => {
+    expect(absolutePathEntries(value, platform)).toBe(expected);
+    expect(
+      trust({
+        pathValue: absolutePathEntries(value, platform),
+        platform,
+        workspace: platform === 'win32' ? 'C:\\work' : '/work',
+        exists: () => false,
+      }),
+    ).toBe(true);
+  },
+);
+
+it('sanitizes PATH under any casing on Windows and only PATH on POSIX', () => {
+  expect(withAbsolutePath({ Path: 'C:\\bin;', TEMP: '.' }, 'win32')).toEqual({
+    Path: 'C:\\bin',
+    TEMP: '.',
+  });
+  expect(withAbsolutePath({ PATH: '/bin::', Path: 'x' }, 'linux')).toEqual({
+    PATH: '/bin',
+    Path: 'x',
+  });
 });

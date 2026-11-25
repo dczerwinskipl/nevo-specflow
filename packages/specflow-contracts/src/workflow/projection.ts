@@ -184,6 +184,18 @@ export const AgentOptionSchema = Type.Union([
      * not known here; `GET .../workflow/agent-execution/check` answers it, and the start judges it.
      */
     baseline: Type.Optional(Type.Literal('unchecked')),
+    /**
+     * The provider does not offer the model the agent settings configure: no model is assigned
+     * (`launch.model` is empty) and the owner chooses one of the provider's models
+     * (`GET /api/session-providers`) before the start; a start without one is refused.
+     */
+    modelRequired: Type.Optional(Type.Literal(true)),
+    /**
+     * The provider work mode a fresh Session of this launch runs in, with its title: Claude's `auto`
+     * when the provider lists it as ready for the model (`providerModes[].modelIds`), otherwise
+     * `acceptEdits`. Absent for a continued Session (it keeps its own) or while no model is assigned.
+     */
+    workMode: Type.Optional(Type.Object({ providerModeId: Type.String(), title: Type.String() })),
   }),
   Type.Object({
     kind: Type.Literal('unavailable'),
@@ -260,6 +272,16 @@ export const AgentAttemptViewSchema = Type.Object({
     state: literals(['working', 'stopping', 'unknown', 'ended', 'session-missing'] as const),
     boundAt: Type.String(),
     endedAt: Type.Optional(Type.String()),
+    /**
+     * The working Turn waits for the owner: its Session has a pending question or permission
+     * (`interactionId` names it in the Session), so the agent does nothing until it is answered.
+     */
+    waitingForOwner: Type.Optional(
+      Type.Object({
+        kind: literals(['question', 'permission'] as const),
+        interactionId: Type.String(),
+      }),
+    ),
   }),
   turns: Type.Integer({ minimum: 1 }),
   proposal: Type.Optional(

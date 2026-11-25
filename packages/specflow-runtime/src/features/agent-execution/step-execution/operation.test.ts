@@ -77,6 +77,12 @@ function fakes(
     before?: ActionProjection;
     /** The checkout's baseline refusal. */
     baseline?: Awaited<ReturnType<AgentStepEngine['baseline']>>;
+    /** The model ids the provider lists. */
+    models?: readonly string[];
+    /** The models the provider runs in its auto mode (it lists auto and accept edits then). */
+    autoFor?: string[];
+    /** The Turn keeps running and its Session asks the owner this (a pending interaction). */
+    waiting?: 'question' | 'permission';
   } = {},
 ) {
   const created = new Set<string>();
@@ -84,6 +90,10 @@ function fakes(
   const calls: string[] = [];
   /** The message of every Turn the Sessions started, in order. */
   const messages: string[] = [];
+  /** The provider mode of every Session created, in order. */
+  const createdModes: (string | undefined)[] = [];
+  const createdTitles: (string | undefined)[] = [];
+  const origins: unknown[] = [];
   /** `contextChanged`: the Task context changed since the Turn was bound (the brief refuses). */
   const context = { changed: false };
   let attempt: ActiveAgentAttempt | undefined;
@@ -92,7 +102,7 @@ function fakes(
   const engine: AgentStepEngine = {
     actions: () => Promise.resolve(attempt ? active : (options.before ?? ready)),
     activeAttempt: () => Promise.resolve(attempt),
-    claimPhase: () => Promise.resolve('settled'),
+    claimPhase: () => Promise.resolve(options.waiting ? 'dispatched' : 'settled'),
     busyWriter: () => Promise.resolve(undefined),
     projectHold: () => Promise.resolve(options.hold),
     archetypeAllowlist: () => Promise.resolve(undefined),
@@ -132,7 +142,7 @@ function fakes(
             : {}),
         journal: {
           ...journal,
-          turns: [...journal.turns, { ...turn, finalizedAt: 't2' }],
+          turns: [...journal.turns, options.waiting ? turn : { ...turn, finalizedAt: 't2' }],
         },
       };
 
@@ -173,7 +183,33 @@ function fakes(
   };
   const sessions: AgentStepSessions = {
     available: () => true,
-    provider: () => undefined,
+    provider: () =>
+      options.models || options.autoFor
+        ? ({
+            models: (options.models ?? []).map((modelId) => ({
+              modelId,
+              title: modelId,
+              efforts: [],
+            })),
+            providerModes: [
+              {
+                modeId: 'acceptEdits',
+                title: 'Accept edits',
+                nativeMode: 'acceptEdits',
+                mode: 'workspace-write',
+                readiness: 'ready',
+              },
+              {
+                modeId: 'auto',
+                title: 'Auto',
+                nativeMode: 'auto',
+                mode: 'workspace-write',
+                readiness: 'ready',
+                modelIds: options.autoFor ?? [],
+              },
+            ],
+          } as never)
+        : undefined,
     validate(selection) {
       calls.push(`session.validate ${selection.providerId} ${selection.modelId ?? ''}`);
 
@@ -183,6 +219,8 @@ function fakes(
     },
     create(_actor, input, _association, chosen) {
       calls.push(`session.create ${input.requestId}`);
+      createdModes.push(input.providerModeId);
+      createdTitles.push(input.title);
       if (failCreate) {
         failCreate = false;
 
@@ -196,6 +234,7 @@ function fakes(
     start(_actor, sessionId, input, turnOptions) {
       calls.push(`session.start ${sessionId}`);
       messages.push(input.message);
+      origins.push(turnOptions?.origin);
       if (failTurnStart) {
         failTurnStart = false;
 
@@ -211,11 +250,17 @@ function fakes(
 
       return Promise.resolve({ turnId });
     },
-    snapshot: () =>
-      Promise.resolve({
-        activeTurn: undefined,
+    snapshot: () => {
+      const turnId = attempt?.journal.turns.at(-1)?.turnId;
+
+      return Promise.resolve({
+        activeTurn: options.waiting && turnId ? { turnId, state: 'waitingForUser' } : undefined,
+        ...(options.waiting && turnId
+          ? { interaction: { kind: options.waiting, interactionId: 'interaction-1', turnId } }
+          : {}),
         session: { providerId: 'controlled', mode: 'workspace-write', modelId: 'm' },
-      } as never),
+      } as never);
+    },
     associateTasks: () => Promise.resolve(),
     hasSession: (sessionId) => Promise.resolve(created.has(sessionId)),
     hasTurn: (_sessionId, turnId) => Promise.resolve(turns.has(turnId)),
@@ -224,6 +269,9 @@ function fakes(
   return {
     calls,
     messages,
+    createdModes,
+    createdTitles,
+    origins,
     context,
     execution: createAgentStepExecution({ engine, sessions: () => sessions }),
     attempt: () => attempt,
@@ -527,5 +575,84 @@ describe('Hand to agent', () => {
         expected: { step: 'breakdown', attempt: 2, handOver: true },
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+  });
+
+  it('reports a configured model the provider does not offer as no model, and needs the owner to choose', async () => {
+    const { execution, calls } = fakes({ models: ['opus', 'sonnet'] });
+
+    const projected = await execution.decorate(subject, ready);
+    const agent = projected.position.kind === 'ready' ? projected.position.next.agent : undefined;
+    expect(agent).toEqual({
+      kind: 'available',
+      launch: { ...launch, model: '' },
+      modelRequired: true,
+      baseline: 'unchecked',
+    });
+    expect((await execution.check(subject)).agent).toMatchObject({
+      kind: 'available',
+      modelRequired: true,
+      launch: { model: '' },
+    });
+
+    await expect(
+      execution.startAgentStepExecution(request('00000000-0000-4000-8000-0000000000f1')),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
+    expect(calls).not.toContain('engine.start new');
+    // The owner's choice from the provider's list starts it.
+    await expect(
+      execution.startAgentStepExecution({
+        ...request('00000000-0000-4000-8000-0000000000f2'),
+        model: 'opus',
+      }),
+    ).resolves.toMatchObject({ kind: 'started' });
+  });
+
+  it('keeps an offered model as it is', async () => {
+    const projected = await fakes({ models: ['m'] }).execution.decorate(subject, ready);
+    expect(projected.position.kind === 'ready' && projected.position.next.agent).not.toHaveProperty(
+      'modelRequired',
+    );
+  });
+
+  it('says the agent waits for the owner while its Session asks a question or a permission', async () => {
+    const { execution } = fakes({ waiting: 'permission' });
+    await execution.startAgentStepExecution(request('00000000-0000-4000-8000-0000000000f3'));
+
+    const projected = await execution.decorate(subject, active);
+    expect(projected.agentAttempt?.turn).toMatchObject({
+      state: 'working',
+      waitingForOwner: { kind: 'permission', interactionId: 'interaction-1' },
+    });
+  });
+
+  it('runs a fresh agent Session in auto when the provider runs its model in auto, and says so first', async () => {
+    const auto = fakes({ autoFor: ['m'] });
+    const projected = await auto.execution.decorate(subject, ready);
+    expect(projected.position.kind === 'ready' && projected.position.next.agent).toMatchObject({
+      workMode: { providerModeId: 'auto', title: 'Auto' },
+    });
+    await auto.execution.startAgentStepExecution(request('00000000-0000-4000-8000-0000000000f4'));
+    expect(auto.createdModes).toEqual(['auto']);
+
+    const manual = fakes({ autoFor: ['other'] });
+    await manual.execution.startAgentStepExecution(request('00000000-0000-4000-8000-0000000000f5'));
+    expect(manual.createdModes).toEqual(['acceptEdits']);
+  });
+
+  it("titles the fresh Session by its step and attempt and marks the Turn's request as SpecFlow's brief", async () => {
+    const { execution, createdTitles, origins, messages } = fakes();
+    await execution.startAgentStepExecution(request('00000000-0000-4000-8000-0000000000f6'));
+
+    expect(createdTitles).toEqual(['Break it down · attempt 1']);
+    expect(origins).toEqual([
+      {
+        kind: 'specflow-step-brief',
+        specId: SPEC,
+        step: { id: 'breakdown', title: 'Break it down' },
+        attempt: 1,
+      },
+    ]);
+    // What the agent receives is unchanged.
+    expect(messages).toEqual(['started']);
   });
 });

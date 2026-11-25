@@ -106,6 +106,10 @@ export interface AgentStepEngine {
 export interface AgentBrief {
   readonly step: { readonly id: string; readonly title: string };
   readonly attempt: number;
+  /** The Task subject, with its title. */
+  readonly task?: { readonly id: string; readonly title: string };
+  /** What the previous step handed over (the brief shows it as text too). */
+  readonly handoff?: StepContext['handoff'];
   readonly text: string;
 }
 
@@ -158,6 +162,8 @@ export function createAgentStepEngine(dependencies: {
     return {
       step: { id: context.step.id, title: context.step.title },
       attempt: context.attempt,
+      ...(context.task ? { task: { id: context.task.id, title: context.task.title } } : {}),
+      ...(context.handoff ? { handoff: context.handoff } : {}),
       text: renderAgentBrief({ context, scope }),
     };
   }

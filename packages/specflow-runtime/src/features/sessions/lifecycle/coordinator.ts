@@ -6,6 +6,7 @@ import type {
   RenameSession,
   ArchiveSession,
   ReconcileTurnResult,
+  RequestOrigin,
 } from '@nevo/specflow-contracts/sessions';
 import { SessionLimits, utf8Bytes } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
@@ -40,6 +41,8 @@ export interface TurnStartOptions {
   readonly agentAttempt?: { readonly attemptId: string };
   /** The archetype's provider allowlist for this Turn (D20); applied only by a driver that supports it. */
   readonly agentPermissions?: { readonly allow: readonly string[] };
+  /** In-process only (agent step execution): the Turn's request is SpecFlow's brief of this step. */
+  readonly origin?: RequestOrigin;
 }
 
 interface ActiveInvocation {
@@ -651,6 +654,7 @@ export function createSessionCoordinator(
             : {}),
           ...(binding ? { effectBinding: binding } : {}),
           ...(options.ids ? { ids: options.ids } : {}),
+          ...(options.origin ? { origin: options.origin } : {}),
         });
         if (!admitted.fresh) {
           return { turnId: admitted.turnId };

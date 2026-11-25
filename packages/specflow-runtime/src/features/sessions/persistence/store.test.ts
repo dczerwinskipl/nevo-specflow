@@ -1427,3 +1427,35 @@ describe('native-stop evidence record', () => {
     ).resolves.toEqual([]);
   });
 });
+
+describe("SpecFlow's own request", () => {
+  it('keeps the brief as the request text and marks it with its origin', async () => {
+    const { sessionId } = await create();
+    const origin = {
+      kind: 'specflow-step-brief' as const,
+      specId: 'spec-1',
+      step: { id: 'breakdown', title: 'Break the solution down' },
+      attempt: 2,
+      handoff: {
+        kind: 'transition' as const,
+        from: { step: 'breakdown-review', attempt: 1 },
+        transition: 'changes-requested',
+        result: 'fail',
+        feedback: 'Split the API Task.',
+        artifacts: [],
+      },
+    };
+    await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: '# Brief: Break the solution down' },
+      origin,
+    });
+
+    const snapshot = await snap(sessionId);
+    const request = snapshot.entries.find((entry) => entry.kind === 'request');
+    expect(request).toMatchObject({ text: { text: '# Brief: Break the solution down' }, origin });
+    expect(sessionValidators.snapshot(snapshot)).toBe(true);
+  });
+});

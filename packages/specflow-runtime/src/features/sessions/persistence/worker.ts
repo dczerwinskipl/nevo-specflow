@@ -230,6 +230,7 @@ export async function runSessionWorker(): Promise<void> {
     digest?: WorkDigest,
     error?: ConversationEntry['error'],
     notice?: ConversationEntry['notice'],
+    origin?: ConversationEntry['origin'],
   ): ConversationEntry {
     const old = existing
       ? decode<ConversationEntry>(get('SELECT data FROM entries WHERE id=?', existing))
@@ -246,6 +247,7 @@ export async function runSessionWorker(): Promise<void> {
       ...(digest ? { digest } : {}),
       ...(error ? { error } : {}),
       ...(notice ? { notice } : {}),
+      ...((origin ?? old?.origin) ? { origin: origin ?? old!.origin! } : {}),
     };
     run(
       'INSERT OR REPLACE INTO entries VALUES(?,?,?,?,?)',
@@ -1049,7 +1051,18 @@ export async function runSessionWorker(): Promise<void> {
         run('INSERT INTO turns VALUES(?,?,?,?)', tid, c.sessionId, 'active', JSON.stringify(t));
         telemetry.start(s, t);
         refreshAttention(s, t);
-        entry(s, tid, 'request', t.summary.userMessage);
+        entry(
+          s,
+          tid,
+          'request',
+          t.summary.userMessage,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          c.origin,
+        );
         emit(s, 'turn', { turn: t.summary, projection: projection(s) });
         const result = {
           turnId: tid,

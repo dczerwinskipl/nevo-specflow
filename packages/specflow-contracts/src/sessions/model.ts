@@ -264,6 +264,40 @@ export const TurnErrorSchema = Type.Object(
   },
   closed,
 );
+/**
+ * Who wrote a `request` entry when it was not a person: `specflow-step-brief`, the brief agent step
+ * execution sent to start or continue an agent attempt. The entry's `text` is the full brief (its
+ * `content` reference reads all of it); a client shows a short line naming the step and the attempt
+ * and opens the brief on demand. `handoff` is what the previous step handed over, as data.
+ */
+export const RequestOriginSchema = Type.Object(
+  {
+    kind: Type.Literal('specflow-step-brief'),
+    specId: text(128),
+    /** The Task subject of the attempt, with its title. */
+    task: Type.Optional(Type.Object({ id: text(128), title: text(512) }, closed)),
+    step: Type.Object({ id: text(128), title: text(512) }, closed),
+    attempt: Type.Integer({ minimum: 1 }),
+    handoff: Type.Optional(
+      Type.Object(
+        {
+          kind: Type.Union([Type.Literal('transition'), Type.Literal('return')]),
+          /** A transition: the step and attempt that finished, and its result. */
+          from: Type.Optional(
+            Type.Object({ step: text(128), attempt: Type.Integer({ minimum: 1 }) }, closed),
+          ),
+          transition: Type.Optional(text(128)),
+          result: Type.Optional(text(128)),
+          feedback: Type.Optional(text(8192)),
+          artifacts: Type.Optional(Type.Array(text(1024), { maxItems: 64 })),
+        },
+        closed,
+      ),
+    ),
+  },
+  closed,
+);
+export type RequestOrigin = Static<typeof RequestOriginSchema>;
 export const ConversationEntrySchema = Type.Object(
   {
     id: SessionUuidSchema,
@@ -291,6 +325,8 @@ export const ConversationEntrySchema = Type.Object(
      * of this severity, apart from the agent's commentary.
      */
     notice: Type.Optional(Type.Object({ severity: NoticeSeveritySchema }, closed)),
+    /** Only on a `request` entry SpecFlow wrote itself (the brief of an agent attempt). */
+    origin: Type.Optional(RequestOriginSchema),
     createdAt: text(40),
   },
   closed,

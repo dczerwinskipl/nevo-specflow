@@ -5,6 +5,43 @@ import { PRODUCT_CLI } from '@nevo/specflow-contracts/documents';
 
 const WINDOWS_EXTENSIONS = ['', '.exe', '.cmd', '.bat', '.com', '.ps1'];
 
+/**
+ * `pathValue` without its empty and relative entries (`''`, `.`, `bin`, `C:tools`), which would
+ * resolve a command against the shell's current directory. A quoted Windows entry is unquoted.
+ * Applied to the environment the Runtime launches Claude with (and so its shell tools), never to
+ * the user's own PATH; `productCliTrust` then judges what is left.
+ */
+export function absolutePathEntries(pathValue: string, platform: NodeJS.Platform): string {
+  const windows = platform === 'win32';
+  const flavour = windows ? win32 : posix;
+  const separator = windows ? ';' : ':';
+
+  return pathValue
+    .split(separator)
+    .map((entry) => {
+      const trimmed = entry.trim();
+
+      return windows && /^".*"$/.test(trimmed) ? trimmed.slice(1, -1).trim() : trimmed;
+    })
+    .filter((entry) => entry !== '' && flavour.isAbsolute(entry))
+    .join(separator);
+}
+
+/** `values` with its PATH (any case on Windows) reduced to {@link absolutePathEntries}. */
+export function withAbsolutePath(
+  values: Readonly<Record<string, string>>,
+  platform: NodeJS.Platform,
+): Record<string, string> {
+  const result: Record<string, string> = { ...values };
+  for (const name of Object.keys(result)) {
+    if (platform === 'win32' ? name.toUpperCase() === 'PATH' : name === 'PATH') {
+      result[name] = absolutePathEntries(result[name]!, platform);
+    }
+  }
+
+  return result;
+}
+
 export type ProductCliTrust =
   { readonly trusted: true } | { readonly trusted: false; readonly reason: string };
 

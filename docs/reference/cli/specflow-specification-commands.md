@@ -162,25 +162,25 @@ Home like the other `specs` commands (`--project-root <path>` requires a verifie
 the same inputs as the HTTP routes of the [documents reference](../api/specification-documents.md): a write names
 the revision of what it changes, and an `--operation-id <uuid>` (generated when omitted) makes a retry safe.
 
-| Command                                                                                                                    | Engine function                                              |
-| -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `specs documents list <spec-id>`                                                                                           | `readSpecificationDocumentTree`                              |
-| `specs documents read <spec-id> <document-id> [--task <task-id>]`                                                          | `readSpecificationDocument` / `readTaskDocument`             |
-| `specs documents validate <spec-id>`                                                                                       | `readSpecificationDocumentTree` (completeness, issues)       |
-| `specs documents add <spec-id> (--path <p> [--type <t>] (--content-file <f> \| --stdin) \| --template <id> [--path <p>])`  | `applyDocumentChange` (`create`)                             |
-| `specs documents folder <spec-id> <path>`                                                                                  | `applyDocumentChange` (`folder`)                             |
-| `specs documents save <spec-id> <document-id> --expected-revision <r> (--content-file <f> \| --stdin)`                     | `applyDocumentChange` (`save`)                               |
-| `specs documents rename <spec-id> <name> (--document <id> \| --folder <path>) --expected-revision <r>`                     | `applyDocumentChange` (`rename`)                             |
-| `specs documents move <spec-id> (--document <id> \| --folder <path>) (--to <folder> \| --to-root) --expected-revision <r>` | `applyDocumentChange` (`move`)                               |
-| `specs documents delete <spec-id> (--document <id> \| --folder <path>) --expected-revision <r>`                            | `applyDocumentChange` (`delete`)                             |
-| `specs documents classify <spec-id> <document-id> --type <t> --expected-revision <r>`                                      | `applyDocumentChange` (`classify`)                           |
-| `specs documents status <operation-id>`                                                                                    | `readDocumentOperationStatus`                                |
-| `specs documents flush [<spec-id>] [--wait-ms <ms>]`                                                                       | `flushDocumentCommits` / `flushAllDocumentCommits`           |
-| `specs documents retry <operation-id>`                                                                                     | `retryDocumentCommit`                                        |
-| `specs documents abandon <operation-id>`                                                                                   | `abandonDocumentCommit`                                      |
-| `specs documents recover <operation-id> (--resume \| --adopt \| --abandon) [--confirmed-stopped]`                          | `recoverOperation` (a document operation or a manual commit) |
-| `specs documents resolve <operation-id>`                                                                                   | `resolveLedgerOperation`                                     |
-| `specs documents recover --confirmed-stopped`                                                                              | `takeOverDocumentQueue`                                      |
+| Command                                                                                                                    | Engine function                                                                                                                                                                          |
+| -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `specs documents list <spec-id>`                                                                                           | `readSpecificationDocumentTree`                                                                                                                                                          |
+| `specs documents read <spec-id> <document-id> [--task <task-id>]`                                                          | `readSpecificationDocument` / `readTaskDocument`                                                                                                                                         |
+| `specs documents validate <spec-id>`                                                                                       | `readSpecificationDocumentTree` (completeness, issues)                                                                                                                                   |
+| `specs documents add <spec-id> (--path <p> [--type <t>] (--content-file <f> \| --stdin) \| --template <id> [--path <p>])`  | `applyDocumentChange` (`create`); `--path` is relative to the Specification folder (the Task folder with `--task`), and a path starting with `specs/` is refused `DOCUMENT_PATH_INVALID` |
+| `specs documents folder <spec-id> <path>`                                                                                  | `applyDocumentChange` (`folder`)                                                                                                                                                         |
+| `specs documents save <spec-id> <document-id> --expected-revision <r> (--content-file <f> \| --stdin)`                     | `applyDocumentChange` (`save`)                                                                                                                                                           |
+| `specs documents rename <spec-id> <name> (--document <id> \| --folder <path>) --expected-revision <r>`                     | `applyDocumentChange` (`rename`)                                                                                                                                                         |
+| `specs documents move <spec-id> (--document <id> \| --folder <path>) (--to <folder> \| --to-root) --expected-revision <r>` | `applyDocumentChange` (`move`)                                                                                                                                                           |
+| `specs documents delete <spec-id> (--document <id> \| --folder <path>) --expected-revision <r>`                            | `applyDocumentChange` (`delete`)                                                                                                                                                         |
+| `specs documents classify <spec-id> <document-id> --type <t> --expected-revision <r>`                                      | `applyDocumentChange` (`classify`)                                                                                                                                                       |
+| `specs documents status <operation-id>`                                                                                    | `readDocumentOperationStatus`                                                                                                                                                            |
+| `specs documents flush [<spec-id>] [--wait-ms <ms>]`                                                                       | `flushDocumentCommits` / `flushAllDocumentCommits`                                                                                                                                       |
+| `specs documents retry <operation-id>`                                                                                     | `retryDocumentCommit`                                                                                                                                                                    |
+| `specs documents abandon <operation-id>`                                                                                   | `abandonDocumentCommit`                                                                                                                                                                  |
+| `specs documents recover <operation-id> (--resume \| --adopt \| --abandon) [--confirmed-stopped]`                          | `recoverOperation` (a document operation or a manual commit)                                                                                                                             |
+| `specs documents resolve <operation-id>`                                                                                   | `resolveLedgerOperation`                                                                                                                                                                 |
+| `specs documents recover --confirmed-stopped`                                                                              | `takeOverDocumentQueue`                                                                                                                                                                  |
 
 Every command accepts `--project-root <path>` and `--json`; every write command also accepts `--operation-id`,
 `--wait` and `--wait-ms <ms>`.
@@ -298,13 +298,16 @@ run. Every command accepts `--project-root <path>` and `--json`.
   `@nevo/specflow-contracts/documents`). Reads (`specs list`, `specs documents list|read|validate|status`,
   `tasks list|inspect`, `workflow actions|context`, `project inspect`, `definitions list|show|validate`,
   `commit status`, `docs list|get|find|context|search`) run locally and never open the Engine for
-  writing. Brokered writes (`specs documents add|save|classify`, `tasks create|edit`,
+  writing. Brokered writes (`specs documents add|save|classify`, `tasks create|edit|remove`,
   `workflow finish`) are sent to the Runtime's agent broker, which admits only the Turn's scope;
   the request id of a document write is `--operation-id` when given, else (and for Task drafts and the
   finish) derived from the command, so a repeat replays.
   Every other command is refused with `AGENT_SCOPE_REFUSED` before an Engine is opened, the owner
   commands included (`workflow start|return|confirm|reject|retry-commit|take-over|reevaluate-wait`,
-  `tasks status|remove`, `specs close|abandon|create`, `commit`, `definitions install`). A broker
+  `tasks status`, `specs close|abandon|create`, `commit`, `definitions install`). An agent's
+  `tasks edit|remove` and `specs documents add|save|classify --task <id>` change only the draft
+  Tasks its producing step drafted (in any attempt); an approved or started Task is refused with the
+  remedy (a `cancelled` task decision in the finish, which the owner confirms). A broker
   refusal prints `CODE: message` (`AGENT_*` codes, or the Engine's own) and exits 1; see
   [agent step execution](../../architecture/runtime/agent-step-execution.md#broker).
 - **Context.** `--context <kind:value>` (repeatable) adds a required entry; kinds are `task-doc`, `spec-doc`,

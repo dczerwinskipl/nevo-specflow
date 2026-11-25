@@ -1,3 +1,4 @@
+import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import type { AgentLaunch, AgentOption } from '@nevo/specflow-engine';
 
 /**
@@ -25,6 +26,7 @@ export interface AgentRuntimeFacts {
 }
 
 type Unavailable = Extract<AgentOption, { kind: 'unavailable' }>;
+type Available = Extract<AgentOption, { kind: 'available' }>;
 
 const launchOf = (option: AgentOption): Pick<Unavailable, 'launch' | 'independent'> =>
   option.kind === 'available'
@@ -72,6 +74,58 @@ export function withRuntimeReasons(option: AgentOption, facts: AgentRuntimeFacts
   }
 
   return option;
+}
+
+/**
+ * A fresh launch whose configured model the provider does not offer has no model assigned: the
+ * owner picks one of the provider's own models (`modelRequired`). The unknown id is never passed on.
+ * `offered`: the provider's model ids; absent or empty when it has not listed them yet (not judged).
+ */
+export function withOfferedModel(
+  option: Available,
+  offered: readonly string[] | undefined,
+): Available {
+  if (
+    option.launch.session.mode !== 'fresh' ||
+    !option.launch.model ||
+    !offered?.length ||
+    offered.includes(option.launch.model)
+  ) {
+    return option;
+  }
+
+  const { effort: _effort, ...launch } = option.launch;
+
+  return { ...option, launch: { ...launch, model: '' }, modelRequired: true };
+}
+
+/** The work modes an agent's fresh Session prefers, in order: no prompt per edit when possible. */
+const PREFERRED_WORK_MODES = ['auto', 'acceptEdits'] as const;
+
+/**
+ * The provider mode a fresh agent Session runs `model` in: `auto` when the provider lists it as
+ * ready, authorized and running this model, else `acceptEdits` when listed; `undefined` when the
+ * provider names neither (its own default applies).
+ */
+export function workModeFor(
+  provider: Pick<ProviderDescriptor, 'providerModes'> | undefined,
+  model: string,
+): { readonly providerModeId: string; readonly title: string } | undefined {
+  for (const id of PREFERRED_WORK_MODES) {
+    const mode = provider?.providerModes?.find(
+      (candidate) =>
+        candidate.modeId === id &&
+        candidate.mode === 'workspace-write' &&
+        candidate.readiness === 'ready' &&
+        candidate.authorized !== false &&
+        (candidate.modelIds === undefined || candidate.modelIds.includes(model)),
+    );
+    if (mode) {
+      return { providerModeId: mode.modeId, title: mode.title };
+    }
+  }
+
+  return undefined;
 }
 
 /** The provider, model and effort a start uses: the owner's choice only for a fresh Session (D18). */

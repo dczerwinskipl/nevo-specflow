@@ -12,7 +12,7 @@ import {
   type ProviderEnvironment,
 } from '../process';
 import { claudeLoss, createClaudeOperation } from './operation';
-import { productCliTrust } from './cli-path';
+import { productCliTrust, withAbsolutePath } from './cli-path';
 import { inspectClaudeInstallation } from './installation';
 import {
   classifyProviderInstallation,
@@ -66,7 +66,12 @@ export function createClaudeDriver(
   const now = dependencies.now ?? Date.now;
   const baseEnvironment = options.environment ?? projectProviderEnvironment({ host: process.env });
   const environment: ProviderEnvironment = {
-    values: Object.freeze({ ...baseEnvironment.values, CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1' }),
+    // Without empty or relative PATH entries: Claude's shell never resolves a bare command (the
+    // product CLI included) against its current directory, so allowlisted calls can be trusted.
+    values: Object.freeze({
+      ...withAbsolutePath(baseEnvironment.values, process.platform),
+      CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1',
+    }),
     sources: Object.freeze({
       ...baseEnvironment.sources,
       CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: 'configured',

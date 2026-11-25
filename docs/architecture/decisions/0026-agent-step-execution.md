@@ -114,6 +114,15 @@ create and edit only when the step declares `produces: tasks` (origin `produced`
 the finish proposal of exactly the bound step and attempt. Never a Task status decision, return,
 Abandon, Close, manual commit, Confirm, Reject or a write to another subject.
 
+**Rework of the step's drafts** (owner decision 2026-11-25). A later attempt of a step that produces
+Tasks (after a review requested changes) may edit and delete the step's current Task drafts from any
+earlier attempt: `tasks edit`, `tasks remove` (`tasks.remove`) and the documents of a draft
+(`documents.*` naming the draft's `taskId`). The scope admits a draft's documents by shape
+(`draftTasks`); the Engine judges the Task at the write (`assertAgentDraftTask`: still a `draft`,
+origin `produced` by this step, in the step's active agent attempt). A Task that is approved or
+started is never changed by the agent: the refusal says so, and to drop it the agent proposes a
+`cancelled` task decision in its finish, which the owner confirms (D17).
+
 ### D12 — A finish proposal finalized with the claim settlement
 
 The agent submits the owner's finish input plus the files it changed outside SpecFlow
@@ -143,6 +152,16 @@ is recorded on the attempt. The Runtime renders the brief from that data, wraps 
 files, definitions or people in labelled untrusted fences, and generates the operations section
 and exact CLI forms from the same command table the CLI routing reads, filtered by the Turn's scope.
 `nevo-specflow workflow context` prints the same data.
+
+The brief lists the bound step's results exactly (each `--result` value with its label, target and
+whether feedback is required; a single-exit step finishes without `--result`), and a finish with
+another value is refused naming the allowed values the same way. It also states the command size
+limit (`AGENT_COMMAND_MAX_BYTES`, 7000 bytes: document text goes in a file, `--content-file`) and
+that document paths are relative to the Specification folder (a create path starting with `specs/`
+is refused `DOCUMENT_PATH_INVALID`, since it would nest the Specification inside itself). The Turn's
+request entry in the Session carries `origin: specflow-step-brief` (subject, step, attempt and the
+handoff as data), so a client shows it as SpecFlow's brief rather than a person's message; the agent
+receives the same text.
 
 ### D14 and B3 — Attribution at the boundary
 
@@ -272,6 +291,14 @@ The kernel's continuation decides fresh or continued Session. An archetype decla
 `session: reuse` into its step. The owner may change provider and model only for a fresh Session;
 the launch is recorded on the attempt.
 
+A configured model the provider does not list is **not assigned** (owner decision 2026-11-25): the
+projection and the check report the option `available` with an empty `launch.model` and
+`modelRequired: true`, never the unknown id, and a start without the owner's choice from the
+provider's list is refused. A fresh Session runs in the provider's `auto` work mode when the provider
+lists it ready and authorized for the model (`providerModes[].modelIds`), otherwise in
+`acceptEdits`; the option names it (`workMode`). Its title is the step and attempt it was made for
+("Break the solution down · attempt 2", with the Task title for a Task subject).
+
 ### D19 — Stop, Return, Take over
 
 Stop cancels the Turn; the claim stays held until the process is proven stopped. Return during a
@@ -304,6 +331,11 @@ provider's default (every product CLI command of the command table). Rules are o
 strings validated at load (over-broad rules such as an unrestricted shell or write tools are
 refused) and applied only for that Turn, never merged with owner or project permissions. Only the
 Claude driver applies an allowlist today; others report that it was not applied.
+
+The Runtime launches Claude with a PATH without empty or relative entries (dropped from the
+environment it builds, never from the user's own PATH), so its shell never resolves a bare
+`nevo-specflow` against the current directory, and the host-side approval of allowlisted calls is
+judged on that PATH.
 
 ### Access is the configured authentication mode (D21 superseded)
 

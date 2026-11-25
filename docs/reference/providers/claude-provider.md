@@ -102,7 +102,12 @@ currently verified login is protected.
 | `plan`        | `plan`        | `read-only`       | Read, Glob, Grep, AskUserQuestion                    |
 
 `acceptEdits` is the default writable mode when managed execution is available: a writable Turn
-without a native mode (agent step execution) runs in it. Each mode is probed and can be unavailable
+without a native mode runs in it. Agent step execution creates its fresh Session in `auto` when the
+catalogue lists `auto` ready and authorized for the chosen model (`providerModes[].modelIds`), and
+in `acceptEdits` otherwise; the agent option names it as `workMode`. Claude is launched with a PATH
+from which the Runtime drops empty and relative entries (the user's PATH is not changed), so the
+host-side approval of allowlisted product CLI calls is judged on that PATH. A Bash command above
+7000 bytes is denied with its size, the limit and `--content-file` as the remedy. Each mode is probed and can be unavailable
 independently. When native initialization reports `supportsAutoMode` (Claude 2.1.312 and later),
 `auto` offers only the models it marks; Claude would run any other model in `default`, so such a
 choice is refused before launch (`MODEL_UNSUPPORTED` with `details.reason: mode-model-unsupported`),

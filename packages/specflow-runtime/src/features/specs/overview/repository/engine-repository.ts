@@ -8,7 +8,9 @@ import {
 import { SpecsReadError } from '../../read/error';
 import type {
   ArchivedSpecRecord,
+  CurrentSpecAttentionRecord,
   CurrentSpecRecord,
+  CurrentSpecUnreadableReason,
   CurrentSpecSignalRecord,
   CurrentSpecWorkflowRecord,
   SpecOverviewRecord,
@@ -18,22 +20,28 @@ import type { SpecsOverviewRepository } from './read-repository';
 
 /**
  * What the Specs list shows of one Specification's execution, one Engine read of it: the Task
- * progress, where its workflow run stands and how many attention items it has (the Overview's
- * Requires attention).
+ * progress, where its workflow run stands, how many attention items it has (the Overview's
+ * Requires attention) and the first of them, as the Overview lists it.
  */
 export interface OverviewExecutionRecord {
   readonly progress: SpecProgressRecord;
   readonly workflow: CurrentSpecWorkflowRecord;
   readonly attention: number;
+  readonly firstAttention?: CurrentSpecAttentionRecord;
 }
+
+/** One Specification's execution as the list reads it, or why it could not be read. */
+export type OverviewExecutionRead =
+  | ({ readonly kind: 'read' } & OverviewExecutionRecord)
+  | { readonly kind: 'unreadable'; readonly reason: CurrentSpecUnreadableReason };
 
 /**
  * The execution of each listed Specification from the workflow owner (the Engine's runs and Task
- * resources); `null` for a Specification whose execution cannot be read.
+ * resources), or why it could not be read.
  */
 export type OverviewExecution = (
   specIds: readonly string[],
-) => Promise<ReadonlyMap<string, OverviewExecutionRecord | null>>;
+) => Promise<ReadonlyMap<string, OverviewExecutionRead>>;
 
 /**
  * The workflow's attention items as one attention signal on the Specification: the list classifies
@@ -87,9 +95,9 @@ export function createEngineSpecsOverviewRepository(
       (item): item is Extract<CanonicalSpecSource, { status: 'available' }> =>
         item.status === 'available',
     );
-    const executions: ReadonlyMap<string, OverviewExecutionRecord | null> =
+    const executions: ReadonlyMap<string, OverviewExecutionRead> =
       (await execution?.(available.map((item) => item.specId))) ?? new Map();
-    const projected = available.map((item) => project(item, executions.get(item.specId) ?? null));
+    const projected = available.map((item) => project(item, executions.get(item.specId)));
     const revision = createHash('sha256').update(JSON.stringify(projected)).digest('hex');
 
     return { revision, items: projected };
@@ -121,9 +129,10 @@ export function createEngineSpecsOverviewRepository(
 
 function project(
   item: Extract<CanonicalSpecSource, { status: 'available' }>,
-  execution: OverviewExecutionRecord | null,
+  read: OverviewExecutionRead | undefined,
 ) {
   const spec = item.specification;
+  const execution = read?.kind === 'read' ? read : null;
   const attention = execution
     ? workflowAttentionSignal(item.specId, execution.attention)
     : undefined;
@@ -139,6 +148,9 @@ function project(
     ...common,
     // Where the workflow run stands (the manifest has no status).
     workflow: execution?.workflow ?? null,
+    ...(execution?.firstAttention ? { attention: execution.firstAttention } : {}),
+    // The row says it could not read the workflow, and why.
+    ...(read?.kind === 'unreadable' ? { unreadable: { reason: read.reason } } : {}),
     // A project-mode Session can be associated with a Specification (and its Tasks), but an
     // association is not an execution: it says what the Session is about, not that it runs a step
     // of this Specification, and it carries no attention. So neither list is derived from

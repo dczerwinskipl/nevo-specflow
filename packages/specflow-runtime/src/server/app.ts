@@ -368,7 +368,9 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         overviewRepository: dependencies.specs?.overviewRepository ?? demo?.overviewRepository,
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
         contributions,
-        ...(taskEngine ? { overviewExecution: createEngineOverviewExecution(taskEngine) } : {}),
+        ...(taskEngine
+          ? { overviewExecution: createEngineOverviewExecution(taskEngine, app.log) }
+          : {}),
         sessions: sessionReferences,
         projectId,
         // Close deletes a checkout only after the documentation index there is released (E9).

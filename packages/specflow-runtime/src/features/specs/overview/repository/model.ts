@@ -1,4 +1,7 @@
-import type { CurrentSpecWorkflow } from '@nevo/specflow-contracts/specs/overview';
+import type {
+  CurrentSpecOverviewItem,
+  CurrentSpecWorkflow,
+} from '@nevo/specflow-contracts/specs/overview';
 
 export interface SpecProgressRecord {
   readonly completed: number;
@@ -44,12 +47,24 @@ export interface CurrentSpecSignalRecord {
 /** Where the Specification's workflow run stands (the Overview's Now position). */
 export type CurrentSpecWorkflowRecord = CurrentSpecWorkflow;
 
+/** The workflow's first attention item, the Overview's own record, with the Tasks it names. */
+export type CurrentSpecAttentionRecord = NonNullable<CurrentSpecOverviewItem['attention']>;
+
+/** Why the Specification's workflow could not be read. */
+export type CurrentSpecUnreadableReason = NonNullable<
+  CurrentSpecOverviewItem['unreadable']
+>['reason'];
+
 export interface CurrentSpecRecord extends SpecOverviewRecord {
   /**
    * Where the Specification's workflow run stands; `null` when it cannot be read. It is the only
    * progress there is: the manifest has no status.
    */
   readonly workflow: CurrentSpecWorkflowRecord | null;
+  /** The workflow's first attention item as the Overview lists it; absent without one. */
+  readonly attention?: CurrentSpecAttentionRecord;
+  /** Present when `workflow` is `null` because the workflow could not be read. */
+  readonly unreadable?: { readonly reason: CurrentSpecUnreadableReason };
   readonly signals: readonly CurrentSpecSignalRecord[] | null;
   readonly currentExecutions:
     | readonly {

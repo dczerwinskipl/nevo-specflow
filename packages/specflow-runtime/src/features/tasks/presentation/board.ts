@@ -144,7 +144,9 @@ export function namedTaskIds(attention: readonly AttentionItem[]): Set<string> {
 }
 
 /** The Task ids the structured facts of an attention item name. */
-function itemTaskIds(item: Pick<AttentionItem, 'taskIds' | 'blocking' | 'blocks'>): string[] {
+export function itemTaskIds(
+  item: Pick<AttentionItem, 'taskIds' | 'blocking' | 'blocks'>,
+): string[] {
   return [
     ...(item.taskIds ?? []),
     ...(item.blocking ?? []).map((task) => task.taskId),

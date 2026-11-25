@@ -29277,19 +29277,273 @@
                                             },
                                             "additionalProperties": false
                                           },
-                                          "actor": {
+                                          "attempt": {
+                                            "type": "object",
+                                            "required": [
+                                              "number",
+                                              "startedAt",
+                                              "actor"
+                                            ],
+                                            "properties": {
+                                              "number": {
+                                                "type": "integer",
+                                                "minimum": 1
+                                              },
+                                              "startedAt": {
+                                                "type": "string"
+                                              },
+                                              "actor": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "required": [
+                                                      "class",
+                                                      "details"
+                                                    ],
+                                                    "properties": {
+                                                      "class": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "human"
+                                                        ]
+                                                      },
+                                                      "details": {
+                                                        "type": "object",
+                                                        "required": [
+                                                          "actorId",
+                                                          "trust"
+                                                        ],
+                                                        "properties": {
+                                                          "actorId": {
+                                                            "type": "string"
+                                                          },
+                                                          "trust": {
+                                                            "anyOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                  "local"
+                                                                ]
+                                                              },
+                                                              {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                  "authenticated"
+                                                                ]
+                                                              }
+                                                            ]
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  },
+                                                  {
+                                                    "type": "object",
+                                                    "required": [
+                                                      "class",
+                                                      "details"
+                                                    ],
+                                                    "properties": {
+                                                      "class": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                          "agent"
+                                                        ]
+                                                      },
+                                                      "details": {
+                                                        "type": "object",
+                                                        "required": [
+                                                          "provider"
+                                                        ],
+                                                        "properties": {
+                                                          "archetype": {
+                                                            "type": "string"
+                                                          },
+                                                          "provider": {
+                                                            "type": "string"
+                                                          },
+                                                          "model": {
+                                                            "type": "string"
+                                                          },
+                                                          "sessionId": {
+                                                            "type": "string"
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          },
+                                          "handoff": {
                                             "anyOf": [
                                               {
-                                                "type": "string",
-                                                "enum": [
-                                                  "agent"
-                                                ]
+                                                "type": "object",
+                                                "required": [
+                                                  "kind",
+                                                  "from",
+                                                  "transition",
+                                                  "artifacts"
+                                                ],
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "transition"
+                                                    ]
+                                                  },
+                                                  "from": {
+                                                    "type": "object",
+                                                    "required": [
+                                                      "step",
+                                                      "attempt",
+                                                      "title"
+                                                    ],
+                                                    "properties": {
+                                                      "step": {
+                                                        "type": "string",
+                                                        "minLength": 1,
+                                                        "maxLength": 200
+                                                      },
+                                                      "attempt": {
+                                                        "type": "integer",
+                                                        "minimum": 1
+                                                      },
+                                                      "title": {
+                                                        "type": "string"
+                                                      },
+                                                      "at": {
+                                                        "type": "string"
+                                                      },
+                                                      "actor": {
+                                                        "anyOf": [
+                                                          {
+                                                            "type": "object",
+                                                            "required": [
+                                                              "class",
+                                                              "details"
+                                                            ],
+                                                            "properties": {
+                                                              "class": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                  "human"
+                                                                ]
+                                                              },
+                                                              "details": {
+                                                                "type": "object",
+                                                                "required": [
+                                                                  "actorId",
+                                                                  "trust"
+                                                                ],
+                                                                "properties": {
+                                                                  "actorId": {
+                                                                    "type": "string"
+                                                                  },
+                                                                  "trust": {
+                                                                    "anyOf": [
+                                                                      {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                          "local"
+                                                                        ]
+                                                                      },
+                                                                      {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                          "authenticated"
+                                                                        ]
+                                                                      }
+                                                                    ]
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          },
+                                                          {
+                                                            "type": "object",
+                                                            "required": [
+                                                              "class",
+                                                              "details"
+                                                            ],
+                                                            "properties": {
+                                                              "class": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                  "agent"
+                                                                ]
+                                                              },
+                                                              "details": {
+                                                                "type": "object",
+                                                                "required": [
+                                                                  "provider"
+                                                                ],
+                                                                "properties": {
+                                                                  "archetype": {
+                                                                    "type": "string"
+                                                                  },
+                                                                  "provider": {
+                                                                    "type": "string"
+                                                                  },
+                                                                  "model": {
+                                                                    "type": "string"
+                                                                  },
+                                                                  "sessionId": {
+                                                                    "type": "string"
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    }
+                                                  },
+                                                  "transition": {
+                                                    "type": "string"
+                                                  },
+                                                  "label": {
+                                                    "type": "string"
+                                                  },
+                                                  "result": {
+                                                    "type": "string"
+                                                  },
+                                                  "feedback": {
+                                                    "type": "string",
+                                                    "maxLength": 20000
+                                                  },
+                                                  "artifacts": {
+                                                    "type": "array",
+                                                    "items": {
+                                                      "type": "string"
+                                                    },
+                                                    "maxItems": 1000
+                                                  }
+                                                }
                                               },
                                               {
-                                                "type": "string",
-                                                "enum": [
-                                                  "human"
-                                                ]
+                                                "type": "object",
+                                                "required": [
+                                                  "kind",
+                                                  "at"
+                                                ],
+                                                "properties": {
+                                                  "kind": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "return"
+                                                    ]
+                                                  },
+                                                  "at": {
+                                                    "type": "string"
+                                                  },
+                                                  "feedback": {
+                                                    "type": "string",
+                                                    "maxLength": 20000
+                                                  }
+                                                }
                                               }
                                             ]
                                           },
@@ -29356,6 +29610,9 @@
                                           "stepCount": {
                                             "type": "integer",
                                             "minimum": 1
+                                          },
+                                          "abandonedAt": {
+                                            "type": "string"
                                           }
                                         },
                                         "additionalProperties": false
@@ -29481,6 +29738,458 @@
                                   }
                                 ],
                                 "description": "Single server-owned Current classification from the Specification workflow run: requires-attention (an attention item or signal) takes precedence over in-progress (the run is at a step, or a Session executes), then not-started and ended. Unknown is used when the workflow cannot be read. Reason is optional for attention."
+                              },
+                              "attention": {
+                                "type": "object",
+                                "required": [
+                                  "first"
+                                ],
+                                "properties": {
+                                  "first": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "kind",
+                                      "title",
+                                      "reason"
+                                    ],
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200,
+                                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+                                      },
+                                      "kind": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "task"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "session"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "git"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "specification"
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      "title": {
+                                        "type": "string"
+                                      },
+                                      "reason": {
+                                        "type": "string"
+                                      },
+                                      "targetId": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200,
+                                        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+                                      },
+                                      "priority": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "critical"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "high"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "normal"
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      "code": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 64
+                                      },
+                                      "stepTitle": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "actor": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "owner"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "agent"
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      "action": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "start-step"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "return-to-step"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "reevaluate-wait"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "configure-archetype"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "review-tasks"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "restore-task"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "confirm-definition"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "edit-context"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "edit-dependencies"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "open-project-settings"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "cancel-task"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "resume-task"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "satisfy-gate"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "confirm-result"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "reject-result"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "answer-session"
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      "secondaryAction": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "start-step"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "return-to-step"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "reevaluate-wait"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "configure-archetype"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "review-tasks"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "restore-task"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "confirm-definition"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "edit-context"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "edit-dependencies"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "open-project-settings"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "cancel-task"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "resume-task"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "satisfy-gate"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "confirm-result"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "reject-result"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "answer-session"
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      "taskIds": {
+                                        "type": "array",
+                                        "items": {
+                                          "$ref": "#/components/schemas/TaskId"
+                                        }
+                                      },
+                                      "brokenTaskIds": {
+                                        "type": "array",
+                                        "items": {
+                                          "$ref": "#/components/schemas/TaskId"
+                                        }
+                                      },
+                                      "blocking": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "required": [
+                                            "taskId",
+                                            "cause"
+                                          ],
+                                          "properties": {
+                                            "taskId": {
+                                              "$ref": "#/components/schemas/TaskId"
+                                            },
+                                            "cause": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "draft"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "on-hold"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "broken"
+                                                  ]
+                                                },
+                                                {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "dependency-unsatisfiable"
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "blocks": {
+                                        "anyOf": [
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "taskIds"
+                                            ],
+                                            "properties": {
+                                              "taskIds": {
+                                                "type": "array",
+                                                "items": {
+                                                  "$ref": "#/components/schemas/TaskId"
+                                                },
+                                                "minItems": 1,
+                                                "maxItems": 1000
+                                              },
+                                              "finish": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 200
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "type": "object",
+                                            "required": [
+                                              "finish"
+                                            ],
+                                            "properties": {
+                                              "finish": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 200
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "taskTitles": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "additionalProperties": false,
+                                "description": "The workflow's attention item the Specification's Overview lists first under Requires attention (the same record), with the titles of the Tasks it names. Present when the workflow has attention items; classification.count is how many."
+                              },
+                              "unreadable": {
+                                "type": "object",
+                                "required": [
+                                  "reason"
+                                ],
+                                "properties": {
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "invalid"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "filesystem"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "busy"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "unexpected"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                },
+                                "additionalProperties": false,
+                                "description": "Why the Specification's workflow could not be read (workflow is then null): invalid (its files hold no valid state), filesystem (a file could not be read), busy (another writer held the project longer than a read waits) or unexpected."
                               },
                               "signals": {
                                 "anyOf": [

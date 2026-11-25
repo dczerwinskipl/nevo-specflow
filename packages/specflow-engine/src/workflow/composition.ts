@@ -323,7 +323,7 @@ export const readExecutionForRead = asReadRequest(readExecution);
 /** {@link readSpecificationListing} without Git (the Specs list rows). */
 export const readSpecificationListingForRead = asReadRequest(readSpecificationListing);
 
-/** {@link readSpecificationListings} without Git (the whole Specs list under one lock). */
+/** {@link readSpecificationListings} without Git (the whole Specs list, one short lock per row). */
 export const readSpecificationListingsForRead = asReadRequest(readSpecificationListings);
 
 /** {@link inspectActions} without Git (the workflow `actions` read). */

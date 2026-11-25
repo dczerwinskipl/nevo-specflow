@@ -7,6 +7,7 @@ import { resolveExecutionCatalogue, type ExecutionCatalogue } from '../../defini
 import { inspectActions } from '../../operations/actions';
 import { deriveAttention } from '../../operations/attention';
 import { finishStep } from '../../operations/finish';
+import { readSpecificationListing } from '../../operations/execution-read';
 import { inspectExecution } from '../../operations/inspect';
 import {
   SPEC,
@@ -152,6 +153,23 @@ async function confirmShown(fixture: Fixture, requestId = REQUEST_1) {
 }
 
 describe('an agent result that waits for the owner (D17)', () => {
+  it('the Specs list names it as the Overview does: Review result, on the step', async () => {
+    const fixture = await reviewAwaitingOwner();
+    const listing = await readSpecificationListing(fixture.workflow, SPEC);
+    const inspection = await inspectExecution(fixture.workflow, SPEC);
+
+    expect(listing.attention).toEqual(inspection.attention);
+    expect(listing.attention[0]).toMatchObject({
+      reason: 'awaiting-confirmation',
+      action: 'confirm-result',
+      stepTitle: (await shown(fixture)).step.title,
+    });
+    expect(listing.standing).toMatchObject({
+      kind: 'step',
+      step: { title: (await shown(fixture)).step.title },
+    });
+  });
+
   it('waits for the owner, and its attempt commit ran when the attempt finished', async () => {
     const fixture = await reviewAwaitingOwner();
 

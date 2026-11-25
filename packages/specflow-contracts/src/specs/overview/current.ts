@@ -1,5 +1,8 @@
 import { Type, type Static } from 'typebox';
 
+import { NamedTaskTitlesSchema } from '../../tasks/task-list';
+import { HandoffSchema, WorkflowActorSchema } from '../../workflow/projection';
+import { WorkspaceAttentionSchema } from '../workspace';
 import { SpecOverviewItemSchema } from './common';
 
 export const CurrentSpecAttentionReasonSchema = Type.Union([
@@ -98,8 +101,25 @@ export const CurrentSpecWorkflowSchema = Type.Union(
             { additionalProperties: false },
           ),
         ),
-        /** `active`: who started the attempt that works on the step. */
-        actor: Type.Optional(Type.Union([Type.Literal('agent'), Type.Literal('human')])),
+        /**
+         * `active`: the attempt that works on the step, as the Overview's Now names it (its number,
+         * since when and who started it).
+         */
+        attempt: Type.Optional(
+          Type.Object(
+            {
+              number: Type.Integer({ minimum: 1 }),
+              startedAt: Type.String(),
+              actor: WorkflowActorSchema,
+            },
+            { additionalProperties: false },
+          ),
+        ),
+        /**
+         * `ready`: what the last attempt or return handed over, the Overview's Last hand-off (a
+         * review that requested changes, a return), without its feedback.
+         */
+        handoff: Type.Optional(HandoffSchema),
         /** `waiting`: the Tasks the wait step waits for. */
         tasks: Type.Optional(
           Type.Object(
@@ -121,6 +141,8 @@ export const CurrentSpecWorkflowSchema = Type.Union(
         outcome: Type.Union([Type.Literal('completed'), Type.Literal('abandoned')]),
         /** The step count of the workflow the run followed, when it resolves. */
         stepCount: Type.Optional(Type.Integer({ minimum: 1 })),
+        /** `abandoned`: when the run was abandoned. */
+        abandonedAt: Type.Optional(Type.String()),
       },
       { additionalProperties: false },
     ),
@@ -140,6 +162,36 @@ export const CurrentSpecOverviewItemSchema = Type.Object(
       description: 'Null when the workflow run cannot be read.',
     }),
     classification: CurrentSpecClassificationSchema,
+    attention: Type.Optional(
+      Type.Object(
+        {
+          first: WorkspaceAttentionSchema,
+          taskTitles: Type.Optional(NamedTaskTitlesSchema),
+        },
+        {
+          additionalProperties: false,
+          description:
+            "The workflow's attention item the Specification's Overview lists first under Requires attention (the same record), with the titles of the Tasks it names. Present when the workflow has attention items; classification.count is how many.",
+        },
+      ),
+    ),
+    unreadable: Type.Optional(
+      Type.Object(
+        {
+          reason: Type.Union([
+            Type.Literal('invalid'),
+            Type.Literal('filesystem'),
+            Type.Literal('busy'),
+            Type.Literal('unexpected'),
+          ]),
+        },
+        {
+          additionalProperties: false,
+          description:
+            "Why the Specification's workflow could not be read (workflow is then null): invalid (its files hold no valid state), filesystem (a file could not be read), busy (another writer held the project longer than a read waits) or unexpected.",
+        },
+      ),
+    ),
     signals: Type.Union([Type.Array(CurrentSpecSignalSchema), Type.Null()], {
       description:
         'Bounded evidence for Current only; may be null when unavailable. Consumers must not reclassify a Specification from signals.',

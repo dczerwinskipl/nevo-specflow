@@ -118,8 +118,8 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
         ...current,
         items: current.items.map((item) => {
           const execution = executions.get(item.id);
-          if (!execution) {
-            return item;
+          if (execution?.kind !== 'read') {
+            return execution ? { ...item, unreadable: { reason: execution.reason } } : item;
           }
 
           const attention = workflowAttentionSignal(item.id, execution.attention);
@@ -128,6 +128,7 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
             ...item,
             progress: execution.progress,
             workflow: execution.workflow,
+            ...(execution.firstAttention ? { attention: execution.firstAttention } : {}),
             // The seeded Session signals stay; the workflow's own attention joins them.
             signals: attention ? [...(item.signals ?? []), attention] : item.signals,
           };

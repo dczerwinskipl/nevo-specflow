@@ -1,24 +1,31 @@
 import {
   activeAttempt,
-  type ExecutorClass,
+  handoffOf,
+  WorkflowError as CoreWorkflowError,
   type RunPosition,
   type TerminalOutcome,
 } from '@nevo/workflow';
+
+import { ProjectControlLockError } from '../../project/control-lock';
+import { SpecificationError } from '../../specs/model';
 
 import type { AttentionItem } from '../attention/model';
 import {
   taskPosition,
   type ExecutionTask,
   type TaskStatus,
+  type WorkflowActor,
   type WorkflowRun,
 } from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
 import { isTaskClosed } from '../tasks/tasks';
 import {
+  presentHandoff,
   taskProjectionRead,
   unstartedTaskStanding,
   type ActionDependencies,
   type ActionProjection,
+  type PresentedHandoff,
 } from './actions';
 import { deriveAttention } from './attention';
 import { inspectSnapshot, type ExecutionInspection } from './inspect';
@@ -186,10 +193,13 @@ export function readExecution(
  *
  * - `not-started`: no run yet; `steps` and `firstStep` name the workflow its archetype would start,
  *   when it resolves;
- * - `step`: the run is at a step: `active` (an attempt works on it; `actor` is who started it),
- *   `ready` (between attempts) or `waiting` (active on a wait step, which only Tasks end). `step` is
- *   absent when the pinned workflow is missing or changed (its title cannot be resolved);
- * - `ended`: the run ended with `outcome`; `steps` is its workflow's step count when it resolves.
+ * - `step`: the run is at a step: `active` (an attempt works on it: `attempt` is its number, start
+ *   and who started it), `ready` (between attempts; `handoff` is what the last attempt or return
+ *   handed over, as the Overview's Last hand-off reads it) or `waiting` (active on a wait step,
+ *   which only Tasks end). `step` is absent when the pinned workflow is missing or changed (its
+ *   title cannot be resolved);
+ * - `ended`: the run ended with `outcome`; `steps` is its workflow's step count when it resolves,
+ *   `abandonedAt` when an abandoned run was abandoned.
  */
 export type SpecificationStanding =
   | { readonly kind: 'not-started'; readonly steps?: number; readonly firstStep?: string }
@@ -197,9 +207,19 @@ export type SpecificationStanding =
       readonly kind: 'step';
       readonly state: 'active' | 'ready' | 'waiting';
       readonly step?: { readonly title: string; readonly position: number; readonly count: number };
-      readonly actor?: ExecutorClass;
+      readonly attempt?: {
+        readonly number: number;
+        readonly startedAt: string;
+        readonly actor: WorkflowActor;
+      };
+      readonly handoff?: PresentedHandoff;
     }
-  | { readonly kind: 'ended'; readonly outcome: TerminalOutcome; readonly steps?: number };
+  | {
+      readonly kind: 'ended';
+      readonly outcome: TerminalOutcome;
+      readonly steps?: number;
+      readonly abandonedAt?: string;
+    };
 
 /**
  * The Tasks as the Specification's Overview groups them (`DEFAULT_DASHBOARD_GROUPING`): `open`
@@ -218,13 +238,70 @@ export interface SpecificationListingTasks {
 export interface SpecificationListing extends Pick<ExecutionReading, 'progress' | 'preparation'> {
   readonly standing: SpecificationStanding;
   readonly tasks: SpecificationListingTasks;
-  /** How many attention items the Specification's execution has (the Overview's Requires attention). */
-  readonly attention: number;
+  /**
+   * The attention items of the Specification's execution, the Overview's Requires attention: the
+   * same items in the same order (`ExecutionInspection.attention`).
+   */
+  readonly attention: readonly AttentionItem[];
+  /** The titles of the readable Tasks, by id (an attention item names its Tasks by them). */
+  readonly taskTitles: ReadonlyMap<string, string>;
 }
 
 /**
- * What the Specs list shows of one Specification, from ONE snapshot read under `serialize`: the
- * Specification's standing, its Task counts, its attention item count, progress and preparation.
+ * Why a listed Specification's execution could not be read:
+ *
+ * - `invalid`: its files do not hold a valid state (a manifest or record that does not validate, a
+ *   run that does not follow from its history, a change made outside the Engine while one was
+ *   pending, a Specification that no longer resolves);
+ * - `filesystem`: a file could not be read (permissions, a missing or locked file);
+ * - `busy`: the project control lock stayed held by another writer longer than a read waits;
+ * - `unexpected`: anything else, a defect: the caller logs it with the Specification.
+ */
+export type SpecificationListingFailure = 'invalid' | 'filesystem' | 'busy' | 'unexpected';
+
+/** The list read of one Specification: its listing, or why it could not be read and the error. */
+export type SpecificationListingRead =
+  | { readonly kind: 'read'; readonly listing: SpecificationListing }
+  | {
+      readonly kind: 'unreadable';
+      readonly reason: SpecificationListingFailure;
+      readonly error: unknown;
+    };
+
+const INVALID_STATE_CODES: ReadonlySet<string> = new Set([
+  'WORKFLOW_STATE_CORRUPT',
+  'WORKFLOW_STATE_CONFLICT',
+  'WORKFLOW_SUBJECT_NOT_FOUND',
+  'WORKFLOW_DEFINITION_MISSING',
+]);
+
+/** Why a Specification's listing failed, from the error alone. Pure. */
+export function listingFailureOf(error: unknown): SpecificationListingFailure {
+  if (error instanceof SpecificationError) {
+    return 'invalid';
+  }
+
+  if (error instanceof CoreWorkflowError) {
+    return INVALID_STATE_CODES.has(String(error.code)) ? 'invalid' : 'unexpected';
+  }
+
+  if (error instanceof ProjectControlLockError) {
+    return error.code === 'CONTROL_LOCK_BUSY' ? 'busy' : 'unexpected';
+  }
+
+  const code = error instanceof Error ? (error as { readonly code?: unknown }).code : undefined;
+
+  return typeof code === 'string' && /^E[A-Z]+$/.test(code) ? 'filesystem' : 'unexpected';
+}
+
+/**
+ * What the Specs list shows of one Specification: the Specification's standing, its Task counts,
+ * its attention items, progress and preparation, from ONE snapshot.
+ *
+ * Only the snapshot read holds `serialize` (the project control lock), so a write waits for one
+ * Specification's files at most, never for the rest of the listing: what follows from the snapshot
+ * (its attention, the lookups and the entry gate documents of the Tasks that have not started) is
+ * decided after the lock is released, as the documents' own reads are (they take no lock).
  *
  * The same rules as the Overview's inspection (`inspectSnapshot`), without its cost: the attention
  * the canonical state decides is `deriveAttention` (no lookup), and each approved Task that has not
@@ -232,42 +309,48 @@ export interface SpecificationListing extends Pick<ExecutionReading, 'progress' 
  * Task's documents are read (its first step's entry gates) only for a Task nothing else keeps from
  * starting. It reads no Git. Read-only.
  */
-export function readSpecificationListing(
+export async function readSpecificationListing(
   outer: ActionDependencies,
   specId: string,
 ): Promise<SpecificationListing> {
-  return outer.serialize(() => listingOf(outer, specId));
+  const snapshot = await outer.serialize(() => outer.store.read(specId));
+
+  return listingOf(forOneRead(outer), snapshot);
 }
 
 /**
- * {@link readSpecificationListing} of several Specifications under ONE `serialize` (one project
- * control lock for the whole list instead of one per row). A Specification whose execution cannot be
- * read has `null`; the others are unaffected.
+ * {@link readSpecificationListing} of several Specifications, one after the other: one short lock
+ * section per Specification (its snapshot read), so writes interleave with a list read instead of
+ * waiting for all of it. A Specification whose execution cannot be read says why (`unreadable`,
+ * with the error); the others are unaffected.
  */
-export function readSpecificationListings(
+export async function readSpecificationListings(
   outer: ActionDependencies,
   specIds: readonly string[],
-): Promise<ReadonlyMap<string, SpecificationListing | null>> {
-  return outer.serialize(async () => {
-    const listings = new Map<string, SpecificationListing | null>();
-    for (const specId of specIds) {
-      try {
-        listings.set(specId, await listingOf(outer, specId));
-      } catch {
-        listings.set(specId, null);
-      }
+): Promise<ReadonlyMap<string, SpecificationListingRead>> {
+  const listings = new Map<string, SpecificationListingRead>();
+  for (const specId of specIds) {
+    try {
+      listings.set(specId, {
+        kind: 'read',
+        listing: await readSpecificationListing(outer, specId),
+      });
+    } catch (error) {
+      listings.set(specId, { kind: 'unreadable', reason: listingFailureOf(error), error });
     }
+  }
 
-    return listings;
-  });
+  return listings;
 }
 
-async function listingOf(outer: ActionDependencies, specId: string): Promise<SpecificationListing> {
-  const dependencies = forOneRead(outer);
-  const snapshot = await dependencies.store.read(specId);
+async function listingOf(
+  dependencies: ActionDependencies,
+  snapshot: ExecutionSnapshot,
+): Promise<SpecificationListing> {
   const read = taskProjectionRead(dependencies, snapshot);
   const { tasks, broken } = read.tasks;
-  let attention = deriveAttention(dependencies.catalogue, snapshot).length;
+  // The Overview's order: what the state decides, then the start blockers in Task order.
+  const attention = [...deriveAttention(dependencies.catalogue, snapshot)];
   let inProgress = 0;
   let readyToStart = 0;
   for (const record of tasks) {
@@ -281,14 +364,16 @@ async function listingOf(outer: ActionDependencies, specId: string): Promise<Spe
     } else if (position === 'not-started') {
       const standing = await unstartedTaskStanding(dependencies, read, record);
       readyToStart += standing.startable ? 1 : 0;
-      attention += standing.attention ? 1 : 0;
+      if (standing.attention) {
+        attention.push(standing.attention);
+      }
     }
   }
 
   return {
     standing: snapshot.specification
-      ? standingOf(outer.catalogue, snapshot.specification.value.run)
-      : await notStarted(dependencies, specId),
+      ? standingOf(dependencies.catalogue, snapshot.specification.value.run)
+      : await notStarted(dependencies, snapshot.specId),
     tasks: {
       open: tasks.filter((record) => !isTaskClosed(record)).length + broken.length,
       total: tasks.length + broken.length,
@@ -296,6 +381,7 @@ async function listingOf(outer: ActionDependencies, specId: string): Promise<Spe
       readyToStart,
     },
     attention,
+    taskTitles: new Map(tasks.map((record) => [record.taskId, record.title] as const)),
     ...progressAndPreparation(tasks, broken.length),
   };
 }
@@ -338,6 +424,9 @@ function standingOf(
       kind: 'ended',
       outcome: position.outcome,
       ...(definition ? { steps: definition.steps.length } : {}),
+      ...(position.outcome === 'abandoned' && run.abandonment
+        ? { abandonedAt: run.abandonment.at }
+        : {}),
     };
   }
 
@@ -348,16 +437,25 @@ function standingOf(
       ? { step: { title: step.title, position: index + 1, count: definition.steps.length } }
       : {};
   if (position.state === 'ready') {
-    return { kind: 'step', state: 'ready', ...described };
+    const handoff = definition ? presentHandoff(definition, run, handoffOf(run)) : undefined;
+
+    return { kind: 'step', state: 'ready', ...described, ...(handoff ? { handoff } : {}) };
   }
 
   if (step?.kind === 'wait') {
     return { kind: 'step', state: 'waiting', ...described };
   }
 
-  const actor = activeAttempt(run)?.actor?.class;
+  const active = activeAttempt(run);
 
-  return { kind: 'step', state: 'active', ...described, ...(actor ? { actor } : {}) };
+  return {
+    kind: 'step',
+    state: 'active',
+    ...described,
+    ...(active?.actor
+      ? { attempt: { number: active.attempt, startedAt: active.startedAt, actor: active.actor } }
+      : {}),
+  };
 }
 
 /** What is readable of each broken Task: its manifest's title and why it is broken. */

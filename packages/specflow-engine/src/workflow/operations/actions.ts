@@ -812,7 +812,7 @@ function ownedDrafts(tasks: ExecutionTasks, stepId: string): TaskProposal[] {
     }));
 }
 
-function presentHandoff(
+export function presentHandoff(
   definition: WorkflowDefinition,
   run: WorkflowRun,
   handoff: Handoff | undefined,

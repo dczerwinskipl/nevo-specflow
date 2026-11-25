@@ -227,24 +227,6 @@
   pointer-events: auto;
 }
 
-/*
- * While the reader scrolls down the floating controls step aside (the established mobile browser
- * toolbar behaviour), so content scrolled under them, a link or a button included, is never
- * covered; scrolling up brings them back. No band, no reserved space: they still float. A keyboard
- * user who tabs into them sees them (`:focus-within`).
- */
-[data-header-covered='true'][data-floating-hidden='true']
-  > .mobile-floating-navigation:not(:focus-within) {
-  opacity: 0;
-  transform: translateY(-0.5rem);
-}
-
-[data-header-covered='true'][data-floating-hidden='true']
-  > .mobile-floating-navigation:not(:focus-within)
-  > button {
-  pointer-events: none;
-}
-
 @keyframes workspace-enter-forward {
   from {
     transform: translate3d(100%, 0, 0);

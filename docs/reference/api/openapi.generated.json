@@ -12762,6 +12762,66 @@
                         "minimum": 0
                       }
                     }
+                  },
+                  "changes": {
+                    "type": "object",
+                    "required": [
+                      "documents",
+                      "tasks",
+                      "files",
+                      "state"
+                    ],
+                    "properties": {
+                      "directory": {
+                        "type": "string"
+                      },
+                      "documents": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 1000
+                      },
+                      "tasks": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "title"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "maxItems": 1000
+                      },
+                      "files": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 1000
+                      },
+                      "state": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "maxItems": 1000
+                      },
+                      "truncated": {
+                        "type": "boolean",
+                        "enum": [
+                          true
+                        ]
+                      }
+                    }
                   }
                 }
               }
@@ -14604,6 +14664,9 @@
                         }
                       ]
                     },
+                    "transitionLabel": {
+                      "type": "string"
+                    },
                     "agent": {
                       "type": "object",
                       "required": [
@@ -15034,6 +15097,66 @@
                                 "files": {
                                   "type": "integer",
                                   "minimum": 0
+                                }
+                              }
+                            },
+                            "changes": {
+                              "type": "object",
+                              "required": [
+                                "documents",
+                                "tasks",
+                                "files",
+                                "state"
+                              ],
+                              "properties": {
+                                "directory": {
+                                  "type": "string"
+                                },
+                                "documents": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "maxItems": 1000
+                                },
+                                "tasks": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "title"
+                                    ],
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "title": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "maxItems": 1000
+                                },
+                                "files": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "maxItems": 1000
+                                },
+                                "state": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "maxItems": 1000
+                                },
+                                "truncated": {
+                                  "type": "boolean",
+                                  "enum": [
+                                    true
+                                  ]
                                 }
                               }
                             }

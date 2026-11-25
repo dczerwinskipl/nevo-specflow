@@ -45,6 +45,23 @@ export const Running: Story = {
 };
 
 /** Stopping: the step stays locked until the process is proven ended; nothing says "stopped" yet. */
+/**
+ * The agent's Turn waits for the owner's answer to a question in its Session: the note says so and
+ * the main action opens the Session, never "nothing to do" (dogfood #189).
+ */
+export const WaitingForOwner: Story = {
+  args: { scenario: 'attempt-waiting-for-owner' },
+  play: async ({ canvasElement }) => {
+    const now = await within(canvasElement).findByRole('region', { name: 'Now' });
+    await expect(
+      await within(now).findByText(/The agent is waiting for you: it asked a question/),
+    ).toBeVisible();
+    await expect(within(now).queryByText(/You do not need to do anything/)).toBeNull();
+    await expect(within(now).getByRole('button', { name: 'Answer the question' })).toBeVisible();
+    await expect(within(now).getByRole('button', { name: 'Stop agent' })).toBeVisible();
+  },
+};
+
 export const Stopping: Story = {
   args: { scenario: 'attempt-stopping' },
   play: async ({ canvasElement }) => {

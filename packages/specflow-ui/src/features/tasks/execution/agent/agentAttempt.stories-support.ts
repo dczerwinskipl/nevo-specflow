@@ -26,6 +26,7 @@ export const ATTEMPT_ID = '5d1c1a52-8f3e-4a6b-9a0e-3b7f2c9d1e44';
 
 export type AttemptCase =
   | 'working'
+  | 'waiting-for-owner'
   | 'stopping'
   | 'unknown'
   | 'session-missing'
@@ -79,15 +80,21 @@ function view(c: Exclude<AttemptCase, 'confirmation'>): AgentAttemptView {
     boundAt: '2026-11-13T11:52:00Z',
     ...(c === 'working'
       ? { state: 'working' as const }
-      : c === 'stopping'
-        ? { state: 'stopping' as const }
-        : c === 'unknown'
-          ? { state: 'unknown' as const }
-          : c === 'return-requested' || c === 'return-stop-failed'
-            ? { state: 'stopping' as const }
-            : c === 'session-missing'
-              ? { state: 'session-missing' as const }
-              : ended),
+      : c === 'waiting-for-owner'
+        ? // The working Turn waits for the owner's answer to a question in its Session.
+          {
+            state: 'working' as const,
+            waitingForOwner: { kind: 'question' as const, interactionId: 'interaction-1' },
+          }
+        : c === 'stopping'
+          ? { state: 'stopping' as const }
+          : c === 'unknown'
+            ? { state: 'unknown' as const }
+            : c === 'return-requested' || c === 'return-stop-failed'
+              ? { state: 'stopping' as const }
+              : c === 'session-missing'
+                ? { state: 'session-missing' as const }
+                : ended),
   };
 
   return {

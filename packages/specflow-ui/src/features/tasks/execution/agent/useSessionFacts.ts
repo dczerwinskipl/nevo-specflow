@@ -18,5 +18,7 @@ export function useSessionFacts(specId: string, sessionId: string) {
     title: session?.title ?? t('workflowExecution.agentAttempt.sessionFallback'),
     providerTitle: session?.providerTitle,
     modelTitle: session?.modelTitle,
+    /** `attention`: the Session waits for the owner (a question or a permission). */
+    status: session?.navigationStatus,
   };
 }

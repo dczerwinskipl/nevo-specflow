@@ -121,6 +121,25 @@ describe('an agent working on a step', () => {
     );
   });
 
+  it('says the agent waits for the owner while a permission is pending, never "nothing to do"', () => {
+    const working = agentAttemptProjection('working');
+    const projection = {
+      ...working,
+      agentAttempt: {
+        ...working.agentAttempt!,
+        turn: {
+          ...working.agentAttempt!.turn,
+          waitingForOwner: { kind: 'permission' as const, interactionId: 'i-1' },
+        },
+      },
+    } as WorkflowActionProjection;
+    const { container } = renderNow('working', {}, { projection });
+
+    expect(screen.getByText(/The agent is waiting for you: it asks for permission/)).toBeTruthy();
+    expect(screen.queryByText(/You do not need to do anything/)).toBeNull();
+    expect(actions(container)).toEqual(['Answer the permission request', 'Stop agent']);
+  });
+
   it('says it is stopping, and never says stopped, until the process is proven ended', () => {
     const { container } = renderNow('stopping');
 

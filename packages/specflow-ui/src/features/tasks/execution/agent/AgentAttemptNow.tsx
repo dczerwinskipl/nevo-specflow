@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useRouter } from '@tanstack/react-router';
 import { Trans, useTranslation } from 'react-i18next';
 import { CircleStop } from 'lucide-react';
 import { Button, InlineNote, Typography } from '@nevo/ui';
@@ -43,6 +44,56 @@ import { useAgentAttemptCommands } from './useAgentAttemptCommands';
 const MONO = 'font-mono text-content-primary [overflow-wrap:anywhere]';
 const STRONG = 'font-medium text-content-primary';
 const CODE = <span className={MONO} />;
+
+/** What the agent's working Turn waits for from the owner (`turn.waitingForOwner`). */
+interface WaitingForOwner {
+  readonly kind?: 'question' | 'permission';
+}
+
+/**
+ * The Turn waits for the owner: the projection's `waitingForOwner`, else the Session's own state
+ * (`attention`: a question or permission is pending) while the projection does not carry it.
+ */
+function waitingForOwnerOf(
+  view: AgentAttemptView,
+  sessionStatus: string | undefined,
+): WaitingForOwner | undefined {
+  const projected = (view.turn as { waitingForOwner?: { kind: 'question' | 'permission' } })
+    .waitingForOwner;
+  if (projected) {
+    return { kind: projected.kind };
+  }
+
+  return sessionStatus === 'attention' ? {} : undefined;
+}
+
+/** Opens the agent's Session where the owner answers it (only where a router exists). */
+function OpenSessionButton({
+  sessionId,
+  label,
+}: {
+  readonly sessionId: string;
+  readonly label: string;
+}) {
+  const router = useRouter({ warn: false });
+  if (!router) {
+    return null;
+  }
+
+  return (
+    <Button
+      onClick={() =>
+        void router.navigate({
+          to: '/sessions/$sessionId',
+          params: { sessionId },
+          search: { collection: 'current' },
+        })
+      }
+    >
+      {label}
+    </Button>
+  );
+}
 
 /** What an agent's attempt (or its result waiting for the owner) adds to the Now block. */
 export interface AgentNow {
@@ -267,6 +318,7 @@ export function useAgentAttemptNow({
   const { t, i18n } = useTranslation();
   const commands = useAgentAttemptCommands(subject, headingId);
   const modelTitle = useModelTitle(subject.specId);
+  const sessionFacts = useSessionFacts(subject.specId, view?.sessionId ?? '');
   // The attempt whose commit holds the specification's workflow: this subject's or another's.
   const heldStepTitle = (hold: AttemptCommitHold) =>
     hold.subject.taskId !== undefined && hold.subject.taskId !== subject.taskId
@@ -524,7 +576,57 @@ export function useAgentAttemptNow({
   }
 
   switch (stage.stage) {
-    case 'working':
+    case 'working': {
+      // A pending question or permission: the agent does nothing until the owner answers it, so
+      // the note never says there is nothing to do (dogfood #189, N4).
+      const waiting = waitingForOwnerOf(view, sessionFacts.status);
+      const stopButton = (
+        <Button
+          variant="secondary"
+          leadingIcon={CircleStop}
+          onClick={() => commands.stop.mutate(view.attemptId)}
+          disabled={commands.stop.isPending}
+          aria-busy={commands.stop.isPending}
+        >
+          {commands.stop.isPending
+            ? t('workflowExecution.agentAttempt.stopping')
+            : t('workflowExecution.agentAttempt.stop')}
+        </Button>
+      );
+      if (waiting && !failed) {
+        const what = waiting.kind ?? 'input';
+
+        return {
+          positionLine: line(
+            t('workflowExecution.agentAttempt.line.waiting', {
+              attempt,
+              since: when(view.turn.boundAt, true),
+            }),
+            view,
+          ),
+          note: (
+            <InlineNote tone="attention" role="status">
+              <span className={STRONG}>
+                {t(`workflowExecution.agentAttempt.waiting.title.${what}`)}
+              </span>{' '}
+              {t('workflowExecution.agentAttempt.waiting.body')}
+            </InlineNote>
+          ),
+          actions: (
+            <>
+              <OpenSessionButton
+                sessionId={view.sessionId}
+                label={t(`workflowExecution.agentAttempt.waiting.open.${what}`)}
+              />
+              {stopButton}
+            </>
+          ),
+          dialogs: null,
+          keepsMenu: true,
+          showHandoff: true,
+        };
+      }
+
       return {
         positionLine: line(
           t('workflowExecution.agentAttempt.line.working', {
@@ -540,23 +642,13 @@ export function useAgentAttemptNow({
             {t('workflowExecution.agentAttempt.workingNote')}
           </Typography>
         ),
-        actions: (
-          <Button
-            variant="secondary"
-            leadingIcon={CircleStop}
-            onClick={() => commands.stop.mutate(view.attemptId)}
-            disabled={commands.stop.isPending}
-            aria-busy={commands.stop.isPending}
-          >
-            {commands.stop.isPending
-              ? t('workflowExecution.agentAttempt.stopping')
-              : t('workflowExecution.agentAttempt.stop')}
-          </Button>
-        ),
+        actions: stopButton,
         dialogs: null,
         keepsMenu: true,
         showHandoff: true,
       };
+    }
+
     case 'stopping':
       return {
         positionLine: line(t('workflowExecution.agentAttempt.line.stopping', { attempt }), view),

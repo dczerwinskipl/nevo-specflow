@@ -2934,7 +2934,8 @@
         "refused": "Attempt {{attempt}} · the agent’s result was not accepted",
         "applying": "Attempt {{attempt}} · the agent proposed a result",
         "returnRequested": "Attempt {{attempt}} · return requested · waiting for the agent to stop",
-        "returnStopped": "Attempt {{attempt}} · return requested · the agent has stopped"
+        "returnStopped": "Attempt {{attempt}} · return requested · the agent has stopped",
+        "waiting": "Attempt {{attempt}} · agent working since {{since}} · waiting for you"
       },
       "stoppingNote": "Asked the agent to stop. {{step}} stays locked until SpecFlow sees its process has ended; then you can continue or return.",
       "unknown": {
@@ -3000,7 +3001,20 @@
         "sessionGone": "The session <session/> no longer exists, so there is nothing to read."
       },
       "earlierStep": "an earlier step",
-      "workingNote": "The agent is doing this step now. You do not need to do anything until it finishes; Stop agent ends its work."
+      "workingNote": "The agent is doing this step now. You do not need to do anything until it finishes; Stop agent ends its work.",
+      "waiting": {
+        "title": {
+          "question": "The agent is waiting for you: it asked a question.",
+          "permission": "The agent is waiting for you: it asks for permission to go on.",
+          "input": "The agent is waiting for you in its session."
+        },
+        "body": "It does nothing more until you answer it there.",
+        "open": {
+          "question": "Answer the question",
+          "permission": "Answer the permission request",
+          "input": "Open the session"
+        }
+      }
     },
     "confirmation": {
       "line": "Waiting for your confirmation · the agent finished {{at}}",

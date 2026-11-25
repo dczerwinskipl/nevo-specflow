@@ -2934,7 +2934,8 @@
         "refused": "Podejście {{attempt}} · wynik agenta nie został przyjęty",
         "applying": "Podejście {{attempt}} · agent zaproponował wynik",
         "returnRequested": "Podejście {{attempt}} · zażądano powrotu · czekanie na zatrzymanie agenta",
-        "returnStopped": "Podejście {{attempt}} · zażądano powrotu · agent się zatrzymał"
+        "returnStopped": "Podejście {{attempt}} · zażądano powrotu · agent się zatrzymał",
+        "waiting": "Podejście {{attempt}} · agent pracuje od {{since}} · czeka na Ciebie"
       },
       "stoppingNote": "Poproszono agenta o zatrzymanie. Krok {{step}} pozostaje zablokowany, dopóki SpecFlow nie zobaczy, że proces agenta się zakończył; wtedy można kontynuować lub wrócić.",
       "unknown": {
@@ -3000,7 +3001,20 @@
         "sessionGone": "Sesja <session/> już nie istnieje, więc nie ma czego czytać."
       },
       "earlierStep": "wcześniejszy krok",
-      "workingNote": "Agent wykonuje teraz ten krok. Nie musisz nic robić, dopóki nie skończy; Zatrzymaj agenta kończy jego pracę."
+      "workingNote": "Agent wykonuje teraz ten krok. Nie musisz nic robić, dopóki nie skończy; Zatrzymaj agenta kończy jego pracę.",
+      "waiting": {
+        "title": {
+          "question": "Agent czeka na Ciebie: zadał pytanie.",
+          "permission": "Agent czeka na Ciebie: prosi o zgodę, żeby pracować dalej.",
+          "input": "Agent czeka na Ciebie w swojej sesji."
+        },
+        "body": "Nic więcej nie zrobi, dopóki tam nie odpowiesz.",
+        "open": {
+          "question": "Odpowiedz na pytanie",
+          "permission": "Odpowiedz na prośbę o zgodę",
+          "input": "Otwórz sesję"
+        }
+      }
     },
     "confirmation": {
       "line": "Czeka na Twoje potwierdzenie · agent skończył {{at}}",

@@ -181,7 +181,10 @@ export function ActivityHistoryScreen({
   return (
     <AppContent className="w-content-standard max-w-full">
       <AppWorkspaceBody padding="none" scroll="area">
-        <SpecificationAgentAttempts specId={data.specId} />
+        <SpecificationAgentAttempts
+          specId={data.specId}
+          {...(data.openDoc ? { onOpenDoc: data.openDoc } : {})}
+        />
         <ActivityHistory
           showHeading={false}
           events={data.events}

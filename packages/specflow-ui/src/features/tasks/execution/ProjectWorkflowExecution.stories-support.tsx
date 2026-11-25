@@ -35,6 +35,7 @@ import {
   confirmationWithCommit,
   finishedAttemptHistory,
   finishedAttemptProjection,
+  specificationAttemptsHistory,
   takenOverAttemptHistory,
   type AttemptCase,
   type ConfirmationCommit,
@@ -113,8 +114,11 @@ export type FinishedStoryScenario =
  */
 export type HandStoryScenario = 'hand-fresh' | 'hand-owner-work';
 
-/** The Task whose Implementation the owner took over from the agent, with its history. */
-export type HistoryStoryScenario = 'history-taken-over';
+/**
+ * The Task whose Implementation the owner took over from the agent, with its history; the
+ * Specification whose Activity history lists its agent's attempts, one per way an attempt ends.
+ */
+export type HistoryStoryScenario = 'history-taken-over' | 'history-specification';
 
 /** Another subject's agent holds the project: its outcome is unknown (Overview), or it works (Task). */
 export type HoldStoryScenario = 'hold-outcome-unknown' | 'hold-working';
@@ -152,6 +156,7 @@ const closeScenarios: readonly string[] = [
 ];
 const specScenarios: readonly string[] = [
   'attempt-confirmation',
+  'history-specification',
   'hold-outcome-unknown',
   'waiting',
   'close-blocked',
@@ -430,7 +435,9 @@ function closePreviewOf(scenario: WorkflowStoryScenario) {
 
 /** The projection scenario behind a Specification story. */
 function specificationScenario(scenario: WorkflowStoryScenario): SpecificationWorkflowScenario {
-  return scenario === 'attempt-confirmation' || scenario === 'hold-outcome-unknown'
+  return scenario === 'attempt-confirmation' ||
+    scenario === 'hold-outcome-unknown' ||
+    scenario === 'history-specification'
     ? 'waiting'
     : closeScenarios.includes(scenario)
       ? 'completed'
@@ -617,17 +624,19 @@ function services(scenario: WorkflowStoryScenario, confirmationCommit?: Confirma
         ? Promise.resolve(confirmationAttemptHistory(confirmationCommit) as never)
         : scenario === 'history-taken-over'
           ? Promise.resolve(takenOverAttemptHistory() as never)
-          : finished
-            ? Promise.resolve(
-                finishedAttemptHistory(
-                  scenario === 'finished-committed'
-                    ? { state: 'committed', sha: STORY_SHA, documents: 2, files: 3 }
-                    : scenario === 'finished-commit-pending'
-                      ? { state: 'pending' }
-                      : { state: 'failed', code: 'COMMIT_BLOCKED' },
-                ) as never,
-              )
-            : never(),
+          : scenario === 'history-specification'
+            ? Promise.resolve(specificationAttemptsHistory() as never)
+            : finished
+              ? Promise.resolve(
+                  finishedAttemptHistory(
+                    scenario === 'finished-committed'
+                      ? { state: 'committed', sha: STORY_SHA, documents: 2, files: 3 }
+                      : scenario === 'finished-commit-pending'
+                        ? { state: 'pending' }
+                        : { state: 'failed', code: 'COMMIT_BLOCKED' },
+                  ) as never,
+                )
+              : never(),
     rejectResult: never,
     closePreview: () => closePreviewOf(scenario),
     // An agent Session still works in the worktree of the blocked Specification.

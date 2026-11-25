@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link, useRouter } from '@tanstack/react-router';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { Icon, Typography } from '@nevo/ui';
+import { Icon, InlineNote, Typography, type IconName, type TimelineTone } from '@nevo/ui';
 import type { WorkflowHistory } from '@nevo/specflow-contracts/workflow';
 import {
   formatRange,
@@ -9,15 +9,18 @@ import {
   humanizeId,
   personLabel,
   providerFallbackName,
+  transitionLabel,
+  type Viewer,
 } from '../presentation';
 import { useSessionFacts } from './useSessionFacts';
 import { useModelTitle } from './modelTitles';
 import { useViewer } from '../useViewer';
 import type { WorkflowSubjectRef } from '../api';
 import { InlineAction } from '../InlineAction';
-import { AttemptSession } from './AgentAttemptNow';
+import { SessionLink } from './AgentSession';
 import { AttemptCommitNote, commitReason, type AttemptCommitView } from './AttemptCommitNote';
-import { KeptDocuments } from './KeptDocuments';
+import { AttemptChanges, CommittedRow } from './AttemptChanges';
+import { SessionProviderIcon } from '../../../sessions';
 import { committedFacts } from './useAttemptCommit';
 import { useAgentAttemptCommands } from './useAgentAttemptCommands';
 
@@ -25,8 +28,6 @@ export type HistoryItem = WorkflowHistory['items'][number];
 export type AgentHistoryItem = Extract<HistoryItem, { kind: 'attempt' }> & {
   readonly agent: NonNullable<Extract<HistoryItem, { kind: 'attempt' }>['agent']>;
 };
-
-const MONO = 'font-mono text-content-primary [overflow-wrap:anywhere]';
 
 /** The agent attempt of a step and attempt number, when the history has one. */
 export function agentAttemptOf(
@@ -66,6 +67,7 @@ function commitOf(item: AgentHistoryItem): AttemptCommitView | undefined {
     };
   }
 
+  // A pending commit is the Now block's to explain; the history says nothing of it yet.
   if (work.commit.state !== 'failed') {
     return undefined;
   }
@@ -76,240 +78,421 @@ function commitOf(item: AgentHistoryItem): AttemptCommitView | undefined {
     attempt: item.attempt,
     stepTitle: item.stepTitle || item.step,
     code: work.commit.code ?? 'COMMIT_FAILED',
-    paths: [...new Set([...work.documents, ...work.mixed, ...work.declared])],
+    // Everything the attempt changed stays uncommitted: its documents, files and SpecFlow's records.
+    paths: work.changes
+      ? [...work.changes.documents, ...work.changes.files, ...work.changes.state]
+      : [...new Set([...work.documents, ...work.mixed, ...work.declared])],
   };
 }
 
 /**
- * The quiet line of an agent attempt in the history: its time span, the agent (the provider as the
- * Sessions list names it, and the model) and the attempt number: "Nov 13, 12:52 PM – 1:15 PM ·
- * Claude · Sonnet 5 · Attempt 2".
+ * How an agent attempt ended, as its history entry's mark and outcome line. The marks are the ones
+ * the Now block's Last hand-off and the Task statuses use: done (circle-check, success), waiting for
+ * the owner (clock, info), changes requested or rejected (circle-alert, attention), a commit that
+ * failed (circle-alert, attention, as its note), running (the spinning loader), taken over or returned (undo,
+ * neutral), abandoned (close, neutral).
  */
+export interface AttemptOutcomeView {
+  readonly label: string;
+  readonly icon: IconName;
+  readonly tone: TimelineTone;
+  readonly iconClassName?: string;
+  /** Whether the label takes the tone's colour (results); a neutral end stays secondary. */
+  readonly toned: boolean;
+}
+
+const TONE_TEXT: Partial<Record<TimelineTone, string>> = {
+  success: 'text-status-success',
+  info: 'text-status-info',
+  attention: 'text-status-attention',
+  danger: 'text-status-danger',
+};
+
+/** The class of an outcome line: its tone's colour for a result, else the secondary text. */
+export function outcomeTextClass(outcome: AttemptOutcomeView): string {
+  return (outcome.toned ? TONE_TEXT[outcome.tone] : undefined) ?? 'text-content-secondary';
+}
+
+export function attemptOutcome(
+  t: TFunction,
+  item: AgentHistoryItem,
+  items: readonly HistoryItem[],
+  viewer: Viewer,
+): AttemptOutcomeView {
+  const { agent } = item;
+  const kinds = new Set(agent.events.map((event) => event.kind));
+  switch (agent.ended) {
+    case 'active':
+      return {
+        label: t('workflowExecution.attemptHistory.outcome.active'),
+        icon: 'loader',
+        tone: 'info',
+        iconClassName: 'animate-spin motion-reduce:animate-none',
+        toned: true,
+      };
+    case 'taken-over': {
+      const by = agent.takenOverBy
+        ? items.find(
+            (candidate) =>
+              candidate.kind === 'attempt' &&
+              candidate.step === item.step &&
+              candidate.attempt === agent.takenOverBy?.attempt,
+          )
+        : undefined;
+      const who =
+        by?.kind === 'attempt' && by.actor?.class === 'human'
+          ? personLabel(t, by.actor.details.actorId, viewer)
+          : undefined;
+
+      return {
+        label: who
+          ? t('workflowExecution.attemptHistory.outcome.takenOverBy', { who })
+          : t('workflowExecution.attemptHistory.outcome.takenOver'),
+        icon: 'undo',
+        tone: 'neutral',
+        toned: false,
+      };
+    }
+
+    case 'returned':
+      return {
+        label: t('workflowExecution.attemptHistory.outcome.returned', {
+          step: humanizeId(agent.returnRequest?.to ?? ''),
+        }),
+        icon: 'undo',
+        tone: 'neutral',
+        toned: false,
+      };
+    case 'abandoned':
+      return {
+        label: t('workflowExecution.attemptHistory.outcome.abandoned'),
+        icon: 'close',
+        tone: 'neutral',
+        toned: false,
+      };
+    case 'finished':
+      break;
+  }
+
+  if (kinds.has('rejected')) {
+    return {
+      label: t('workflowExecution.attemptHistory.outcome.rejected'),
+      icon: 'circle-alert',
+      tone: 'attention',
+      toned: true,
+    };
+  }
+
+  if (kinds.has('awaiting-confirmation') && !kinds.has('confirmed')) {
+    return {
+      label: t('workflowExecution.attemptHistory.outcome.awaitingConfirmation'),
+      icon: 'clock',
+      tone: 'info',
+      toned: true,
+    };
+  }
+
+  if (agent.work.commit.state === 'failed') {
+    return {
+      label: t('workflowExecution.attemptHistory.outcome.commitFailed'),
+      // The attention tone of the Now block's failed-commit note, which says what to do.
+      icon: 'circle-alert',
+      tone: 'attention',
+      toned: true,
+    };
+  }
+
+  const outcome = item.outcome?.kind === 'transition' ? item.outcome : undefined;
+  const label = outcome
+    ? transitionLabel({
+        id: outcome.transition,
+        ...(item.transitionLabel !== undefined ? { label: item.transitionLabel } : {}),
+        ...(outcome.result !== undefined ? { result: outcome.result } : {}),
+      })
+    : t('workflowExecution.attemptHistory.outcome.completed');
+  // A review that requested changes is what the next attempt acts on, as in the Last hand-off.
+  const blocking = outcome?.result === 'fail';
+
+  return blocking
+    ? { label, icon: 'circle-alert', tone: 'attention', toned: true }
+    : { label, icon: 'circle-check', tone: 'success', toned: true };
+}
+
+const sameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() &&
+  a.getMonth() === b.getMonth() &&
+  a.getDate() === b.getDate();
+
+/** The day as the history names it: Today, Yesterday, else a short date. */
+export function historyDay(t: TFunction, at: Date, locale: string, now = new Date()): string {
+  if (sameDay(at, now)) {
+    return t('workflowExecution.attemptHistory.day.today');
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (sameDay(at, yesterday)) {
+    return t('workflowExecution.attemptHistory.day.yesterday');
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    day: 'numeric',
+    ...(at.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
+  }).format(at);
+}
+
+/** How long it took, rounded to minutes: "5 min", "1 h 20 min", "under a minute". */
+function durationOf(t: TFunction, from: Date, to: Date): string | undefined {
+  const minutes = Math.round((to.getTime() - from.getTime()) / 60_000);
+  if (Number.isNaN(minutes) || minutes < 0) {
+    return undefined;
+  }
+
+  if (minutes < 1) {
+    return t('workflowExecution.attemptHistory.duration.underMinute');
+  }
+
+  return minutes < 60
+    ? t('workflowExecution.attemptHistory.duration.minutes', { count: minutes })
+    : t('workflowExecution.attemptHistory.duration.hours', {
+        hours: Math.floor(minutes / 60),
+        minutes: minutes % 60,
+      });
+}
+
+/**
+ * When the attempt ran: "Today, 12:35 – 12:40 PM · 5 min · Attempt 1" (`withDay` false drops the
+ * day, for a history grouped by day). The end carries its own day when it is another one.
+ */
+export function attemptTimeLine(
+  t: TFunction,
+  item: Pick<AgentHistoryItem, 'startedAt' | 'endedAt' | 'attempt'>,
+  locale: string,
+  withDay = true,
+): string {
+  const start = new Date(item.startedAt);
+  const end = item.endedAt ? new Date(item.endedAt) : undefined;
+  const time = new Intl.DateTimeFormat(locale, { timeStyle: 'short' });
+  let when: string;
+  if (Number.isNaN(start.getTime())) {
+    when = item.startedAt;
+  } else if (!end || Number.isNaN(end.getTime())) {
+    when = time.format(start);
+  } else if (sameDay(start, end)) {
+    when = time.formatRange(start, end);
+  } else {
+    when = formatRange(t, item.startedAt, item.endedAt!, locale);
+  }
+
+  const day =
+    withDay && !Number.isNaN(start.getTime()) && (!end || sameDay(start, end))
+      ? `${historyDay(t, start, locale)}, `
+      : '';
+
+  return [
+    `${day}${when}`,
+    end ? durationOf(t, start, end) : undefined,
+    t('taskDetails.attempt', { count: item.attempt }),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** The quiet time line of an agent attempt in the history ({@link attemptTimeLine}). */
 export function AgentAttemptMeta({
+  item,
+  withDay = true,
+}: {
+  readonly item: AgentHistoryItem;
+  readonly withDay?: boolean;
+}) {
+  const { t, i18n } = useTranslation();
+
+  return (
+    <Typography as="p" variant="body-sm" className="text-content-muted" data-attempt-time="">
+      {attemptTimeLine(t, item, i18n.language, withDay)}
+    </Typography>
+  );
+}
+
+/**
+ * Who worked on the attempt, as the Sessions list names it: the provider's mark, "Claude · Opus 5.5"
+ * (the model by its presentation title: the Session's own, else the provider catalogue's), and
+ * Open session at the end of the line. The Session is not named by its title: a Session continued
+ * from an earlier step keeps that step's title, which would misname this one.
+ */
+export function AgentIdentityLine({
   item,
   specId,
 }: {
   readonly item: AgentHistoryItem;
   readonly specId: string;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const session = useSessionFacts(specId, item.agent.sessionId);
   const modelTitle = useModelTitle(specId);
-  const parts = [
-    item.endedAt
-      ? formatRange(t, item.startedAt, item.endedAt, i18n.language)
-      : formatWhen(t, item.startedAt, i18n.language),
+  const name = [
     session.providerTitle ?? providerFallbackName(item.agent.provider),
-    // The recorded model by its provider's title; the Session's own model only names the same one.
-    modelTitle(item.agent.provider, item.agent.model),
-    t('taskDetails.attempt', { count: item.attempt }),
-  ];
+    session.modelTitle ?? modelTitle(item.agent.provider, item.agent.model),
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
-    <Typography as="p" variant="body-sm" className="text-content-muted">
-      {parts.filter(Boolean).join(' · ')}
-    </Typography>
+    <div className="flex min-w-0 items-center gap-2 text-body-sm" data-attempt-actor="">
+      <SessionProviderIcon providerId={item.agent.provider} />
+      <span className="min-w-0 flex-1 text-content-secondary [overflow-wrap:anywhere]">{name}</span>
+      {item.agent.sessionId ? (
+        <SessionLink
+          sessionId={item.agent.sessionId}
+          title={t('workflowExecution.attemptHistory.openSession')}
+          className="inline-flex min-h-6 shrink-0 items-center font-medium"
+        />
+      ) : null}
+    </div>
   );
 }
 
-/** A Task draft the attempt produced: its Full Task page where a router exists. */
-function TaskDraftLink({ specId, taskId }: { readonly specId: string; readonly taskId: string }) {
-  const router = useRouter({ warn: false });
-  if (!router) {
-    return <span className={MONO}>{taskId}</span>;
+/** The step events that are worth saying in the history: the exceptions, not the lifecycle. */
+const EXCEPTIONAL_EVENTS = new Set(['proposal-refused']);
+
+/**
+ * The exceptions of an attempt the entry's own lines do not say already: a result the Engine did
+ * not accept. Interruption, take over, a failed commit and the owner's confirmation are the
+ * outcome line and the commit note; the ordinary lifecycle (started, working, stopped, finished,
+ * committed) stays in the data, for diagnosis, and is never listed.
+ */
+function ExceptionalEvents({ item }: { readonly item: AgentHistoryItem }) {
+  const { t, i18n } = useTranslation();
+  const events = item.agent.events.filter((event) => EXCEPTIONAL_EVENTS.has(event.kind));
+  if (events.length === 0) {
+    return null;
   }
 
   return (
-    <Link
-      to="/specs/$specId/tasks/$taskId"
-      params={{ specId, taskId }}
-      search={{ collection: 'current' }}
-      className="text-content-link underline-offset-2 hover:underline"
-    >
-      {taskId}
-    </Link>
-  );
-}
-
-/** The events of the attempt, oldest first, in plain words. */
-function Events({ item }: { readonly item: AgentHistoryItem }) {
-  const { t, i18n } = useTranslation();
-
-  return (
-    <ol className="grid gap-0.5 text-body-sm" data-agent-events="">
-      {item.agent.events.map((event, index) => (
+    <ul className="grid gap-0.5 text-body-sm text-status-attention" data-agent-exceptions="">
+      {events.map((event, index) => (
         <li key={`${event.kind}-${index}`} className="[overflow-wrap:anywhere]">
-          {event.at ? (
-            <span className="text-content-muted">{formatWhen(t, event.at, i18n.language)} · </span>
-          ) : null}
           {t(`workflowExecution.attemptHistory.event.${event.kind}`, {
             turn: event.turn,
             reason: event.code ? commitReason(t, event.code) : '',
             code: event.code ?? '',
           })}
+          {event.at ? (
+            <span className="text-content-muted"> · {formatWhen(t, event.at, i18n.language)}</span>
+          ) : null}
         </li>
       ))}
-    </ol>
+    </ul>
   );
 }
 
 /**
- * What the agent did in one attempt, for the workflow history of a Task or a Specification
- * (workflow-execution.md, "Run with agent"): how the attempt ended when the entry's own result does
- * not say it (taken over, returned, abandoned), the work it left (documents and Task drafts linked,
- * files, the commit), its Session, and its events on request. A failed commit offers Retry commit,
- * as the Now block of the step does.
+ * What the agent achieved in one attempt, for the workflow history of a Task or a Specification
+ * (workflow-execution.md, "Activity history"): how it ended when the entry's own lines do not say
+ * it (`showOutcome`), the exceptions worth knowing, who worked on it with Open session, what it
+ * changed as collapsed rows, its commit as one row (a failed commit shows the Now block's note with
+ * Retry commit) and View feedback when its result left feedback. History shows what was achieved,
+ * not every event recorded.
  */
 export function AgentAttemptHistory({
   item,
   items,
   subject,
   openDocument,
-  defaultShowEvents = false,
+  feedback,
+  showOutcome = true,
 }: {
   readonly item: AgentHistoryItem;
   /** The whole history: the attempt that took this one over names who did. */
   readonly items: readonly HistoryItem[];
   readonly subject: WorkflowSubjectRef;
   readonly openDocument?: (path: string) => boolean;
-  readonly defaultShowEvents?: boolean;
+  /** The feedback the attempt's result left, behind View feedback. */
+  readonly feedback?: string | undefined;
+  /** Whether to say how the attempt ended (the Specification's entry says it in its own line). */
+  readonly showOutcome?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
   const commands = useAgentAttemptCommands(subject);
-  const [showEvents, setShowEvents] = useState(defaultShowEvents);
+  const [showFeedback, setShowFeedback] = useState(false);
   const { agent } = item;
   const { work } = agent;
   const commit = commitOf(item);
+  const outcome = attemptOutcome(t, item, items, viewer);
   const stoppedAt = [...agent.events].reverse().find((event) => event.kind === 'turn-ended')?.at;
-  const takenOverBy = agent.takenOverBy
-    ? items.find(
-        (candidate) =>
-          candidate.kind === 'attempt' &&
-          candidate.step === item.step &&
-          candidate.attempt === agent.takenOverBy?.attempt,
-      )
-    : undefined;
-  const who =
-    takenOverBy?.kind === 'attempt' && takenOverBy.actor?.class === 'human'
-      ? personLabel(t, takenOverBy.actor.details.actorId, viewer)
-      : undefined;
-  const outcome =
-    agent.ended === 'taken-over'
-      ? who
-        ? t('workflowExecution.attemptHistory.outcome.takenOverBy', { who })
-        : t('workflowExecution.attemptHistory.outcome.takenOver')
-      : agent.ended === 'abandoned'
-        ? t('workflowExecution.attemptHistory.outcome.abandoned')
-        : agent.ended === 'returned'
-          ? t('workflowExecution.attemptHistory.outcome.returned', {
-              step: humanizeId(agent.returnRequest?.to ?? ''),
-            })
-          : agent.ended === 'active'
-            ? t('workflowExecution.attemptHistory.outcome.active')
-            : undefined;
   const stopped =
     (agent.ended === 'taken-over' || agent.ended === 'abandoned') && !agent.proposal
       ? t('workflowExecution.attemptHistory.stopped', {
           at: stoppedAt ? formatWhen(t, stoppedAt, i18n.language) : '',
         })
       : undefined;
-  const files = [...new Set([...(work.changed?.paths ?? []), ...work.declared])].filter(
-    (path) => !work.documents.includes(path) && !work.mixed.includes(path),
-  );
-  const hasWork = work.documents.length + work.tasks.length + files.length > 0;
-  const kept = agent.ended !== 'finished' && agent.ended !== 'active';
+  const changes = work.changes;
+  const changed =
+    changes !== undefined &&
+    changes.documents.length + changes.tasks.length + changes.files.length > 0;
+  // Work an attempt that ended without its own result left in the checkout, uncommitted (D19).
+  const kept = changed && work.commit.state === 'none' && agent.ended !== 'active';
+  const text = feedback?.trim() ?? '';
 
   return (
     <div className="grid min-w-0 gap-1.5" data-agent-attempt={agent.ended}>
-      {outcome ? (
+      {showOutcome && agent.ended !== 'finished' ? (
         <Typography as="p" variant="body-sm" className="text-content-primary">
-          {agent.ended === 'taken-over' || agent.ended === 'returned' ? (
-            <span className="mr-1 inline-flex h-[1lh] items-center align-top">
-              <Icon name="undo" size="sm" aria-hidden="true" />
-            </span>
-          ) : null}
-          {outcome}
+          <span className="mr-1 inline-flex h-[1lh] items-center align-top">
+            <Icon name={outcome.icon} size="sm" aria-hidden="true" />
+          </span>
+          {outcome.label}
         </Typography>
       ) : null}
       {stopped ? (
         <Typography as="p" variant="body-sm" className="text-content-secondary">
           {stopped}
-          {hasWork ? ` ${t('workflowExecution.attemptHistory.work.leadKept')}` : null}
-        </Typography>
-      ) : hasWork ? (
-        <Typography as="p" variant="body-sm" className="text-content-secondary">
-          {t(
-            kept
-              ? 'workflowExecution.attemptHistory.work.leadKept'
-              : 'workflowExecution.attemptHistory.work.lead',
-          )}
         </Typography>
       ) : null}
-      {hasWork ? (
-        <ul className="grid gap-0.5 text-body-sm" data-agent-work="">
-          <li>
-            {t('workflowExecution.attemptHistory.work.documents')}{' '}
-            {work.documents.length > 0 ? (
-              <KeptDocuments paths={work.documents} openDocument={openDocument} />
-            ) : (
-              t('workflowExecution.attemptHistory.work.none')
-            )}
-          </li>
-          <li>
-            {t('workflowExecution.attemptHistory.work.tasks')}{' '}
-            {work.tasks.length > 0
-              ? work.tasks.map((taskId, index) => (
-                  <span key={taskId}>
-                    {index > 0 ? ', ' : null}
-                    <TaskDraftLink specId={subject.specId} taskId={taskId} />
-                  </span>
-                ))
-              : t('workflowExecution.attemptHistory.work.none')}
-          </li>
-          {files.length > 0 ? (
-            <li>
-              {t('workflowExecution.attemptHistory.work.files')}{' '}
-              {files.map((path, index) => (
-                <span key={path}>
-                  {index > 0 ? ', ' : null}
-                  <span className={MONO}>{path}</span>
-                </span>
-              ))}
-            </li>
-          ) : null}
-        </ul>
+      <ExceptionalEvents item={item} />
+      <AgentIdentityLine item={item} specId={subject.specId} />
+      {changes ? (
+        <AttemptChanges changes={changes} specId={subject.specId} openDocument={openDocument} />
       ) : null}
-      {commit ? (
+      {commit?.state === 'committed' ? (
+        <CommittedRow sha={commit.sha} />
+      ) : commit ? (
         <AttemptCommitNote
           commit={commit}
           retrying={commands.retryCommit.isPending}
           error={commands.retryCommit.error}
           onRetry={() => commands.retryCommit.mutate({ step: item.step, attempt: item.attempt })}
         />
+      ) : kept ? (
+        <Typography as="p" variant="body-sm" className="text-content-muted">
+          {t('workflowExecution.attemptHistory.notCommitted')}
+        </Typography>
       ) : null}
-      <Typography as="p" variant="body-sm" className="text-content-secondary">
-        {t('workflowExecution.attemptHistory.session')}{' '}
-        <AttemptSession
-          specId={subject.specId}
-          sessionId={agent.sessionId}
-          provider={agent.provider}
-        />
-      </Typography>
-      <div>
-        <InlineAction
-          className="text-body-sm"
-          aria-expanded={showEvents}
-          onClick={() => setShowEvents((open) => !open)}
-        >
-          {t(
-            showEvents
-              ? 'workflowExecution.attemptHistory.hideEvents'
-              : 'workflowExecution.attemptHistory.showEvents',
-          )}
-        </InlineAction>
-      </div>
-      {showEvents ? <Events item={item} /> : null}
+      {text ? (
+        <div className="text-body-sm" data-agent-actions="">
+          <InlineAction
+            className="inline-flex min-h-6 items-center"
+            aria-expanded={showFeedback}
+            onClick={() => setShowFeedback((open) => !open)}
+          >
+            {t(
+              showFeedback
+                ? 'workflowExecution.attemptHistory.hideFeedback'
+                : 'workflowExecution.attemptHistory.viewFeedback',
+            )}
+          </InlineAction>
+        </div>
+      ) : null}
+      {showFeedback && text ? (
+        <InlineNote tone={outcome.tone === 'attention' ? 'attention' : 'info'} icon="chat">
+          <span className="whitespace-pre-line [overflow-wrap:anywhere]" data-agent-feedback="">
+            {text}
+          </span>
+        </InlineNote>
+      ) : null}
     </div>
   );
 }

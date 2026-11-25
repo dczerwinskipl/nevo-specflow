@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { Typography } from '@nevo/ui';
+import { Typography, cn } from '@nevo/ui';
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import type { AgentLaunch } from '@nevo/specflow-contracts/workflow';
 import {
@@ -35,13 +35,16 @@ export type SessionMode = 'fresh' | 'reuse' | 'gone' | 'not-chosen';
 export function SessionLink({
   sessionId,
   title,
+  className,
 }: {
   readonly sessionId: string;
   readonly title: string;
+  /** Layout of the link in its line (a history action keeps its 24px target). */
+  readonly className?: string;
 }) {
   const router = useRouter({ warn: false });
   if (!router) {
-    return <span className="text-content-primary">{title}</span>;
+    return <span className={cn('text-content-primary', className)}>{title}</span>;
   }
 
   return (
@@ -49,7 +52,7 @@ export function SessionLink({
       to="/sessions/$sessionId"
       params={{ sessionId }}
       search={{ collection: 'current' }}
-      className="text-content-link underline-offset-2 hover:underline"
+      className={cn('text-content-link underline-offset-2 hover:underline', className)}
     >
       {title}
     </Link>

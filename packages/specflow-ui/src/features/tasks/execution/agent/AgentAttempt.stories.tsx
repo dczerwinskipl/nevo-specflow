@@ -255,10 +255,13 @@ export const TakenOverWithHistory: Story = {
     }, wait);
     await expect(attempt.getByText(/^Taken over by /)).toBeVisible();
     await expect(attempt.getByText(/The agent stopped without a result at/)).toBeVisible();
+    // What it kept, collapsed: the documents by name, the other files by name and folder.
+    await userEvent.click(attempt.getByRole('button', { name: '5 changed files' }));
     await expect(attempt.getByRole('button', { name: 'task.md' })).toBeVisible();
-    await expect(attempt.getByText('src/auth/refresh.ts')).toBeVisible();
-    await userEvent.click(attempt.getByRole('button', { name: 'Show what happened' }));
-    await expect(attempt.getByText('The agent stopped')).toBeVisible();
+    await expect(attempt.getByText('refresh.ts')).toBeVisible();
+    await expect(attempt.getByText('Kept in the checkout, not committed')).toBeVisible();
+    // What was achieved, not the lifecycle the Engine recorded.
+    await expect(attempt.queryByText('The agent stopped')).toBeNull();
   },
 };
 
@@ -405,5 +408,88 @@ export const ConfirmationCommitFailed: Story = {
     await expect(within(alert).getByRole('button', { name: 'Retry commit' })).toBeVisible();
     await expect(within(now).getByRole('button', { name: 'Confirm' })).toBeDisabled();
     await expect(within(now).getByRole('button', { name: 'Reject' })).toBeDisabled();
+  },
+};
+
+/** Opens the Specification's Activity history and returns its Agent attempts section. */
+async function openSpecificationHistory(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  // Beside Overview on a wide screen the history is open already; a narrow one opens its screen.
+  await canvas.findByRole('region', { name: 'Now' }, wait);
+  if (!canvas.queryByRole('region', { name: 'Agent attempts' })) {
+    const opened = await canvas
+      .findByRole('region', { name: 'Agent attempts' }, { timeout: 3000 })
+      .catch(() => undefined);
+    const direct = canvas.queryByRole('button', { name: 'Activity history' });
+    if (opened) {
+      // Open beside Overview already.
+    } else if (direct) {
+      await userEvent.click(direct);
+    } else {
+      // On a phone the history is one of the header's More actions.
+      await userEvent.click(canvas.getAllByRole('button', { name: 'More actions' })[0]!);
+      await userEvent.click(
+        await within(document.body).findByRole('menuitem', { name: 'Activity history' }),
+      );
+    }
+  }
+
+  return within(await canvas.findByRole('region', { name: 'Agent attempts' }, wait));
+}
+
+/*
+ * The Specification's Activity history: its agent's attempts grouped by day, each marked by how it
+ * ended (waiting for confirmation, changes requested, completed, taken over, commit failed,
+ * returned), titled by its step, with its outcome, time and attempt, the agent, compact change rows
+ * (changed files, Tasks by title: collapsed) and its commit; Open session on the agent's line and
+ * View feedback name the detail. Lifecycle events and SpecFlow's own records are not shown.
+ */
+export const SpecificationActivityHistory: Story = {
+  args: { scenario: 'history-specification' },
+  play: async ({ canvasElement }) => {
+    const attempts = await openSpecificationHistory(canvasElement);
+    await expect(attempts.getByText('Today')).toBeVisible();
+    await expect(attempts.getByText('Yesterday')).toBeVisible();
+    for (const outcome of [
+      'Waiting for your confirmation',
+      'Changes requested',
+      'Completed',
+      /^Taken over by /,
+      'Finished, but not committed',
+      'Returned to Requirements',
+    ]) {
+      await expect(attempts.getByText(outcome)).toBeVisible();
+    }
+
+    // The change rows are collapsed; SpecFlow's own records are never one of them.
+    await expect(attempts.getByRole('button', { name: '12 tasks' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    await expect(attempts.queryByText('specification.yaml')).toBeNull();
+    await expect(attempts.getAllByText('05f9d80')[0]).toBeVisible();
+    await expect(attempts.getAllByRole('link', { name: 'Open session' })[0]).toBeVisible();
+    await expect(attempts.getByText(/^Result not accepted/)).toBeVisible();
+  },
+};
+
+/** The same history with the Completed Breakdown's change rows and the first feedback open. */
+export const SpecificationActivityHistoryExpanded: Story = {
+  args: { scenario: 'history-specification' },
+  play: async ({ canvasElement }) => {
+    const attempts = await openSpecificationHistory(canvasElement);
+    await userEvent.click(attempts.getByRole('button', { name: '12 tasks' }));
+    await expect(
+      attempts.getByRole('link', { name: 'End-to-end acceptance and roadmap coverage' }),
+    ).toBeVisible();
+    await expect(attempts.getByRole('button', { name: '8 more tasks' })).toBeVisible();
+    await userEvent.click(attempts.getByRole('button', { name: '8 changed files' }));
+    // A file by its name and folder, never the repeated Specification prefix.
+    await expect(attempts.getByText('install-matrix.md')).toBeVisible();
+    await expect(attempts.getByText('notes')).toBeVisible();
+    await userEvent.click(attempts.getAllByRole('button', { name: '3 changed files' })[0]!);
+    await expect(attempts.getAllByText('overview.md')[0]).toBeVisible();
+    await userEvent.click(attempts.getAllByRole('button', { name: 'View feedback' })[0]!);
+    await expect(attempts.getByText(/Install and init stay separate Tasks/)).toBeVisible();
   },
 };

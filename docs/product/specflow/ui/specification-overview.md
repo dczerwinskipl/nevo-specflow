@@ -314,8 +314,9 @@ Runtime stops), and its documents, Sessions and history are the demo data
   caller may view, bounded by the workspace Sessions section's 100 rows), at most 50 events. A
   date-only event shows as a calendar date without time-zone conversion; other events show a
   relative time. Above those events the history lists **Agent attempts**: the agent's attempts at
-  the Specification's own steps, newest first, each with how it ended, the work it kept, its commit
-  (with **Retry commit** when it failed), its Session and its events on request (see
+  the Specification's own steps, newest first and grouped by day, each marked by how it ended, with
+  the agent with **Open session**, what it changed as collapsed rows (changed files, Tasks), its
+  commit (with **Retry commit** when it failed) and **View feedback** (see
   [Run with agent](workflow-execution.md#take-over-and-the-attempts-history)); the section is absent
   while there is no agent attempt. Task attempts of an agent are in each Task's history, not here.
 - **Documents** and **Sessions** come from the Engine's document registry and the Session

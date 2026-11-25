@@ -34,7 +34,11 @@ import {
 } from './specificationSecondaryStack';
 import { useActivityHistoryPanel } from './useActivityHistoryPanel';
 import { EnsureSpecificationState } from '../SpecificationStateProvider';
-import { SpecificationWorkflowProvider, useSpecificationExitActions } from '../../tasks';
+import {
+  SpecificationAgentAttempts,
+  SpecificationWorkflowProvider,
+  useSpecificationExitActions,
+} from '../../tasks';
 
 function fullTaskHref(specId: string, taskId: string, collection: 'current' | 'archive'): string {
   const search = collection === 'archive' ? '?collection=archive' : '';
@@ -330,6 +334,11 @@ function SpecificationWorkspaceInner({
           >
             <AppContent>
               <AppWorkspaceBody padding="none" scroll="area">
+                {/* The same Activity history as the stacked screen: agent attempts, then events. */}
+                <SpecificationAgentAttempts
+                  specId={specId}
+                  onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
+                />
                 <ActivityHistory
                   showHeading={false}
                   events={data.activityEvents}

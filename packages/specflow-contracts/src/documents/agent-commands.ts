@@ -123,7 +123,12 @@ export const AGENT_COMMANDS: Readonly<Record<string, AgentCommandEntry>> = {
     purpose: 'Find repository documentation.',
   },
   'docs context': { placement: 'read' },
-  'docs search': { placement: 'read' },
+  'docs search': {
+    placement: 'read',
+    form: () => 'docs search <question...>',
+    purpose:
+      'Ask a question about the repository in your own words; it ends with the docs get command that reads the matching sections.',
+  },
   'specs documents add': {
     placement: 'brokered',
     operation: 'documents.create',

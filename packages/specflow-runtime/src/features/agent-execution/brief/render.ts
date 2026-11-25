@@ -34,6 +34,8 @@ export interface BriefInput {
 /** Longest inline text of a free-text field (characters); longer text is cut and digested. */
 export const BRIEF_TEXT_BUDGET = 4000;
 const LINE_BUDGET = 200;
+/** Tasks listed by name in the brief; the rest are counted and left to `tasks list`. */
+export const BRIEF_TASKS_SHOWN = 40;
 
 const neutralise = (text: string): string => text.replace(/<(\/?)untrusted/gi, '<$1 untrusted');
 
@@ -250,13 +252,56 @@ export function renderAgentBrief(input: BriefInput): string {
     }
   }
 
-  if (docsSearch) {
+  if (context.taskTypes?.length) {
     sections.push(
       '',
-      '## Documentation search',
-      `Repository documentation under ${oneLine(docsSearch.root)}; search mode ${docsSearch.mode}. Use \`docs find\` and \`docs get\`.`,
+      'Task types you may give a Task (`--type`):',
+      untrusted(
+        'task-types',
+        context.taskTypes
+          .map(
+            (type) =>
+              `- ${oneLine(type.id)}: ${oneLine(type.title)}.${type.useWhen ? ` Use when: ${oneLine(type.useWhen)}` : ''}`,
+          )
+          .join('\n'),
+      ),
     );
   }
+
+  if (context.existingTasks?.length) {
+    const shown = context.existingTasks.slice(0, BRIEF_TASKS_SHOWN);
+    const more = context.existingTasks.length - shown.length;
+    sections.push(
+      '',
+      '## Tasks of this Specification',
+      "Each Task's documents are in its folder `tasks/<task-id>/` of the Specification folder.",
+      untrusted(
+        'tasks',
+        [
+          ...shown.map(
+            (task) =>
+              `- ${oneLine(task.id)} [${oneLine(task.type)}] ${oneLine(task.title)} - ${task.status}${
+                task.dependsOn.length
+                  ? `; depends on ${task.dependsOn.map(oneLine).join(', ')}`
+                  : ''
+              }`,
+          ),
+          ...(more > 0 ? [`- and ${String(more)} more: see \`tasks list\`.`] : []),
+        ].join('\n'),
+      ),
+    );
+  }
+
+  sections.push(
+    '',
+    '## Repository knowledge',
+    ...(docsSearch
+      ? [
+          `Repository documentation under ${oneLine(docsSearch.root)}; search mode ${docsSearch.mode}.`,
+        ]
+      : []),
+    'Ask the documentation before searching the code for how something works or which rule applies: `nevo-specflow docs search <question...>` in your own words, `nevo-specflow docs find <terms...>` for known terms, then read what applies with `nevo-specflow docs get <ref...> --content`.',
+  );
 
   sections.push('', renderOperations(scope, formContext));
   if (scope.attempt !== undefined) {

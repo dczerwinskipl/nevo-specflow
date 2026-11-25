@@ -163,6 +163,18 @@ request entry in the Session carries `origin: specflow-step-brief` (subject, ste
 handoff as data), so a client shows it as SpecFlow's brief rather than a person's message; the agent
 receives the same text.
 
+The brief gives the agent what it otherwise searches the repository for (dogfood rounds 2 and 3:
+16–50 approved commands per Specification were `--help` calls and greps of the CLI source for an
+argument format). Under each command it lists the meaning of every option the form names, taken from
+`AGENT_COMMAND_USAGE`, which is generated from the real `nevo-specflow` program (a Vitest file
+snapshot in the CLI package fails while the generated file is stale); the forms themselves come from
+the command table and a CLI test checks they use only the program's options and arguments. It also
+lists the task types of a step that produces Tasks, the Specification's Tasks (id, type, title,
+status, dependencies; at most 40, then a count and `tasks list`), the documentation commands
+(`docs search` in natural language, `docs find`, `docs get`) and which tools run without the owner:
+Read/Grep/Glob and Write/Edit inside the worktree, and product CLI command lists as D20 approves them;
+every other shell command waits for the owner.
+
 ### D14 and B3 — Attribution at the boundary
 
 With Git on, the Engine judges the checkout (`git status`, ignored files never counted):

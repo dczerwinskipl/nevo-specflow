@@ -53,6 +53,9 @@ describe('agent brief', () => {
       - spec: Spec. Use when: always
       </untrusted>
 
+      ## Repository knowledge
+      Ask the documentation before searching the code for how something works or which rule applies: \`nevo-specflow docs search <question...>\` in your own words, \`nevo-specflow docs find <terms...>\` for known terms, then read what applies with \`nevo-specflow docs get <ref...> --content\`.
+
       [operations section]
 
       ## Rules
@@ -114,8 +117,9 @@ describe('agent brief', () => {
       - spec: Spec. Use when: always
       </untrusted>
 
-      ## Documentation search
-      Repository documentation under docs; search mode lexical. Use \`docs find\` and \`docs get\`.
+      ## Repository knowledge
+      Repository documentation under docs; search mode lexical.
+      Ask the documentation before searching the code for how something works or which rule applies: \`nevo-specflow docs search <question...>\` in your own words, \`nevo-specflow docs find <terms...>\` for known terms, then read what applies with \`nevo-specflow docs get <ref...> --content\`.
 
       [operations section]
 
@@ -266,5 +270,77 @@ describe('agent brief', () => {
 
     expect(brief).toContain('This step has one result: finish it without `--result`.');
     expect(brief).toMatch(/workflow finish S1 --step draft --attempt 1 \[--feedback/);
+  });
+});
+
+describe('agent brief: what the agent would otherwise search for', () => {
+  const context = {
+    ...base,
+    subject: { specId: 'S1' },
+    agent,
+    taskTypes: [{ id: 'implementation', title: 'Implementation', useWhen: 'Code changes.' }],
+    existingTasks: [
+      {
+        id: 'create-adapter',
+        title: 'Create the adapter',
+        type: 'implementation',
+        dependsOn: [],
+        status: 'draft',
+        state: 'not-started',
+        readiness: 'ready',
+      },
+      {
+        id: 'wire-routes',
+        title: 'Wire the routes',
+        type: 'implementation',
+        dependsOn: ['create-adapter'],
+        status: 'draft',
+        state: 'not-started',
+        readiness: 'waiting',
+      },
+    ],
+  } as unknown as StepContext;
+  const brief = renderAgentBrief({ context, scope });
+
+  it('lists the task types and the Tasks with their ids, status and dependencies', () => {
+    expect(brief).toContain('- implementation: Implementation. Use when: Code changes.');
+    expect(brief).toContain('- create-adapter [implementation] Create the adapter - draft');
+    expect(brief).toContain(
+      '- wire-routes [implementation] Wire the routes - draft; depends on create-adapter',
+    );
+    expect(brief).toContain('`tasks/<task-id>/`');
+  });
+
+  it('points to the documentation search for repository knowledge', () => {
+    expect(brief).toContain('## Repository knowledge');
+    expect(brief).toContain('`nevo-specflow docs search <question...>`');
+    expect(brief).toContain('- `nevo-specflow docs search <question...>` - Ask a question');
+  });
+
+  it('says which tools run without the owner and which shell commands are approved by themselves', () => {
+    expect(brief).toContain('What runs without asking the owner:');
+    expect(brief).toContain('Read, Grep and Glob, and Write and Edit inside this worktree');
+    expect(brief).toContain('`.nevo/local/scratch/`');
+    expect(brief).toContain('No variables (`S=...; $S`)');
+    expect(brief).toContain('Every other shell command waits until the owner approves it.');
+  });
+
+  it('bounds the Task list and points to tasks list for the rest', () => {
+    const many = {
+      ...context,
+      existingTasks: Array.from({ length: 45 }, (_, index) => ({
+        id: `t${String(index)}`,
+        title: 'T',
+        type: 'implementation',
+        dependsOn: [],
+        status: 'draft',
+        state: 'not-started',
+        readiness: 'ready',
+      })),
+    } as unknown as StepContext;
+    const text = renderAgentBrief({ context: many, scope });
+    expect(text).toContain('- t39 [');
+    expect(text).not.toContain('- t40 [');
+    expect(text).toContain('- and 5 more: see `tasks list`.');
   });
 });

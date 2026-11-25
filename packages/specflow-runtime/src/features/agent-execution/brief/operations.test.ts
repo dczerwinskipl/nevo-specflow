@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AGENT_COMMANDS } from '@nevo/specflow-contracts/runtime';
+import { AGENT_COMMAND_USAGE, AGENT_COMMANDS } from '@nevo/specflow-contracts/runtime';
 import { deriveAgentScope } from '@nevo/specflow-engine';
 
 import { readOperations, writeOperations } from './operations';
@@ -29,6 +29,23 @@ describe('brief operations', () => {
     expect(writeOperations(narrowed, form).map((operation) => operation.path)).toEqual([
       'specs documents classify',
     ]);
+  });
+
+  it('explains each option a form names with the meaning the CLI program declares', () => {
+    const finish = writeOperations(
+      { ...scope, operations: ['workflow.finish'] as const },
+      { specId: 'S1', attempt: { step: 'breakdown', attempt: 1 }, results: [] },
+    )[0]!;
+    const meaning = (flag: string) =>
+      AGENT_COMMAND_USAGE['workflow finish']!.options.find((option) => option.long === flag)!
+        .description;
+
+    expect(finish.options).toContainEqual({
+      flags: '--tasks-file <path>',
+      description: meaning('--tasks-file'),
+    });
+    expect(finish.options.map((option) => option.flags)).not.toContain('--project-root <path>');
+    expect(meaning('--tasks-file')).not.toBe('');
   });
 
   it('adds --task for a Task subject and --template only with template ids', () => {

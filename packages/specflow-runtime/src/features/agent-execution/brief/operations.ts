@@ -1,4 +1,9 @@
-import { AGENT_COMMANDS, type AgentFormContext } from '@nevo/specflow-contracts/runtime';
+import {
+  AGENT_COMMAND_USAGE,
+  AGENT_COMMANDS,
+  AGENT_SCRATCH_DIRECTORY,
+  type AgentFormContext,
+} from '@nevo/specflow-contracts/runtime';
 import type { AgentWriteOperation, AgentWriteScope } from '@nevo/specflow-engine';
 
 /**
@@ -12,6 +17,11 @@ export interface BriefOperation {
   readonly path: string;
   readonly form: string;
   readonly purpose: string;
+  /**
+   * The options the form names, each with its meaning as the real program declares it
+   * (`AGENT_COMMAND_USAGE`, generated from the CLI), so the agent needs no `--help`.
+   */
+  readonly options: readonly { readonly flags: string; readonly description: string }[];
 }
 
 const executable = 'nevo-specflow';
@@ -22,7 +32,13 @@ function operationOf(path: string, context: AgentFormContext): BriefOperation | 
     return undefined;
   }
 
-  return { path, form: `${executable} ${entry.form(context)}`, purpose: entry.purpose ?? '' };
+  const form = entry.form(context);
+  const named = new Set(form.match(/--[a-z][a-z-]*/g));
+  const options = (AGENT_COMMAND_USAGE[path]?.options ?? [])
+    .filter((option) => named.has(option.long) && option.description !== '')
+    .map((option) => ({ flags: option.flags, description: option.description }));
+
+  return { path, form: `${executable} ${form}`, purpose: entry.purpose ?? '', options };
 }
 
 /** The writes the scope admits with their exact CLI forms, in the scope's order. */
@@ -52,11 +68,17 @@ export function readOperations(context: AgentFormContext): readonly BriefOperati
 
 /** The operations section: the writes of the scope, then the reads. */
 export function renderOperations(scope: AgentWriteScope, context: AgentFormContext): string {
-  const line = (operation: BriefOperation) => `- \`${operation.form}\` - ${operation.purpose}`;
+  const line = (operation: BriefOperation) =>
+    [
+      `- \`${operation.form}\` - ${operation.purpose}`,
+      ...operation.options.map((option) => `  - \`${option.flags}\`: ${option.description}`),
+    ].join('\n');
 
   return [
     '## Operations you may call in this Turn',
-    'Run them with the product CLI. Add `--json` for machine output. Anything else is refused.',
+    'Run them with the product CLI. Add `--json` for machine output. Other product CLI commands are refused.',
+    '',
+    ...renderApprovals(),
     '',
     `Writes (${scope.taskId !== undefined ? `Task ${scope.taskId} of ` : ''}Specification ${scope.specId}):`,
     ...writeOperations(scope, context).map(line),
@@ -64,4 +86,17 @@ export function renderOperations(scope: AgentWriteScope, context: AgentFormConte
     'Reads:',
     ...readOperations(context).map(line),
   ].join('\n');
+}
+
+/**
+ * What runs without the owner (ADR 0026, D20), so the agent reads and writes with the tools that do
+ * not ask, and issues product CLI calls in the form the host approves (`judgeAgentCliCommand`).
+ */
+export function renderApprovals(): string[] {
+  return [
+    'What runs without asking the owner:',
+    `- Read, Grep and Glob, and Write and Edit inside this worktree. Read and search code and documents with them, and write files (document texts, Task lists, feedback) with them under \`${AGENT_SCRATCH_DIRECTORY}/\`, not with \`cat\`, \`grep\`, \`sed\`, here-documents or scripts in the shell.`,
+    '- A shell command made only of the calls listed here: one or more `nevo-specflow` calls joined by `&&`, `;` or new lines, optionally after `cd <folder in this worktree>`. Write ids and values literally, quoted when they contain spaces or symbols. No variables (`S=...; $S`), `$(...)`, backticks, globs or pipes into other commands such as `head`; output may go to a file in this worktree.',
+    '- Every other shell command waits until the owner approves it.',
+  ];
 }

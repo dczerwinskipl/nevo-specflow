@@ -302,6 +302,48 @@ export const AGENT_COMMAND_USAGE: Readonly<Record<string, AgentCommandUsage>> = 
       }
     ]
   },
+  "docs search": {
+    "arguments": [
+      {
+        "name": "question",
+        "required": true,
+        "variadic": true,
+        "description": "the question, in your own words"
+      }
+    ],
+    "options": [
+      {
+        "flags": "--limit <n>",
+        "long": "--limit",
+        "required": false,
+        "description": "maximum documents"
+      },
+      {
+        "flags": "--include-proposals",
+        "long": "--include-proposals",
+        "required": false,
+        "description": "also return documents under the proposal prefixes"
+      },
+      {
+        "flags": "--no-refresh",
+        "long": "--no-refresh",
+        "required": false,
+        "description": "embed no documents; answer lexically unless the index is already complete"
+      },
+      {
+        "flags": "--no-snippets",
+        "long": "--no-snippets",
+        "required": false,
+        "description": "show no excerpt under each matching section"
+      },
+      {
+        "flags": "--json",
+        "long": "--json",
+        "required": false,
+        "description": "emit JSON on stdout"
+      }
+    ]
+  },
   "specs documents add": {
     "arguments": [
       {

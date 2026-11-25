@@ -79,6 +79,9 @@ import {
  */
 const SECONDARY_TABS_SCOPE_PREFIX = 'workspace-secondary-tabs';
 
+/** Scroll travel in one direction before the mobile floating controls hide (down) or return (up). */
+const FLOATING_HIDE_DISTANCE_PX = 12;
+
 /**
  * Width (px) under which the Secondary root-tab strip collapses to `ItemTabs`' switcher button —
  * scoped to this header only (`ItemTabs`' own `switcherBelow` prop), never a change to its general
@@ -874,13 +877,34 @@ function MobileRuntimeSurfaceRegion({
   const showHeader =
     surface.header !== undefined || leadingAction !== undefined || trailingAction !== undefined;
 
+  // Where the last scroll event left the viewport and where the current scroll direction began:
+  // the floating controls step aside while the reader scrolls down (they never sit over a control
+  // the content scrolls under them) and return as soon as the reader scrolls back up.
+  const lastScrollTopRef = useRef(0);
+  const directionStartRef = useRef(0);
+  const scrollingDownRef = useRef(true);
   const updateHeaderCovered = useCallback(
     (scrollTop: number) => {
       const headerHeight = headerRef.current?.offsetHeight ?? 0;
       const covered = !showHeader || (headerHeight > 0 && scrollTop >= headerHeight - 0.5);
+      const last = lastScrollTopRef.current;
+      const down = scrollTop === last ? scrollingDownRef.current : scrollTop > last;
+      if (down !== scrollingDownRef.current) {
+        scrollingDownRef.current = down;
+        directionStartRef.current = last;
+      }
+
+      lastScrollTopRef.current = scrollTop;
 
       if (rootRef.current) {
         rootRef.current.dataset.headerCovered = String(covered);
+        const travelled = Math.abs(scrollTop - directionStartRef.current);
+        if (!covered || scrollTop <= 0) {
+          delete rootRef.current.dataset.floatingHidden;
+        } else if (travelled >= FLOATING_HIDE_DISTANCE_PX) {
+          // Only past a small distance: a wobble of a finger never toggles the controls.
+          rootRef.current.dataset.floatingHidden = String(down);
+        }
       }
 
       if (headerCoveredRef.current === covered) {

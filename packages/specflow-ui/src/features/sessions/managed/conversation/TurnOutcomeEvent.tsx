@@ -35,6 +35,18 @@ export function TurnOutcomeEvent({
       <Alert
         tone={tone === 'danger' ? 'danger' : 'attention'}
         title={t(`managedSession.workSummary.outcome.${item.outcome}`)}
+        actions={
+          review ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              leadingIcon={GitCompare}
+              onClick={onReviewChanges}
+            >
+              {t('managedSession.turnOutcome.reviewChanges')}
+            </Button>
+          ) : undefined
+        }
       >
         <p className="text-content-primary">
           {outcomeCause(item.outcome, item.error, item.notices, t)}
@@ -42,40 +54,27 @@ export function TurnOutcomeEvent({
         {item.workspaceMayHaveChanged && (
           <p className="mt-1">{t('managedSession.turnOutcome.consequence')}</p>
         )}
-        {(!!review || !!item.error) && (
-          <div className="mt-2 grid justify-items-start gap-1">
-            {review && (
-              <Button
-                size="sm"
-                variant="ghost"
-                leadingIcon={GitCompare}
-                className="-ml-2"
-                onClick={onReviewChanges}
-              >
-                {t('managedSession.turnOutcome.reviewChanges')}
-              </Button>
-            )}
-            {item.error && (
-              <Collapsible density="inline" className="w-full">
-                <Collapsible.Trigger>{t('managedSession.turnOutcome.details')}</Collapsible.Trigger>
-                <Collapsible.Content>
-                  <Typography
-                    as="p"
-                    variant="body-sm"
-                    className="font-mono text-content-secondary [overflow-wrap:anywhere]"
-                  >
-                    {item.error.code}
-                  </Typography>
-                  <Typography
-                    as="p"
-                    variant="body-sm"
-                    className="text-content-secondary [overflow-wrap:anywhere]"
-                  >
-                    {item.error.message}
-                  </Typography>
-                </Collapsible.Content>
-              </Collapsible>
-            )}
+        {item.error && (
+          <div className="mt-2">
+            <Collapsible density="inline" className="w-full">
+              <Collapsible.Trigger>{t('managedSession.turnOutcome.details')}</Collapsible.Trigger>
+              <Collapsible.Content>
+                <Typography
+                  as="p"
+                  variant="body-sm"
+                  className="font-mono text-content-secondary [overflow-wrap:anywhere]"
+                >
+                  {item.error.code}
+                </Typography>
+                <Typography
+                  as="p"
+                  variant="body-sm"
+                  className="text-content-secondary [overflow-wrap:anywhere]"
+                >
+                  {item.error.message}
+                </Typography>
+              </Collapsible.Content>
+            </Collapsible>
           </div>
         )}
       </Alert>

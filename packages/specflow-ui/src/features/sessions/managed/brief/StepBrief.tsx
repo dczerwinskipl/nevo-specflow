@@ -234,7 +234,14 @@ export function StepBriefMessage({
             </>
           )}
           <span className="-ml-2">
-            <Button size="sm" variant="ghost" leadingIcon={FileText} onClick={onOpen}>
+            <Button
+              size="sm"
+              variant="ghost"
+              leadingIcon={FileText}
+              // Readable on the request surface (the ghost tone is meant for neutral surfaces).
+              className="text-content-primary"
+              onClick={onOpen}
+            >
               {origin.continuation
                 ? t('managedSession.brief.openContinuation')
                 : t('managedSession.brief.openFull')}

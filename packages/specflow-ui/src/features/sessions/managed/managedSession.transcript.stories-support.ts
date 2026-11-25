@@ -6,7 +6,7 @@ import type {
   WorkSummary,
 } from '@nevo/specflow-contracts/sessions';
 import type { ManagedSessionsApi } from './api';
-import { fixtureApi, fixtureSessionId } from './managedSession.stories-support';
+import { fixtureApi, fixtureSessionId, providerFixture } from './managedSession.stories-support';
 
 /**
  * Isolated presentation fixtures for the transcript stories (`ManagedSession.transcript.stories`):
@@ -375,8 +375,20 @@ export function transcriptApi(served: SessionSnapshot): ManagedSessionsApi {
     session: { ...served.session, providerTitle: 'Claude', modelTitle: 'Opus 5.5' },
   };
 
+  const claude = providerFixture('claude');
+
   return {
     ...base,
+    providers: () =>
+      Promise.resolve({
+        items: [
+          {
+            ...claude,
+            title: 'Claude',
+            models: [{ modelId: 'claude-opus-5-5', title: 'Opus 5.5', efforts: ['high'] }],
+          },
+        ],
+      }),
     snapshot: () => Promise.resolve(named),
     work: (_sessionId, turnId) =>
       Promise.resolve({

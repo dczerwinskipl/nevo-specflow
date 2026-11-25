@@ -249,6 +249,24 @@ export function StepBriefMessage({
           </span>
         </div>
       </div>
+      {origin.ownerNote ? (
+        // The owner's note sent with this brief (a Continue's note for the agent): their own words,
+        // in their own message style, after SpecFlow's message.
+        <div className="grid min-w-0 justify-end" data-brief-owner-note="">
+          <div className="grid max-w-content-standard min-w-0 gap-1 rounded-composite bg-surface-primary px-4 py-3">
+            <Typography as="p" variant="body-sm" className="text-content-secondary">
+              {t('managedSession.brief.ownerNote')}
+            </Typography>
+            <Typography
+              as="p"
+              variant="body-md"
+              className="whitespace-pre-wrap text-content-primary [overflow-wrap:anywhere]"
+            >
+              {origin.ownerNote}
+            </Typography>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

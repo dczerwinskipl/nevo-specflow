@@ -108,7 +108,10 @@ sequenceDiagram
    state root inside the checkout), so the start's own run record never changes it. A retried
    request whose Turn is not dispatched yet reads the context again (`readAgentTurnContext`) and is
    refused `WORKFLOW_STATE_CONFLICT` when its digest is not the Turn's; Continue briefs a new Turn
-   with the current context. A retried request whose Turn was dispatched already is answered from
+   with the current context. A Continue's `message` (the owner's note for the agent, at most
+   `AGENT_OWNER_NOTE_MAX_LENGTH` = 4000 characters) is appended to that brief under "Note from the
+   owner" in the same Turn, with the attempt's scope and allowlist, and recorded on the Turn in the
+   journal (`ownerNote`; a `turn-started` history event carries it as `note`). A retried request whose Turn was dispatched already is answered from
    the attempt without a new brief.
 3. **Session and Turn.** Session, Turn and invocation ids are derived from the request id, so a
    retried request finds what the first one made. The Turn records the digest of the request's
@@ -239,8 +242,8 @@ command is denied with its size, the limit and `--content-file` as the remedy) a
 relative to the Specification folder.
 
 **What the owner sees.** The Turn's request entry carries `origin` (`specflow-step-brief`: subject,
-optional Task, step, attempt, handoff as data, and `continuation: true` when the Turn is a Continue
-of the same attempt rather than its start); the entry's text is the full brief (its content
+optional Task, step, attempt, handoff as data, `continuation: true` when the Turn is a Continue
+of the same attempt rather than its start, and `ownerNote`, the owner's note sent with it); the entry's text is the full brief (its content
 reference reads all of it). A fresh Session is titled "<step title> · attempt <n>" (and the Task
 title), created in `auto` when the provider runs the model in auto, else `acceptEdits` (the option's
 `workMode`). While the Turn waits on a pending question or permission of its Session,

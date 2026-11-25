@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { ManagedSession } from './ManagedSession';
 import { fixtureSessionId } from './managedSession.stories-support';
@@ -14,6 +15,7 @@ import {
   normalRunSnapshot,
   permissionSnapshot,
   questionSnapshot,
+  continueNote,
   resumedSnapshot,
   toolFailuresSnapshot,
   transcriptApi,
@@ -172,6 +174,41 @@ export const ResumedExecutionDesktop: Story = {
   args: { api: transcriptApi(resumedSnapshot()) },
   globals: WIDE_VIEWPORT,
   play: resumedPlay,
+};
+
+/** A Continue with the owner's note: after "Execution resumed", the note as the owner's message. */
+const resumedWithNotePlay: Story['play'] = async (context) => {
+  await resumedPlay(context);
+  const { canvasElement } = context;
+  const briefs = canvasElement.querySelectorAll('[data-entry-origin]');
+  const note = briefs[1]!.querySelector<HTMLElement>('[data-brief-owner-note]');
+  await expect(note).not.toBeNull();
+  await expect(note!).toHaveTextContent('Twoja wskazówka dla agenta');
+  await expect(note!).toHaveTextContent(continueNote);
+  // After the divider and SpecFlow's continuation message, within the screen.
+  const divider = briefs[1]!.querySelector<HTMLElement>('[data-brief-resumed]')!;
+  await expect(note!.getBoundingClientRect().top).toBeGreaterThan(
+    divider.getBoundingClientRect().bottom,
+  );
+  await expect(note!.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
+  await expect(briefs[0]!.querySelector('[data-brief-owner-note]')).toBeNull();
+};
+
+export const ResumedWithNoteMobile: Story = {
+  tags: ['contract'],
+  args: { api: transcriptApi(resumedSnapshot(true)) },
+  play: async (context) => {
+    await settleViewport(375, 812);
+    await resumedWithNotePlay(context);
+  },
+};
+export const ResumedWithNoteDesktop: Story = {
+  tags: ['contract'],
+  args: { api: transcriptApi(resumedSnapshot(true)) },
+  play: async (context) => {
+    await settleViewport(1440, 900);
+    await resumedWithNotePlay(context);
+  },
 };
 
 /** A question above the Composer, on an opaque surface the transcript never shows through. */

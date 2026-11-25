@@ -33,6 +33,7 @@ import { usePolling } from './usePolling';
 import { useSessionFacts } from './useSessionFacts';
 import { AttemptCommitNote } from './AttemptCommitNote';
 import { TakeOverDialog } from './TakeOverDialog';
+import { ContinueDialog } from './ContinueDialog';
 import {
   useConfirmationAttemptCommit,
   useFinishedAttemptCommit,
@@ -358,6 +359,7 @@ export function useAgentAttemptNow({
   usePolling(needsPolling(projection), commands.refresh);
   const [rejecting, setRejecting] = useState(false);
   const [takingOver, setTakingOver] = useState(false);
+  const [continuingWithNote, setContinuingWithNote] = useState(false);
   const when = (at: string, timeOnlyToday = false) =>
     formatWhen(t, at, i18n.language, { timeOnlyToday });
   const line = (text: string, view: AgentAttemptView) => (
@@ -822,7 +824,13 @@ export function useAgentAttemptNow({
           <>
             <Button
               onClick={() => {
-                commands.continueAttempt.mutate(sent);
+                // A missing Turn is retried as it was; a Continue asks for an optional note first.
+                if (missing) {
+                  commands.continueAttempt.mutate(sent);
+                } else {
+                  commands.continueAttempt.reset();
+                  setContinuingWithNote(true);
+                }
               }}
               disabled={refusal !== undefined || continuing || proposal?.state === 'pending'}
               aria-busy={continuing}
@@ -840,23 +848,42 @@ export function useAgentAttemptNow({
             ) : null}
           </>
         ),
-        dialogs: canTakeOver ? (
-          <TakeOverDialogFor
-            specId={subject.specId}
-            sessionId={view.sessionId}
-            gone={ownRefusal(view.continue) === 'session-gone'}
-            open={takingOver}
-            onOpenChange={setTakingOver}
-            stepTitle={stepTitle}
-            nextAttempt={attempt + 1}
-            paths={takeOverPaths}
-            pending={commands.takeOver.isPending}
-            error={commands.takeOver.error}
-            onConfirm={() =>
-              commands.takeOver.mutate(sent, { onSuccess: () => setTakingOver(false) })
-            }
-          />
-        ) : null,
+        dialogs: (
+          <>
+            <ContinueDialog
+              open={continuingWithNote}
+              onOpenChange={setContinuingWithNote}
+              stepTitle={stepTitle}
+              attempt={attempt}
+              pending={continuing}
+              // Answered or refused, the Now block says what happened, as for a Continue without a
+              // note (a refusal's reason is shown there, with Check again).
+              onContinue={(note) =>
+                commands.continueAttempt.mutate(
+                  { ...sent, ...(note !== undefined ? { note } : {}) },
+                  { onSettled: () => setContinuingWithNote(false) },
+                )
+              }
+            />
+            {canTakeOver ? (
+              <TakeOverDialogFor
+                specId={subject.specId}
+                sessionId={view.sessionId}
+                gone={ownRefusal(view.continue) === 'session-gone'}
+                open={takingOver}
+                onOpenChange={setTakingOver}
+                stepTitle={stepTitle}
+                nextAttempt={attempt + 1}
+                paths={takeOverPaths}
+                pending={commands.takeOver.isPending}
+                error={commands.takeOver.error}
+                onConfirm={() =>
+                  commands.takeOver.mutate(sent, { onSuccess: () => setTakingOver(false) })
+                }
+              />
+            ) : null}
+          </>
+        ),
         keepsMenu: true,
         showHandoff: true,
       };

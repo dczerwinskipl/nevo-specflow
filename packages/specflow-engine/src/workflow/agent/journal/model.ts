@@ -4,6 +4,7 @@ import { Type } from 'typebox';
 import { Value } from 'typebox/value';
 
 import { ERROR_DETAIL_PATHS_MAX } from '@nevo/specflow-contracts/documents';
+import { AGENT_OWNER_NOTE_MAX_LENGTH } from '@nevo/specflow-contracts/documents';
 
 import type { JournalKind } from '../../../specs/durable';
 import type { AttemptCommitWait } from '../../../specs/uncommitted/attempts';
@@ -65,6 +66,11 @@ export interface AgentTurnBinding {
    * a retry of this Turn.
    */
   readonly requestDigest?: string;
+  /**
+   * The owner's note sent with this Turn (after the brief; a Continue's "note for the agent"),
+   * at most `AGENT_OWNER_NOTE_MAX_LENGTH` characters; absent without one.
+   */
+  readonly ownerNote?: string;
   /**
    * When the attempt's finalize section ran for this Turn (it records the Turn's outcome and dirty
    * set and, in the same section, settles the Turn's execution claim).
@@ -407,6 +413,9 @@ const JournalSchema = Type.Object(
           boundAt: timestamp,
           contextDigest: Type.Optional(sha256),
           requestDigest: Type.Optional(sha256),
+          ownerNote: Type.Optional(
+            Type.String({ minLength: 1, maxLength: AGENT_OWNER_NOTE_MAX_LENGTH }),
+          ),
           finalizedAt: Type.Optional(timestamp),
         },
         closed,

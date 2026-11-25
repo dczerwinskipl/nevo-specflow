@@ -45,6 +45,8 @@ export interface AgentAttemptEvent {
   readonly turn?: number;
   readonly code?: string;
   readonly runs?: number;
+  /** A `turn-started` the owner sent a note with (a Continue's note for the agent). */
+  readonly note?: string;
 }
 
 /**
@@ -245,7 +247,12 @@ function eventsOf(
   ];
   journal.turns.forEach((turn, index) => {
     const number = index + 1;
-    events.push({ kind: 'turn-started', at: turn.boundAt, turn: number });
+    events.push({
+      kind: 'turn-started',
+      at: turn.boundAt,
+      turn: number,
+      ...(turn.ownerNote !== undefined ? { note: turn.ownerNote } : {}),
+    });
     if (turn.finalizedAt !== undefined) {
       if (
         journal.proposal?.state === 'refused' &&

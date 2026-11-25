@@ -202,6 +202,7 @@ export function requestOriginOf(
   subject: WorkflowSubject,
   brief: AgentBrief,
   continuation = false,
+  ownerNote?: string,
 ): RequestOrigin {
   const handoff = brief.handoff;
 
@@ -212,6 +213,7 @@ export function requestOriginOf(
     step: brief.step,
     attempt: brief.attempt,
     ...(continuation ? { continuation: true as const } : {}),
+    ...(ownerNote !== undefined ? { ownerNote } : {}),
     ...(handoff
       ? {
           handoff:
@@ -857,7 +859,7 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
           agentPermissions: { allow: await allowlistOf(bound.actor) },
           // The request is SpecFlow's brief, marked so a client shows it as such (the agent's
           // message is unchanged).
-          origin: requestOriginOf(subject, brief, bound.kind === 'continued'),
+          origin: requestOriginOf(subject, brief, bound.kind === 'continued', request.message),
         },
       );
     }
@@ -1033,7 +1035,12 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       actor,
       expected,
       workspaceId,
-      turn: { invocationId, turnId, requestDigest },
+      turn: {
+        invocationId,
+        turnId,
+        requestDigest,
+        ...(request.message !== undefined ? { ownerNote: request.message } : {}),
+      },
       ...(continuing
         ? {}
         : {

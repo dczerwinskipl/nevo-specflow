@@ -2041,6 +2041,7 @@
       "generated": "Wygenerowane przez SpecFlow",
       "titleTask": "{{step}} zadania {{task}}",
       "openFull": "Zobacz pełny brief",
+      "ownerNote": "Twoja wskazówka dla agenta",
       "resumed": "Wznowiono wykonanie",
       "continue": "Kontynuuj bieżącą próbę workflow.",
       "openContinuation": "Zobacz brief kontynuacji",
@@ -3052,6 +3053,14 @@
       "returnStopFailed": "SpecFlow nie mógł zatrzymać agenta, więc może on nadal pracować. Powrót do {{target}} czeka, aż agent się zatrzyma.",
       "returnNextAction": "Agent się zatrzymał. Powrót do {{target}} zostanie zastosowany przy Twojej następnej akcji w tym kroku: wybierz Powrót w menu.",
       "returnRefused": "Powrót do {{target}} nie został zastosowany: {{reason}} ({{code}}). Podejście pozostaje bez zmian.",
+      "continueDialog": {
+        "title": "Kontynuuj: {{step}}",
+        "description": "Agent kontynuuje próbę {{attempt}} w tej samej sesji, z zakresem tej próby.",
+        "noteLabel": "Wskazówka dla agenta (opcjonalna)",
+        "noteHint": "Na przykład co ma zrobić inaczej. Zostanie wysłana razem z komunikatem kontynuacji SpecFlow, w tej samej turze.",
+        "tooLong": "Wskazówka może mieć najwyżej {{max}} znaków.",
+        "withNote": "Kontynuuj ze wskazówką"
+      },
       "takeOverDialog": {
         "title": "Przejmij krok {{step}}",
         "description": "Podejście agenta kończy się jako przejęte i zaczyna się Twoje własne podejście {{attempt}}. Krok kończysz samodzielnie.",
@@ -3169,6 +3178,7 @@
         "rejected": "Wynik odrzucony",
         "commitFailed": "Ukończone, ale bez commita"
       },
+      "ownerNote": "Twoja wskazówka dla agenta: {{note}}",
       "event": {
         "started": "Start",
         "handed-over": "Przekazano agentowi",

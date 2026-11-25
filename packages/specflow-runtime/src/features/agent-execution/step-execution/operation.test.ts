@@ -438,6 +438,25 @@ describe('agent step execution', () => {
     ]);
   });
 
+  it("sends a Continue's note in the attempt's own Turn, records it on the Turn and marks it for the transcript", async () => {
+    const { execution, origins, messages, attempt } = fakes();
+    await execution.startAgentStepExecution(request('00000000-0000-4000-8000-00000000000e'));
+    const note = 'You timed out twice: run the tests one file at a time.';
+
+    await execution.startAgentStepExecution({
+      ...request('00000000-0000-4000-8000-00000000000f', { attempt: 1 }),
+      message: note,
+    });
+
+    // The same attempt Turn, with the attempt's own brief and permissions: no separate chat Turn.
+    expect(messages).toHaveLength(2);
+    expect(messages[1]).toContain('## Note from the owner');
+    expect(messages[1]).toContain(note);
+    expect(attempt()!.journal.turns.at(-1)).toMatchObject({ ownerNote: note });
+    expect(origins[1]).toMatchObject({ continuation: true, ownerNote: note });
+    expect((origins[0] as { ownerNote?: string }).ownerNote).toBeUndefined();
+  });
+
   it('stops the running Turn of the attempt the owner was shown', async () => {
     const { calls, execution, attempt } = fakes();
     await execution.startAgentStepExecution(request('00000000-0000-4000-8000-000000000006'));

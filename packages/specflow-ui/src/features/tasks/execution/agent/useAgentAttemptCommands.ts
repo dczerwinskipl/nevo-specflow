@@ -84,11 +84,20 @@ export function useAgentAttemptCommands(subject: WorkflowSubjectRef, headingId?:
       return settle();
     },
   });
+  // A Continue, with the owner's note for the agent when they wrote one (same Turn of the attempt).
   const continueAttempt = useMutation({
-    mutationFn: (expected: { readonly step: string; readonly attempt: number }) =>
+    mutationFn: ({
+      note,
+      ...expected
+    }: {
+      readonly step: string;
+      readonly attempt: number;
+      readonly note?: string;
+    }) =>
       workflowExecutionApi.startAgentExecution(target, {
-        requestId: continueKey.next(expected),
+        requestId: continueKey.next({ expected, note }),
         expected,
+        ...(note !== undefined ? { message: note } : {}),
       }),
     onSettled: (_result, error) => {
       continueKey.settled(error ?? undefined);

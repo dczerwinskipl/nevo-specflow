@@ -21,6 +21,7 @@ import {
   WorkflowStepSchema,
   WorkflowSubjectSchema,
 } from './projection';
+import { AGENT_OWNER_NOTE_MAX_LENGTH } from '../documents/agent-commands';
 
 /**
  * The owner commands on a workflow subject and their results. The actor is never part of a request:
@@ -696,6 +697,8 @@ export type WorkflowError = Static<typeof WorkflowErrorSchema>;
  * then is refused. `message` is the owner's note to the agent, after the brief. The actor is the
  * authenticated caller; the agent's actor comes from the Session, never from the body.
  */
+export { AGENT_OWNER_NOTE_MAX_LENGTH };
+
 export const AgentStepExecutionRequestSchema = Type.Object(
   {
     /** The idempotency key of this request: a repeat returns the same attempt and Turn. */
@@ -711,7 +714,12 @@ export const AgentStepExecutionRequestSchema = Type.Object(
     provider: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
     model: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
     effort: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
-    message: Type.Optional(Type.String({ minLength: 1, maxLength: 20_000 })),
+    /**
+     * The owner's note to the agent, sent after the brief in the same Turn (a Continue's note goes
+     * into the attempt's own Turn, with its scope; it never widens it) and recorded on the Turn in
+     * the attempt journal.
+     */
+    message: Type.Optional(Type.String({ minLength: 1, maxLength: AGENT_OWNER_NOTE_MAX_LENGTH })),
   },
   { additionalProperties: false },
 );
@@ -899,6 +907,8 @@ export const AgentAttemptHistorySchema = Type.Object({
       turn: Type.Optional(Type.Integer({ minimum: 1 })),
       code: Type.Optional(Type.String()),
       runs: Type.Optional(Type.Integer({ minimum: 1 })),
+      /** A `turn-started` the owner sent a note with: the note (a Continue's note for the agent). */
+      note: Type.Optional(Type.String({ maxLength: AGENT_OWNER_NOTE_MAX_LENGTH })),
     }),
     { maxItems: 1000 },
   ),

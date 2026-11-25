@@ -389,6 +389,31 @@ function ExceptionalEvents({ item }: { readonly item: AgentHistoryItem }) {
 }
 
 /**
+ * The notes the owner sent the agent with a Continue (or a start), in their order: what the owner
+ * told the agent to do differently is part of what happened, so the history keeps it.
+ */
+function OwnerNotes({ item }: { readonly item: AgentHistoryItem }) {
+  const { t, i18n } = useTranslation();
+  const notes = item.agent.events.filter((event) => event.kind === 'turn-started' && event.note);
+  if (notes.length === 0) {
+    return null;
+  }
+
+  return (
+    <ul className="grid gap-0.5 text-body-sm text-content-secondary" data-agent-owner-notes="">
+      {notes.map((event, index) => (
+        <li key={`note-${index}`} className="whitespace-pre-wrap [overflow-wrap:anywhere]">
+          {t('workflowExecution.attemptHistory.ownerNote', { note: event.note })}
+          {event.at ? (
+            <span className="text-content-muted"> · {formatWhen(t, event.at, i18n.language)}</span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
  * What the agent achieved in one attempt, for the workflow history of a Task or a Specification
  * (workflow-execution.md, "Activity history"): how it ended when the entry's own lines do not say
  * it (`showOutcome`), the exceptions worth knowing, who worked on it with Open session, what it
@@ -453,6 +478,7 @@ export function AgentAttemptHistory({
         </Typography>
       ) : null}
       <ExceptionalEvents item={item} />
+      <OwnerNotes item={item} />
       <AgentIdentityLine item={item} specId={subject.specId} />
       {changes ? (
         <AttemptChanges changes={changes} specId={subject.specId} openDocument={openDocument} />

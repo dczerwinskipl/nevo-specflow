@@ -195,6 +195,33 @@ describe('agent attempt start', () => {
     ).rejects.toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
   });
 
+  it("records the owner's note of a Continue on its Turn, bounded", async () => {
+    const { dependencies } = agentDependencies();
+    await startAgentAttempt(dependencies, startInput());
+    const next = startInput({
+      expected: { step: 'requirements', attempt: 1 },
+      turn: {
+        invocationId: INVOCATION_2,
+        turnId: 'turn-2',
+        ownerNote: 'Write one file at a time.',
+      },
+    });
+    await expect(
+      startAgentAttempt(dependencies, {
+        ...next,
+        turn: { ...next.turn, ownerNote: 'x'.repeat(4001) },
+      }),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
+
+    await startAgentAttempt(dependencies, next);
+    const turns = (await readAgentAttempt(dependencies, ATTEMPT_ID))?.turns;
+    expect(turns?.[0]?.ownerNote).toBeUndefined();
+    expect(turns?.[1]).toMatchObject({
+      invocationId: INVOCATION_2,
+      ownerNote: 'Write one file at a time.',
+    });
+  });
+
   it('refuses a retried Turn whose request digest is not the one it was bound with', async () => {
     const { dependencies } = agentDependencies();
     await startAgentAttempt(dependencies, startInput());

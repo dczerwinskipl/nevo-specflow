@@ -1,3 +1,4 @@
+import { AGENT_OWNER_NOTE_MAX_LENGTH } from '@nevo/specflow-contracts/documents';
 import { activeAttempt } from '@nevo/workflow';
 
 import { WorkflowError } from '../errors';
@@ -57,6 +58,8 @@ export interface StartAgentAttemptInput {
     readonly invocationId: string;
     readonly turnId: string;
     readonly requestDigest?: string;
+    /** The owner's note sent with the Turn, recorded on it (`AgentTurnBinding.ownerNote`). */
+    readonly ownerNote?: string;
   };
   /** The launch of a new attempt (D18): fresh or continued Session, and the chosen effort. */
   readonly launch?: { readonly session: 'fresh' | 'reuse'; readonly effort?: string };
@@ -100,6 +103,15 @@ function assertBindingInput(input: StartAgentAttemptInput): void {
 
   if (input.turn.requestDigest !== undefined && !SHA256.test(input.turn.requestDigest)) {
     invalidInput('The request digest of an agent Turn is a sha256 hex digest.');
+  }
+
+  if (
+    input.turn.ownerNote !== undefined &&
+    (input.turn.ownerNote.length === 0 || input.turn.ownerNote.length > AGENT_OWNER_NOTE_MAX_LENGTH)
+  ) {
+    invalidInput(
+      `The owner's note to an agent has 1 to ${String(AGENT_OWNER_NOTE_MAX_LENGTH)} characters.`,
+    );
   }
 }
 

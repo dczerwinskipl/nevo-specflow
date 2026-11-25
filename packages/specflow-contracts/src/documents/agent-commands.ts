@@ -61,6 +61,9 @@ const finishResult = (context: AgentFormContext): string =>
  */
 export const AGENT_COMMAND_MAX_BYTES = 7000;
 
+/** The longest owner note to an agent (a start's or a Continue's `message`), in characters. */
+export const AGENT_OWNER_NOTE_MAX_LENGTH = 4000;
+
 /**
  * Where an agent writes the files it passes with `--content-file` / `--tasks-file`: inside its
  * worktree (its file tools reach nothing outside), under `.nevo/local/`, which a Project Home must

@@ -86,6 +86,7 @@ export interface AgentStepEngine {
       readonly invocationId: string;
       readonly turnId: string;
       readonly requestDigest: string;
+      readonly ownerNote?: string;
     };
     readonly launch?: { readonly session: 'fresh' | 'reuse'; readonly effort?: string };
   }): Promise<{ readonly attemptId: string; readonly brief: AgentBrief }>;

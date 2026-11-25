@@ -108,6 +108,28 @@ describe('the agent attempt in the history', () => {
     );
   });
 
+  it("keeps the owner's note for the agent of a Continue, and nothing for a Turn without one", () => {
+    const history = takenOverAttemptHistory();
+    const agent = history.items[1]!.agent!;
+    (agent as { events: unknown[] }).events = [
+      ...agent.events,
+      { kind: 'turn-started', at: '2026-11-13T12:10:00Z', turn: 2 },
+      {
+        kind: 'turn-started',
+        at: '2026-11-13T12:20:00Z',
+        turn: 3,
+        note: 'Run the tests one file at a time.',
+      },
+    ];
+    renderAttempt(history);
+
+    const notes = document.querySelectorAll('[data-agent-owner-notes] li');
+    expect(notes).toHaveLength(1);
+    expect(notes[0]!.textContent).toMatch(
+      /^Your note for the agent: Run the tests one file at a time\. · /,
+    );
+  });
+
   it('names a committed attempt in one row with its short commit id', () => {
     renderAttempt(finishedAttemptHistory({ state: 'committed', sha: '05f9d80' + '0'.repeat(33) }));
 

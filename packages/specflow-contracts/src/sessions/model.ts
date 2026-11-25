@@ -315,6 +315,11 @@ export const RequestOriginSchema = Type.Object(
      * that started the attempt.
      */
     continuation: Type.Optional(Type.Literal(true)),
+    /**
+     * The owner's note sent with this brief (after it, in the same Turn): a client shows it as the
+     * owner's own message, after the brief (after "execution resumed" for a Continue).
+     */
+    ownerNote: Type.Optional(text(4000)),
     handoff: Type.Optional(
       Type.Object(
         {

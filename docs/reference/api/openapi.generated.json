@@ -15016,6 +15016,10 @@
                               "runs": {
                                 "type": "integer",
                                 "minimum": 1
+                              },
+                              "note": {
+                                "type": "string",
+                                "maxLength": 4000
                               }
                             }
                           },
@@ -18895,6 +18899,10 @@
                                   true
                                 ]
                               },
+                              "ownerNote": {
+                                "type": "string",
+                                "maxLength": 4000
+                              },
                               "handoff": {
                                 "type": "object",
                                 "required": [
@@ -20543,6 +20551,10 @@
                                 "enum": [
                                   true
                                 ]
+                              },
+                              "ownerNote": {
+                                "type": "string",
+                                "maxLength": 4000
                               },
                               "handoff": {
                                 "type": "object",
@@ -48243,7 +48255,7 @@
                   "message": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 20000
+                    "maxLength": 4000
                   }
                 },
                 "additionalProperties": false
@@ -55652,7 +55664,7 @@
                   "message": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 20000
+                    "maxLength": 4000
                   }
                 },
                 "additionalProperties": false

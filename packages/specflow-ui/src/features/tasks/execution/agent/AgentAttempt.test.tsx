@@ -170,11 +170,40 @@ describe('an agent that stopped', () => {
     expect(screen.getByText('The agent stopped without proposing a result.')).toBeTruthy();
     expect(actions(container)).toEqual(['Continue', 'Take over']);
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    // The dialog asks for an optional note; Continue has the focus, so no note is one more press.
+    const dialog = await screen.findByRole('dialog');
+    const confirm = within(dialog).getByRole('button', { name: 'Continue' });
+    await waitFor(() => expect(document.activeElement).toBe(confirm));
+    expect(start).not.toHaveBeenCalled();
+    fireEvent.click(confirm);
 
     await waitFor(() =>
       expect(start).toHaveBeenCalledWith(
         { specId: SPEC, taskId: TASK },
         { requestId: expect.any(String) as string, expected: { step: 'implement', attempt: 2 } },
+      ),
+    );
+  });
+
+  it("sends the owner's note for the agent with the Continue of the same attempt", async () => {
+    const start = vi.fn(never);
+    renderNow('stopped', { startAgentExecution: start });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('Note for the agent (optional)'), {
+      target: { value: '  Run the tests one file at a time.  ' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Continue with the note' }));
+
+    await waitFor(() =>
+      expect(start).toHaveBeenCalledWith(
+        { specId: SPEC, taskId: TASK },
+        {
+          requestId: expect.any(String) as string,
+          expected: { step: 'implement', attempt: 2 },
+          message: 'Run the tests one file at a time.',
+        },
       ),
     );
   });
@@ -236,7 +265,12 @@ describe('an agent that stopped', () => {
     renderNow('stopped', { startAgentExecution: start });
 
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Continue' }),
+    );
 
+    // The dialog closes and the Now block says why, as before.
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect((await screen.findByRole('alert')).textContent).toContain(
       'The agent cannot continue: 1 file changed since it stopped.',
     );

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { WorkflowExecutionFixture } from '../ProjectWorkflowExecution.stories-support';
+import { settleViewport } from '../../../../test-support/viewportSettle.stories-support';
 
 /*
  * The Now block while an agent runs a step and after it stops, once per state the Runtime can report
@@ -491,5 +492,37 @@ export const SpecificationActivityHistoryExpanded: Story = {
     await expect(attempts.getAllByText('overview.md')[0]).toBeVisible();
     await userEvent.click(attempts.getAllByRole('button', { name: 'View feedback' })[0]!);
     await expect(attempts.getByText(/Install and init stay separate Tasks/)).toBeVisible();
+  },
+};
+
+/**
+ * Continue with a note (owner, PR 169): the same Continue opens a small dialog with an optional note
+ * for the agent; Continue keeps the focus, so without a note it is one more press. Checked at 375 px
+ * and on desktop: the dialog fits, the label names the note, and the submit says it sends the note.
+ */
+export const ContinueWithNote: Story = {
+  args: { scenario: 'attempt-stopped' },
+  play: async ({ canvasElement }) => {
+    for (const [width, height] of [
+      [375, 812],
+      [1440, 900],
+    ] as const) {
+      await settleViewport(width, height);
+      const now = await findNow(canvasElement);
+      await userEvent.click(within(now).getByRole('button', { name: 'Continue' }));
+      const dialog = await within(document.body).findByRole('dialog', {}, wait);
+      const submit = within(dialog).getByRole('button', { name: 'Continue' });
+      await waitFor(() => expect(submit).toHaveFocus());
+      const field = within(dialog).getByLabelText('Note for the agent (optional)');
+      await userEvent.type(field, 'Run the tests one file at a time.');
+      await expect(
+        within(dialog).getByRole('button', { name: 'Continue with the note' }),
+      ).toBeEnabled();
+      const bounds = dialog.getBoundingClientRect();
+      await expect(bounds.left).toBeGreaterThanOrEqual(0);
+      await expect(bounds.right).toBeLessThanOrEqual(width);
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+    }
   },
 };

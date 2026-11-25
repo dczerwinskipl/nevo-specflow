@@ -497,6 +497,13 @@ Every other subject's Now block shows one note above its own content:
   <Session>"; an attention note "The agent stopped without proposing a result." with what Continue
   and Take over do; a quiet line "Kept so far: <documents as links> and N changed files. **See the
   attempt**". Actions **Continue** (main) and **Take over** (secondary); Return stays in ⋯.
+  **Continue** opens a small dialog "Continue <step>" with an optional **Note for the agent** (at
+  most 4000 characters) and Cancel / **Continue** (**Continue with the note** once a note is
+  written); Continue has the initial focus, so without a note it is one more press. The note goes
+  into the attempt's own Turn after SpecFlow's continuation message, with the attempt's scope and
+  permissions (never a separate chat Turn), and is recorded on that Turn in the attempt journal.
+  The dialog closes when the Continue is answered; a refusal is shown in the Now block as before.
+  The Activity history lists each note under its attempt ("Your note for the agent: …").
 - **Did not start** (its Session could not be created): "Attempt 2 · the agent did not start"; an
   attention note says it has done nothing yet. The main action reads **Retry start** instead of
   Continue.

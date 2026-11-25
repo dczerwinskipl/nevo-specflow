@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { DriverFact } from '../../persistence/protocol';
 import type { Invocation } from '../driver';
@@ -597,6 +600,60 @@ describe('Claude bidirectional operation', () => {
         await f.operation.done;
       },
     );
+
+    it('approves a list of allowlisted calls whose cd and redirections stay in the worktree', async () => {
+      const workspace = await mkdtemp(join(tmpdir(), 'nevo-allowlist-'));
+      await mkdir(join(workspace, 'specs'));
+      const outside = await mkdtemp(join(tmpdir(), 'nevo-outside-'));
+      try {
+        const f = fixture('stopped', {
+          invocation: {
+            ...turn('auto'),
+            executionContext: {
+              kind: 'workspace-write',
+              workspace,
+              temporaryRoot: outside,
+              workspaceIdentity: 'w',
+              admission: { operationId: 'o', scope: 'project', workspace },
+            },
+          },
+          productCli: trusted,
+        });
+        await f.ready();
+        f.push(
+          bash(
+            'ok',
+            'cd specs && nevo-specflow workflow context S --feedback "a (b); c" 2>&1; nevo-specflow tasks list S --json > ../out.json',
+          ),
+        );
+        await vi.waitFor(() =>
+          expect(f.sent.filter((frame) => frame.type === 'control_response')).toHaveLength(1),
+        );
+        const refused = [
+          `cd ${outside.replaceAll('\\', '/')} && nevo-specflow tasks list S`,
+          'cd .. && nevo-specflow tasks list S',
+          'nevo-specflow tasks list S > ../../escape.json',
+          `nevo-specflow tasks list S > ${join(outside, 'x.json').replaceAll('\\', '/')}`,
+          'nevo-specflow tasks list S | head -5',
+          'S=1; nevo-specflow tasks list $S',
+        ];
+        for (const [index, command] of refused.entries()) {
+          f.push(bash('no' + String(index), command));
+        }
+
+        await vi.waitFor(() =>
+          expect(f.facts.filter((fact) => fact.kind === 'interaction')).toHaveLength(
+            refused.length,
+          ),
+        );
+        expect(f.sent.filter((frame) => frame.type === 'control_response')).toHaveLength(1);
+        f.controller.abort();
+        await f.operation.done;
+      } finally {
+        await rm(workspace, { recursive: true, force: true });
+        await rm(outside, { recursive: true, force: true });
+      }
+    });
 
     it('sends an allowlisted command to the owner and records why when PATH is not trusted', async () => {
       const f = fixture('stopped', {

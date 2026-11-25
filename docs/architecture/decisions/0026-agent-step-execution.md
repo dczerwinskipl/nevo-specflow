@@ -355,6 +355,28 @@ auto-approved. A Turn without this trust information approves nothing automatica
 recorded in the Turn once per reason. The re-check narrows, but cannot close, the window between
 the decision and the shell running the file; the trust model below applies.
 
+What counts as an allowlisted command (dogfood round 3, 2026-11-25: 0 of 234 prompts matched the
+old "one bare call, no shell character" rule, because agents chain calls and quote feedback). The
+command is parsed the way the shell splits it (`judgeAgentCliCommand` over `parseAgentShellCommand`,
+a strict parser for a small subset of the shell language), never matched as text, and fails closed:
+
+- every simple command is a bare `nevo-specflow` whose command path is allowlisted, joined by `&&`,
+  `;`, `|` or new lines (a pipe only into another allowlisted call), and the list may start with
+  one `cd <folder>`;
+- words are literal: plain, single- or double-quoted, escaped; no `$`, variable, command
+  substitution, backtick, glob, brace or tilde expansion, comment, subshell, group, `||`,
+  background `&` or environment assignment; no option that retargets the CLI
+  (`--project-root`, `--worktree`, `--workspace-id`, `--to-root`);
+- redirections are files, `/dev/null`, a descriptor duplicate (`2>&1`) or a here-document with a
+  quoted delimiter (its body is literal stdin); here-strings, process substitution, `<>`, `>|`,
+  `&>` and `<<-` are refused; a control character or anything the parser cannot read is refused;
+- the `cd` folder (from the worktree, where Claude's shell starts each command) and every
+  redirection target (from that folder) must lie inside the worktree, as written and as canonical
+  real paths with links and junctions resolved; a Git Bash drive path (`/c/x`) is read as `C:\x`.
+
+The command's trust stays bound to the product CLI identity above. The brief (D13) states the rule
+and tells the agent to read and write files with its file tools, which do not prompt.
+
 Nevo's allowlist decision is separate from the provider's work mode. Claude's `auto` (or any other
 native mode) never approves a Bash command: the launch settings ask for every Bash call
 (`permissions.ask: [Bash]`, no `Bash(...)` rule is ever forwarded as a native allow rule), so every

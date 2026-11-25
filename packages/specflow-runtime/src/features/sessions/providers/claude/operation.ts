@@ -1,5 +1,5 @@
 import { randomUUID, createHash } from 'node:crypto';
-import { isAllowlistedCliCommand } from '@nevo/specflow-contracts/documents';
+import { judgeAgentCliCommand } from '@nevo/specflow-contracts/documents';
 import type { RespondInteraction } from '@nevo/specflow-contracts/sessions';
 import type { DriverFact } from '../../persistence/protocol';
 import { SessionError } from '../../errors';
@@ -16,6 +16,7 @@ import {
   object,
 } from './protocol';
 import type { ProductCliTrust } from './cli-path';
+import { commandPathsInsideWorkspace } from './command-paths';
 import { claudeUserMessage } from './requests';
 import { prepareClaudeRequest } from './permissions';
 import { claudeMode, toolsForClaudeMode } from './modes';
@@ -336,17 +337,30 @@ export function createClaudeOperation(
             throw new ClaudeProtocolError();
           }
 
-          // An agent step execution Turn: one exact product CLI call of its allowlist is approved here,
-          // by Nevo's allowlist only, never by the provider's own rules or work mode (Bash always
-          // asks, also in Claude's auto mode), and recorded in the Turn. It fails closed: without a
-          // product CLI identity verified for this very decision, the owner decides. Anything else
-          // goes to the owner.
+          // An agent step execution Turn: a command made only of product CLI calls of its allowlist
+          // (judgeAgentCliCommand: parsed, never matched as text), whose `cd` and redirections stay in
+          // the worktree, is approved here, by Nevo's allowlist only, never by the provider's own
+          // rules or work mode (Bash always asks, also in Claude's auto mode), and recorded in the
+          // Turn. It fails closed: without a product CLI identity verified for this very decision,
+          // the owner decides. Anything else goes to the owner.
           const action = request.questions[0]?.interaction;
-          if (
+          const judgement =
             invocation.permissions &&
             action?.kind === 'permission' &&
+            action.action?.operation === 'command'
+              ? judgeAgentCliCommand(action.action.command, invocation.permissions.allow)
+              : undefined;
+          if (
+            action?.kind === 'permission' &&
             action.action?.operation === 'command' &&
-            isAllowlistedCliCommand(action.action.command, invocation.permissions.allow)
+            judgement?.kind === 'allowlisted' &&
+            (invocation.executionContext.kind === 'no-effects'
+              ? judgement.paths.cd === undefined && judgement.paths.redirections.length === 0
+              : await commandPathsInsideWorkspace(
+                  judgement.paths,
+                  invocation.executionContext.workspace,
+                  process.platform,
+                ))
           ) {
             const trust: ProductCliTrust = options.productCli
               ? await options.productCli()

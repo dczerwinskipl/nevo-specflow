@@ -111,7 +111,14 @@ closed (ADR 0026, D20): it is bound to the identity of the file a bare `nevo-spe
 at Turn start (canonical real path, size, modification time, sha256), re-verified at each decision,
 and withheld when the executable is missing, unreadable or inside the workspace, or when trust
 information is missing. Claude's `auto` mode never approves a Bash call itself: Bash always asks the
-host, which alone applies the allowlist. A Bash command above
+host, which alone applies the allowlist. The host approves a command made only of allowlisted
+`nevo-specflow` calls (joined by `&&`, `;`, `|` or new lines, optionally after `cd <folder in the
+worktree>`, literal quoted words, redirections into the worktree or `/dev/null`, quoted
+here-documents); the command is parsed, not pattern-matched, and anything outside that subset goes to
+the owner (ADR 0026, D20). Edit and Write inside the worktree never reach the host in `acceptEdits`
+or `auto`: Claude's own check allows them (dogfood rounds 2 and 3: 0 of 472 owner prompts were file
+edits); Claude refuses file tools outside the worktree itself. SpecFlow installs no permission
+hook (`disableAllHooks: true`). A Bash command above
 7000 bytes is denied with its size, the limit and `--content-file` as the remedy. Each mode is probed and can be unavailable
 independently. When native initialization reports `supportsAutoMode` (Claude 2.1.312 and later),
 `auto` offers only the models it marks; Claude would run any other model in `default`, so such a

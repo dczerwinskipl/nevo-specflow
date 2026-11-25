@@ -1,4 +1,5 @@
 import { AGENT_COMMANDS } from './agent-commands';
+import { parseAgentShellCommand } from './agent-shell-command';
 
 /**
  * The provider permission allowlist of an agent step execution Turn (D20). The rules an archetype lists per
@@ -28,8 +29,6 @@ const REFUSED_TOOLS: ReadonlySet<string> = new Set(
     'PowerShell',
   ].map((name) => name.toLowerCase()),
 );
-/** Characters that let a command do more than the one command, or expand to something else. */
-const SHELL_UNSAFE = /[;&|<>$`()\\\n\r*?[\]{}]/;
 const RETARGETING_OPTIONS = /^--(?:project-root|worktree|workspace-id|to-root)(?:=|$)/;
 const RULE = /^([A-Za-z0-9_.*-]+)(?:\(([^]*)\))?$/;
 const ABSOLUTE_PATH = /^(?:[/\\~]|[A-Za-z]:)/;
@@ -148,18 +147,27 @@ export function partitionAgentPermissionRules(rules: readonly string[]): AgentPe
 }
 
 /**
- * Whether a shell command is exactly one allowlisted product CLI call: it starts with the bare
- * `nevo-specflow` (no path, no `VAR=` prefix), names an allowed `AGENT_COMMANDS` key with a word
- * boundary and carries no shell control, expansion or glob character. The host answers the provider's
- * permission prompt with this; anything else goes to the owner.
+ * The paths an allowlisted command touches outside its arguments, all literal words for the host to
+ * check against the Turn's worktree: the folder of a leading `cd` (relative to the worktree) and every
+ * redirection target (relative to that folder). `/dev/null` is not listed: it is no file.
  */
-export function isAllowlistedCliCommand(command: string, rules: readonly string[]): boolean {
-  if (SHELL_UNSAFE.test(command)) {
+export interface AllowlistedCliPaths {
+  readonly cd?: string;
+  readonly redirections: readonly string[];
+}
+
+export type AgentCliCommandJudgement =
+  | { readonly kind: 'allowlisted'; readonly paths: AllowlistedCliPaths }
+  | { readonly kind: 'not-allowlisted'; readonly reason: string };
+
+/** Whether one parsed simple command is an allowlisted product CLI call (its argv only). */
+function allowlistedInvocation(argv: readonly string[], rules: readonly string[]): boolean {
+  if (argv[0] !== PRODUCT_CLI) {
     return false;
   }
 
   // Options that point the CLI at another project, worktree or workspace than the Turn's own.
-  if (command.split(/\s+/).some((word) => RETARGETING_OPTIONS.test(word.replace(/["']/g, '')))) {
+  if (argv.some((word) => RETARGETING_OPTIONS.test(word))) {
     return false;
   }
 
@@ -170,8 +178,72 @@ export function isAllowlistedCliCommand(command: string, rules: readonly string[
       return false;
     }
 
-    const base = `${PRODUCT_CLI} ${entry.key}`;
+    const words = entry.key.split(' ');
+    const named = words.every((word, index) => argv[index + 1] === word);
 
-    return command === base || (entry.anyArguments && command.startsWith(`${base} `));
+    return named && (entry.anyArguments || argv.length === words.length + 1);
   });
+}
+
+/**
+ * Whether a shell command consists only of allowlisted product CLI calls (D20). The command is parsed
+ * the way the shell splits it (`parseAgentShellCommand`), never matched as text, and judged
+ * fail-closed: every simple command is a bare `nevo-specflow` with an allowlisted command path, joined
+ * by `&&`, `;`, `|` or new lines; the list may start with `cd <folder>`; words are literal (quotes
+ * allowed, no expansion, variable, substitution, glob or environment assignment); redirections are
+ * files, `/dev/null`, a descriptor duplicate (`2>&1`) or a here-document with a quoted delimiter.
+ * The paths it returns are judged by the host against the worktree (the parser knows no file
+ * system). Anything else goes to the owner, with the reason.
+ */
+export function judgeAgentCliCommand(
+  command: string,
+  rules: readonly string[],
+): AgentCliCommandJudgement {
+  const parsed = parseAgentShellCommand(command);
+  if (parsed.kind === 'refused') {
+    return { kind: 'not-allowlisted', reason: parsed.reason };
+  }
+
+  let cd: string | undefined;
+  const redirections: string[] = [];
+  for (const [index, simple] of parsed.commands.entries()) {
+    if (simple.argv[0] === 'cd') {
+      if (
+        index !== 0 ||
+        simple.argv.length !== 2 ||
+        simple.redirections.length > 0 ||
+        simple.next === '|' ||
+        simple.next === undefined ||
+        simple.argv[1] === '' ||
+        simple.argv[1] === '-'
+      ) {
+        return {
+          kind: 'not-allowlisted',
+          reason: 'Only a single leading "cd <folder>" followed by product CLI calls is allowed.',
+        };
+      }
+
+      cd = simple.argv[1];
+      continue;
+    }
+
+    if (!allowlistedInvocation(simple.argv, rules)) {
+      return {
+        kind: 'not-allowlisted',
+        reason: `"${simple.argv.join(' ').slice(0, 120)}" is not an allowlisted ${PRODUCT_CLI} call.`,
+      };
+    }
+
+    for (const redirection of simple.redirections) {
+      if (redirection.kind === 'file' && redirection.target !== '/dev/null') {
+        if (redirection.target === '') {
+          return { kind: 'not-allowlisted', reason: 'A redirection has no target.' };
+        }
+
+        redirections.push(redirection.target);
+      }
+    }
+  }
+
+  return { kind: 'allowlisted', paths: { ...(cd !== undefined ? { cd } : {}), redirections } };
 }

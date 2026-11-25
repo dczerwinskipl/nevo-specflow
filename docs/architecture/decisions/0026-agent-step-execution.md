@@ -392,7 +392,11 @@ a strict parser for a small subset of the shell language), never matched as text
   hooks or other `.nevo` files); input redirections and the value of every `--…-file` option
   (`--content-file`, `--tasks-file`, `--task-decisions-file`, `--context-file`) lie inside the
   worktree. A relative path is judged only from the leading absolute `cd`: Claude's shell may keep
-  an earlier `cd`, so without one the host does not know the current folder and refuses it.
+  an earlier `cd`, so without one the host does not know the current folder and refuses it. No path
+  word may contain a `..` segment (the kernel follows a link before it applies `..`, so a lexical
+  normalisation would judge another folder), the `cd` folder's real path must be the folder as
+  written (a folder reached through a link is the owner's call), and a scratch output may not name
+  a Windows device (`NUL`, `CON`, `COM1`, …) or an alternate data stream (`a:b`).
 
 The CLI itself does not confine `--…-file` reads in an agent Turn: it has no trusted notion of the
 Turn's checkout (the Turn's environment names the broker, not the worktree), and a command the owner

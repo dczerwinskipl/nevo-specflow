@@ -97,6 +97,13 @@ export async function commandPathsInsideWorkspace(
     return within(folder, path, strict) && !!real && within(realFolder, real, strict);
   };
 
+  // No `..` in any path word: the kernel follows a link first and only then applies `..`, so a
+  // lexical normalisation could judge another folder than the one the shell reaches.
+  const words = [...(paths.cd !== undefined ? [paths.cd] : []), ...paths.outputs, ...paths.inputs];
+  if (words.some((word) => word.split(/[/\\]/).includes('..'))) {
+    return false;
+  }
+
   let cwd: string | undefined;
   if (paths.cd !== undefined) {
     const target = native(paths.cd);
@@ -106,6 +113,12 @@ export async function commandPathsInsideWorkspace(
 
     cwd = flavour.resolve(target);
     if (!(await inside(cwd, root, false))) {
+      return false;
+    }
+
+    // A folder reached through a link is the owner's call: its real path must be the one written.
+    const real = await files.realpath(cwd).catch(() => undefined);
+    if (real === undefined || fold(flavour.resolve(real)) !== fold(cwd)) {
       return false;
     }
   }
@@ -127,7 +140,11 @@ export async function commandPathsInsideWorkspace(
   const scratch = flavour.join(root, ...AGENT_SCRATCH_DIRECTORY.split('/'));
   for (const output of paths.outputs) {
     const path = located(output);
-    if (path === undefined || !(await inside(path, scratch, true))) {
+    if (
+      path === undefined ||
+      deviceOrStream(flavour.relative(scratch, path)) ||
+      !(await inside(path, scratch, true))
+    ) {
       return false;
     }
   }
@@ -140,4 +157,14 @@ export async function commandPathsInsideWorkspace(
   }
 
   return true;
+}
+
+/** A Windows device name (`NUL`, `CON`, `COM1`, …) or an alternate data stream (`a:b`) in a path. */
+function deviceOrStream(relative: string): boolean {
+  return relative
+    .split(/[/\\]/)
+    .some(
+      (segment) =>
+        segment.includes(':') || /^(?:con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(segment),
+    );
 }

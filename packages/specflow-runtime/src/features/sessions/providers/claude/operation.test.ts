@@ -625,7 +625,7 @@ describe('Claude bidirectional operation', () => {
         f.push(
           bash(
             'ok',
-            `cd "${root}/specs" && nevo-specflow workflow context S --feedback "a (b); c" 2>&1; nevo-specflow tasks list S --json > ../.nevo/local/scratch/out.json`,
+            `cd "${root}" && nevo-specflow workflow context S --feedback "a (b); c" 2>&1; nevo-specflow tasks list S --json > .nevo/local/scratch/out.json`,
           ),
         );
         await vi.waitFor(() =>

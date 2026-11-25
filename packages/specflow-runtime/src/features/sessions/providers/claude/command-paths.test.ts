@@ -39,7 +39,7 @@ describe('commandPathsInsideWorkspace', () => {
   it.each<Paths>([
     {},
     { cd: '/work/repo' },
-    { cd: '/work/repo/specs', inputs: ['../.nevo/local/scratch/d.md'] },
+    { cd: '/work/repo/specs', inputs: ['a.md'] },
     { cd: '/work/repo', outputs: ['.nevo/local/scratch/out.json'] },
     { outputs: ['/work/repo/.nevo/local/scratch/sub/out.json'] },
     { inputs: ['/work/repo/specs/a.md'] },
@@ -93,6 +93,43 @@ describe('commandPathsInsideWorkspace', () => {
     expect(await windows({ inputs: ['C:\\Users\\me\\.ssh\\id_rsa'] })).toBe(false);
     expect(await windows({ outputs: ['/tmp/out.json'] })).toBe(false);
     expect(await windows({ outputs: ['C:\\work\\repo\\.git\\hooks\\x'] })).toBe(false);
+  });
+
+  it('refuses `..` after a link and a cd through a link (the kernel follows the link first)', async () => {
+    const linked = files({
+      '/work/repo/.nevo/local/scratch/l': '/work/repo/x1',
+      '/work/repo/.nevo/local/scratch/m': '/home/me/.config/sub',
+    });
+    // cd into a linked folder, then `..` from where the link really points: .git/config.
+    expect(
+      await posix({ cd: '/work/repo/.nevo/local/scratch/l', outputs: ['../.git/config'] }, linked),
+    ).toBe(false);
+    expect(await posix({ outputs: ['/work/repo/.nevo/local/scratch/m/../x'] }, linked)).toBe(false);
+    // Any `..`, even one that would stay inside, and a cd through a link without one.
+    expect(await posix({ cd: '/work/repo', inputs: ['specs/../a.md'] })).toBe(false);
+    expect(await posix({ cd: '/work/repo/.nevo/local/scratch/l' }, linked)).toBe(false);
+  });
+
+  it('refuses the same on Windows, and device names or streams in scratch outputs', async () => {
+    const linked = files({ 'C:\\work\\repo\\.nevo\\local\\scratch\\l': 'C:\\work\\repo\\x1' });
+    const judge = (paths: Paths) =>
+      commandPathsInsideWorkspace(of(paths), windowsRoot, 'win32', linked);
+    expect(
+      await judge({ cd: 'C:/work/repo/.nevo/local/scratch/l', outputs: ['..\\.git\\config'] }),
+    ).toBe(false);
+    expect(await judge({ outputs: ['C:\\work\\repo\\.nevo\\local\\scratch\\l\\..\\x'] })).toBe(
+      false,
+    );
+    expect(await judge({ cd: '/c/work/repo/.nevo/local/scratch/l' })).toBe(false);
+    for (const output of ['NUL', 'con.txt', 'COM1', 'a.md:secret', 'sub/lpt9']) {
+      expect(
+        await windows({ cd: '/c/work/repo', outputs: [`.nevo/local/scratch/${output}`] }),
+      ).toBe(false);
+    }
+
+    expect(await windows({ cd: '/c/work/repo', outputs: ['.nevo/local/scratch/console.md'] })).toBe(
+      true,
+    );
   });
 
   it('fails closed when the worktree itself cannot be resolved', async () => {

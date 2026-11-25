@@ -4,7 +4,15 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Check, Copy, WrapText } from 'lucide-react';
 import type { ContentRef, ToolActionSummary } from '@nevo/specflow-contracts/sessions';
-import { Alert, Button, Collapsible, Spinner, Timeline, Typography } from '@nevo/ui';
+import {
+  Alert,
+  Button,
+  Collapsible,
+  Spinner,
+  Timeline,
+  Typography,
+  useWorkspaceCapabilities,
+} from '@nevo/ui';
 import type { ManagedSessionsApi } from './api';
 import { historyEntry } from './pagedHistoryAnchor';
 import { ToolActionHeader } from './ToolActionHeader';
@@ -80,6 +88,7 @@ function CopyTextButton({ text, label }: { text: string; label: string }) {
     <>
       <Button
         aria-label={label}
+        title={label}
         leadingIcon={copied ? Check : Copy}
         size="sm"
         variant="ghost"
@@ -93,7 +102,9 @@ function CopyTextButton({ text, label }: { text: string; label: string }) {
           });
         }}
       >
-        {copied ? t('managedSession.copy.copied') : t('managedSession.workInspector.copy')}
+        <ResponsiveLabel>
+          {copied ? t('managedSession.copy.copied') : t('managedSession.workInspector.copy')}
+        </ResponsiveLabel>
       </Button>
       <span role="status" aria-live="polite" className="sr-only">
         {copied ? t('managedSession.copy.copied') : ''}
@@ -102,26 +113,45 @@ function CopyTextButton({ text, label }: { text: string; label: string }) {
   );
 }
 
-/** The "Wrap lines" toggle of a code block's header: one choice for every block, remembered. */
-function WrapLinesToggle() {
+/**
+ * A code header action's words: beside its icon where the shell can split (desktop), an
+ * icon-only button where it cannot (a phone, `useWorkspaceCapabilities`, the signal the Composer's
+ * pickers use), the words kept as its accessible name and tooltip.
+ */
+function ResponsiveLabel({ children }: { children: string }) {
+  const { supportsSplit, measured } = useWorkspaceCapabilities();
+
+  return measured && !supportsSplit ? <span className="sr-only">{children}</span> : children;
+}
+
+/**
+ * "Wrap lines" for every code block of the screen: one toggle in the screen's header, since the
+ * choice is one for all blocks and remembered (owner, 2026-11-25: a toggle on each block that
+ * changed all of them read as broken). Each block keeps only its own Copy.
+ */
+export function WrapLinesToggle() {
   const { t } = useTranslation();
   const [wrap, setWrap] = useCodeWrapPreference();
+  const label = t('managedSession.workInspector.wrapLines');
 
   return (
     <Button
       aria-pressed={wrap}
+      title={label}
       leadingIcon={WrapText}
       size="sm"
       variant={wrap ? 'secondary' : 'ghost'}
       onClick={() => setWrap(!wrap)}
+      data-wrap-lines=""
     >
-      {t('managedSession.workInspector.wrapLines')}
+      <ResponsiveLabel>{label}</ResponsiveLabel>
     </Button>
   );
 }
 
-/** One labelled code block of a ToolAction: its label, then Wrap lines and Copy (the original
- * text, never a reformatted presentation), then the text on the product's code view. */
+/** One labelled code block of a ToolAction: its label, then Copy (the original text, never a
+ * reformatted presentation), then the text on the product's code view. Wrap lines is the screen's
+ * (`WrapLinesToggle`). */
 function CodeSection({
   label,
   copyLabel,
@@ -156,10 +186,7 @@ function CodeSection({
         ) : (
           <span />
         )}
-        <span className="flex items-center gap-1">
-          <WrapLinesToggle />
-          <CopyTextButton text={copy} label={copyLabel} />
-        </span>
+        <CopyTextButton text={copy} label={copyLabel} />
       </div>
       <ToolDetailCode
         text={text}

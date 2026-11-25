@@ -66,6 +66,7 @@ import {
   SingleToolActionDetail,
   SingleToolActionHeader,
   ToolActionTimelineItem,
+  WrapLinesToggle,
 } from './ToolActionDetails';
 
 interface Root {
@@ -645,15 +646,25 @@ function ActionsHeader({ data, params }: { data: Data; params: ActionsParams }) 
   // The same available data as the screen below: the stored pages stay when the tail is gone.
   const { items, hasOlder } = availablePaged(stored, query.data, mergeToolActions);
 
-  if (isSingleAction(items.length, hasOlder)) {
-    return <SingleToolActionHeader item={items[0]!} />;
+  if (items.length === 0) {
+    return null;
   }
 
-  return items.length > 0 ? (
-    <Typography as="h2" variant="title-sm" className="text-content-primary">
-      {params.workTitle}
-    </Typography>
-  ) : null;
+  // The screen's one Wrap lines, for every code block below, at the end of its header row.
+  return (
+    <div className="flex min-w-0 items-start justify-between gap-2">
+      <div className="min-w-0">
+        {isSingleAction(items.length, hasOlder) ? (
+          <SingleToolActionHeader item={items[0]!} />
+        ) : (
+          <Typography as="h2" variant="title-sm" className="text-content-primary">
+            {params.workTitle}
+          </Typography>
+        )}
+      </div>
+      <WrapLinesToggle />
+    </div>
+  );
 }
 
 function Actions({ data, params }: { data: Data; params: ActionsParams }) {
@@ -702,10 +713,19 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
               own title is the heading (`SingleToolActionDetail`), and repeating the Work title
               above it would show the same name twice. Where the
               workspace hosts the `detailHeader` (`ActionsHeader`) beside Back, it shows either. */}
-          {!headerHosted && loadGate.showContent && !single && items.length > 0 && (
-            <Typography as="h2" variant="title-sm" className="text-content-primary">
-              {params.workTitle}
-            </Typography>
+          {/* Where no header row hosts it, the screen's one Wrap lines heads the content: beside the
+              Work's title for several actions, above the single action's own heading. */}
+          {!headerHosted && loadGate.showContent && items.length > 0 && (
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              {!single ? (
+                <Typography as="h2" variant="title-sm" className="text-content-primary">
+                  {params.workTitle}
+                </Typography>
+              ) : (
+                <span />
+              )}
+              <WrapLinesToggle />
+            </div>
           )}
           <LoadGateNotices gate={loadGate} retry={() => void query.refetch()} />
           {loadGate.showContent && (

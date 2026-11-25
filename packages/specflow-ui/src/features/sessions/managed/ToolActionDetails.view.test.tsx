@@ -5,7 +5,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ContentRef, ToolActionSummary } from '@nevo/specflow-contracts/sessions';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import type { ManagedSessionsApi } from './api';
-import { SingleToolActionDetail, SingleToolActionHeader } from './ToolActionDetails';
+import {
+  SingleToolActionDetail,
+  SingleToolActionHeader,
+  WrapLinesToggle,
+} from './ToolActionDetails';
 import { resetCodeWrapPreference } from './codeWrapPreference';
 
 const rawInput = '{"pattern":"admission","path":"src","limit":3}';
@@ -54,6 +58,8 @@ function renderDetail(
       <QueryClientProvider
         client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
       >
+        {/* The screen's one Wrap lines, as the actions screen's header holds it. */}
+        <WrapLinesToggle />
         <SingleToolActionDetail
           item={item}
           source={{ api, sessionId: 'session-1' }}
@@ -233,7 +239,7 @@ describe('ToolAction details', () => {
     expect(raw.getAttribute('aria-expanded')).toBe('true');
   });
 
-  it('wraps every block once Wrap lines is pressed, and remembers it', async () => {
+  it('wraps every block from the screen’s one Wrap lines, and remembers it', async () => {
     resetCodeWrapPreference();
     localStorage.clear();
     renderDetail(
@@ -245,16 +251,16 @@ describe('ToolAction details', () => {
       },
     );
     await screen.findByRole('textbox', { name: 'Command' });
-    const toggles = screen.getAllByRole('button', { name: 'Wrap lines' });
-    expect(toggles.every((toggle) => toggle.getAttribute('aria-pressed') === 'false')).toBe(true);
+    // One toggle for the screen, none per block; each block keeps its own Copy.
+    const toggle = screen.getByRole('button', { name: 'Wrap lines' });
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getAllByRole('button', { name: /^Copy/ }).length).toBeGreaterThan(1);
 
-    fireEvent.click(toggles[0]!);
+    fireEvent.click(toggle);
 
-    expect(
-      screen
-        .getAllByRole('button', { name: 'Wrap lines' })
-        .every((toggle) => toggle.getAttribute('aria-pressed') === 'true'),
-    ).toBe(true);
+    expect(screen.getByRole('button', { name: 'Wrap lines' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
     expect(localStorage.getItem('nevo:tool-detail:wrap-lines')).toBe('true');
     expect(document.querySelector('.cm-lineWrapping')).not.toBeNull();
     resetCodeWrapPreference();

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { ManagedSessionsApi } from './api';
+import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import {
   actionsWorkId,
   claudeTurnWorkItems,
@@ -532,12 +533,20 @@ export const ClaudeTurn: Story = {
       'aria-expanded',
       'false',
     );
-    // One Wrap lines choice for every block, pressed state announced.
-    const toggles = () => canvas.getAllByRole('button', { name: 'Zawijaj wiersze' });
-    const before = toggles()[0]!.getAttribute('aria-pressed');
-    await userEvent.click(toggles()[0]!);
-    for (const toggle of toggles()) {
-      await expect(toggle).toHaveAttribute('aria-pressed', before === 'true' ? 'false' : 'true');
-    }
+    // One Wrap lines for the screen (none per block), pressed state announced; each block keeps
+    // its own Copy.
+    const toggle = () => canvas.getByRole('button', { name: 'Zawijaj wiersze' });
+    const before = toggle().getAttribute('aria-pressed');
+    await userEvent.click(toggle());
+    await expect(toggle()).toHaveAttribute('aria-pressed', before === 'true' ? 'false' : 'true');
+    // Where the shell can split (desktop) the header actions show their words beside the icon.
+    const iconOnly = (button: HTMLElement) => button.querySelector('span.sr-only') !== null;
+    await expect(iconOnly(toggle())).toBe(false);
+
+    // On a phone they are icon-only, the words kept as the accessible name and the tooltip.
+    await settleViewport(412, 915);
+    await waitFor(() => expect(iconOnly(toggle())).toBe(true));
+    await expect(toggle()).toHaveAttribute('title', 'Zawijaj wiersze');
+    await expect(iconOnly(canvas.getAllByRole('button', { name: /^Kopiuj/ })[0]!)).toBe(true);
   },
 };

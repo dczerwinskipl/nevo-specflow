@@ -29,12 +29,12 @@ export function waitingForTasks(
 }
 
 export const workflowFixtures = {
-  notStarted: { kind: 'not-started' },
+  notStarted: { kind: 'not-started', stepCount: 7, firstStep: 'Gather requirements' },
   agentWorking: { kind: 'step', state: 'active', step: step(4, 'Breakdown'), actor: 'agent' },
   ownerWorking: { kind: 'step', state: 'active', step: step(3, 'Solution'), actor: 'human' },
   readyForNextStep: { kind: 'step', state: 'ready', step: step(5, 'Review the breakdown') },
   waiting: waitingForTasks(),
-  completed: { kind: 'ended', outcome: 'completed' },
+  completed: { kind: 'ended', outcome: 'completed', stepCount: 7 },
   abandoned: { kind: 'ended', outcome: 'abandoned' },
 } as const satisfies Record<string, CurrentSpecWorkflow>;
 

@@ -228,7 +228,8 @@ describe('readSpecificationListing', () => {
     await decide('base', 'ready');
 
     expect(await listingAsOverview(dependencies)).toEqual({
-      standing: { kind: 'not-started' },
+      // The workflow its archetype (`feature`) would start.
+      standing: { kind: 'not-started', steps: 7, firstStep: 'Gather requirements' },
       tasks: { open: 1, total: 1, inProgress: 0, readyToStart: 1 },
       attention: 0,
       progress: { completed: 0, total: 1, cancelled: 0, ended: 0, onHold: 0 },
@@ -329,6 +330,7 @@ describe('readSpecificationListing', () => {
     expect((await listingAsOverview(dependencies)).standing).toEqual({
       kind: 'ended',
       outcome: 'abandoned',
+      steps: 7,
     });
   });
 

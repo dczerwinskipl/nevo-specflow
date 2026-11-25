@@ -19,7 +19,7 @@ type WorkflowStep = Extract<CurrentSpecWorkflow, { kind: 'step' }>;
  * two lines: the step title, then its place and who or what it waits for.
  */
 export type WorkflowLine =
-  | { kind: 'not-started' }
+  | { kind: 'not-started'; stepCount?: number; firstStep?: string }
   | {
       kind: 'step';
       title?: string;
@@ -32,7 +32,7 @@ export type WorkflowLine =
         | { kind: 'tasks-in-progress'; count: number }
         | { kind: 'waiting-for'; count: number; total: number };
     }
-  | { kind: 'ended'; outcome: 'completed' | 'abandoned' };
+  | { kind: 'ended'; outcome: 'completed' | 'abandoned'; stepCount?: number };
 
 type CurrentSummary =
   | { kind: 'attention'; reason?: CurrentSpecAttentionReason; count?: number }

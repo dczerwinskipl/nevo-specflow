@@ -22,6 +22,7 @@ import {
 } from './actions';
 import { deriveAttention } from './attention';
 import { inspectSnapshot, type ExecutionInspection } from './inspect';
+import { resolveSpecificationExecution } from '../definitions/catalogue';
 import { pinnedDefinitionIfUnchanged } from './loaded-execution';
 import type { StartBlocker } from './start-blockers';
 import { forOneRead } from './task-references';
@@ -183,21 +184,22 @@ export function readExecution(
  * Where a Specification's own run stands, for a list row: the same position the action projection
  * gives the Specification (`not-started`, at a step, `terminal`), without gates or actions.
  *
- * - `not-started`: no run yet;
+ * - `not-started`: no run yet; `steps` and `firstStep` name the workflow its archetype would start,
+ *   when it resolves;
  * - `step`: the run is at a step: `active` (an attempt works on it; `actor` is who started it),
  *   `ready` (between attempts) or `waiting` (active on a wait step, which only Tasks end). `step` is
  *   absent when the pinned workflow is missing or changed (its title cannot be resolved);
- * - `ended`: the run ended with `outcome`.
+ * - `ended`: the run ended with `outcome`; `steps` is its workflow's step count when it resolves.
  */
 export type SpecificationStanding =
-  | { readonly kind: 'not-started' }
+  | { readonly kind: 'not-started'; readonly steps?: number; readonly firstStep?: string }
   | {
       readonly kind: 'step';
       readonly state: 'active' | 'ready' | 'waiting';
       readonly step?: { readonly title: string; readonly position: number; readonly count: number };
       readonly actor?: ExecutorClass;
     }
-  | { readonly kind: 'ended'; readonly outcome: TerminalOutcome };
+  | { readonly kind: 'ended'; readonly outcome: TerminalOutcome; readonly steps?: number };
 
 /**
  * The Tasks as the Specification's Overview groups them (`DEFAULT_DASHBOARD_GROUPING`): `open`
@@ -284,7 +286,9 @@ async function listingOf(outer: ActionDependencies, specId: string): Promise<Spe
   }
 
   return {
-    standing: standingOf(outer.catalogue, snapshot.specification?.value.run),
+    standing: snapshot.specification
+      ? standingOf(outer.catalogue, snapshot.specification.value.run)
+      : await notStarted(dependencies, specId),
     tasks: {
       open: tasks.filter((record) => !isTaskClosed(record)).length + broken.length,
       total: tasks.length + broken.length,
@@ -296,20 +300,47 @@ async function listingOf(outer: ActionDependencies, specId: string): Promise<Spe
   };
 }
 
+/** A Specification without a run: the workflow its archetype would start, when it resolves. */
+async function notStarted(
+  dependencies: ActionDependencies,
+  specId: string,
+): Promise<SpecificationStanding> {
+  const resolved = resolveSpecificationExecution(
+    dependencies.catalogue,
+    await dependencies.references.archetype(specId),
+  );
+  if (resolved.kind === 'problem') {
+    return { kind: 'not-started' };
+  }
+
+  const { workflow } = resolved;
+  const first = workflow.steps.find((step) => step.id === workflow.entryStep);
+
+  return {
+    kind: 'not-started',
+    steps: workflow.steps.length,
+    ...(first ? { firstStep: first.title } : {}),
+  };
+}
+
 function standingOf(
   catalogue: ActionDependencies['catalogue'],
-  run: WorkflowRun | undefined,
+  run: WorkflowRun,
 ): SpecificationStanding {
-  const position = run?.position;
-  if (!run || !position || position.state === 'not-started') {
+  const position = run.position;
+  const definition = pinnedDefinitionIfUnchanged(catalogue, run);
+  if (position.state === 'not-started') {
     return { kind: 'not-started' };
   }
 
   if (position.state === 'terminal') {
-    return { kind: 'ended', outcome: position.outcome };
+    return {
+      kind: 'ended',
+      outcome: position.outcome,
+      ...(definition ? { steps: definition.steps.length } : {}),
+    };
   }
 
-  const definition = pinnedDefinitionIfUnchanged(catalogue, run);
   const index = definition?.steps.findIndex((step) => step.id === position.step) ?? -1;
   const step = index >= 0 ? definition?.steps[index] : undefined;
   const described =

@@ -1,4 +1,4 @@
-import { Icon, cn } from '@nevo/ui';
+import { Icon, Progress, cn, type ProgressPosition } from '@nevo/ui';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { collectionWide } from '../../../../shared/operational-list';
@@ -31,16 +31,9 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
 
   const summary = item.summary;
   if (summary.kind === 'workflow') {
-    const [first, second] = workflowText(t, summary.line);
-
     return (
-      <span className="text-content-secondary [overflow-wrap:anywhere]" data-spec-reason>
-        <span>{first}</span>
-        {second ? (
-          <span className="block text-content-muted" data-spec-step-detail>
-            {second}
-          </span>
-        ) : null}
+      <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]" data-spec-reason>
+        <WorkflowSituation line={summary.line} />
       </span>
     );
   }
@@ -57,37 +50,35 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
       : summary.kind === 'sessions'
         ? t('specifications.summary.active', { count: summary.executionCount })
         : t('specifications.summary.unknown');
-  const position = item.workflow ? workflowText(t, item.workflow).join(' · ') : undefined;
 
   return (
-    <span
-      className={
-        summary.kind === 'attention'
-          ? 'text-status-attention [overflow-wrap:anywhere]'
-          : 'text-content-secondary [overflow-wrap:anywhere]'
-      }
-      data-spec-reason
-    >
-      {summary.kind === 'attention' ? (
-        <Icon
-          name={
-            summary.reason === 'blocked'
-              ? 'triangle-alert'
-              : summary.reason === 'review'
-                ? 'file-search'
-                : 'chat'
-          }
-          size="sm"
-          className="mr-1 inline-block align-text-bottom"
-        />
-      ) : null}
-      <span>{text}</span>
-      {position ? (
-        <span className="block text-content-secondary" data-spec-step-detail>
-          {position}
-        </span>
+    <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]" data-spec-reason>
+      <span
+        className={
+          summary.kind === 'attention'
+            ? 'font-medium text-status-attention'
+            : 'text-content-secondary'
+        }
+      >
+        {summary.kind === 'attention' ? (
+          <Icon
+            name={
+              summary.reason === 'blocked'
+                ? 'triangle-alert'
+                : summary.reason === 'review'
+                  ? 'file-search'
+                  : 'chat'
+            }
+            size="sm"
+            className="mr-1 inline-block align-text-bottom"
+          />
+        ) : null}
+        {text}
+      </span>
+      {item.workflow ? (
+        <WorkflowSituation line={item.workflow} />
       ) : item.qualifier ? (
-        <span className="block text-content-secondary">
+        <span className="text-content-secondary">
           {t('specifications.summary.concurrent', { count: item.qualifier.executionCount })}
         </span>
       ) : null}
@@ -95,27 +86,130 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
   );
 }
 
+/** The step's position as the Overview's Now shows it: the DS segmented step track and its label. */
+interface Track {
+  readonly position: ProgressPosition;
+  readonly total: number;
+  readonly label: string;
+  readonly ariaLabel: string;
+}
+
 /**
- * Where the workflow stands in the Overview's own words (`workflowExecution.now`): the step title,
- * then "Step N of M" with who or what it waits for. A line the row cannot fill is left out.
+ * Where the workflow stands, by the visual rules of the Overview's Now (TODO(#169): use the shared
+ * Now presentation components once #169 has extracted them): the step title, then the segmented step
+ * track with "Step N of M", then who or what the step waits for. Completed has the success icon,
+ * Abandoned the archive icon, muted. A line the row cannot fill is left out.
  */
-export function workflowText(t: TFunction, line: WorkflowLine): [string] | [string, string] {
+function WorkflowSituation({ line }: { readonly line: WorkflowLine }) {
+  const { t } = useTranslation();
+  const { title, track, detail, ended } = workflowParts(t, line);
+
+  return (
+    <>
+      <span
+        className={cn('text-content-primary', ended === 'abandoned' && 'text-content-secondary')}
+        data-spec-step
+      >
+        {ended ? (
+          <Icon
+            name={ended === 'completed' ? 'circle-check' : 'archive'}
+            size="sm"
+            className={cn(
+              'mr-1 inline-block align-text-bottom',
+              ended === 'completed' ? 'text-status-success' : 'text-content-muted',
+            )}
+          />
+        ) : null}
+        {title}
+      </span>
+      {track ? (
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1" data-spec-track>
+          <Progress
+            variant="segmented"
+            size="compact"
+            position={track.position}
+            total={track.total}
+            aria-label={track.ariaLabel}
+          />
+          <span aria-hidden="true" className="text-content-secondary">
+            {track.label}
+          </span>
+        </span>
+      ) : null}
+      {detail ? (
+        <span className="text-content-secondary" data-spec-step-detail>
+          {detail}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+/** The parts of {@link WorkflowSituation}, in the Overview's own words (`workflowExecution.now`). */
+export function workflowParts(
+  t: TFunction,
+  line: WorkflowLine,
+): {
+  readonly title: string;
+  readonly track?: Track;
+  readonly detail?: string;
+  readonly ended?: 'completed' | 'abandoned';
+} {
   switch (line.kind) {
     case 'not-started':
-      return [t('workflowExecution.now.notStarted')];
+      return {
+        title: t('workflowExecution.now.notStarted'),
+        ...(line.stepCount && line.firstStep !== undefined
+          ? {
+              track: {
+                position: { state: 'not-started' },
+                total: line.stepCount,
+                label: t('workflowExecution.now.firstStep', { title: line.firstStep }),
+                ariaLabel: t('workflowExecution.now.track.notStarted', {
+                  total: line.stepCount,
+                  title: line.firstStep,
+                }),
+              },
+            }
+          : {}),
+      };
     case 'ended':
-      return [t(`workflowExecution.now.terminal.${line.outcome}`)];
+      return {
+        title: t(`workflowExecution.now.terminal.${line.outcome}`),
+        ended: line.outcome,
+        // The Overview's completed track; an abandoned run has none (it does not say where it stopped).
+        ...(line.outcome === 'completed' && line.stepCount
+          ? {
+              track: {
+                position: { state: 'completed' },
+                total: line.stepCount,
+                label: t('workflowExecution.now.track.completed', { total: line.stepCount }),
+                ariaLabel: t('workflowExecution.now.track.completed', { total: line.stepCount }),
+              },
+            }
+          : {}),
+      };
     case 'step': {
       const detail = line.detail ? stepDetailText(t, line.detail) : undefined;
-      const second = [
-        line.position ? t('workflowExecution.now.progress', line.position) : undefined,
-        detail,
-      ]
-        .filter((part): part is string => part !== undefined)
-        .join(' · ');
-      const first = line.title ?? t('specifications.sections.inProgress');
+      const title = line.title ?? t('specifications.sections.inProgress');
 
-      return second ? [first, second] : [first];
+      return {
+        title,
+        ...(line.position
+          ? {
+              track: {
+                position: { state: 'current', step: line.position.position },
+                total: line.position.total,
+                label: t('workflowExecution.now.progress', line.position),
+                ariaLabel: t('workflowExecution.now.track.current', {
+                  ...line.position,
+                  title,
+                }),
+              },
+            }
+          : {}),
+        ...(detail ? { detail } : {}),
+      };
     }
   }
 }

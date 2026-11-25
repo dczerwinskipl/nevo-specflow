@@ -243,7 +243,6 @@
     "noResultsDescription": "Wpisz inny tytuł lub wyczyść wyszukiwanie, aby zobaczyć tę kolekcję.",
     "openSpec": "Otwórz specyfikację: {{title}}",
     "openPullRequest": "PR #{{number}}: Otwórz pull request — {{title}}",
-    "progress": "{{completed}} / {{total}} zadań",
     "updated": "Aktualizacja: {{date}}",
     "sections": {
       "requiresAttention": "Wymaga uwagi",

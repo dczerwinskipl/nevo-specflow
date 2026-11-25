@@ -188,8 +188,20 @@ export type OverviewExecutionSource = (
 /** Where the Specification's run stands, as the Specs list contract carries it. Pure. */
 export function overviewWorkflowOf(listing: SpecificationListing): CurrentSpecWorkflow {
   const { standing } = listing;
-  if (standing.kind !== 'step') {
-    return standing;
+  if (standing.kind === 'not-started') {
+    return {
+      kind: 'not-started',
+      ...(standing.steps ? { stepCount: standing.steps } : {}),
+      ...(standing.firstStep !== undefined ? { firstStep: standing.firstStep } : {}),
+    };
+  }
+
+  if (standing.kind === 'ended') {
+    return {
+      kind: 'ended',
+      outcome: standing.outcome,
+      ...(standing.steps ? { stepCount: standing.steps } : {}),
+    };
   }
 
   return {

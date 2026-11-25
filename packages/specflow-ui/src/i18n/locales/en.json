@@ -243,7 +243,6 @@
     "noResultsDescription": "Try another title or clear the search to see this collection.",
     "openSpec": "Open specification: {{title}}",
     "openPullRequest": "PR #{{number}}: Open pull request — {{title}}",
-    "progress": "{{completed}} / {{total}} Tasks",
     "updated": "Updated {{date}}",
     "sections": {
       "requiresAttention": "Requires attention",

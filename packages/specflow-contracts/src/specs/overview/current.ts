@@ -74,7 +74,15 @@ const CountSchema = Type.Integer({ minimum: 0 });
  */
 export const CurrentSpecWorkflowSchema = Type.Union(
   [
-    Type.Object({ kind: Type.Literal('not-started') }, { additionalProperties: false }),
+    Type.Object(
+      {
+        kind: Type.Literal('not-started'),
+        /** The workflow its archetype would start: its step count and first step's title. */
+        stepCount: Type.Optional(Type.Integer({ minimum: 1 })),
+        firstStep: Type.Optional(Type.String()),
+      },
+      { additionalProperties: false },
+    ),
     Type.Object(
       {
         kind: Type.Literal('step'),
@@ -111,6 +119,8 @@ export const CurrentSpecWorkflowSchema = Type.Union(
       {
         kind: Type.Literal('ended'),
         outcome: Type.Union([Type.Literal('completed'), Type.Literal('abandoned')]),
+        /** The step count of the workflow the run followed, when it resolves. */
+        stepCount: Type.Optional(Type.Integer({ minimum: 1 })),
       },
       { additionalProperties: false },
     ),

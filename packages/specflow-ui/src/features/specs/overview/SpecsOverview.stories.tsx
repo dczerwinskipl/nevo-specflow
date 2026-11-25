@@ -471,12 +471,21 @@ export const CurrentContract: Story = {
 
     canvas.getByText('Agent input required');
     // Each row says where its workflow stands, in the Overview's own words.
-    canvas.getByText('Waiting for Tasks · Step 6 of 7 · 2 Tasks in progress');
-    canvas.getByText('Step 6 of 7 · 2 Tasks ready to start');
-    canvas.getByText('Step 4 of 7 · agent working');
-    // The section heading and the row's situation.
-    await expect(canvas.getAllByText('Not started')).toHaveLength(2);
-    canvas.getByText('Completed');
+    await expect(situationOf(canvasElement, 'admission')).toBe(
+      'Agent input required | Waiting for Tasks | Step 6 of 7 | 2 Tasks in progress',
+    );
+    await expect(situationOf(canvasElement, 'packaging')).toBe(
+      'Waiting for Tasks | Step 6 of 7 | 2 Tasks ready to start',
+    );
+    await expect(situationOf(canvasElement, 'providers')).toBe(
+      'Breakdown | Step 4 of 7 | agent working',
+    );
+    await expect(situationOf(canvasElement, 'localization')).toBe(
+      'Not started | First step · Gather requirements',
+    );
+    await expect(situationOf(canvasElement, 'delivery')).toBe(
+      'Completed | All 7 steps · completed',
+    );
     if (canvasElement.textContent?.includes('In preparation')) {
       throw new Error('The manifest status is not progress.');
     }
@@ -690,6 +699,13 @@ export const NotStartedAndEnded: Story = {
  * One row per place a workflow run can be, each in its section: the row names the current step and
  * who or what it waits for, as the Specification's Overview says it (never the manifest status).
  */
+/** A row's situation, one part per line: the summary, the step, its track label, the detail. */
+function situationOf(canvasElement: HTMLElement, specId: string): string {
+  return [...canvasElement.querySelectorAll(`[data-spec-id="${specId}"] [data-spec-reason] > span`)]
+    .map((part) => part.textContent)
+    .join(' | ');
+}
+
 const phase = (
   id: string,
   title: string,
@@ -740,7 +756,16 @@ const workflowPhasesState: SpecsOverviewState = {
       ),
       phase('agent', 'Provider replay', workflowFixtures.agentWorking, 'in-progress'),
       phase('owner', 'Account preferences', workflowFixtures.ownerWorking, 'in-progress'),
-      phase('next', 'Export to CSV', workflowFixtures.readyForNextStep, 'in-progress'),
+      createSpecItem({
+        id: 'confirm',
+        key: 'CONFIRM',
+        title: 'Export to CSV',
+        // The owner confirms the breakdown: the run waits for them to start its review.
+        workflow: workflowFixtures.readyForNextStep,
+        classification: { section: 'requires-attention', count: 1 },
+        progress: { completed: 0, total: 5 },
+      }),
+      phase('next', 'Usage reports', workflowFixtures.readyForNextStep, 'in-progress'),
       phase('new', 'Single sign-on', workflowFixtures.notStarted, 'not-started'),
       phase('done', 'Release checklist', workflowFixtures.completed, 'ended', {
         completed: 4,
@@ -762,19 +787,26 @@ export const WorkflowPhases: Story = {
     await expect(headings.map((element) => element.textContent).join('|')).toBe(
       'Requires attention|In progress|Not started|Ended',
     );
-    for (const text of [
-      '2 items require attention',
-      'Waiting for Tasks · Step 6 of 7 · Waiting for 12 of 12 tasks',
-      'Step 6 of 7 · 5 Tasks ready to start',
-      'Step 6 of 7 · 2 Tasks in progress',
-      'Step 6 of 7 · Waiting for 2 of 4 tasks',
-      'Step 4 of 7 · agent working',
-      'Step 3 of 7 · in progress',
-      'Step 5 of 7 · Ready to start',
-      'Completed',
-      'Abandoned',
-    ]) {
-      canvas.getByText(text);
+    for (const [specId, situation] of [
+      [
+        'stuck',
+        '2 items require attention | Waiting for Tasks | Step 6 of 7 | Waiting for 12 of 12 tasks',
+      ],
+      [
+        'confirm',
+        '1 item requires attention | Review the breakdown | Step 5 of 7 | Ready to start',
+      ],
+      ['waiting', 'Waiting for Tasks | Step 6 of 7 | 5 Tasks ready to start'],
+      ['running', 'Waiting for Tasks | Step 6 of 7 | 2 Tasks in progress'],
+      ['remaining', 'Waiting for Tasks | Step 6 of 7 | Waiting for 2 of 4 tasks'],
+      ['agent', 'Breakdown | Step 4 of 7 | agent working'],
+      ['owner', 'Solution | Step 3 of 7 | in progress'],
+      ['next', 'Review the breakdown | Step 5 of 7 | Ready to start'],
+      ['new', 'Not started | First step · Gather requirements'],
+      ['done', 'Completed | All 7 steps · completed'],
+      ['dropped', 'Abandoned'],
+    ] as const) {
+      await expect(situationOf(canvasElement, specId)).toBe(situation);
     }
   },
 };

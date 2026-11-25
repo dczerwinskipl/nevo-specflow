@@ -24357,6 +24357,13 @@
                                             "enum": [
                                               "not-started"
                                             ]
+                                          },
+                                          "stepCount": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                          },
+                                          "firstStep": {
+                                            "type": "string"
                                           }
                                         },
                                         "additionalProperties": false
@@ -24493,6 +24500,10 @@
                                                 ]
                                               }
                                             ]
+                                          },
+                                          "stepCount": {
+                                            "type": "integer",
+                                            "minimum": 1
                                           }
                                         },
                                         "additionalProperties": false
@@ -53728,8 +53739,7 @@
                         "required": [
                           "specId",
                           "slug",
-                          "location",
-                          "status"
+                          "location"
                         ],
                         "properties": {
                           "specId": {
@@ -53754,9 +53764,6 @@
                                 ]
                               }
                             ]
-                          },
-                          "status": {
-                            "type": "string"
                           }
                         },
                         "additionalProperties": false

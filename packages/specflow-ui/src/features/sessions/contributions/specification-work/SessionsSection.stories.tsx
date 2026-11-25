@@ -140,3 +140,43 @@ export const ContinueSessionRowMobile: Story = {
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   },
 };
+
+/**
+ * Agent step Sessions are titled by the Runtime "<step> · attempt <n>" with the Task's title: a long
+ * title wraps under its mark on a phone, never widening the page, and each Session stays tellable
+ * apart (dogfood #189: every one read "Agent step execution").
+ */
+export const AgentStepSessionTitlesMobile: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: {
+    sessions: [
+      {
+        ...attention,
+        id: 'breakdown-2',
+        title: 'Break the solution down · attempt 2',
+        navigationStatus: 'quiet',
+        activityCode: undefined,
+        activity: undefined,
+        taskCount: 0,
+      },
+      {
+        ...attention,
+        id: 'implement-1',
+        title: 'Implementation · attempt 1 · First step per archetype in the archetype catalogue',
+        navigationStatus: 'quiet',
+        activityCode: undefined,
+        activity: undefined,
+        taskCount: 1,
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    await canvas.findByRole('button', { name: 'Break the solution down · attempt 2' });
+    await expect(
+      canvas.getByRole('button', {
+        name: 'Implementation · attempt 1 · First step per archetype in the archetype catalogue',
+      }),
+    ).toBeVisible();
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  },
+};

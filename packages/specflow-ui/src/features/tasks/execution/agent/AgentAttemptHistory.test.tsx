@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WorkflowHistory } from '@nevo/specflow-contracts/workflow';
 import { createSpecFlowQueryClient } from '../../../../app/queryClient';
@@ -11,7 +11,11 @@ import { stubLayoutApis } from '../../../../../test-support/app/stubLayoutApis';
 import type { WorkflowExecutionApi } from '../api';
 import { AgentAttemptHistory, agentAttemptOf } from './AgentAttemptHistory';
 import { SpecificationAgentAttempts } from './SpecificationAgentAttempts';
-import { finishedAttemptHistory, takenOverAttemptHistory } from './agentAttempt.stories-support';
+import {
+  finishedAttemptHistory,
+  specificationAttemptsHistory,
+  takenOverAttemptHistory,
+} from './agentAttempt.stories-support';
 
 afterEach(cleanup);
 
@@ -57,35 +61,62 @@ function renderAttempt(
 }
 
 describe('the agent attempt in the history', () => {
-  it('says how a taken-over attempt ended and what it kept, with its documents linked', () => {
+  it('says how a taken-over attempt ended and what it kept, by group, collapsed', () => {
     const openDocument = vi.fn(() => true);
     renderAttempt(takenOverAttemptHistory(), 'implement', 2, { openDocument });
 
     expect(screen.getByText(/^Taken over by /)).toBeTruthy();
     expect(screen.getByText(/The agent stopped without a result at/)).toBeTruthy();
-    expect(screen.getByText(/Its work, kept and not committed:/)).toBeTruthy();
+    expect(screen.getByText('Kept in the checkout, not committed')).toBeTruthy();
+    // Empty groups have no row: no Tasks.
+    expect(screen.queryByRole('button', { name: /tasks?$/ })).toBeNull();
+    // One row of changed files, collapsed: its registered documents first, then the other files.
+    const files = screen.getByRole('button', { name: '5 changed files' });
+    expect(files.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(files);
     fireEvent.click(screen.getByRole('button', { name: 'task.md' }));
     expect(openDocument).toHaveBeenCalledWith('specs/active/single-sign-on/tasks/t-04/task.md');
-    expect(screen.getByText('src/auth/refresh.ts')).toBeTruthy();
-    expect(screen.getByText(/Tasks:/).textContent).toBe('Tasks: none');
+    // A document by name and its folder relative to the Specification, never the full path.
+    expect(screen.getAllByText('tasks/t-04').length).toBe(2);
+    expect(screen.getByText('refresh.ts')).toBeTruthy();
+    expect(screen.queryByText(/specs\/active\/single-sign-on\//)).toBeNull();
     // Nothing was committed: no commit note.
     expect(document.querySelector('[data-now-attempt-commit]')).toBeNull();
+    expect(document.querySelector('[data-attempt-committed]')).toBeNull();
   });
 
-  it('shows the events only on request, in plain words', () => {
+  it('shows what was achieved, not the lifecycle events or SpecFlow records', () => {
     renderAttempt(takenOverAttemptHistory());
 
     expect(screen.queryByText('The agent stopped')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Show what happened' }));
+    expect(screen.queryByText('The agent started working')).toBeNull();
+    expect(screen.queryByText(/t-04\.yaml/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Technical details|what happened/ })).toBeNull();
+  });
 
-    const events = within(document.querySelector<HTMLElement>('[data-agent-events]')!);
-    expect(events.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
-      expect.stringContaining('Started'),
-      expect.stringContaining('The agent started working'),
-      expect.stringContaining('The agent stopped'),
-      expect.stringContaining('Taken over'),
-    ]);
-    expect(screen.getByRole('button', { name: 'Hide what happened' })).toBeTruthy();
+  it('says a result the Engine did not accept, the one exception of the lifecycle', () => {
+    const history = takenOverAttemptHistory();
+    const agent = history.items[1]!.agent!;
+    (agent as { events: unknown[] }).events = [
+      ...agent.events,
+      { kind: 'proposal-refused', at: '2026-11-13T12:09:00Z', code: 'WORKFLOW_GATE_UNMET' },
+    ];
+    renderAttempt(history);
+
+    expect(document.querySelector('[data-agent-exceptions]')?.textContent).toMatch(
+      /^Result not accepted · /,
+    );
+  });
+
+  it('names a committed attempt in one row with its short commit id', () => {
+    renderAttempt(finishedAttemptHistory({ state: 'committed', sha: '05f9d80' + '0'.repeat(33) }));
+
+    expect(document.querySelector('[data-attempt-committed]')?.textContent).toBe(
+      'Committed · 05f9d80',
+    );
+    // Who worked on it, by presentation names, with Open session on the same line.
+    expect(document.querySelector('[data-attempt-actor]')?.textContent).toBe('ClaudeOpen session');
+    expect(screen.getByRole('link', { name: 'Open session' })).toBeTruthy();
   });
 
   it('retries a failed commit from the history, as the Now block does', async () => {
@@ -132,9 +163,30 @@ describe('the agent attempt in the history', () => {
       );
     };
 
-    const withAgent = render2(takenOverAttemptHistory());
+    const withAgent = render2(specificationAttemptsHistory() as never);
     expect(await screen.findByRole('heading', { name: 'Agent attempts' })).toBeTruthy();
-    expect(screen.getByText(/^Taken over by /)).toBeTruthy();
+    // One entry per agent attempt, titled by its step, with how it ended in the shared vocabulary.
+    expect(
+      Array.from(document.querySelectorAll('[data-attempt-outcome]')).map((n) => n.textContent),
+    ).toEqual([
+      'Waiting for your confirmation',
+      'Changes requested',
+      'Completed',
+      expect.stringMatching(/^Taken over by /),
+      'Finished, but not committed',
+      'Returned to Requirements',
+    ]);
+    expect(screen.getByText('Today')).toBeTruthy();
+    expect(screen.getByText('Yesterday')).toBeTruthy();
+    // The Tasks by title, the first four, then the rest on request.
+    fireEvent.click(screen.getByRole('button', { name: '12 tasks' }));
+    expect(screen.getByText('End-to-end acceptance and roadmap coverage')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '8 more tasks' }));
+    expect(screen.getByText('Transcript brief part')).toBeTruthy();
+    // The feedback only on View feedback.
+    expect(screen.queryByText(/Install and init stay separate Tasks/)).toBeNull();
+    fireEvent.click(screen.getAllByRole('button', { name: 'View feedback' })[0]!);
+    expect(screen.getByText(/Install and init stay separate Tasks/)).toBeTruthy();
     withAgent.unmount();
 
     const empty = render2({

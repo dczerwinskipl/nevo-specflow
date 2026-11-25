@@ -925,6 +925,8 @@ export const WorkflowHistorySchema = Type.Object(
           endedAt: Type.Optional(Type.String()),
           actor: Type.Optional(WorkflowActorSchema),
           outcome: Type.Optional(AttemptOutcomeSchema),
+          /** The workflow's label of the transition the attempt took ("Breakdown approved"). */
+          transitionLabel: Type.Optional(Type.String()),
           agent: Type.Optional(AgentAttemptHistorySchema),
         }),
         Type.Object({

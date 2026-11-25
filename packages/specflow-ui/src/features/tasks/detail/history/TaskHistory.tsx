@@ -159,15 +159,15 @@ export function TaskHistory({
                     </Typography>
                   ) : null}
                   {agentItem ? (
-                    <AgentAttemptHistory
-                      item={agentItem}
-                      items={workflow.data?.items ?? []}
-                      subject={{ specId, taskId }}
-                      {...(onOpenDocument ? { openDocument: onOpenDocument } : {})}
-                    />
-                  ) : null}
-                  {agentItem ? (
-                    <AgentAttemptMeta item={agentItem} specId={specId} />
+                    <>
+                      <AgentAttemptMeta item={agentItem} />
+                      <AgentAttemptHistory
+                        item={agentItem}
+                        items={workflow.data?.items ?? []}
+                        subject={{ specId, taskId }}
+                        {...(onOpenDocument ? { openDocument: onOpenDocument } : {})}
+                      />
+                    </>
                   ) : (
                     <Typography as="p" variant="body-sm" className="text-content-muted">
                       {[

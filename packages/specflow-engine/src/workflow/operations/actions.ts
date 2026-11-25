@@ -217,7 +217,9 @@ export type AgentOption =
  * - `declared`: the changed files outside SpecFlow's folders its proposal declared;
  * - `changed`: what was uncommitted in the checkout when its last Turn's claim settled;
  * - `commit`: its attempt commit (D15): `none` (it did not finish with its own result: returned,
- *   taken over or still active), `pending`, `committed` or `failed` (with the code, retry possible).
+ *   taken over or still active), `pending`, `committed` or `failed` (with the code, retry possible);
+ * - `changes`: everything the attempt itself changed, committed or not, by what it is
+ *   ({@link AgentAttemptChanges}); absent where the Specification's registry was not read.
  */
 export interface AgentAttemptWork {
   readonly documents: readonly string[];
@@ -238,6 +240,30 @@ export interface AgentAttemptWork {
     readonly documents?: number;
     readonly files?: number;
   };
+  readonly changes?: AgentAttemptChanges;
+}
+
+/**
+ * What one agent attempt changed, committed or still uncommitted: the files SpecFlow wrote for its
+ * Turns (the ledger, else what its commit held) and the files its proposal declared, never the rest
+ * of the checkout. Each path is in one group, checkout-relative and sorted:
+ *
+ * - `documents`: registered documents of the Specification (and, for a Task, of that Task);
+ * - `tasks`: the Task drafts the attempt produced, with their titles (their files are `state`);
+ * - `files`: any other file: the agent's declared files, an unregistered file of the Specification;
+ * - `state`: SpecFlow's own records: execution state (`.execution/**`), Task resources (`tasks/**`
+ *   but a Task's registered documents) and the Specification manifest.
+ *
+ * `directory`: the Specification's folder, checkout-relative (paths read relative to it);
+ * `truncated`: the commit held more paths than its journal names.
+ */
+export interface AgentAttemptChanges {
+  readonly directory?: string;
+  readonly documents: readonly string[];
+  readonly tasks: readonly { readonly id: string; readonly title: string }[];
+  readonly files: readonly string[];
+  readonly state: readonly string[];
+  readonly truncated?: true;
 }
 
 /**

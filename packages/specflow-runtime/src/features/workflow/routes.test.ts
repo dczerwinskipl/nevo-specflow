@@ -452,6 +452,14 @@ describe('workflow action routes', () => {
         documents: 2,
         files: 1,
       },
+      // What the attempt changed, by what it is: documents, Tasks, other files, SpecFlow's records.
+      changes: {
+        directory: 'specs/x',
+        documents: ['specs/x/draft.md'],
+        tasks: [{ id: 'login', title: 'Sign in' }],
+        files: ['src/app.ts'],
+        state: ['specs/x/.execution/specification.yaml'],
+      },
     };
     const history = {
       subject: subjectSpec,
@@ -464,7 +472,13 @@ describe('workflow action routes', () => {
           attempt: 1,
           startedAt: '2026-11-21T10:00:00.000Z',
           endedAt: '2026-11-21T10:05:00.000Z',
-          outcome: { kind: 'taken-over' as const },
+          outcome: {
+            kind: 'transition' as const,
+            transition: 'approved',
+            result: 'pass',
+            artifacts: [],
+          },
+          transitionLabel: 'Draft approved',
           agent: {
             attemptId: 'a1',
             provider: 'mock',

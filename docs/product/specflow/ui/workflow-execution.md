@@ -621,21 +621,46 @@ The attempt is finished and committed before the owner decides.
 - After the hand, Now is the agent's attempt as for Run with agent. The Task history shows the
   owner's attempt with the line "Handed to the agent"; the agent's attempt lists "Handed to the
   agent" as its first event instead of "Started".
-- **Task history** and the Specification's **Activity history** show the agent's attempt as an
-  ordinary entry (step, result line) with the quiet line "<start> – <end> · <provider> · <model> ·
-  Attempt N" and, above it, the agent's detail: how it ended when the entry's own result does not
-  say it ("Taken over by <person>", "Returned to <step>", "Abandoned", "The agent is working on
-  it"; "The agent stopped without a result at <time>" when it never proposed one), then its work
-  ("Its work:", or "Its work, kept and not committed:" for an attempt that did not finish):
-  Documents (links), Tasks (drafts as links, or none), Files (the changed paths), the commit note
-  (committed, or failed with **Retry commit**) and its Session as a link. **Show what happened** /
-  **Hide what happened** lists the attempt's events oldest first in plain words (started or handed to the agent, the agent
-  started working, the agent stopped, result not accepted, return requested, finished with a result,
-  work committed, commit failed with its reason and code, taken over, abandoned, waiting for
-  confirmation, result confirmed, result rejected).
-- The Specification's own steps (Breakdown and the like) appear in the Activity history under an
-  **Agent attempts** heading above its events, newest first, with the same detail; when older
-  attempts are cut off it says "Older attempts are not shown." Nothing is shown while the
+- **What an attempt changed** reads the same in the Task history and the Activity history. The
+  Engine groups everything the attempt itself changed, committed or not (the files SpecFlow wrote
+  for its Turns and the files its result declared, never the rest of the checkout), by what it is:
+  the Specification's (or the Task's) **registered documents**, the **Tasks** it produced (by
+  title), **other files**, and SpecFlow's own records (`.execution/**`, Task resource files, the
+  manifest). The counts of its commit follow the same groups, so "3 documents" is three registered
+  documents, never execution state.
+- The history shows what an attempt achieved, not every event the Engine recorded: the ordinary
+  lifecycle (started, working, stopped, finished, committed) stays in the attempt's data for
+  diagnosis and recovery and is never listed. Only exceptions get a line: a result the Engine did
+  not accept ("Result not accepted · <time>"); an interruption, a take over, a failed commit and a
+  result waiting for the owner are the outcome line and the commit note.
+- An attempt reads, in order: its time, "Today, 12:35 – 12:40 PM · 5 min · Attempt 1" (in the
+  Activity history the day is the group heading instead); the agent with its provider's mark,
+  "Claude · Opus 5.5" (the model by its presentation title, as the Sessions list names it), with
+  **Open session** at the end of the same line (the Session is not named by its title: a Session
+  continued from an earlier step keeps that step's title, "Gather requirements · attempt 1", which
+  would misname this step); what it changed as compact rows, collapsed by default, each only when it
+  has any: "N changed files" (the registered documents first, as links where they open, then the
+  other files; each by file name with its folder relative to the Specification, never the repeated
+  `specs/active/<slug>/` prefix) and "N tasks" (Task titles as links, the first four, then "N more
+  tasks"); then its commit as one row, "Committed · cac3c46". A failed commit shows the Now block's
+  note with **Retry commit**; work an attempt that ended without its own result left in the
+  checkout reads "Kept in the checkout, not committed". **View feedback** shows the feedback its
+  result or return left, when there is any. SpecFlow's own records (execution state, Task resource
+  files, the manifest) are never listed. In the Task history the attempt sits inside the ordinary
+  entry (step, result line) and says how it ended when the entry's result does not ("Taken over by
+  <person>", "Returned to <step>", "Abandoned", "The agent is working on it"; "The agent stopped
+  without a result at <time>" when it never proposed one).
+- The Specification's own steps (Breakdown and the like) appear in the Activity history (beside
+  Overview, and as its stacked screen on a phone) under an **Agent attempts** heading above its
+  events, newest first and grouped by day (**Today**, **Yesterday**, then the date). Each entry is
+  marked by how the attempt ended, with the marks of the Now block's Last hand-off: completed
+  (circle-check, success; the line names the result, "Breakdown approved", or "Completed"),
+  waiting for your confirmation (clock, info), changes requested, result rejected and a commit that
+  failed ("Finished, but not committed") (circle-alert, attention), running (spinner), taken over
+  or returned (undo, neutral), abandoned (close, neutral). Then the step as its title, the outcome
+  line and the lines above. Three levels: the entry by default; the rows open to the files and
+  Tasks; the full feedback and, through Open session, the Session's transcript on request. When
+  older attempts are cut off it says "Older attempts are not shown." Nothing is shown while the
   Specification has no agent attempt.
 
 ### Close: agent work whose commit failed

@@ -295,6 +295,9 @@ export function finishedAttemptProjection(
   };
 }
 
+/** The story Specification's folder in its checkout. */
+const SSO = 'specs/active/single-sign-on';
+
 const human = {
   class: 'human' as const,
   details: { actorId: 'local:dominik', trust: 'local' as const },
@@ -341,7 +344,19 @@ export function takenOverAttemptHistory() {
             { kind: 'turn-ended' as const, at: '2026-11-13T12:10:00Z', turn: 1 },
             { kind: 'taken-over' as const, at: '2026-11-13T12:15:00Z' },
           ],
-          work: { ...work, tasks: [], declared: [], commit: { state: 'none' as const } },
+          work: {
+            ...work,
+            tasks: [],
+            declared: [],
+            commit: { state: 'none' as const },
+            changes: {
+              directory: SSO,
+              documents: [`${SSO}/tasks/t-04/task.md`, `${SSO}/tasks/t-04/screens.md`],
+              tasks: [],
+              files: AGENT_FILES,
+              state: [`${SSO}/.execution/tasks/t-04.yaml`],
+            },
+          },
         },
       },
     ],
@@ -383,6 +398,13 @@ export function finishedAttemptHistory(commit: {
             tasks: [],
             declared: AGENT_FILES,
             commit,
+            changes: {
+              directory: SSO,
+              documents: [`${SSO}/tasks/t-04/screens.md`, `${SSO}/tasks/t-04/task.md`],
+              tasks: [],
+              files: AGENT_FILES,
+              state: [`${SSO}/.execution/tasks/t-04.yaml`],
+            },
           },
         },
       },
@@ -459,4 +481,280 @@ export function confirmationAttemptHistory(commit: ConfirmationCommit) {
       },
     ],
   };
+}
+
+/** The folder of the Specification whose Activity history the stories show. */
+const ENTRY = 'specs/active/agent-workflow-entry-points';
+
+/** A local time `daysAgo` days before today, so the history groups it under Today or Yesterday. */
+function localAt(daysAgo: number, hours: number, minutes: number): string {
+  const now = new Date();
+
+  return new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - daysAgo,
+    hours,
+    minutes,
+  ).toISOString();
+}
+
+/** The twelve Tasks the agent's Breakdown produced, by id and title. */
+export const BREAKDOWN_TASKS = [
+  ['acceptance-and-coverage', 'End-to-end acceptance and roadmap coverage'],
+  ['adhoc-brief-delivery', 'Ad-hoc brief delivery and its conversation entry'],
+  ['adhoc-brief-render', 'Ad-hoc brief rendering'],
+  ['archetype-first-step', 'First step per archetype in the archetype catalogue'],
+  ['close-skill-wrappers-group', 'Close the skill wrappers group'],
+  ['create-with-agent', 'Create a specification with the agent'],
+  ['e6-confirmation-tests', 'Confirmation tests for the agent result'],
+  ['engine-project-file-install', 'Engine installs the project file'],
+  ['init-installs-skill', 'Init installs the portable skill'],
+  ['owner-decisions-in-step-context', 'Owner decisions in the step context'],
+  ['skill-source-and-commands', 'Skill source and its commands'],
+  ['transcript-brief-part', 'Transcript brief part'],
+].map(([id, title]) => ({ id: id!, title: title! }));
+
+interface SpecAttempt {
+  readonly step: string;
+  readonly stepTitle: string;
+  readonly attempt: number;
+  readonly sequence: number;
+  readonly startedAt: string;
+  readonly endedAt?: string;
+  readonly outcome?: Record<string, unknown>;
+  readonly transitionLabel?: string;
+  readonly ended: 'active' | 'finished' | 'returned' | 'taken-over' | 'abandoned';
+  readonly events?: readonly {
+    readonly kind: string;
+    readonly at?: string;
+    readonly code?: string;
+  }[];
+  readonly commit: Record<string, unknown>;
+  readonly changes: {
+    readonly documents?: readonly string[];
+    readonly tasks?: readonly { readonly id: string; readonly title: string }[];
+    readonly files?: readonly string[];
+    readonly state?: readonly string[];
+  };
+  readonly extra?: Record<string, unknown>;
+}
+
+function specAttempt(a: SpecAttempt) {
+  const documents = (a.changes.documents ?? []).map((name) => `${ENTRY}/${name}`);
+  const files = a.changes.files ?? [];
+  const state = (a.changes.state ?? ['.execution/specification.yaml']).map(
+    (name) => `${ENTRY}/${name}`,
+  );
+
+  return {
+    kind: 'attempt' as const,
+    sequence: a.sequence,
+    step: a.step,
+    stepTitle: a.stepTitle,
+    attempt: a.attempt,
+    startedAt: a.startedAt,
+    ...(a.endedAt ? { endedAt: a.endedAt } : {}),
+    actor: { ...agentActor, details: { ...agentActor.details, model: 'Opus 5.5' } },
+    ...(a.outcome ? { outcome: a.outcome } : {}),
+    ...(a.transitionLabel ? { transitionLabel: a.transitionLabel } : {}),
+    agent: {
+      attemptId: `${a.step}-${String(a.attempt)}`,
+      provider: 'claude',
+      model: 'Opus 5.5',
+      sessionId: PLAN_SESSION_ID,
+      turns: 1,
+      ended: a.ended,
+      events: a.events ?? [
+        { kind: 'started', at: a.startedAt },
+        { kind: 'turn-started', at: a.startedAt, turn: 1 },
+        ...(a.endedAt ? [{ kind: 'turn-ended', at: a.endedAt, turn: 1 }] : []),
+      ],
+      ...a.extra,
+      work: {
+        documents: [],
+        mixed: [],
+        tasks: (a.changes.tasks ?? []).map((task) => task.id),
+        declared: files,
+        commit: a.commit,
+        changes: {
+          directory: ENTRY,
+          documents,
+          tasks: a.changes.tasks ?? [],
+          files,
+          state,
+        },
+      },
+    },
+  };
+}
+
+const SHA = '05f9d80c1e2b3a4d5f60718293a4b5c6d7e8f901';
+
+/**
+ * The Activity history of a Specification whose agent ran its own steps over two days, one entry per
+ * way an attempt ends: waiting for the owner's confirmation, changes requested, completed with twelve
+ * Tasks and many files, taken over by the owner (its work kept, not committed), a commit that failed,
+ * and an attempt interrupted by a return to an earlier step.
+ */
+export function specificationAttemptsHistory() {
+  const items = [
+    specAttempt({
+      sequence: 9,
+      step: 'review',
+      stepTitle: 'Review the breakdown',
+      attempt: 2,
+      startedAt: localAt(0, 1, 9),
+      endedAt: localAt(0, 1, 12),
+      outcome: {
+        kind: 'transition',
+        transition: 'approved',
+        result: 'pass',
+        feedback:
+          'The twelve Tasks cover the roadmap. Install and init stay separate Tasks, as agreed.',
+        artifacts: [],
+      },
+      transitionLabel: 'Breakdown approved',
+      ended: 'finished',
+      events: [
+        { kind: 'started', at: localAt(0, 1, 9) },
+        { kind: 'finished', at: localAt(0, 1, 12) },
+        { kind: 'awaiting-confirmation', at: localAt(0, 1, 12) },
+        { kind: 'committed', at: localAt(0, 1, 12) },
+      ],
+      commit: { state: 'committed', runs: 1, sha: SHA, documents: 3, files: 0 },
+      changes: { documents: ['architecture.md', 'decisions.md', 'overview.md'] },
+    }),
+    specAttempt({
+      sequence: 8,
+      step: 'review',
+      stepTitle: 'Review the breakdown',
+      attempt: 1,
+      startedAt: localAt(0, 0, 41),
+      endedAt: localAt(0, 0, 47),
+      outcome: {
+        kind: 'transition',
+        transition: 'changes-requested',
+        result: 'fail',
+        feedback:
+          'Split "Init installs the portable skill" from the Engine install: they ship apart.\n\nThe acceptance Task needs the roadmap items it covers.',
+        artifacts: [],
+      },
+      transitionLabel: 'Changes requested',
+      ended: 'finished',
+      commit: { state: 'committed', runs: 1, sha: 'a41b7c2' + '0'.repeat(33), documents: 1 },
+      changes: { documents: ['decisions.md'] },
+    }),
+    specAttempt({
+      sequence: 7,
+      step: 'breakdown',
+      stepTitle: 'Break the solution down',
+      attempt: 3,
+      startedAt: localAt(0, 0, 2),
+      endedAt: localAt(0, 0, 36),
+      outcome: { kind: 'transition', transition: 'completed', artifacts: [] },
+      ended: 'finished',
+      commit: {
+        state: 'committed',
+        runs: 1,
+        sha: 'c93e01d' + '0'.repeat(33),
+        documents: 2,
+        files: 6,
+      },
+      changes: {
+        documents: ['architecture.md', 'skill.md'],
+        tasks: BREAKDOWN_TASKS,
+        files: [
+          `${ENTRY}/notes/install-matrix.md`,
+          'docs/adr/0042-agent-entry-points.md',
+          'packages/specflow/src/skill/install.ts',
+          'packages/specflow/src/skill/install.test.ts',
+          'packages/specflow-engine/src/project/skill-file.ts',
+          'packages/specflow-engine/src/project/skill-file.test.ts',
+        ],
+        state: [
+          '.execution/specification.yaml',
+          'specification.yaml',
+          'tasks/index.yaml',
+          ...BREAKDOWN_TASKS.map((task) => `tasks/${task.id}/task.yaml`),
+        ],
+      },
+    }),
+    {
+      kind: 'attempt' as const,
+      sequence: 6,
+      step: 'breakdown',
+      stepTitle: 'Break the solution down',
+      attempt: 2,
+      startedAt: localAt(1, 22, 30),
+      endedAt: localAt(1, 23, 55),
+      actor: human,
+      outcome: { kind: 'taken-over' as const },
+    },
+    specAttempt({
+      sequence: 5,
+      step: 'breakdown',
+      stepTitle: 'Break the solution down',
+      attempt: 1,
+      startedAt: localAt(1, 21, 58),
+      endedAt: localAt(1, 22, 30),
+      outcome: { kind: 'taken-over' },
+      ended: 'taken-over',
+      extra: { takenOverBy: { attempt: 2 } },
+      events: [
+        { kind: 'started', at: localAt(1, 21, 58) },
+        { kind: 'turn-started', at: localAt(1, 21, 58) },
+        { kind: 'proposal-refused', at: localAt(1, 22, 20), code: 'WORKFLOW_GATE_UNMET' },
+        { kind: 'turn-ended', at: localAt(1, 22, 24) },
+        { kind: 'taken-over', at: localAt(1, 22, 30) },
+      ],
+      commit: { state: 'none' },
+      changes: {
+        documents: ['architecture.md'],
+        files: ['packages/specflow/src/skill/install.ts'],
+      },
+    }),
+    specAttempt({
+      sequence: 4,
+      step: 'architecture',
+      stepTitle: 'Write the architecture',
+      attempt: 2,
+      startedAt: localAt(1, 18, 5),
+      endedAt: localAt(1, 18, 40),
+      outcome: { kind: 'transition', transition: 'completed', artifacts: [] },
+      ended: 'finished',
+      events: [
+        { kind: 'started', at: localAt(1, 18, 5) },
+        { kind: 'finished', at: localAt(1, 18, 40) },
+        { kind: 'commit-failed', at: localAt(1, 18, 40), code: 'BRANCH_PROTECTED' },
+      ],
+      commit: { state: 'failed', runs: 1, code: 'BRANCH_PROTECTED' },
+      changes: { documents: ['architecture.md', 'decisions.md'] },
+    }),
+    specAttempt({
+      sequence: 3,
+      step: 'architecture',
+      stepTitle: 'Write the architecture',
+      attempt: 1,
+      startedAt: localAt(1, 17, 2),
+      endedAt: localAt(1, 17, 31),
+      outcome: {
+        kind: 'returned',
+        to: 'requirements',
+        feedback: 'The requirements miss the Windows install path; back to Requirements first.',
+      },
+      ended: 'returned',
+      extra: {
+        returnRequest: {
+          to: 'requirements',
+          requestedAt: localAt(1, 17, 30),
+          state: 'applied',
+        },
+      },
+      commit: { state: 'none' },
+      changes: { documents: ['architecture.md'] },
+    }),
+  ];
+
+  return { subject: { kind: 'specification' as const, specId: 'sso' }, items };
 }

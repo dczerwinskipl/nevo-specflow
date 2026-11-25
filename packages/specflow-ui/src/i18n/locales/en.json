@@ -3135,9 +3135,6 @@
     "attemptHistory": {
       "title": "Agent attempts",
       "truncated": "Older attempts are not shown.",
-      "session": "Session",
-      "showEvents": "Show what happened",
-      "hideEvents": "Hide what happened",
       "stopped": "The agent stopped without a result at {{at}}.",
       "outcome": {
         "takenOverBy": "Taken over by {{who}}",
@@ -3145,15 +3142,11 @@
         "abandoned": "Abandoned",
         "returned": "Returned to {{step}}",
         "active": "The agent is working on it",
-        "handedToAgent": "Handed to the agent"
-      },
-      "work": {
-        "lead": "Its work:",
-        "leadKept": "Its work, kept and not committed:",
-        "documents": "Documents:",
-        "tasks": "Tasks:",
-        "files": "Files:",
-        "none": "none"
+        "handedToAgent": "Handed to the agent",
+        "completed": "Completed",
+        "awaitingConfirmation": "Waiting for your confirmation",
+        "rejected": "Result rejected",
+        "commitFailed": "Finished, but not committed"
       },
       "event": {
         "started": "Started",
@@ -3171,6 +3164,38 @@
         "awaiting-confirmation": "Waiting for confirmation",
         "confirmed": "Result confirmed",
         "rejected": "Result rejected"
+      },
+      "changes": {
+        "tasks_one": "{{count}} task",
+        "tasks_other": "{{count}} tasks",
+        "tasks_few": "{{count}} tasks",
+        "tasks_many": "{{count}} tasks",
+        "files_one": "{{count}} changed file",
+        "files_other": "{{count}} changed files",
+        "files_few": "{{count}} changed files",
+        "files_many": "{{count}} changed files",
+        "moreTasks_one": "{{count}} more task",
+        "moreTasks_other": "{{count}} more tasks",
+        "moreTasks_few": "{{count}} more tasks",
+        "moreTasks_many": "{{count}} more tasks",
+        "truncated": "The commit held more files than are listed here."
+      },
+      "committed": "Committed",
+      "notCommitted": "Kept in the checkout, not committed",
+      "viewFeedback": "View feedback",
+      "hideFeedback": "Hide feedback",
+      "day": {
+        "today": "Today",
+        "yesterday": "Yesterday"
+      },
+      "openSession": "Open session",
+      "duration": {
+        "underMinute": "under a minute",
+        "minutes_one": "{{count}} min",
+        "minutes_other": "{{count}} min",
+        "minutes_few": "{{count}} min",
+        "minutes_many": "{{count}} min",
+        "hours": "{{hours}} h {{minutes}} min"
       }
     }
   },

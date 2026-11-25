@@ -562,7 +562,11 @@ describe('finalizeAgentAttempt', () => {
         status: 'completed',
         commit: {
           sha,
-          paths: ['specs/active/demo/overview.md', 'specs/active/demo/spec.json', 'src/a.ts'],
+          paths: [
+            'specs/active/demo/overview.md',
+            'specs/active/demo/.execution/specification.yaml',
+            'src/a.ts',
+          ],
         },
       },
     ];
@@ -571,7 +575,20 @@ describe('finalizeAgentAttempt', () => {
 
     const settled = journal.settled.get(ATTEMPT_ID)!;
     expect(settled.postActions?.[0]?.outcomes).toEqual([
-      { action: 'attempt-commit', status: 'completed', commit: { sha, documents: 2, files: 1 } },
+      {
+        action: 'attempt-commit',
+        status: 'completed',
+        commit: {
+          sha,
+          documents: 2,
+          files: 1,
+          paths: [
+            'specs/active/demo/.execution/specification.yaml',
+            'specs/active/demo/overview.md',
+            'src/a.ts',
+          ],
+        },
+      },
     ]);
     expect((await readAgentAttemptWork(fixture.workflow, dependencies, settled)).commit).toEqual({
       state: 'committed',
@@ -580,6 +597,70 @@ describe('finalizeAgentAttempt', () => {
       documents: 2,
       files: 1,
     });
+  });
+
+  it('lists what a committed attempt changed once the ledger no longer holds it, by what it is', async () => {
+    const fixture = await agentTurn({ proposal: false });
+    const { dependencies, state, journal } = fixture;
+    state.attribution = {
+      paths: [{ path: 'src/a.ts', sha256: 'b'.repeat(64), added: false, area: { kind: 'code' } }],
+      incomplete: false,
+    };
+    state.claimDispatched = true;
+    await proposeAgentFinish(dependencies, {
+      turn: turn(),
+      input: {},
+      changes: { paths: ['src/a.ts'] },
+    });
+    state.claimDispatched = false;
+    const sha = 'e'.repeat(40);
+    state.postActionResults = [
+      {
+        action: 'attempt-commit',
+        status: 'completed',
+        commit: {
+          sha,
+          paths: [
+            'specs/active/demo/overview.md',
+            'specs/active/demo/decisions.md',
+            'specs/active/demo/.execution/specification.yaml',
+            'specs/active/demo/specification.yaml',
+            'src/a.ts',
+          ],
+        },
+      },
+    ];
+    await finalizeAgentAttempt(dependencies, finalizeInput());
+    const settled = journal.settled.get(ATTEMPT_ID)!;
+
+    // The commit pruned the ledger: the work is what the commit held, not "no documents".
+    const work = await readAgentAttemptWork(
+      fixture.workflow,
+      {
+        ...dependencies,
+        ledger: () => Promise.resolve([]),
+        specification: () =>
+          Promise.resolve({
+            directory: 'specs/active/demo',
+            documents: ['specs/active/demo/overview.md', 'specs/active/demo/decisions.md'],
+          }),
+      },
+      settled,
+    );
+
+    expect(work.documents).toEqual([]);
+    expect(work.changes).toEqual({
+      directory: 'specs/active/demo',
+      documents: ['specs/active/demo/decisions.md', 'specs/active/demo/overview.md'],
+      tasks: [],
+      files: ['src/a.ts'],
+      state: [
+        'specs/active/demo/.execution/specification.yaml',
+        'specs/active/demo/specification.yaml',
+      ],
+    });
+    // The counts name the same groups: two documents and one other file, the records uncounted.
+    expect(work.commit).toEqual({ state: 'committed', runs: 1, sha, documents: 2, files: 1 });
   });
 
   it('replays a crash after the publication with the hashes it was judged on, not the checkout now', async () => {

@@ -27,6 +27,8 @@ export type WorkflowHistoryItem =
       /** Who worked on it; absent for a wait step. */
       readonly actor?: WorkflowActor;
       readonly outcome?: AttemptOutcome;
+      /** The label the workflow gives the transition the attempt took ("Breakdown approved"). */
+      readonly transitionLabel?: string;
       /** An agent attempt's own history: its step events and the work it left. */
       readonly agent?: AgentAttemptHistory;
     }
@@ -100,17 +102,24 @@ async function historyOfSubject(
     }
 
     const detail = details.get(`${record.step}#${String(record.attempt)}`);
+    const step = findStep(definition, record.step);
+    const outcome = record.outcome;
+    const label =
+      step?.kind === 'work' && outcome?.kind === 'transition'
+        ? step.transitions.find((transition) => transition.id === outcome.transition)?.label
+        : undefined;
 
     return {
       kind: 'attempt',
       sequence: record.sequence,
       step: record.step,
-      stepTitle: findStep(definition, record.step)?.title ?? record.step,
+      stepTitle: step?.title ?? record.step,
       attempt: record.attempt,
       startedAt: record.startedAt,
       ...(record.endedAt !== undefined ? { endedAt: record.endedAt } : {}),
       ...(record.actor !== undefined ? { actor: record.actor } : {}),
       ...(record.outcome !== undefined ? { outcome: record.outcome } : {}),
+      ...(label !== undefined ? { transitionLabel: label } : {}),
       ...(detail ? { agent: detail } : {}),
     };
   });

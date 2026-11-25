@@ -32,6 +32,13 @@ export const AGENT_DIRTY_FILE_BYTES_MAX = 64 * 1024 * 1024;
 /** A dirty path longer than this is not named; the set is `truncated`. */
 export const AGENT_DIRTY_PATH_LENGTH_MAX = 1024;
 /**
+ * A commit summary names at most this many of its paths, of at most
+ * {@link AGENT_COMMITTED_PATHS_CHARACTERS_MAX} characters together; more are cut (`truncated`), so
+ * the names never push the journal past its size bound.
+ */
+export const AGENT_COMMITTED_PATHS_MAX = 200;
+export const AGENT_COMMITTED_PATHS_CHARACTERS_MAX = 64 * 1024;
+/**
  * A proposal holds one finish input, whose records fit the stored run record's budget, and the last
  * Turn's dirty set at most {@link AGENT_DIRTY_PATHS_MAX} paths.
  */
@@ -160,6 +167,13 @@ export interface AgentCommitSummary {
   readonly sha?: string;
   readonly documents: number;
   readonly files: number;
+  /**
+   * The checkout-relative paths the commit held, sorted (absent in an older journal), at most
+   * {@link AGENT_COMMITTED_PATHS_MAX}; `truncated` when more were committed. What the history lists
+   * as the attempt's committed work once the ledger no longer holds it.
+   */
+  readonly paths?: readonly string[];
+  readonly truncated?: true;
 }
 
 /**
@@ -514,6 +528,12 @@ const JournalSchema = Type.Object(
                           ),
                           documents: Type.Integer({ minimum: 0 }),
                           files: Type.Integer({ minimum: 0 }),
+                          paths: Type.Optional(
+                            Type.Array(text(AGENT_DIRTY_PATH_LENGTH_MAX), {
+                              maxItems: AGENT_COMMITTED_PATHS_MAX,
+                            }),
+                          ),
+                          truncated: Type.Optional(Type.Literal(true)),
                         },
                         closed,
                       ),

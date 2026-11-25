@@ -2,17 +2,18 @@ import type { AttemptRecord } from '@nevo/workflow';
 
 import { runReadRequest } from '../../../project/request-verification-memo';
 import type { LedgerEntry } from '../../../specs/durable/ledger/model';
-import type { TaskManifest } from '../../../tasks/resource/model';
+import { TASKS_FOLDER, type TaskManifest } from '../../../tasks/resource/model';
+import { EXECUTION_DIRECTORY } from '../../../specs/execution-paths';
 import { agentAttemptBindingOf, type WorkflowActor, type WorkflowSubject } from '../../state/model';
 import {
   attemptInvocations,
   selectAttemptLedgerEntries,
 } from '../finalize/attempt-commit/selection';
-import type { AgentAttemptWork } from '../../operations/actions';
+import type { AgentAttemptChanges, AgentAttemptWork } from '../../operations/actions';
 import { loadSubject, type WorkflowDependencies } from '../../operations/loaded-execution';
 import type { AgentAttemptJournal } from '../journal/model';
 
-export type { AgentAttemptWork };
+export type { AgentAttemptChanges, AgentAttemptWork };
 
 export const AGENT_ATTEMPT_EVENT_KINDS = [
   'started',
@@ -94,6 +95,20 @@ export interface AgentHistorySources {
   journal(attemptId: string): Promise<AgentAttemptJournal | undefined>;
   /** The uncommitted-changes ledger entries of a Specification in a checkout. */
   ledger(workspaceId: string, specId: string): Promise<readonly LedgerEntry[]>;
+  /**
+   * Where the Specification lies in a checkout and which documents it registers, to tell an
+   * attempt's documents from its other files (`AgentAttemptChanges`); `undefined` when the
+   * Specification is not in that checkout. Without it the work names no `changes`.
+   */
+  specification?(workspaceId: string, specId: string): Promise<AttemptSpecification | undefined>;
+}
+
+/** The Specification as an attempt's changes are read against it. */
+export interface AttemptSpecification {
+  /** Its folder, checkout-relative (`specs/active/<slug>`). */
+  readonly directory: string;
+  /** Its registered documents, checkout-relative. */
+  readonly documents: readonly string[];
 }
 
 const keyOf = (record: { readonly step: string; readonly attempt: number }) =>
@@ -109,6 +124,7 @@ export async function readAgentAttemptHistory(
 ): Promise<ReadonlyMap<string, AgentAttemptHistory>> {
   const found = new Map<string, AgentAttemptHistory>();
   const ledgers = new Map<string, Promise<readonly LedgerEntry[]>>();
+  const specifications = new Map<string, Promise<AttemptSpecification | undefined>>();
   for (const record of input.attempts) {
     const binding = agentAttemptBindingOf(record as AttemptRecord<WorkflowActor>);
     const journal = binding ? await sources.journal(binding.attemptId) : undefined;
@@ -120,6 +136,12 @@ export async function readAgentAttemptHistory(
     if (!ledger) {
       ledger = sources.ledger(binding.workspaceId, input.subject.specId);
       ledgers.set(binding.workspaceId, ledger);
+    }
+
+    let specification = specifications.get(binding.workspaceId);
+    if (!specification && sources.specification) {
+      specification = sources.specification(binding.workspaceId, input.subject.specId);
+      specifications.set(binding.workspaceId, specification);
     }
 
     // The owner's attempt before it ended taken over by this one: the owner handed the step over.
@@ -136,6 +158,7 @@ export async function readAgentAttemptHistory(
       agentAttemptHistoryOf(record, journal, await ledger, {
         ...input,
         ...(handedOverFrom !== undefined ? { handedOverFrom } : {}),
+        ...(specification ? { specification: await specification } : {}),
       }),
     );
   }
@@ -148,7 +171,7 @@ export function agentAttemptHistoryOf(
   record: AttemptRecord,
   journal: AgentAttemptJournal,
   ledger: readonly LedgerEntry[],
-  input: Pick<AgentHistoryInput, 'subject' | 'manifests'> & {
+  input: WorkInput & {
     /** The owner's attempt that handed the step to this one (Hand to agent). */
     readonly handedOverFrom?: number;
   },
@@ -289,7 +312,7 @@ function eventsOf(
  */
 export function readAgentAttemptWork(
   workflow: Pick<WorkflowDependencies, 'catalogue' | 'store'>,
-  sources: Pick<AgentHistorySources, 'ledger'>,
+  sources: Pick<AgentHistorySources, 'ledger' | 'specification'>,
   journal: AgentAttemptJournal,
 ): Promise<AgentAttemptWork> {
   return runReadRequest(() => attemptWorkOf(workflow, sources, journal));
@@ -297,7 +320,7 @@ export function readAgentAttemptWork(
 
 async function attemptWorkOf(
   workflow: Pick<WorkflowDependencies, 'catalogue' | 'store'>,
-  sources: Pick<AgentHistorySources, 'ledger'>,
+  sources: Pick<AgentHistorySources, 'ledger' | 'specification'>,
   journal: AgentAttemptJournal,
 ): Promise<AgentAttemptWork> {
   const { subject } = journal;
@@ -309,20 +332,31 @@ async function attemptWorkOf(
     return { documents: [], mixed: [], tasks: [], declared: [], commit: { state: 'none' } };
   }
 
+  const specification = sources.specification
+    ? { specification: await sources.specification(journal.workspaceId, subject.specId) }
+    : {};
+
   return workOf(record, journal, await sources.ledger(journal.workspaceId, subject.specId), {
     subject,
     manifests: snapshot.manifests.map((entry) => entry.value),
+    ...specification,
   });
 }
+
+/** What the work of an attempt is read against. */
+type WorkInput = Pick<AgentHistoryInput, 'subject' | 'manifests'> & {
+  /** The Specification's folder and registry; `undefined`: read but not in the checkout. */
+  readonly specification?: AttemptSpecification | undefined;
+};
 
 function workOf(
   record: AttemptRecord,
   journal: AgentAttemptJournal,
   ledger: readonly LedgerEntry[],
-  input: Pick<AgentHistoryInput, 'subject' | 'manifests'>,
+  input: WorkInput,
 ): AgentAttemptWork {
   const selection = selectAttemptLedgerEntries(ledger, attemptInvocations(journal));
-  const tasks =
+  const produced =
     input.subject.kind === 'specification'
       ? input.manifests
           .filter(
@@ -331,20 +365,41 @@ function workOf(
               task.origin.step === record.step &&
               task.origin.attempt === record.attempt,
           )
-          .map((task) => task.id)
-          .sort()
+          .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
       : [];
+  const tasks = produced.map((task) => task.id);
   const commit = journal.postActions?.find((action) => action.kind === 'attempt-commit');
   const failed = commit?.outcomes?.find((entry) => entry.status === 'failed');
   const made =
     commit?.state === 'done' ? commit.outcomes?.find((entry) => entry.commit)?.commit : undefined;
   const dirty = journal.dirtySet;
+  const declared = journal.proposal?.changes?.paths ?? [];
+  const changes = input.specification
+    ? attemptChangesOf({
+        specification: input.specification,
+        subject: input.subject,
+        manifests: input.manifests,
+        produced,
+        paths: [...selection.paths, ...selection.mixed, ...(made?.paths ?? []), ...declared],
+        ...(made?.truncated ? { truncated: true } : {}),
+      })
+    : undefined;
+  // With the commit's paths named, its counts follow the same groups as `changes`.
+  const counts =
+    made && changes && made.paths
+      ? {
+          documents: made.paths.filter((path) => changes.documents.includes(path)).length,
+          files: made.paths.filter((path) => changes.files.includes(path)).length,
+        }
+      : made
+        ? { documents: made.documents, files: made.files }
+        : undefined;
 
   return {
     documents: selection.paths,
     mixed: selection.mixed,
     tasks,
-    declared: [...(journal.proposal?.changes?.paths ?? [])],
+    declared: [...declared],
     ...(dirty
       ? {
           changed: {
@@ -363,14 +418,71 @@ function workOf(
                 : 'pending',
           ...(failed?.code !== undefined ? { code: failed.code } : {}),
           ...(commit.runs !== undefined ? { runs: commit.runs } : {}),
-          ...(made
-            ? {
-                ...(made.sha !== undefined ? { sha: made.sha } : {}),
-                documents: made.documents,
-                files: made.files,
-              }
+          ...(made && counts
+            ? { ...(made.sha !== undefined ? { sha: made.sha } : {}), ...counts }
             : {}),
         }
       : { state: 'none' },
+    ...(changes ? { changes } : {}),
+  };
+}
+
+/** The Specification manifest's file name in its folder. */
+const MANIFEST_FILE = 'specification.yaml';
+
+/**
+ * What an attempt changed, each path in one group (`AgentAttemptChanges`): a registered document
+ * of the Specification (or of the Task the attempt works on), SpecFlow's own records below the
+ * Specification's folder (`.execution/**`, `tasks/**`, the manifest), else another file. Pure.
+ */
+export function attemptChangesOf(input: {
+  readonly specification: AttemptSpecification;
+  readonly subject: WorkflowSubject;
+  readonly manifests: readonly TaskManifest[];
+  /** The Task drafts the attempt produced. */
+  readonly produced: readonly TaskManifest[];
+  /** Every path the attempt changed, in any order, repeats allowed. */
+  readonly paths: readonly string[];
+  readonly truncated?: boolean;
+}): AgentAttemptChanges {
+  const { directory } = input.specification;
+  const subject = input.subject;
+  const task =
+    subject.kind === 'task'
+      ? input.manifests.find((manifest) => manifest.id === subject.taskId)
+      : undefined;
+  const registered = new Set([
+    ...input.specification.documents,
+    ...(task
+      ? task.documents.map((entry) => `${directory}/${TASKS_FOLDER}/${task.id}/${entry.path}`)
+      : []),
+  ]);
+  const documents: string[] = [];
+  const files: string[] = [];
+  const state: string[] = [];
+  for (const path of [...new Set(input.paths)].sort()) {
+    if (registered.has(path)) {
+      documents.push(path);
+      continue;
+    }
+
+    const relative = path.startsWith(directory + '/')
+      ? path.slice(directory.length + 1)
+      : undefined;
+    const own =
+      relative !== undefined &&
+      (relative === MANIFEST_FILE ||
+        relative.startsWith(EXECUTION_DIRECTORY + '/') ||
+        relative.startsWith(TASKS_FOLDER + '/'));
+    (own ? state : files).push(path);
+  }
+
+  return {
+    directory,
+    documents,
+    tasks: input.produced.map((manifest) => ({ id: manifest.id, title: manifest.title })),
+    files,
+    state,
+    ...(input.truncated ? { truncated: true as const } : {}),
   };
 }

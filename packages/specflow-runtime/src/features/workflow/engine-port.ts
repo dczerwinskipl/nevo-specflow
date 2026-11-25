@@ -72,6 +72,7 @@ export function createEngineWorkflowPort(
       return readWorkflowHistory(await open(), subject, {
         journal: (attemptId) => attempts.journal.read(attemptId),
         ledger: (workspaceId, specId) => attempts.ledger(workspaceId, specId),
+        specification: (workspaceId, specId) => attempts.specification(workspaceId, specId),
       });
     },
 

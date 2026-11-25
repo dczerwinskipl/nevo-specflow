@@ -58,6 +58,8 @@ function toOverviewItem(spec: CurrentSpecRecord): CurrentSpecOverviewItem {
     ...(spec.tags === undefined ? {} : { tags: [...spec.tags] }),
     updatedAt: spec.updatedAt,
     workflow: spec.workflow === null ? null : structuredClone(spec.workflow),
+    ...(spec.attention ? { attention: structuredClone(spec.attention) } : {}),
+    ...(spec.unreadable ? { unreadable: { reason: spec.unreadable.reason } } : {}),
     progress: spec.progress,
     classification: classifyCurrentSpec(spec),
     signals: spec.signals?.map((signal) => ({ ...signal })) ?? null,

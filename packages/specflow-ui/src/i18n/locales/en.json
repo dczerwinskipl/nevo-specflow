@@ -2456,7 +2456,8 @@
         "catalogueFailed": "The agents could not be listed, so the attempt starts with {{agent}} from the {{role}} settings.",
         "loadingAgents": "Loading the agents…",
         "chooseModel": "Choose a model",
-        "modelUnassigned": "No model {{provider}} offers is set for the {{role}}. Choose one for this start."
+        "modelUnassigned": "No model {{provider}} offers is set for the {{role}}. Choose one for this start.",
+        "workMode": "Work mode"
       },
       "commit": "When the agent finishes, SpecFlow commits its work on <code>{{branch}}</code> as one commit; changes of others are never included.",
       "commitNoBranch": "When the agent finishes, SpecFlow commits its work on the specification’s branch as one commit; changes of others are never included.",

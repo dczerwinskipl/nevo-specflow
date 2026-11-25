@@ -122,6 +122,7 @@ export function AgentSession({
   catalogue,
   choice,
   modelUnassigned = false,
+  workMode,
   onChoice,
 }: {
   readonly mode: SessionMode;
@@ -137,6 +138,8 @@ export function AgentSession({
    * model") and says why; the configured id is never shown.
    */
   readonly modelUnassigned?: boolean;
+  /** The work mode a new Session of this choice runs in (the Runtime's `workMode` title). */
+  readonly workMode?: string | undefined;
   readonly onChoice: (choice: FreshChoice) => void;
 }) {
   const { t } = useTranslation();
@@ -183,28 +186,40 @@ export function AgentSession({
                 }}
               />
               {provider ? (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <Typography as="span" variant="body-sm" className="text-content-secondary">
-                    {t('workflowExecution.agent.session.model')}
-                  </Typography>
-                  <ModelEffortPicker
-                    provider={provider}
-                    {...(modelUnassigned
-                      ? { placeholder: t('workflowExecution.agent.session.chooseModel') }
-                      : {})}
-                    value={{
-                      modelId: choice.modelId,
-                      ...(choice.effort ? { effort: choice.effort } : {}),
-                    }}
-                    onChange={(modelId, effort) =>
-                      onChoice({
-                        providerId: choice.providerId,
-                        modelId,
-                        ...(effort ? { effort } : {}),
-                      })
-                    }
-                  />
-                </div>
+                <>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <Typography as="span" variant="body-sm" className="text-content-secondary">
+                      {t('workflowExecution.agent.session.model')}
+                    </Typography>
+                    <ModelEffortPicker
+                      provider={provider}
+                      {...(modelUnassigned
+                        ? { placeholder: t('workflowExecution.agent.session.chooseModel') }
+                        : {})}
+                      value={{
+                        modelId: choice.modelId,
+                        ...(choice.effort ? { effort: choice.effort } : {}),
+                      }}
+                      onChange={(modelId, effort) =>
+                        onChoice({
+                          providerId: choice.providerId,
+                          modelId,
+                          ...(effort ? { effort } : {}),
+                        })
+                      }
+                    />
+                  </div>
+                  {workMode ? (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <Typography as="span" variant="body-sm" className="text-content-secondary">
+                        {t('workflowExecution.agent.session.workMode')}
+                      </Typography>
+                      <Typography as="span" variant="body-sm" className="text-content-primary">
+                        {workMode}
+                      </Typography>
+                    </div>
+                  ) : null}
+                </>
               ) : null}
             </>
           ) : catalogue.status === 'loading' ? (

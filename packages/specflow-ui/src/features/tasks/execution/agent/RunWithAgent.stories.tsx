@@ -64,6 +64,9 @@ export const NewSession: Story = {
     await expect(within(dialog).getByText('Run with agent: Implementation')).toBeVisible();
     await expect(await within(dialog).findByRole('radio', { name: /Claude/ }, wait)).toBeChecked();
     await expect(within(dialog).getByText('nevo-1/single-sign-on')).toBeVisible();
+    // The work mode the Runtime names for this launch.
+    await expect(within(dialog).getByText('Work mode')).toBeVisible();
+    await expect(within(dialog).getByText('Accept edits')).toBeVisible();
     await expectFooter(dialog, true);
   },
 };

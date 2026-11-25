@@ -201,6 +201,11 @@ export function AgentStartDialog({
     refusedOption === undefined &&
     ((option?.kind === 'available' && (!fresh || chosenReady)) || (pickable && chosenReady));
   const otherRefusal = start.isError && !refusedOption;
+  // The Runtime names the work mode for the launch it resolved; another choice may run in another
+  // mode, so it is shown only for that one.
+  const sameAsLaunch =
+    !modelUnassigned && choice.providerId === launch?.provider && choice.modelId === launch.model;
+  const workModeTitle = (option as { workMode?: { title: string } } | undefined)?.workMode?.title;
   const reused = launch?.session.mode === 'reuse' ? launch.session.sessionId : undefined;
   const sessionTitle =
     reused !== undefined
@@ -308,6 +313,7 @@ export function AgentStartDialog({
                   catalogue={catalogue}
                   choice={pickerChoice}
                   modelUnassigned={modelUnassigned}
+                  workMode={sameAsLaunch ? workModeTitle : undefined}
                   onChoice={choose}
                 />
               </>

@@ -46,7 +46,13 @@ export const ownerWorkOption: AgentOption = {
 };
 
 export const agentOptions: Record<AgentCase, AgentOption> = {
-  fresh: { kind: 'available', launch: fresh, baseline: 'unchecked' },
+  fresh: {
+    kind: 'available',
+    launch: fresh,
+    baseline: 'unchecked',
+    // The Runtime names the work mode a new Session of this launch runs in.
+    ...({ workMode: { providerModeId: 'acceptEdits', title: 'Accept edits' } } as object),
+  },
   reuse: {
     kind: 'available',
     launch: { ...fresh, session: { mode: 'reuse', sessionId: SESSION_ID } },

@@ -115,7 +115,6 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
       },
       documents: [{ id: 'overview', path: 'overview.md', type: 'overview' }],
       folders: [],
-      status: 'draft',
       priority: 10,
       created: '2026-10-14',
       relativeManifestPath: first.files[0]?.relativePath,

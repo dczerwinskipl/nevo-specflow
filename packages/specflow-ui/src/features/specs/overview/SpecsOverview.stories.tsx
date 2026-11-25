@@ -472,13 +472,13 @@ export const CurrentContract: Story = {
     canvas.getByText('Agent input required');
     // Each row says where its workflow stands, in the Overview's own words.
     await expect(situationOf(canvasElement, 'admission')).toBe(
-      'Agent input required | Waiting for Tasks | Step 6 of 7 | 2 Tasks in progress',
+      'Agent input required | Waiting for Tasks | Step 6 of 7 · 2 Tasks in progress',
     );
     await expect(situationOf(canvasElement, 'packaging')).toBe(
-      'Waiting for Tasks | Step 6 of 7 | 2 Tasks ready to start',
+      'Waiting for Tasks | Step 6 of 7 · 2 Tasks ready to start',
     );
     await expect(situationOf(canvasElement, 'providers')).toBe(
-      'Breakdown | Step 4 of 7 | agent working',
+      'Breakdown | Step 4 of 7 · agent working',
     );
     await expect(situationOf(canvasElement, 'localization')).toBe(
       'Not started | First step · Gather requirements',
@@ -701,7 +701,11 @@ export const NotStartedAndEnded: Story = {
  */
 /** A row's situation, one part per line: the summary, the step, its track label, the detail. */
 function situationOf(canvasElement: HTMLElement, specId: string): string {
-  return [...canvasElement.querySelectorAll(`[data-spec-id="${specId}"] [data-spec-reason] > span`)]
+  return [
+    ...canvasElement.querySelectorAll(
+      `[data-spec-id="${specId}"] [data-spec-reason] > span:not([data-spec-track])`,
+    ),
+  ]
     .map((part) => part.textContent)
     .join(' | ');
 }
@@ -790,18 +794,18 @@ export const WorkflowPhases: Story = {
     for (const [specId, situation] of [
       [
         'stuck',
-        '2 items require attention | Waiting for Tasks | Step 6 of 7 | Waiting for 12 of 12 tasks',
+        '2 items require attention | Waiting for Tasks | Step 6 of 7 · Waiting for 12 of 12 tasks',
       ],
       [
         'confirm',
-        '1 item requires attention | Review the breakdown | Step 5 of 7 | Ready to start',
+        '1 item requires attention | Review the breakdown | Step 5 of 7 · Ready to start',
       ],
-      ['waiting', 'Waiting for Tasks | Step 6 of 7 | 5 Tasks ready to start'],
-      ['running', 'Waiting for Tasks | Step 6 of 7 | 2 Tasks in progress'],
-      ['remaining', 'Waiting for Tasks | Step 6 of 7 | Waiting for 2 of 4 tasks'],
-      ['agent', 'Breakdown | Step 4 of 7 | agent working'],
-      ['owner', 'Solution | Step 3 of 7 | in progress'],
-      ['next', 'Review the breakdown | Step 5 of 7 | Ready to start'],
+      ['waiting', 'Waiting for Tasks | Step 6 of 7 · 5 Tasks ready to start'],
+      ['running', 'Waiting for Tasks | Step 6 of 7 · 2 Tasks in progress'],
+      ['remaining', 'Waiting for Tasks | Step 6 of 7 · Waiting for 2 of 4 tasks'],
+      ['agent', 'Breakdown | Step 4 of 7 · agent working'],
+      ['owner', 'Solution | Step 3 of 7 · in progress'],
+      ['next', 'Review the breakdown | Step 5 of 7 · Ready to start'],
       ['new', 'Not started | First step · Gather requirements'],
       ['done', 'Completed | All 7 steps · completed'],
       ['dropped', 'Abandoned'],

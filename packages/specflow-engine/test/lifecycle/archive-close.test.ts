@@ -3,7 +3,6 @@ import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { parse, stringify } from 'yaml';
 
 import {
   archiveSpecificationWithCommit,
@@ -94,7 +93,7 @@ describe('E2.T14 physical archive and exact scoped Git commit', () => {
     await expect(readFile(markerFile, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
   }, 120000);
 
-  it('inspects the physical archive after a crash before move, after rename, and after manifest rewrite', async () => {
+  it('inspects the physical archive after a crash before move and after rename', async () => {
     const { root, engine, spec, operationId } = await fixture();
     await expect(
       archiveSpecificationWithCommit(engine, operationId, () =>
@@ -112,12 +111,9 @@ describe('E2.T14 physical archive and exact scoped Git commit', () => {
       'moved-original-manifest',
     );
 
+    // A manifest without a legacy `status` key is archived unchanged: nothing is left to rewrite.
     const manifestPath = join(newPath, 'specification.yaml');
-    const sourceManifest = parse(await readFile(manifestPath, 'utf8')) as Record<string, unknown>;
-    await writeFile(manifestPath, stringify({ ...sourceManifest, status: 'archived' }));
-    expect(await inspectArchivePhysicalRecovery(engine, operationId)).toBe(
-      'moved-archived-manifest',
-    );
+    expect(await readFile(manifestPath, 'utf8')).not.toMatch(/^status:/m);
     expect(await inspectArchiveRecovery(engine, operationId)).toBe('move-incomplete');
     await expect(archiveSpecificationWithCommit(engine, operationId)).rejects.toMatchObject({
       code: 'CLOSE_PREFLIGHT',

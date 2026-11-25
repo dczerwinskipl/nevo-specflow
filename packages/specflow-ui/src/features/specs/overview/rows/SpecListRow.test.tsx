@@ -131,7 +131,7 @@ describe('SpecListRow situation', () => {
     renderRow({ item: currentRow(createSpecItem(item)) });
 
     // One line per part: the step, its track label, the detail.
-    return [...document.querySelectorAll('[data-spec-reason] > span')]
+    return [...document.querySelectorAll('[data-spec-reason] > span:not([data-spec-track])')]
       .map((part) => part.textContent)
       .join(' | ');
   };
@@ -139,7 +139,7 @@ describe('SpecListRow situation', () => {
   it('names the step the workflow waits on and the Tasks the owner can start', () => {
     expect(
       situation({ workflow: waitingForTasks(), classification: { section: 'in-progress' } }),
-    ).toBe('Waiting for Tasks | Step 6 of 7 | 5 Tasks ready to start');
+    ).toBe('Waiting for Tasks | Step 6 of 7 · 5 Tasks ready to start');
     // The Overview's segmented step track, named for assistive technology.
     expect(screen.getByRole('img', { name: 'Step 6 of 7: Waiting for Tasks' })).toBeTruthy();
   });
@@ -150,7 +150,7 @@ describe('SpecListRow situation', () => {
         workflow: workflowFixtures.notStarted,
         classification: { section: 'not-started' },
       }),
-    ).toBe('Not started');
+    ).toBe('Not started | First step · Gather requirements');
   });
 
   it('keeps the step under an attention summary', () => {
@@ -159,7 +159,7 @@ describe('SpecListRow situation', () => {
         workflow: workflowFixtures.readyForNextStep,
         classification: { section: 'requires-attention', count: 1 },
       }),
-    ).toBe('1 item requires attention | Review the breakdown | Step 5 of 7 | Ready to start');
+    ).toBe('1 item requires attention | Review the breakdown | Step 5 of 7 · Ready to start');
   });
 
   it('tells a completed run from an abandoned one', () => {

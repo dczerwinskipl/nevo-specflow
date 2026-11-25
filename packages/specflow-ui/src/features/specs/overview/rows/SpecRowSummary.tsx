@@ -123,7 +123,7 @@ function WorkflowSituation({ line }: { readonly line: WorkflowLine }) {
         {title}
       </span>
       {track ? (
-        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1" data-spec-track>
+        <span className="flex min-w-0" data-spec-track>
           <Progress
             variant="segmented"
             size="compact"
@@ -131,13 +131,13 @@ function WorkflowSituation({ line }: { readonly line: WorkflowLine }) {
             total={track.total}
             aria-label={track.ariaLabel}
           />
-          <span aria-hidden="true" className="text-content-secondary">
-            {track.label}
-          </span>
         </span>
       ) : null}
-      {detail ? (
+      {track || detail ? (
+        // One line under the track (the column is narrow): "Step 6 of 7 · 5 Tasks ready to start".
         <span className="text-content-secondary" data-spec-step-detail>
+          {track ? <span aria-hidden="true">{track.label}</span> : null}
+          {track && detail ? ' · ' : null}
           {detail}
         </span>
       ) : null}

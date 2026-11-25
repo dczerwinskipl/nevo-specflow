@@ -99,7 +99,7 @@ describe('Specs Overview presentation boundary', () => {
 
     expect(summary(workflowFixtures.notStarted, 'not-started')).toEqual({
       kind: 'workflow',
-      line: { kind: 'not-started' },
+      line: { kind: 'not-started', stepCount: 7, firstStep: 'Gather requirements' },
     });
     expect(summary(workflowFixtures.waiting)).toEqual({
       kind: 'workflow',
@@ -112,7 +112,7 @@ describe('Specs Overview presentation boundary', () => {
     });
     expect(summary(workflowFixtures.completed, 'ended')).toEqual({
       kind: 'workflow',
-      line: { kind: 'ended', outcome: 'completed' },
+      line: { kind: 'ended', outcome: 'completed', stepCount: 7 },
     });
   });
 

@@ -146,33 +146,50 @@ describe.skipIf(!process.env.SPECFLOW_READ_BENCH)('the Specs list read', () => {
     // the whole list under one section (the read before it was shortened).
     const opened = await openWorkflow(project.engine);
     const perRow = await lockSections(() => readSpecificationListingsForRead(opened, specIds));
-    const whole = await lockSections(() =>
+    const wholeListUnderOneLock = () =>
       opened.serialize(async () => {
         const unlocked = { ...opened, serialize: <T>(operation: () => Promise<T>) => operation() };
         for (const specId of specIds) {
           await readSpecificationListingForRead(unlocked, specId);
         }
-      }),
-    );
+      });
+    const whole = await lockSections(wholeListUnderOneLock);
 
     // A write while the list is read over and over (an open list refreshing, several agents
-    // writing): how long each write waits for the lock.
-    let listing = true;
-    const refreshing = (async () => {
-      while (listing) {
-        await readSpecificationListingsForRead(opened, specIds);
+    // writing): how long each write takes, against the same write with no list read.
+    const writeTimes = async () => {
+      const times: number[] = [];
+      // Five Specifications: hold a Task, then resume it (ten writes).
+      for (const specId of specIds.slice(0, 5)) {
+        for (const status of ['on-hold', 'ready'] as const) {
+          const started = performance.now();
+          await setTaskStatus(opened, { specId, taskId: 'task-4', status, actor: owner });
+          times.push(performance.now() - started);
+        }
       }
-    })();
-    const writes = await lockSections(async () => {
-      for (let write = 0; write < 10; write += 1) {
-        const specId = specIds[write % specIds.length]!;
-        const status = write % 2 === 0 ? 'on-hold' : 'ready';
-        await setTaskStatus(opened, { specId, taskId: 'task-4', status, actor: owner });
-      }
-    });
-    listing = false;
-    await refreshing;
-    const writeWaits = writes.map((section) => section.waitMs);
+
+      return times;
+    };
+
+    const quiet = await writeTimes();
+    const whileListing = async (read: () => Promise<unknown>) => {
+      let listing = true;
+      let refreshes = 0;
+      const refreshing = (async () => {
+        while (listing) {
+          await read();
+          refreshes += 1;
+        }
+      })();
+      const times = await writeTimes();
+      listing = false;
+      await refreshing;
+
+      return { times, refreshes };
+    };
+
+    const perRowBusy = await whileListing(() => readSpecificationListingsForRead(opened, specIds));
+    const wholeBusy = await whileListing(() => wholeListUnderOneLock());
 
     console.info(
       `${count} Specifications x ${TASKS} Tasks, median of 5: discovery ${discovery.toFixed(1)} ms, ` +
@@ -182,8 +199,11 @@ describe.skipIf(!process.env.SPECFLOW_READ_BENCH)('the Specs list read', () => {
         `lock per row: ${perRow.length} sections, longest ${max(perRow.map((s) => s.heldMs)).toFixed(1)} ms, ` +
         `held ${sum(perRow.map((s) => s.heldMs)).toFixed(1)} ms in all; ` +
         `one lock for the list: held ${max(whole.map((s) => s.heldMs)).toFixed(1)} ms; ` +
-        `a write during refreshes waits at most ${max(writeWaits).toFixed(1)} ms ` +
-        `(${writes.length} lock sections of 10 writes)`,
+        `a write takes median ${median(quiet).toFixed(1)} / max ${max(quiet).toFixed(1)} ms alone, ` +
+        `${median(perRowBusy.times).toFixed(1)} / ${max(perRowBusy.times).toFixed(1)} ms while the ` +
+        `list refreshes (${perRowBusy.refreshes} refreshes), ` +
+        `${median(wholeBusy.times).toFixed(1)} / ${max(wholeBusy.times).toFixed(1)} ms while a ` +
+        `one-lock list refreshes (${wholeBusy.refreshes} refreshes)`,
     );
     expect(specIds).toHaveLength(count);
   });

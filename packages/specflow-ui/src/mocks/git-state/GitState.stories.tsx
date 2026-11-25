@@ -45,6 +45,8 @@ export const CloseWaitsForSaves: Story = { args: { state: 'close-waits' } };
 export const AgentCommitFailed: Story = { args: { state: 'commit-failed' } };
 /** After the owner committed the agent's work: Now moves on, Confirm and Reject continue. */
 export const AgentWorkCommittedByYou: Story = { args: { state: 'commit-failed-committed-by-you' } };
+/** After discarding the work of the agent's failed commit: only Reject is left (owner decision). */
+export const AgentWorkDiscarded: Story = { args: { state: 'agent-work-discarded' } };
 /** The attempt's history says who committed its work (the committed row). */
 export const HistoryCommittedByYou: Story = {
   args: { state: 'history-committed-by-you' },

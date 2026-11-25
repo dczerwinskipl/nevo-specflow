@@ -76,6 +76,8 @@ interface Blocker {
   /** The blocked action, named as its button. */
   readonly action: string;
   readonly why: string;
+  /** The groups whose files block it (SpecFlow's own saves never block Run with agent). */
+  readonly covers: readonly GroupKind[];
 }
 
 interface WidgetData {
@@ -141,7 +143,8 @@ const groupText: Record<GroupKind, { readonly heading: string; readonly note?: s
 
 const RUN_WITH_AGENT: Blocker = {
   action: 'Run with agent cannot start on any task',
-  why: 'while these files are not committed: the agent starts from a committed checkout, so that everything that changes afterwards is its own work. Commit or discard them to continue.',
+  why: 'while these files are not committed: the agent starts from a committed checkout, so that everything that changes afterwards is its own work. Commit or discard them to continue. (Files saved in SpecFlow do not block it.)',
+  covers: ['attempt-taken-over', 'outside'],
 };
 
 export type GitStateCase =
@@ -153,6 +156,7 @@ export type GitStateCase =
   | 'close-waits'
   | 'commit-failed'
   | 'commit-failed-committed-by-you'
+  | 'agent-work-discarded'
   | 'history-committed-by-you'
   | 'many-files'
   | 'being-saved'
@@ -216,6 +220,7 @@ const data: Record<Base, WidgetData> = {
     blocker: {
       action: 'Close specification waits for these files',
       why: 'because Close leaves nothing uncommitted. Commit or discard them, then Close.',
+      covers: ['saved'],
     },
   },
   // Now's note says what waits and why; the section only lists the files (one wording).
@@ -366,6 +371,12 @@ const findAttention = () => {
 
 const findBySelector = (selector: string) => () =>
   Array.from(document.querySelectorAll<HTMLElement>(selector)).find(outsideMock);
+
+/** Now's Confirm and Reject row. */
+const findConfirmRow = () =>
+  Array.from(document.querySelectorAll<HTMLButtonElement>('[data-workflow-now] button')).find(
+    (button) => outsideMock(button) && button.textContent?.trim() === 'Confirm',
+  )?.parentElement;
 
 /** Now's line of what the attempt committed ("7 documents committed · 3f9c2a1"). */
 const findHandoffCommit = () =>
@@ -562,14 +573,17 @@ export function GitStateSection({ state }: { readonly state: WidgetData }) {
           </InlineNote>
         ) : null}
 
-        {state.blocker ? (
-          <InlineNote tone="attention" role="status" data-git-blocker="">
-            <strong className="font-medium">{state.blocker.action}</strong> {state.blocker.why}
-          </InlineNote>
-        ) : null}
-
-        {state.groups.map((group) => (
+        {state.groups.map((group, index) => (
           <div key={group.kind} className="grid min-w-0 gap-1">
+            {/* What waits for these files, next to the first group that holds it up. */}
+            {state.blocker &&
+            state.blocker.covers.includes(group.kind) &&
+            state.groups.findIndex((other) => state.blocker!.covers.includes(other.kind)) ===
+              index ? (
+              <InlineNote tone="attention" role="status" data-git-blocker="" className="mb-1">
+                <strong className="font-medium">{state.blocker.action}</strong> {state.blocker.why}
+              </InlineNote>
+            ) : null}
             <GroupHeading group={group} />
             {groupText[group.kind].note && group.kind !== 'outside' ? (
               <Typography as="p" variant="body-sm" className="text-content-secondary">
@@ -613,7 +627,10 @@ function attentionOf(base: Base) {
     return [];
   }
 
-  const total = state.groups.reduce((sum, group) => sum + flat(group.items).length, 0);
+  const blocker = state.blocker;
+  const total = state.groups
+    .filter((group) => blocker.covers.includes(group.kind))
+    .reduce((sum, group) => sum + flat(group.items).length, 0);
 
   return [
     {
@@ -623,7 +640,7 @@ function attentionOf(base: Base) {
         id: 'git-uncommitted',
         kind: 'git' as const,
         title: uncommitted(total),
-        reason: state.blocker.action,
+        reason: blocker.action,
         actionLabel: 'Commit changes…',
       },
       facts: ['Repository', BRANCH],
@@ -771,8 +788,8 @@ export function CommitDialog({
               </>
             ) : (
               <>
-                One commit on <span className={BRANCH_TEXT}>{BRANCH}</span> under your Git identity.
-                Files you leave out stay as they are.{' '}
+                One commit on <span className={BRANCH_TEXT}>{BRANCH}</span> by the Git identity set
+                up where SpecFlow runs. Files you leave out stay as they are.{' '}
               </>
             )}
             <InlineAction onClick={noop}>View changes</InlineAction> shows what changed in each
@@ -895,6 +912,12 @@ export function CommitDialog({
                             {groupText[group.kind].note}
                           </span>
                         ) : null}
+                        {group.kind === 'attempt-failed' && discard ? (
+                          <span className="text-body-sm text-content-secondary">
+                            Discarding them leaves only Reject for the agent’s result: Confirm would
+                            approve a result whose files are gone.
+                          </span>
+                        ) : null}
                         {(group.kind === 'attempt-failed' || group.kind === 'attempt-taken-over') &&
                         !discard ? (
                           <span className="text-body-sm text-content-secondary">
@@ -999,7 +1022,8 @@ function DiscardConfirm({
               {agent ? (
                 <p>
                   This is the work of Breakdown, attempt 1. The attempt’s history keeps saying what
-                  it did and that you discarded its work.
+                  it did and that you discarded its work. Afterwards only Reject is possible for its
+                  result: Confirm would approve a result whose files are gone.
                 </p>
               ) : null}
               <p className="font-medium text-content-primary">
@@ -1061,6 +1085,16 @@ function FailedCommitNote() {
         </div>
       </InlineNote>
     </div>
+  );
+}
+
+/** Now after the owner discarded the work of the agent's failed commit: only Reject is left. */
+function DiscardedNote() {
+  return (
+    <InlineNote tone="info" icon={Trash2} role="status">
+      You discarded the agent’s work of Breakdown, attempt 1. Confirm is not possible: it would
+      approve a result whose files are gone. Reject sends the step back with your feedback.
+    </InlineNote>
   );
 }
 
@@ -1210,6 +1244,7 @@ const sectionBase: Partial<Record<GitStateCase, Base>> = {
   'close-waits': 'close-waits',
   'commit-failed': 'commit-failed',
   'commit-failed-committed-by-you': 'clean',
+  'agent-work-discarded': 'clean',
   'history-committed-by-you': 'clean',
   'many-files': 'many-files',
   'being-saved': 'being-saved',
@@ -1225,6 +1260,10 @@ function routed(state: GitStateCase, base: Base | undefined) {
 
   if (state === 'changes-page' || state === 'clean' || state === 'committed-just-now') {
     return { scenario: 'attempt-confirmation', confirmationCommit: 'committed' } as const;
+  }
+
+  if (state === 'agent-work-discarded') {
+    return { scenario: 'attempt-confirmation', confirmationCommit: 'failed' } as const;
   }
 
   if (state === 'commit-failed-committed-by-you' || state === 'history-committed-by-you') {
@@ -1277,6 +1316,21 @@ export function GitStateMock({ state }: { readonly state: GitStateCase }) {
         <Replace find={findBySelector('[data-now-attempt-commit="failed"]')}>
           <FailedCommitNote />
         </Replace>
+      ) : null}
+      {state === 'agent-work-discarded' ? (
+        <>
+          <Replace find={findBySelector('[data-now-attempt-commit="failed"]')}>
+            <DiscardedNote />
+          </Replace>
+          <Replace find={findConfirmRow}>
+            <div className="flex flex-wrap gap-2">
+              <Button disabled>Confirm</Button>
+              <Button variant="secondary" onClick={noop}>
+                Reject
+              </Button>
+            </div>
+          </Replace>
+        </>
       ) : null}
       {state === 'commit-failed-committed-by-you' || state === 'history-committed-by-you' ? (
         <>

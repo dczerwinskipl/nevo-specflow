@@ -239,7 +239,8 @@ command is denied with its size, the limit and `--content-file` as the remedy) a
 relative to the Specification folder.
 
 **What the owner sees.** The Turn's request entry carries `origin` (`specflow-step-brief`: subject,
-optional Task, step, attempt, handoff as data); the entry's text is the full brief (its content
+optional Task, step, attempt, handoff as data, and `continuation: true` when the Turn is a Continue
+of the same attempt rather than its start); the entry's text is the full brief (its content
 reference reads all of it). A fresh Session is titled "<step title> · attempt <n>" (and the Task
 title), created in `auto` when the provider runs the model in auto, else `acceptEdits` (the option's
 `workMode`). While the Turn waits on a pending question or permission of its Session,

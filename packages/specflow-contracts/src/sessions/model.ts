@@ -299,6 +299,12 @@ export const RequestOriginSchema = Type.Object(
     task: Type.Optional(Type.Object({ id: text(128), title: text(512) }, closed)),
     step: Type.Object({ id: text(128), title: text(512) }, closed),
     attempt: Type.Integer({ minimum: 1 }),
+    /**
+     * The request continues the same attempt (a Continue of its Session's agent) instead of
+     * starting it: a client says "execution resumed", never a new attempt. Absent for the brief
+     * that started the attempt.
+     */
+    continuation: Type.Optional(Type.Literal(true)),
     handoff: Type.Optional(
       Type.Object(
         {

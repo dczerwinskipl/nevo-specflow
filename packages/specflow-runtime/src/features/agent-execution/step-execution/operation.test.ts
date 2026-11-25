@@ -395,7 +395,7 @@ describe('agent step execution', () => {
   });
 
   it('continues in the attempt Session and replays a retried Continue', async () => {
-    const { calls, execution } = fakes();
+    const { calls, execution, origins } = fakes();
     await execution.startAgentStepExecution(request('00000000-0000-4000-8000-000000000004'));
     const id = '00000000-0000-4000-8000-000000000005';
 
@@ -406,6 +406,11 @@ describe('agent step execution', () => {
     expect(retried).toEqual(continued);
     expect(calls.filter((call) => call === 'engine.start continue')).toHaveLength(1);
     expect(calls.filter((call) => call.startsWith('session.create'))).toHaveLength(1);
+    // The Continue's request says it continues the attempt; the start's does not.
+    expect(origins.map((origin) => (origin as { continuation?: true }).continuation)).toEqual([
+      undefined,
+      true,
+    ]);
   });
 
   it('stops the running Turn of the attempt the owner was shown', async () => {

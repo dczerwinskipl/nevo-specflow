@@ -6,6 +6,7 @@ export {
   openWorkflow,
   readExecutionForRead,
   readSpecificationListingForRead,
+  readSpecificationListingsForRead,
   type OpenWorkflowOptions,
   type SpecificationCheckout,
 } from './composition';
@@ -125,6 +126,7 @@ export { inspectExecution, type ExecutionInspection } from './operations/inspect
 export {
   readExecution,
   readSpecificationListing,
+  readSpecificationListings,
   type ExecutionReading,
   type SpecificationListing,
   type SpecificationListingTasks,

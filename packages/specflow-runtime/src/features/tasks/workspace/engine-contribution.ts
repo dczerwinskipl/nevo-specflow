@@ -1,5 +1,5 @@
 import {
-  readSpecificationListingForRead,
+  readSpecificationListingsForRead,
   type AttentionItem,
   type SpecificationListing,
 } from '@nevo/specflow-engine';
@@ -202,10 +202,11 @@ export function overviewWorkflowOf(listing: SpecificationListing): CurrentSpecWo
 }
 
 /**
- * The Specs list facts of the listed Specifications, one Engine read of each
- * (`readSpecificationListing`: the Overview's inspection, no other action projection, no Git): the
- * definitions are loaded once. One whose execution cannot be read has `null` (not projected), never
- * a guessed position or count; the other rows are unaffected.
+ * The Specs list facts of the listed Specifications, ONE Engine read of all of them
+ * (`readSpecificationListings`: one project control lock, the checkout's manifests listed once, the
+ * Overview's rules without its action projections, no Git): the definitions are loaded once. One
+ * whose execution cannot be read has `null` (not projected), never a guessed position or count; the
+ * other rows are unaffected.
  */
 export function createEngineOverviewExecution(source: TaskEngine): OverviewExecutionSource {
   return async (specIds) => {
@@ -221,17 +222,25 @@ export function createEngineOverviewExecution(source: TaskEngine): OverviewExecu
       return new Map(specIds.map((specId) => [specId, null]));
     }
 
+    let listings;
+    try {
+      listings = await readSpecificationListingsForRead(workflow, specIds);
+    } catch {
+      return new Map(specIds.map((specId) => [specId, null]));
+    }
+
     for (const specId of specIds) {
-      try {
-        const listing = await readSpecificationListingForRead(workflow, specId);
-        facts.set(specId, {
-          progress: { completed: listing.progress.completed, total: listing.progress.total },
-          workflow: overviewWorkflowOf(listing),
-          attention: listing.attention,
-        });
-      } catch {
-        facts.set(specId, null);
-      }
+      const listing = listings.get(specId);
+      facts.set(
+        specId,
+        listing
+          ? {
+              progress: { completed: listing.progress.completed, total: listing.progress.total },
+              workflow: overviewWorkflowOf(listing),
+              attention: listing.attention,
+            }
+          : null,
+      );
     }
 
     return facts;

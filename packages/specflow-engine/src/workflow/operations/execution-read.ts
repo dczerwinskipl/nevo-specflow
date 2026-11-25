@@ -14,7 +14,13 @@ import {
 } from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
 import { isTaskClosed } from '../tasks/tasks';
-import type { ActionDependencies, ActionProjection } from './actions';
+import {
+  taskProjectionRead,
+  unstartedTaskStanding,
+  type ActionDependencies,
+  type ActionProjection,
+} from './actions';
+import { deriveAttention } from './attention';
 import { inspectSnapshot, type ExecutionInspection } from './inspect';
 import { pinnedDefinitionIfUnchanged } from './loaded-execution';
 import type { StartBlocker } from './start-blockers';
@@ -216,50 +222,78 @@ export interface SpecificationListing extends Pick<ExecutionReading, 'progress' 
 
 /**
  * What the Specs list shows of one Specification, from ONE snapshot read under `serialize`: the
- * Specification's standing, its Task counts, its attention item count, progress and preparation. It
- * makes the inspection the Overview makes (attention with the start blockers of approved Tasks that
- * have not started, read from the documents) and no other action projection; it reads no Git.
- * Read-only.
+ * Specification's standing, its Task counts, its attention item count, progress and preparation.
+ *
+ * The same rules as the Overview's inspection (`inspectSnapshot`), without its cost: the attention
+ * the canonical state decides is `deriveAttention` (no lookup), and each approved Task that has not
+ * started gets only {@link unstartedTaskStanding} instead of a whole action projection, so the
+ * Task's documents are read (its first step's entry gates) only for a Task nothing else keeps from
+ * starting. It reads no Git. Read-only.
  */
 export function readSpecificationListing(
   outer: ActionDependencies,
   specId: string,
 ): Promise<SpecificationListing> {
-  return outer.serialize(async () => {
-    const dependencies = forOneRead(outer);
-    const snapshot = await dependencies.store.read(specId);
-    // Projects exactly the approved Tasks that have not started (their start blockers).
-    const { inspection, projections } = await inspectSnapshot(dependencies, snapshot);
-    const tasks = inspection.tasks.map((entry) => entry.record);
-    const broken = inspection.brokenTasks.length;
-    let inProgress = 0;
-    let readyToStart = 0;
-    for (const record of tasks) {
-      if (record.status !== 'ready') {
-        continue;
-      }
+  return outer.serialize(() => listingOf(outer, specId));
+}
 
-      const position = taskPosition(record).state;
-      if (position === 'active' || position === 'ready') {
-        inProgress += 1;
-      } else if (position === 'not-started') {
-        const kind = projections.get(record.taskId)?.position.kind;
-        readyToStart += kind === 'not-started' || kind === 'ready' ? 1 : 0;
+/**
+ * {@link readSpecificationListing} of several Specifications under ONE `serialize` (one project
+ * control lock for the whole list instead of one per row). A Specification whose execution cannot be
+ * read has `null`; the others are unaffected.
+ */
+export function readSpecificationListings(
+  outer: ActionDependencies,
+  specIds: readonly string[],
+): Promise<ReadonlyMap<string, SpecificationListing | null>> {
+  return outer.serialize(async () => {
+    const listings = new Map<string, SpecificationListing | null>();
+    for (const specId of specIds) {
+      try {
+        listings.set(specId, await listingOf(outer, specId));
+      } catch {
+        listings.set(specId, null);
       }
     }
 
-    return {
-      standing: standingOf(outer.catalogue, snapshot.specification?.value.run),
-      tasks: {
-        open: tasks.filter((record) => !isTaskClosed(record)).length + broken,
-        total: tasks.length + broken,
-        inProgress,
-        readyToStart,
-      },
-      attention: inspection.attention.length,
-      ...progressAndPreparation(tasks, broken),
-    };
+    return listings;
   });
+}
+
+async function listingOf(outer: ActionDependencies, specId: string): Promise<SpecificationListing> {
+  const dependencies = forOneRead(outer);
+  const snapshot = await dependencies.store.read(specId);
+  const read = taskProjectionRead(dependencies, snapshot);
+  const { tasks, broken } = read.tasks;
+  let attention = deriveAttention(dependencies.catalogue, snapshot).length;
+  let inProgress = 0;
+  let readyToStart = 0;
+  for (const record of tasks) {
+    if (record.status !== 'ready') {
+      continue;
+    }
+
+    const position = taskPosition(record).state;
+    if (position === 'active' || position === 'ready') {
+      inProgress += 1;
+    } else if (position === 'not-started') {
+      const standing = await unstartedTaskStanding(dependencies, read, record);
+      readyToStart += standing.startable ? 1 : 0;
+      attention += standing.attention ? 1 : 0;
+    }
+  }
+
+  return {
+    standing: standingOf(outer.catalogue, snapshot.specification?.value.run),
+    tasks: {
+      open: tasks.filter((record) => !isTaskClosed(record)).length + broken.length,
+      total: tasks.length + broken.length,
+      inProgress,
+      readyToStart,
+    },
+    attention,
+    ...progressAndPreparation(tasks, broken.length),
+  };
 }
 
 function standingOf(

@@ -45,7 +45,11 @@ import {
   type PendingTaskDocumentChange,
 } from './state/task-document-guard';
 import { checkoutPathExists } from './checkout-paths';
-import { readExecution, readSpecificationListing } from './operations/execution-read';
+import {
+  readExecution,
+  readSpecificationListing,
+  readSpecificationListings,
+} from './operations/execution-read';
 import { guardCloseReservations } from './state/close-guard';
 import { listCloseJournals } from '../specs/lifecycle';
 
@@ -248,6 +252,9 @@ export const readExecutionForRead = asReadRequest(readExecution);
 
 /** {@link readSpecificationListing} without Git (the Specs list rows). */
 export const readSpecificationListingForRead = asReadRequest(readSpecificationListing);
+
+/** {@link readSpecificationListings} without Git (the whole Specs list under one lock). */
+export const readSpecificationListingsForRead = asReadRequest(readSpecificationListings);
 
 /** {@link inspectActions} without Git (the workflow `actions` read). */
 export const inspectActionsForRead = asReadRequest(inspectActions);

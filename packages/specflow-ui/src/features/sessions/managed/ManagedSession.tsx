@@ -824,19 +824,6 @@ function ManagedSessionConversation({
                         }
                   }
                 >
-                  {/* Stacked/mobile: the clearance under the Composer (its bottom padding) is the
-                      surface's own material, so a row scrolled behind the Composer never shows in
-                      the gap below it (owner, 2026-11-24: a "Failed" outcome read as if it sat
-                      under the Composer). Only that gap: around and above the Composer the
-                      conversation stays visible. */}
-                  {!localScroll && (
-                    <div
-                      aria-hidden="true"
-                      data-composer-floor=""
-                      className="workspace-docked-bar pointer-events-none absolute inset-x-0 bottom-0 -z-10"
-                      style={{ height: 'calc(1rem + var(--workspace-overlay-bottom, 0.75rem))' }}
-                    />
-                  )}
                   {/* Narrower than the conversation on the split layout (spanning the full 1100px
                       reading column would look like a form field, not a chat input). The stacked layout keeps its own width. */}
                   <div

@@ -142,9 +142,10 @@ export const ContinueSessionRowMobile: Story = {
 };
 
 /**
- * Agent step Sessions are titled by the Runtime "<step> · attempt <n>" with the Task's title: a long
- * title wraps under its mark on a phone, never widening the page, and each Session stays tellable
- * apart (dogfood #189: every one read "Agent step execution").
+ * Agent step Sessions by their step, with the Task for a Task's step, and "Attempt n · model · age"
+ * under it (the Runtime's `agentStep`; dogfood #189: every one read "Agent step execution"). A
+ * long title wraps under its mark on a phone, never widening the page; a title the owner gave a
+ * Session stays.
  */
 export const AgentStepSessionTitlesMobile: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
@@ -152,8 +153,19 @@ export const AgentStepSessionTitlesMobile: Story = {
     sessions: [
       {
         ...attention,
+        id: 'review-1',
+        title: 'Review the breakdown · attempt 1',
+        agentStep: { stepId: 'review-breakdown', stepTitle: 'Review the breakdown', attempt: 1 },
+        navigationStatus: 'quiet',
+        activityCode: undefined,
+        activity: undefined,
+        taskCount: 0,
+      },
+      {
+        ...attention,
         id: 'breakdown-2',
-        title: 'Break the solution down · attempt 2',
+        title: 'Agent step execution',
+        agentStep: { stepId: 'breakdown', stepTitle: 'Break down the solution', attempt: 2 },
         navigationStatus: 'quiet',
         activityCode: undefined,
         activity: undefined,
@@ -163,6 +175,13 @@ export const AgentStepSessionTitlesMobile: Story = {
         ...attention,
         id: 'implement-1',
         title: 'Implementation · attempt 1 · First step per archetype in the archetype catalogue',
+        agentStep: {
+          stepId: 'implement',
+          stepTitle: 'Implementation',
+          attempt: 1,
+          taskId: 'T-03',
+          taskTitle: 'First step per archetype in the archetype catalogue',
+        },
         navigationStatus: 'quiet',
         activityCode: undefined,
         activity: undefined,
@@ -170,13 +189,22 @@ export const AgentStepSessionTitlesMobile: Story = {
       },
     ],
   },
-  play: async ({ canvas }) => {
-    await canvas.findByRole('button', { name: 'Break the solution down · attempt 2' });
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('button', { name: 'Review the breakdown' });
+    await expect(canvas.getByRole('button', { name: 'Break down the solution' })).toBeVisible();
     await expect(
       canvas.getByRole('button', {
-        name: 'Implementation · attempt 1 · First step per archetype in the archetype catalogue',
+        name: 'Implementation · First step per archetype in the archetype catalogue',
       }),
     ).toBeVisible();
+    // The attempt leads the facts line, then the model and the age.
+    const rows = [...canvasElement.querySelectorAll('[data-focus-key^="session:"]')];
+    // This story reads in Polish: "Próba 1 · Opus 4.1 · 5 minut temu".
+    await expect(rows.map((row) => row.textContent)).toEqual([
+      'Review the breakdown·Próba 1·Opus 4.1Claude, model Opus 4.1·5 minut temu',
+      'Break down the solution·Próba 2·Opus 4.1Claude, model Opus 4.1·5 minut temu',
+      'Implementation · First step per archetype in the archetype catalogue·Próba 1·Opus 4.1Claude, model Opus 4.1·5 minut temu',
+    ]);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   },
 };

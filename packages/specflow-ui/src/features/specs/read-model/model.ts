@@ -1,6 +1,7 @@
 import type { IconName } from '@nevo/ui';
 import type { TaskOverview, WorkspaceAttention } from '@nevo/specflow-contracts/specs/workspace';
 import type { DocumentContentState } from '@nevo/specflow-contracts/documents';
+import type { AgentStepOrigin } from '@nevo/specflow-contracts/sessions';
 import { type TaskGroup } from '../../tasks/read-model';
 
 export {
@@ -47,6 +48,8 @@ export interface SessionSummary {
   readonly meta?: string;
   /** Associated Tasks; absent or zero shows no count. */
   readonly taskCount?: number;
+  /** The agent step attempt an agent step Session was made for (its title and facts lines). */
+  readonly agentStep?: AgentStepOrigin;
   readonly updatedAt?: string;
   /**
    * The agent: ids from the Session, display titles resolved by the Runtime. Every workspace row
@@ -83,6 +86,8 @@ export interface AttentionItem {
   readonly action?: WorkspaceAttention['action'];
   readonly secondaryAction?: WorkspaceAttention['secondaryAction'];
   readonly taskIds?: readonly string[];
+  /** `dependency-unsatisfiable` with `restore-task`: the broken Tasks among `taskIds`. */
+  readonly brokenTaskIds?: readonly string[];
   readonly blocking?: WorkspaceAttention['blocking'];
   readonly blocks?: WorkspaceAttention['blocks'];
 }

@@ -170,9 +170,30 @@ describe('Requires attention: a workflow item maps its action to the existing fl
     expect(actions.openTask).toHaveBeenCalledWith('TASK-03');
   });
 
-  it('names the Task by id and type, never from a status', () => {
+  it('leaves the Task key to the Tasks page and never names a status', () => {
     const { entry } = entryOf({ code: 'owner-action', action: 'start-step' });
 
-    expect(entry.facts).toEqual(['TASK-03']);
+    expect(entry.facts).toEqual([]);
+  });
+
+  it('words a reason from its facts with the Tasks by title, the key only without one', () => {
+    const actions = createFakeWorkspaceRuntime({ openTask: vi.fn(), openTasks: vi.fn() });
+    const titled = {
+      ...data,
+      taskOverview: { rows: [], compact: [], taskTitles: { 'T-12': 'Sign-in button' } },
+    };
+    const entry = taskAttentionEntry(
+      item({
+        code: 'dependency-unsatisfiable',
+        taskIds: ['T-12', 'T-13'],
+        brokenTaskIds: ['T-12', 'T-13'],
+      }),
+      { specId, data: titled, actions },
+    );
+
+    expect(entry.reason).toEqual({
+      key: 'taskOverview.attention.reason.dependsOnBroken',
+      values: { tasks: ['Sign-in button', 'T-13'] },
+    });
   });
 });

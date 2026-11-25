@@ -1582,7 +1582,8 @@
       "taskCount_few": "{{count}} tasks",
       "taskCount_many": "{{count}} tasks",
       "associatedTasks_few": "Associated with {{count}} tasks",
-      "associatedTasks_many": "Associated with {{count}} tasks"
+      "associatedTasks_many": "Associated with {{count}} tasks",
+      "attempt": "Attempt {{attempt}}"
     }
   },
   "apiErrors": {
@@ -3183,7 +3184,17 @@
       "resumeFailed": "The task could not be resumed. Open the task to see what you can do now.",
       "startNamed": "Start {{step}}",
       "stuckTitle_few": "Resolve {{count}} blocking tasks",
-      "stuckTitle_many": "Resolve {{count}} blocking tasks"
+      "stuckTitle_many": "Resolve {{count}} blocking tasks",
+      "reason": {
+        "holdsTasks": "It is on hold and holds up {{tasks}}: resume it, or cancel it.",
+        "holdsFinish": "It is on hold and keeps {{step}} from finishing: resume it, or cancel it.",
+        "holdsTasksAndFinish": "It is on hold, holds up {{tasks}} and keeps {{step}} from finishing: resume it, or cancel it.",
+        "theStep": "the step",
+        "dependsOnBroken": "It depends on broken tasks: {{tasks}}. Restore their files from Git, or edit its dependencies.",
+        "dependsOnEnded": "It depends on tasks that can no longer complete: {{tasks}}. Edit its dependencies or cancel it.",
+        "escalated": "Escalated to the specification: {{tasks}}. Decide each task, or return the specification to an earlier step.",
+        "broken": "The files of the task are inconsistent: restore them from Git."
+      }
     },
     "summary": {
       "allTasks": "All tasks",

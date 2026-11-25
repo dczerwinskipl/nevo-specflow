@@ -8,6 +8,7 @@ import { OperationalRow } from '../../../shared/operational-list';
 import { useNow } from '../../../shared/operations/panel/relativeTime';
 import { SessionProviderIcon } from '../shared/SessionProviderIcon';
 import { sessionRowFacts, sessionRowStatus, type SessionRowAgent } from '../shared/sessionRow';
+import { sessionTitleOf } from '../shared/agentStepTitle';
 import type { SessionCollection } from './loadSessions';
 import type { SpecificationSessionListState } from './useSpecificationSessionList';
 
@@ -189,11 +190,12 @@ export function SpecificationSessionsList({
                 <OperationalRow
                   key={item.sessionId}
                   leading={<SessionProviderIcon providerId={item.providerId} />}
-                  primary={item.title ?? t('sessions.untitled')}
+                  primary={sessionTitleOf(item.title, item.agentStep) ?? t('sessions.untitled')}
                   onPrimaryClick={() => onOpenSession(item.sessionId)}
                   factsLayout="inline"
                   compactFacts={sessionRowFacts(
                     {
+                      ...(item.agentStep ? { attempt: item.agentStep.attempt } : {}),
                       updatedAt: item.updatedAt,
                       agent: agentOf(item),
                       taskCount:

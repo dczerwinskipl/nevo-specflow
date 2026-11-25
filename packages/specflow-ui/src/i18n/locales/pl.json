@@ -1582,7 +1582,8 @@
       "associatedTasks_one": "Powiązana z {{count}} zadaniem",
       "associatedTasks_few": "Powiązana z {{count}} zadaniami",
       "associatedTasks_many": "Powiązana z {{count}} zadaniami",
-      "associatedTasks_other": "Powiązana z {{count}} zadaniami"
+      "associatedTasks_other": "Powiązana z {{count}} zadaniami",
+      "attempt": "Próba {{attempt}}"
     }
   },
   "apiErrors": {
@@ -3183,7 +3184,17 @@
       "stuckReason": "Zatwierdź, wznów lub anuluj je, aby specyfikacja mogła się zakończyć",
       "startFailed": "Nie udało się rozpocząć kroku. Otwórz zadanie, aby zobaczyć, co można zrobić teraz.",
       "resumeFailed": "Nie udało się wznowić zadania. Otwórz zadanie, aby zobaczyć, co można zrobić teraz.",
-      "startNamed": "Rozpocznij: {{step}}"
+      "startNamed": "Rozpocznij: {{step}}",
+      "reason": {
+        "holdsTasks": "Zadanie jest wstrzymane i blokuje: {{tasks}}. Wznów je albo anuluj.",
+        "holdsFinish": "Zadanie jest wstrzymane i nie pozwala zakończyć kroku {{step}}. Wznów je albo anuluj.",
+        "holdsTasksAndFinish": "Zadanie jest wstrzymane, blokuje: {{tasks}} i nie pozwala zakończyć kroku {{step}}. Wznów je albo anuluj.",
+        "theStep": "bieżącego",
+        "dependsOnBroken": "Zależy od uszkodzonych zadań: {{tasks}}. Przywróć ich pliki z Gita albo zmień zależności.",
+        "dependsOnEnded": "Zależy od zadań, których nie da się już ukończyć: {{tasks}}. Zmień zależności albo anuluj zadanie.",
+        "escalated": "Przekazane do specyfikacji: {{tasks}}. Zdecyduj o każdym zadaniu albo cofnij specyfikację do wcześniejszego kroku.",
+        "broken": "Pliki zadania są niespójne: przywróć je z Gita."
+      }
     },
     "summary": {
       "allTasks": "Wszystkie zadania",

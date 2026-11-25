@@ -113,9 +113,11 @@ dashboard configuration). The Overview renders what the reads deliver.
   naming project policy and how a project maintainer enables it; it remains distinct from a
   forbidden action or failed read.
 - **Requires attention** — the attention items only, at most five, then **Show N more**, in the
-  projection's priority order. Each item names what it is about (`T-07 · Backend`, Specification,
-  `Session · Claude`), its reason (the attention tone, danger for a broken Task; an icon on the
-  first text line) and the one action its code maps to an existing flow: Review tasks (the Tasks
+  projection's priority order. Each item names what it is about (the Task's title with its type,
+  `Backend`, never its key; Specification; `Session · Claude`), its reason (the attention tone,
+  danger for a broken Task; an icon on the first text line; worded in the reader's language from
+  the item's facts with Tasks by title, `taskTitles`, for a held Task that holds others up, broken
+  or ended dependencies, an escalation and broken files; other reasons keep the Engine's message) and the one action its code maps to an existing flow: Review tasks (the Tasks
   page filtered to the blocking Tasks), Edit context and Edit dependencies (the Task's section),
   Start step, Review new revision (the first-start confirmation), Cancel task (its confirmation),
   Open task (restore a broken Task, meet an entry gate), Resume (a held Task), Return to

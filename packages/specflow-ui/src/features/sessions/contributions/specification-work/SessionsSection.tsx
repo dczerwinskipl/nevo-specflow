@@ -6,6 +6,7 @@ import { OperationalRow, type SemanticSupporting } from '../../../../shared/oper
 import { useNow } from '../../../../shared/operations/panel/relativeTime';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
 import { SessionProviderIcon } from '../../shared/SessionProviderIcon';
+import { sessionTitleOf } from '../../shared/agentStepTitle';
 import {
   sessionRowFacts,
   sessionRowStatus,
@@ -133,13 +134,15 @@ export function SessionsSection({
             key={session.id}
             titleAs="span"
             leading={<SessionProviderIcon providerId={session.providerId} />}
-            primary={session.title}
+            // An agent step Session by its step (and Task); a title the owner gave it wins.
+            primary={sessionTitleOf(session.title, session.agentStep) ?? session.title}
             onPrimaryClick={canOpenSession ? () => onOpenSession(session.id) : undefined}
             dataAttributes={{ 'data-focus-key': `session:${session.id}` }}
             // The same row as the Session's row in the Specification Sessions list.
             factsLayout="inline"
             compactFacts={sessionRowFacts(
               {
+                ...(session.agentStep ? { attempt: session.agentStep.attempt } : {}),
                 ...(session.updatedAt ? { updatedAt: session.updatedAt } : {}),
                 agent: agentOf(session),
                 taskCount: session.taskCount ?? 0,

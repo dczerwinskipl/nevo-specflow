@@ -54,6 +54,12 @@ order). The title opens `/sessions/:sessionId`. Rows show no ids; mode, effort a
 | facts   | In this order, each omitted when absent: relative `updatedAt`; the agent fact; the associated Task count (**1 task**, **3 tasks**), only when the association has Tasks |
 | status  | The Session status below; nothing for a ready Session. No archived label under **Archive**                                                                              |
 
+- **Agent step Sessions.** A Session the Runtime reports with `agentStep` (an agent step
+  execution) is named by its step, with the Task's title for a Task's step ("Review the
+  breakdown", "Implementation · Token exchange"), and its facts read "Attempt 1 · Opus 5.5 · 10
+  hours ago" (attempt, agent, age; no Task count, the Task is in the title). A title the owner gave
+  the Session wins; the Runtime's own "<step> · attempt <n>" and the old "Agent step execution" are
+  not the owner's. The Overview's Sessions, this list and the Session's header use the same title.
 - **Agent fact.** Visible text: the model title, else the raw model id, else the provider title,
   else the provider id, capped at 16 rem with an ellipsis. Assistive technology reads **{provider},
   model {model}** (the provider alone without a model), so the provider shown only by the decorative

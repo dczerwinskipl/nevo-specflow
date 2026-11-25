@@ -394,12 +394,25 @@ const sessions = {
     providerTitle: 'Claude',
     updatedAt: '2026-11-14T09:40:00Z',
   },
+  // The agent's Session of the breakdown review: named by its step, the attempt in its facts.
+  reviewBreakdown: {
+    id: 'session-review-breakdown',
+    title: 'Review the breakdown · attempt 1',
+    agentStep: { stepId: 'review-breakdown', stepTitle: 'Review the breakdown', attempt: 1 },
+    taskIds: [],
+    status: 'quiet',
+    providerId: 'claude',
+    providerTitle: 'Claude',
+    modelId: 'claude-opus-5-5',
+    modelTitle: 'Opus 5.5',
+    updatedAt: '2026-11-14T01:12:00Z',
+  },
 } as const satisfies Record<string, WorkspaceSession>;
 
 function sessionsOf(scenario: ControlCenterScenario): readonly WorkspaceSession[] {
   switch (scenario) {
     case 'waiting':
-      return [sessions.implement, sessions.draft, sessions.review];
+      return [sessions.reviewBreakdown, sessions.implement, sessions.draft, sessions.review];
     case 'blocked':
     case 'changes-requested':
       return [sessions.draft, sessions.review];

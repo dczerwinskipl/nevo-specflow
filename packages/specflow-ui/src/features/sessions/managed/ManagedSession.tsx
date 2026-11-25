@@ -89,6 +89,7 @@ import { conversationItems, liveActivity } from './workBlockModel';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import type { ManagedSessionsApi } from './api';
 import { newId } from '../../../shared/ids/newId';
+import { sessionTitleOf } from '../shared/agentStepTitle';
 
 function browserStorage() {
   try {
@@ -1563,7 +1564,11 @@ export function ManagedSession({
     }
   }, [goneByOwnDelete, deletion]);
 
-  const sessionTitle = snapshot?.session.title ?? fallback.title;
+  // An agent step Session by its step (and Task); a title the owner gave it wins.
+  const shownTitle = snapshot
+    ? sessionTitleOf(snapshot.session.title, snapshot.session.agentStep)
+    : undefined;
+  const sessionTitle = shownTitle ?? fallback.title;
   const openDocumentation = useMemo(
     () => (onOpenDocumentation ? () => onOpenDocumentation(sessionTitle) : undefined),
     [onOpenDocumentation, sessionTitle],
@@ -1589,7 +1594,7 @@ export function ManagedSession({
               title={
                 namingPending
                   ? t('sessionNaming.provisionalTitle')
-                  : (snapshot?.session.title ?? fallback.title ?? t('managedSession.title'))
+                  : (sessionTitle ?? t('managedSession.title'))
               }
               subtitle={headerSubtitle}
               status={

@@ -70,9 +70,11 @@ dashboard configuration). The Overview renders what the reads deliver.
   Task progress follows, once: "1 of 6 tasks done" with "5 ready to start · 1 cancelled · 1 on hold"
   on the same line (zero parts omitted; the ready count is the Runtime's Ready to start group) and
   one continuous bar under it in the success tone, then the quiet line "Continues by itself when
-  every task is done or cancelled". The step progress, the Task progress and the Last hand-off
-  ([workflow execution](workflow-execution.md)) are shared components the Specifications list can
-  reuse. When the wait cannot
+  every task is done or cancelled". The step progress, the Task progress and the Last hand-off's
+  wording ([workflow execution](workflow-execution.md)) are shared with the
+  [Specifications list](specs-overview.md), which shows them compact: a row says what this Now says,
+  and a row that requires attention leads with the action of the first Requires attention item
+  below, in the same words. When the wait cannot
   continue, one note names the blocking Tasks as links, by title ("It cannot continue now: Return
   users to where they were is a draft, Audit log of sign-in events is on hold and no other task is
   open."). Now offers the workflow's **main** action: Start

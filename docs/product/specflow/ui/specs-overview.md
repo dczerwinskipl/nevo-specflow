@@ -38,11 +38,12 @@ from raw statuses, readiness from lifecycle strings, current execution from hist
 associations, or a representative Task for a batch.
 
 **Progress is the workflow run.** The manifest has no status (an older manifest's `status` key is
-ignored); archived is the `specs/archive` location, the Archive collection. Sections and the situation follow the Specification's workflow run, the same position
-its [Overview](specification-overview.md)'s **Now** shows, so the two screens never contradict each
-other. The Runtime reads it for every row in one Engine read per Specification without Git (the
-Overview's own inspection: Tasks, attention, start blockers), never one request per row from the
-client.
+ignored); archived is the `specs/archive` location, the Archive collection. Sections and the
+situation follow the Specification's workflow run, the same position its
+[Overview](specification-overview.md)'s **Now** shows, in the same words and with the same
+components, so the two screens never contradict each other. The Runtime reads every row in one
+Engine read without Git (the Overview's own rules: Tasks, attention, start blockers), never one
+request per row from the client.
 
 ## Current: sections
 
@@ -81,27 +82,39 @@ no trailing arrow and no row actions menu.
   two tags plus `+N`, and the pull request(s). One pull request is an explicit nested link (`PR
 #27`), the only allowed nested target; several are a non-interactive count (`3 PRs`) that never
   guesses a representative PR.
-- **Situation**: where the workflow run stands, by the visual rules and in the words of the
-  Overview's Now (TODO: the shared Now presentation components once #169 has extracted them):
-  - at a step: the **step title**; under it the DS segmented **step track** (compact) with "Step N
-    of M"; under that who or what the step waits for: **agent working** (an agent's attempt),
-    **in progress** (a person's attempt), **Ready to start** (between attempts), or for a wait step
-    the Tasks as the Overview groups them: "N Tasks ready to start", else "N Tasks in progress", else
-    "Waiting for N of M tasks";
+- **Situation**: where the workflow run stands, with the Overview's Now components in their
+  compact list form (`StepProgress`, `TaskProgress`, the hand-off wording of `LastHandoff`) and its
+  words, one source for both screens:
+  - at a step: the **step title**; under it the DS segmented **step track** (compact); under that
+    one line, the track's "Step N of M" and who or what the step waits for, as Now says it: the
+    running attempt ("Attempt 1 · agent working since 11:18", "In progress since 11:18 · started
+    by you"), between attempts **Ready to start**, or the hand-off the next attempt must act on
+    (**Changes requested**, **Returned to this step**), and for a wait step its Tasks: "N ready to
+    start", else "Waiting for N of M tasks";
   - **Not started**, with the not-started track and "First step · <title>" when the archetype's
     workflow resolves;
-  - **Completed** (success check icon, completed track "All N steps · completed") or **Abandoned**
-    (muted archive icon, no track: the run does not say where it stopped).
+  - **Completed** (success check icon), with its Task progress in the Progress column ("12 of 12
+    tasks done"); **Abandoned** (muted archive icon) with when it was abandoned, and no track and no
+    Task progress.
 
-  Attention leads instead, with one passive icon (review: document inspection; blocked: warning;
-  input, decision or unknown reason: conversation) and the attention tone: the signal's reason, or
-  "N items require attention" for the workflow's attention items; the step block follows it as its
-  one concurrent qualifier. Without a workflow position a Session count ("1 session active") is
-  that qualifier. Summary prose is never a link.
+  **Requires attention** leads with what to do, from the item the Overview's Requires attention
+  lists first (the same record, `attention.first`): its intervention ("Resolve 2 blocking tasks"),
+  else its action in the Overview's words ("Start Review the breakdown"; on a Task with the Task's
+  title, "Resume · API"), else its reason; warning icon, attention tone. The step track stays under
+  it, and its line says how many more items there are ("Step 5 of 7 · 1 more item requires
+  attention"). An attention signal that is not the workflow's (a Session, demo only) keeps its
+  passive icon (review: document inspection; blocked: warning; input, decision or unknown reason:
+  conversation) with the step block as its one concurrent qualifier; without a workflow position a
+  Session count ("1 session active") is that qualifier. Summary prose is never a link.
 
-- **Progress**: the Overview's continuous Task bar (success fill) with "N of M tasks done", **No
-  tasks yet** (muted) when the Specification has no Tasks, or an explicit unknown/invalid text.
-  Never a second segmented track: segments are the workflow's steps.
+  A Specification whose workflow cannot be read says so in its row, **Could not read this
+  Specification**, with why (`unreadable.reason`: its files are not valid, could not be read, the
+  project was busy, or something unexpected the Runtime logged); the other rows are unaffected.
+
+- **Progress**: the Overview's Task progress, compact (`TaskProgress`): the continuous bar (success
+  fill) with "N of M tasks done", **No tasks yet** (muted) when the Specification has no Tasks, an
+  explicit unknown/invalid text, and nothing for an abandoned run. Never a second segmented track:
+  segments are the workflow's steps.
 
 The row never lists Task ids, several concurrent signals, raw workflow labels, provider, model,
 branch or owner details.

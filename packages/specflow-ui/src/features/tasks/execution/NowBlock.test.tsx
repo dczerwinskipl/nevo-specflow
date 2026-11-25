@@ -116,6 +116,55 @@ function OverviewNow({
 }
 
 describe('the Specification Now block', () => {
+  it('says a review requested changes, with the feedback summary, on the rework attempt', () => {
+    const feedback =
+      'Two findings need changes: the detached HEAD case and the skill hold.\n\n' +
+      '1. CONFLICT, detached HEAD: the edge case says install writes and notes it did not commit.';
+    renderNow(
+      <OverviewNow
+        projection={{
+          ...breakdown(2),
+          handoff: {
+            kind: 'transition',
+            from: { step: 'review', attempt: 1, title: 'Review the breakdown', actor: dominik },
+            transition: 'changes-requested',
+            label: 'Changes requested',
+            result: 'fail',
+            feedback,
+            artifacts: [],
+          },
+        }}
+      />,
+    );
+
+    const handoff = document.querySelector<HTMLElement>('[data-now-handoff]')!;
+    expect(within(handoff).getByText('Changes requested')).toBeTruthy();
+    expect(within(handoff).getByText(/Two findings need changes/)).toBeTruthy();
+    expect(within(handoff).queryByText(/CONFLICT/)).toBeNull();
+    fireEvent.click(within(handoff).getByRole('button', { name: 'Show the full feedback' }));
+    expect(within(handoff).getByText(/CONFLICT, detached HEAD/)).toBeTruthy();
+  });
+
+  it('leaves a hand-off with nothing to act on to the history', () => {
+    renderNow(
+      <OverviewNow
+        projection={{
+          ...breakdown(),
+          handoff: {
+            kind: 'transition',
+            from: { step: 'design', attempt: 1, title: 'Design the solution' },
+            transition: 'done',
+            label: 'Done',
+            result: 'done',
+            artifacts: [],
+          },
+        }}
+      />,
+    );
+
+    expect(document.querySelector('[data-now-handoff]')).toBeNull();
+  });
+
   it('is a card that becomes a flush band below a 40rem page (a container query)', () => {
     renderNow(<OverviewNow projection={breakdown()} />);
 

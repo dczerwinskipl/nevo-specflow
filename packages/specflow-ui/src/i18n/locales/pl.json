@@ -2553,7 +2553,9 @@
       "youActTakenOver": "Przejąłeś ten krok od agenta, więc teraz należy do Ciebie: dokończ pracę sam i zakończ krok.",
       "youActTakenOverCanHand": "Przejąłeś ten krok od agenta, więc teraz należy do Ciebie: dokończ pracę sam i zakończ krok albo przekaż go z powrotem agentowi w nowej próbie.",
       "handUnavailable": "Przekazanie agentowi nie jest teraz możliwe: {{why}}.",
-      "personActs": "Ten krok wykonuje {{actor}}; możesz śledzić go tutaj."
+      "personActs": "Ten krok wykonuje {{actor}}; możesz śledzić go tutaj.",
+      "feedbackAll": "Pokaż wszystkie uwagi",
+      "feedbackLess": "Pokaż mniej"
     },
     "blocker": {
       "dependencies_one": "Czeka na {{count}} zależność",

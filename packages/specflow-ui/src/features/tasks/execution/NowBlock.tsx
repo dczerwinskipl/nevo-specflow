@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react';
+import { useState, type ComponentProps, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AccentBlock, Icon, InlineNote, Progress, Typography, cn } from '@nevo/ui';
 import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
@@ -157,6 +157,58 @@ export interface NowBlockProps {
    * Session link, a stop that waits for proof, an attempt that ended without a finish.
    */
   readonly positionLine?: ReactNode;
+}
+
+/** Feedback longer than this (or of more than one paragraph) opens with its first paragraph. */
+const FEEDBACK_SUMMARY_CHARS = 320;
+
+/**
+ * A hand-off's feedback (how a review that requested changes reads on the next attempt): its first
+ * paragraph as the summary, the rest behind "Show the full feedback".
+ */
+function HandoffFeedback({ feedback }: { readonly feedback: string }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const text = feedback.trim();
+  const first = text.split(/\n\s*\n/)[0] ?? text;
+  const summary =
+    first.length > FEEDBACK_SUMMARY_CHARS
+      ? `${first.slice(0, FEEDBACK_SUMMARY_CHARS).trimEnd()}…`
+      : first;
+  const long = summary !== text;
+
+  return (
+    <div className="grid justify-items-start gap-1" data-now-feedback="">
+      <Typography
+        as="p"
+        variant="body-sm"
+        className="whitespace-pre-line text-content-primary [overflow-wrap:anywhere]"
+      >
+        {open || !long ? text : summary}
+      </Typography>
+      {long ? (
+        <InlineAction onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+          {open ? t('workflowExecution.now.feedbackLess') : t('workflowExecution.now.feedbackAll')}
+        </InlineAction>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Whether a hand-off carries what the next attempt must act on: a result that failed (a review that
+ * requested changes) or feedback. The Specification's Now shows only such a hand-off; its other
+ * hand-offs stay in the history.
+ */
+export function handoffNeedsAction(handoff: WorkflowActionProjection['handoff']): boolean {
+  if (!handoff) {
+    return false;
+  }
+
+  return (
+    (handoff.feedback?.trim() ?? '') !== '' ||
+    (handoff.kind === 'transition' && handoff.result === 'fail')
+  );
 }
 
 /**
@@ -451,15 +503,7 @@ export function NowBlock({
                 </>
               )}
             </Typography>
-            {handoff.feedback ? (
-              <Typography
-                as="p"
-                variant="body-sm"
-                className="whitespace-pre-line text-content-primary [overflow-wrap:anywhere]"
-              >
-                {handoff.feedback}
-              </Typography>
-            ) : null}
+            {handoff.feedback ? <HandoffFeedback feedback={handoff.feedback} /> : null}
           </div>
         ) : null}
         {note}

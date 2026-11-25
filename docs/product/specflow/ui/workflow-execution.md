@@ -107,7 +107,9 @@ In reading order:
    review reads on the rework attempt). In the card it is a quote with a left rule ("Last: Review ·
    …"); in the Narrow band it is a labelled paragraph ("Last hand-off", then "Review · …") with no
    second rule inside the band's bar. The
-   Overview leaves the hand-off to the history.
+   Overview shows a hand-off only when it carries what the next attempt must act on (a failed result,
+   such as a review that requested changes, or any feedback); other hand-offs stay in the history.
+   Long feedback opens with its first paragraph and "Show the full feedback".
 7. **The main action**, with at most one button-styled secondary, for the Specification and the Task
    alike (one rule, `nowActionPlan`). Finish step is the main action while some result can be taken.
    When every result waits for an unmet gate whose document exists, opening it is the main action

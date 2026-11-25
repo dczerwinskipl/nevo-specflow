@@ -2553,7 +2553,9 @@
       "youActTakenOver": "You took this step over from the agent, so it is yours now: do the rest yourself and finish it.",
       "youActTakenOverCanHand": "You took this step over from the agent, so it is yours now: do the rest yourself and finish it, or hand it back to the agent in a new attempt.",
       "handUnavailable": "Hand to agent cannot run now: {{why}}.",
-      "personActs": "{{actor}} is doing this step; you can follow it here."
+      "personActs": "{{actor}} is doing this step; you can follow it here.",
+      "feedbackAll": "Show the full feedback",
+      "feedbackLess": "Show less"
     },
     "blocker": {
       "dependencies_one": "Waiting for {{count}} dependency",

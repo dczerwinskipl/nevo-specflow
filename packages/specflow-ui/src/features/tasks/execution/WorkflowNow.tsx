@@ -20,7 +20,7 @@ import {
 } from './FinishStepDialog';
 import { closableInFinishDialog } from './FinishTasksOpen';
 import type { GateAction } from './GateList';
-import { NowBlock } from './NowBlock';
+import { NowBlock, handoffNeedsAction } from './NowBlock';
 import { AgentStartDialog } from './agent/AgentStartDialog';
 import { blockerKeyOf } from './agent/AgentBlocker';
 import { useAgentAttemptNow } from './agent/AgentAttemptNow';
@@ -677,7 +677,12 @@ export function WorkflowNow({
         menu={agentNow?.keepsMenu === false ? undefined : menu}
         summary={summary}
         {...(agentNow?.positionLine ? { positionLine: agentNow.positionLine } : {})}
-        showHandoff={!specification && agentNow?.showHandoff !== false}
+        // The Specification's Now shows a hand-off only when it carries what this attempt must act on
+        // (a review that requested changes, with its feedback); the others stay in the history.
+        showHandoff={
+          (!specification || handoffNeedsAction(projection.handoff)) &&
+          agentNow?.showHandoff !== false
+        }
         {...(hold ? { hold } : {})}
         {...(specification
           ? {

@@ -176,13 +176,15 @@ function tokenize(command: string): Token[] {
         refuse(`It has ${expanding}.`);
       }
 
-      if (index === start && (character === '~' || character === '#' || character === '!')) {
+      // An unquoted tilde anywhere: bash expands it at a word's start and after `=` or `:` in
+      // assignment-like words (`a=~/x`, `--file=~/x`), so it is never judged as literal text.
+      if (character === '~') {
+        refuse('It has a tilde expansion.');
+      }
+
+      if (index === start && (character === '#' || character === '!')) {
         refuse(
-          character === '~'
-            ? 'It has a tilde expansion.'
-            : character === '#'
-              ? 'It has a comment.'
-              : 'It has a "!" negation or history expansion.',
+          character === '#' ? 'It has a comment.' : 'It has a "!" negation or history expansion.',
         );
       }
 

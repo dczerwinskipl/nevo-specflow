@@ -32,6 +32,8 @@ const REFUSED_TOOLS: ReadonlySet<string> = new Set(
 const RETARGETING_OPTIONS = /^--(?:project-root|worktree|workspace-id|to-root)(?:=|$)/;
 const RULE = /^([A-Za-z0-9_.*-]+)(?:\(([^]*)\))?$/;
 const ABSOLUTE_PATH = /^(?:[/\\~]|[A-Za-z]:)/;
+/** An absolute folder in POSIX (`/x`), Windows (`C:\x`, `C:/x`) or Git Bash (`/c/x`) form. */
+const ABSOLUTE_FOLDER = /^(?:\/|[A-Za-z]:[\\/])/;
 
 export type AgentPermissionRuleCheck =
   | { readonly kind: 'ok' }
@@ -147,18 +149,30 @@ export function partitionAgentPermissionRules(rules: readonly string[]): AgentPe
 }
 
 /**
- * The paths an allowlisted command touches outside its arguments, all literal words for the host to
- * check against the Turn's worktree: the folder of a leading `cd` (relative to the worktree) and every
- * redirection target (relative to that folder). `/dev/null` is not listed: it is no file.
+ * The paths an allowlisted command touches, all literal words for the host to check against the
+ * Turn's worktree (the parser knows no file system):
+ *
+ * - `cd`: the folder of the leading `cd`, which must be absolute (a relative `cd` is resolved through
+ *   `CDPATH` and the shell's current folder, neither of which the host knows);
+ * - `outputs`: output redirection targets, allowed only into the scratch folder;
+ * - `inputs`: input redirection targets and the values of every `--…-file` option, read by the shell
+ *   or the CLI, allowed anywhere inside the worktree.
+ *
+ * A relative path is relative to the shell's current folder, which the host knows only after the
+ * leading absolute `cd`: without one, the host refuses it. `/dev/null` is no file and not listed.
  */
 export interface AllowlistedCliPaths {
   readonly cd?: string;
-  readonly redirections: readonly string[];
+  readonly outputs: readonly string[];
+  readonly inputs: readonly string[];
 }
 
 export type AgentCliCommandJudgement =
   | { readonly kind: 'allowlisted'; readonly paths: AllowlistedCliPaths }
   | { readonly kind: 'not-allowlisted'; readonly reason: string };
+
+/** A file-valued option (`--content-file`, `--tasks-file`, `--context-file`, …): its value is read. */
+const FILE_OPTION = /^--[a-z][a-z-]*-file$/;
 
 /** Whether one parsed simple command is an allowlisted product CLI call (its argv only). */
 function allowlistedInvocation(argv: readonly string[], rules: readonly string[]): boolean {
@@ -185,15 +199,38 @@ function allowlistedInvocation(argv: readonly string[], rules: readonly string[]
   });
 }
 
+/** The values of the file-valued options of a product CLI call; undefined when one has no value. */
+function fileOptionValues(argv: readonly string[]): string[] | undefined {
+  const values: string[] = [];
+  for (let index = 1; index < argv.length; index++) {
+    const word = argv[index]!;
+    const equals = word.indexOf('=');
+    const name = equals === -1 ? word : word.slice(0, equals);
+    if (!FILE_OPTION.test(name)) {
+      continue;
+    }
+
+    const value = equals === -1 ? argv[++index] : word.slice(equals + 1);
+    if (value === undefined || value === '') {
+      return undefined;
+    }
+
+    values.push(value);
+  }
+
+  return values;
+}
+
 /**
  * Whether a shell command consists only of allowlisted product CLI calls (D20). The command is parsed
  * the way the shell splits it (`parseAgentShellCommand`), never matched as text, and judged
  * fail-closed: every simple command is a bare `nevo-specflow` with an allowlisted command path, joined
- * by `&&`, `;`, `|` or new lines; the list may start with `cd <folder>`; words are literal (quotes
- * allowed, no expansion, variable, substitution, glob or environment assignment); redirections are
- * files, `/dev/null`, a descriptor duplicate (`2>&1`) or a here-document with a quoted delimiter.
- * The paths it returns are judged by the host against the worktree (the parser knows no file
- * system). Anything else goes to the owner, with the reason.
+ * by `&&`, `;`, `|` or new lines; the list may start with one `cd <absolute folder>` (no option, no
+ * relative folder: `cd -P`, `cd --` and friends go home, and a relative one follows `CDPATH`);
+ * words are literal (quotes allowed, no expansion, variable, substitution, glob, tilde or
+ * environment assignment); redirections are files, `/dev/null`, a descriptor duplicate (`2>&1`) or
+ * a here-document with a quoted delimiter. The paths it returns (`AllowlistedCliPaths`) are judged
+ * by the host against the worktree. Anything else goes to the owner, with the reason.
  */
 export function judgeAgentCliCommand(
   command: string,
@@ -205,25 +242,29 @@ export function judgeAgentCliCommand(
   }
 
   let cd: string | undefined;
-  const redirections: string[] = [];
+  const outputs: string[] = [];
+  const inputs: string[] = [];
   for (const [index, simple] of parsed.commands.entries()) {
     if (simple.argv[0] === 'cd') {
+      const target = simple.argv[1];
       if (
         index !== 0 ||
         simple.argv.length !== 2 ||
         simple.redirections.length > 0 ||
         simple.next === '|' ||
         simple.next === undefined ||
-        simple.argv[1] === '' ||
-        simple.argv[1] === '-'
+        target === undefined ||
+        target.startsWith('-') ||
+        !ABSOLUTE_FOLDER.test(target)
       ) {
         return {
           kind: 'not-allowlisted',
-          reason: 'Only a single leading "cd <folder>" followed by product CLI calls is allowed.',
+          reason:
+            'Only a single leading "cd <absolute folder>" (no option, no relative folder) followed by product CLI calls is allowed.',
         };
       }
 
-      cd = simple.argv[1];
+      cd = target;
       continue;
     }
 
@@ -234,16 +275,25 @@ export function judgeAgentCliCommand(
       };
     }
 
+    const files = fileOptionValues(simple.argv);
+    if (files === undefined) {
+      return { kind: 'not-allowlisted', reason: 'A file option has no file.' };
+    }
+
+    inputs.push(...files);
     for (const redirection of simple.redirections) {
       if (redirection.kind === 'file' && redirection.target !== '/dev/null') {
         if (redirection.target === '') {
           return { kind: 'not-allowlisted', reason: 'A redirection has no target.' };
         }
 
-        redirections.push(redirection.target);
+        (redirection.operator === '<' ? inputs : outputs).push(redirection.target);
       }
     }
   }
 
-  return { kind: 'allowlisted', paths: { ...(cd !== undefined ? { cd } : {}), redirections } };
+  return {
+    kind: 'allowlisted',
+    paths: { ...(cd !== undefined ? { cd } : {}), outputs, inputs },
+  };
 }

@@ -5,7 +5,7 @@
 import type { Command } from 'commander';
 import { describe, expect, it } from 'vitest';
 
-import { AGENT_COMMANDS } from '@nevo/specflow-runtime';
+import { AGENT_COMMANDS } from '@nevo/specflow-contracts/runtime';
 
 import { createProgram } from '../program';
 

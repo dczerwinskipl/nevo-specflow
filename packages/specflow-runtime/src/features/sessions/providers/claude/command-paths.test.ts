@@ -21,69 +21,81 @@ function files(links: Record<string, string> = {}, missing: string[] = []) {
   };
 }
 
+interface Paths {
+  cd?: string;
+  outputs?: string[];
+  inputs?: string[];
+}
+const of = (paths: Paths) => ({ outputs: [], inputs: [], ...paths });
+
 describe('commandPathsInsideWorkspace', () => {
   const posixRoot = '/work/repo';
   const windowsRoot = 'C:\\work\\repo';
+  const posix = (paths: Paths, fs = files()) =>
+    commandPathsInsideWorkspace(of(paths), posixRoot, 'linux', fs);
+  const windows = (paths: Paths) =>
+    commandPathsInsideWorkspace(of(paths), windowsRoot, 'win32', files());
 
-  it.each([
-    { cd: 'specs/a', redirections: [] },
-    { cd: '/work/repo/specs', redirections: ['out.json'] },
-    { redirections: ['.nevo/local/scratch/out.json'] },
-    { cd: 'specs', redirections: ['../out.json'] },
-    { cd: '.', redirections: [] },
-  ])('keeps %j inside the POSIX worktree', async (paths) => {
-    expect(await commandPathsInsideWorkspace(paths, posixRoot, 'linux', files())).toBe(true);
+  it.each<Paths>([
+    {},
+    { cd: '/work/repo' },
+    { cd: '/work/repo/specs', inputs: ['../.nevo/local/scratch/d.md'] },
+    { cd: '/work/repo', outputs: ['.nevo/local/scratch/out.json'] },
+    { outputs: ['/work/repo/.nevo/local/scratch/sub/out.json'] },
+    { inputs: ['/work/repo/specs/a.md'] },
+  ])('approves %j', async (paths) => {
+    expect(await posix(paths)).toBe(true);
   });
 
-  it.each([
-    { cd: '..', redirections: [] },
-    { cd: '/work/other', redirections: [] },
-    { cd: '/work/repo-other', redirections: [] },
-    { redirections: ['/tmp/out.json'] },
-    { cd: 'specs', redirections: ['../../out.json'] },
-  ])('refuses %j outside the POSIX worktree', async (paths) => {
-    expect(await commandPathsInsideWorkspace(paths, posixRoot, 'linux', files())).toBe(false);
+  it.each<Paths>([
+    // The cd folder outside the worktree, or relative (the judge refuses those; the host does too).
+    { cd: '/work' },
+    { cd: '/work/repo-other' },
+    { cd: 'specs' },
+    // Output only into the scratch folder: never .git, its hooks, other .nevo files or elsewhere.
+    { cd: '/work/repo', outputs: ['.git'] },
+    { cd: '/work/repo', outputs: ['.git/hooks/pre-commit'] },
+    { cd: '/work/repo', outputs: ['.nevo/config.yaml'] },
+    { cd: '/work/repo', outputs: ['.nevo/local/scratch'] },
+    { cd: '/work/repo', outputs: ['out.json'] },
+    { outputs: ['/home/me/.bashrc'] },
+    // File options and input redirections inside the worktree only.
+    { inputs: ['/home/me/.ssh/id_rsa'] },
+    { cd: '/work/repo/specs', inputs: ['../../other/x.md'] },
+    // The shell's folder is unknown without a leading absolute cd: relative paths are refused.
+    { outputs: ['.nevo/local/scratch/out.json'] },
+    { inputs: ['.nevo/local/scratch/d.md'] },
+  ])('refuses %j', async (paths) => {
+    expect(await posix(paths)).toBe(false);
   });
 
   it('refuses a link inside the worktree that points out of it, also for a file not yet written', async () => {
-    const linked = files({ '/work/repo/out': '/elsewhere' }, ['/elsewhere/new.json']);
-    expect(
-      await commandPathsInsideWorkspace(
-        { cd: 'out', redirections: [] },
-        posixRoot,
-        'linux',
-        linked,
-      ),
-    ).toBe(false);
-    expect(
-      await commandPathsInsideWorkspace(
-        { redirections: ['out/new.json'] },
-        posixRoot,
-        'linux',
-        linked,
-      ),
-    ).toBe(false);
+    const linked = files(
+      { '/work/repo/.nevo/local/scratch': '/elsewhere', '/work/repo/out': '/elsewhere' },
+      ['/elsewhere/new.json'],
+    );
+    expect(await posix({ cd: '/work/repo/out' }, linked)).toBe(false);
+    expect(await posix({ outputs: ['/work/repo/.nevo/local/scratch/new.json'] }, linked)).toBe(
+      false,
+    );
+    expect(await posix({ inputs: ['/work/repo/out/new.json'] }, linked)).toBe(false);
   });
 
-  it('reads Git Bash drive paths on Windows, case-insensitively, and refuses other root paths', async () => {
-    const judge = (paths: { cd?: string; redirections: string[] }) =>
-      commandPathsInsideWorkspace(paths, windowsRoot, 'win32', files());
-    expect(await judge({ cd: '/c/work/repo/specs', redirections: [] })).toBe(true);
-    expect(await judge({ cd: 'c:/WORK/Repo', redirections: ['out.json'] })).toBe(true);
-    expect(await judge({ cd: 'C:\\work\\repo\\specs', redirections: [] })).toBe(true);
-    expect(await judge({ cd: '/d/work/repo', redirections: [] })).toBe(false);
-    expect(await judge({ redirections: ['/tmp/out.json'] })).toBe(false);
-    expect(await judge({ redirections: ['\\out.json'] })).toBe(false);
+  it('reads Windows, Git Bash and mixed drive forms, case-insensitively, and refuses other roots', async () => {
+    expect(await windows({ cd: '/c/work/repo/specs' })).toBe(true);
+    expect(await windows({ cd: 'c:/WORK/Repo', outputs: ['.nevo/local/scratch/out.json'] })).toBe(
+      true,
+    );
+    expect(await windows({ inputs: ['C:\\work\\repo\\.nevo\\local\\scratch\\t.yaml'] })).toBe(true);
+    expect(await windows({ cd: '/d/work/repo' })).toBe(false);
+    expect(await windows({ inputs: ['C:/Users/me/.ssh/id_rsa'] })).toBe(false);
+    expect(await windows({ inputs: ['/c/Users/me/.ssh/id_rsa'] })).toBe(false);
+    expect(await windows({ inputs: ['C:\\Users\\me\\.ssh\\id_rsa'] })).toBe(false);
+    expect(await windows({ outputs: ['/tmp/out.json'] })).toBe(false);
+    expect(await windows({ outputs: ['C:\\work\\repo\\.git\\hooks\\x'] })).toBe(false);
   });
 
   it('fails closed when the worktree itself cannot be resolved', async () => {
-    expect(
-      await commandPathsInsideWorkspace(
-        { cd: 'specs', redirections: [] },
-        posixRoot,
-        'linux',
-        files({}, ['/work']),
-      ),
-    ).toBe(false);
+    expect(await posix({ cd: '/work/repo' }, files({}, ['/work']))).toBe(false);
   });
 });

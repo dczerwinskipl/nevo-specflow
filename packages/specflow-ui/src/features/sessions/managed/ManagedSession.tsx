@@ -487,13 +487,14 @@ function ManagedSessionConversation({
     (mode) => mode.modeId === workModeId,
   )?.modelIds;
   const pairUnsupported = !modeRunsModel(provider, workModeId, selectedModelId);
-  // The Session of an open agent attempt takes no owner message: said up front, not after Send.
+  // The Session of an open agent attempt takes no owner message, a retried pending one included:
+  // said up front, not after Send.
   const ownerMessageHold = snapshot?.session.ownerMessageHold;
   const canSend =
     !!snapshot &&
     !state.commandBusy &&
-    (!!state.pending ||
-      (snapshot.session.capabilities.start && !pairUnsupported && !ownerMessageHold)) &&
+    !ownerMessageHold &&
+    (!!state.pending || (snapshot.session.capabilities.start && !pairUnsupported)) &&
     (!!state.pending || !!state.draft.trim());
   // The composer shows one adaptive Send/Stop action, not two simultaneous
   // buttons: Stop only while a Turn is actually running and cancellable, Send/Retry otherwise.
@@ -934,9 +935,12 @@ function ManagedSessionConversation({
                             </InlineNote>
                           </ComposerNotice>
                         ) : null}
-                        {ownerMessageHold && !state.pending && !archived && !viewOnly ? (
+                        {ownerMessageHold && !archived && !viewOnly ? (
                           <ComposerNotice className="mb-3 px-4 py-3">
-                            <InlineNote tone="info">{ownerMessageHold.message}</InlineNote>
+                            {/* Worded from the reason code, in the UI's language. */}
+                            <InlineNote tone="info">
+                              {t(`managedSession.ownerMessageHold.${ownerMessageHold.reason}`)}
+                            </InlineNote>
                           </ComposerNotice>
                         ) : null}
                         {state.archivedRefusal && !archived ? (

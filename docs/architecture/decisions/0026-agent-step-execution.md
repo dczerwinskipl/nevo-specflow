@@ -374,17 +374,30 @@ a strict parser for a small subset of the shell language), never matched as text
 
 - every simple command is a bare `nevo-specflow` whose command path is allowlisted, joined by `&&`,
   `;`, `|` or new lines (a pipe only into another allowlisted call), and the list may start with
-  one `cd <folder>`;
+  one `cd <absolute folder>`: no option word (`cd -P`, `-L`, `-e`, `-@`, `--` go to `$HOME`) and no
+  relative folder (it follows `CDPATH` and the shell's current folder). An absolute folder is the
+  one form `CDPATH` never applies to and that does not depend on the current folder, so it is the
+  rule, rather than unsetting `CDPATH` in an environment the agent's shell could change;
 - words are literal: plain, single- or double-quoted, escaped; no `$`, variable, command
-  substitution, backtick, glob, brace or tilde expansion, comment, subshell, group, `||`,
-  background `&` or environment assignment; no option that retargets the CLI
-  (`--project-root`, `--worktree`, `--workspace-id`, `--to-root`);
+  substitution, backtick, glob, brace or tilde expansion (an unquoted `~` anywhere, since bash
+  expands it after `=` and `:` too), comment, subshell, group, `||`, background `&` or environment
+  assignment; no option that retargets the CLI (`--project-root`, `--worktree`, `--workspace-id`,
+  `--to-root`);
 - redirections are files, `/dev/null`, a descriptor duplicate (`2>&1`) or a here-document with a
   quoted delimiter (its body is literal stdin); here-strings, process substitution, `<>`, `>|`,
   `&>` and `<<-` are refused; a control character or anything the parser cannot read is refused;
-- the `cd` folder (from the worktree, where Claude's shell starts each command) and every
-  redirection target (from that folder) must lie inside the worktree, as written and as canonical
-  real paths with links and junctions resolved; a Git Bash drive path (`/c/x`) is read as `C:\x`.
+- paths, judged by the host as written and as canonical real paths (links and junctions resolved;
+  a Git Bash drive path `/c/x` is read as `C:\x`): the `cd` folder lies inside the worktree;
+  output redirections go only into the scratch folder `.nevo/local/scratch/` (never `.git`, its
+  hooks or other `.nevo` files); input redirections and the value of every `--…-file` option
+  (`--content-file`, `--tasks-file`, `--task-decisions-file`, `--context-file`) lie inside the
+  worktree. A relative path is judged only from the leading absolute `cd`: Claude's shell may keep
+  an earlier `cd`, so without one the host does not know the current folder and refuses it.
+
+The CLI itself does not confine `--…-file` reads in an agent Turn: it has no trusted notion of the
+Turn's checkout (the Turn's environment names the broker, not the worktree), and a command the owner
+approves may legitimately read elsewhere; the host-side rule above keeps auto-approval inside the
+worktree.
 
 The command's trust stays bound to the product CLI identity above. The brief (D13) states the rule
 and tells the agent to read and write files with its file tools, which do not prompt.

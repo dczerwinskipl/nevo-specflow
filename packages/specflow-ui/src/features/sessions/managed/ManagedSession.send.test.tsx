@@ -311,7 +311,13 @@ describe('the Composer Send', () => {
     );
     await settle();
 
-    expect(screen.getByText(message)).toBeTruthy();
+    // Worded from the reason code in the UI's language, never the server's English text.
+    expect(screen.queryByText(message)).toBeNull();
+    expect(
+      screen.getByText(
+        /To tell the agent something, use Continue with a note on the specification/,
+      ),
+    ).toBeTruthy();
     const editor = await screen.findByLabelText<HTMLTextAreaElement>('Message');
     expect(editor.disabled).toBe(true);
     expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Send' }).disabled).toBe(true);

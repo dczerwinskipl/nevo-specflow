@@ -96,7 +96,7 @@ export function renderApprovals(): string[] {
   return [
     'What runs without asking the owner:',
     `- Read, Grep and Glob, and Write and Edit inside this worktree. Read and search code and documents with them, and write files (document texts, Task lists, feedback) with them under \`${AGENT_SCRATCH_DIRECTORY}/\`, not with \`cat\`, \`grep\`, \`sed\`, here-documents or scripts in the shell.`,
-    '- A shell command made only of the calls listed here: one or more `nevo-specflow` calls joined by `&&`, `;` or new lines, optionally after `cd <folder in this worktree>`. Write ids and values literally, quoted when they contain spaces or symbols. No variables (`S=...; $S`), `$(...)`, backticks, globs or pipes into other commands such as `head`; output may go to a file in this worktree.',
+    `- A shell command made only of the calls listed here: one or more \`nevo-specflow\` calls joined by \`&&\`, \`;\` or new lines, optionally after \`cd <absolute path of this worktree or a folder in it>\`. Write ids and values literally, quoted when they contain spaces or symbols. No variables (\`S=...; $S\`), \`$(...)\`, backticks, globs, \`~\` or pipes into other commands such as \`head\`. A relative file path (\`--content-file\`, \`--tasks-file\`, a redirection) needs that leading absolute \`cd\`; files you pass must be inside this worktree, and output may be redirected only into \`${AGENT_SCRATCH_DIRECTORY}/\`.`,
     '- Every other shell command waits until the owner approves it.',
   ];
 }

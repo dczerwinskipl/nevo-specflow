@@ -314,8 +314,9 @@ table; other providers none). `planPermissionAllowlist` applies only rules
 Claude: setting sources are off and `Bash` always asks, so no owner or project permission is merged.
 Scoped read-tool rules become native `allow` rules; a command is approved by the host only when it
 consists of allowlisted product CLI calls alone (`judgeAgentCliCommand`: parsed as the shell splits
-it, calls joined by `&&`, `;`, `|` or new lines, an optional leading `cd`, literal words, file
-redirections and quoted here-documents only; `cd` and redirection targets inside the worktree,
+it, calls joined by `&&`, `;`, `|` or new lines, an optional leading absolute `cd`, literal words,
+file redirections and quoted here-documents only; the `cd` folder and read files inside the
+worktree, outputs only into its scratch folder, relative paths only after the absolute `cd`,
 `command-paths.ts`; ADR 0026 D20), and only while `nevo-specflow` on `PATH`
 can only be the installed CLI (no relative or empty `PATH` entry, no entry or resolved executable
 inside the workspace; `cli-path.ts`). Each approval is recorded in the Turn; anything else goes to

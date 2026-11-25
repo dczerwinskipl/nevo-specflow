@@ -355,7 +355,9 @@ export function createClaudeOperation(
             action.action?.operation === 'command' &&
             judgement?.kind === 'allowlisted' &&
             (invocation.executionContext.kind === 'no-effects'
-              ? judgement.paths.cd === undefined && judgement.paths.redirections.length === 0
+              ? judgement.paths.cd === undefined &&
+                judgement.paths.outputs.length === 0 &&
+                judgement.paths.inputs.length === 0
               : await commandPathsInsideWorkspace(
                   judgement.paths,
                   invocation.executionContext.workspace,

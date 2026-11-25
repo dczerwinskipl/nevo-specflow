@@ -620,20 +620,35 @@ describe('Claude bidirectional operation', () => {
           productCli: trusted,
         });
         await f.ready();
+        const root = workspace.replaceAll('\\', '/');
+        const away = outside.replaceAll('\\', '/');
         f.push(
           bash(
             'ok',
-            'cd specs && nevo-specflow workflow context S --feedback "a (b); c" 2>&1; nevo-specflow tasks list S --json > ../out.json',
+            `cd "${root}/specs" && nevo-specflow workflow context S --feedback "a (b); c" 2>&1; nevo-specflow tasks list S --json > ../.nevo/local/scratch/out.json`,
           ),
         );
         await vi.waitFor(() =>
           expect(f.sent.filter((frame) => frame.type === 'control_response')).toHaveLength(1),
         );
         const refused = [
-          `cd ${outside.replaceAll('\\', '/')} && nevo-specflow tasks list S`,
+          `cd ${away} && nevo-specflow tasks list S`,
           'cd .. && nevo-specflow tasks list S',
-          'nevo-specflow tasks list S > ../../escape.json',
-          `nevo-specflow tasks list S > ${join(outside, 'x.json').replaceAll('\\', '/')}`,
+          'cd specs && nevo-specflow tasks list S',
+          'cd -P && nevo-specflow tasks list S > .nevo/local/scratch/x',
+          'cd -- && nevo-specflow tasks list S',
+          `cd "${root}" && nevo-specflow tasks list S > ../../escape.json`,
+          `nevo-specflow tasks list S > ${away}/x.json`,
+          `cd "${root}" && nevo-specflow tasks list S > .git`,
+          `cd "${root}" && nevo-specflow tasks list S > .git/hooks/pre-commit`,
+          `cd "${root}" && nevo-specflow tasks list S > .nevo/config.yaml`,
+          // The shell may keep an earlier cd: a relative path without a leading absolute cd.
+          'nevo-specflow tasks list S > .nevo/local/scratch/out.json',
+          `nevo-specflow tasks list S --content-file ${away}/id_rsa`,
+          'nevo-specflow tasks list S --content-file /c/Users/me/.ssh/id_rsa',
+          'nevo-specflow tasks list S --tasks-file C:/Users/me/.ssh/id_rsa',
+          'nevo-specflow tasks list S --tasks-file=/home/me/t.yaml',
+          'nevo-specflow tasks list a=~/x',
           'nevo-specflow tasks list S | head -5',
           'S=1; nevo-specflow tasks list $S',
         ];

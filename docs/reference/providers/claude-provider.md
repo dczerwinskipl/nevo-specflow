@@ -112,9 +112,10 @@ at Turn start (canonical real path, size, modification time, sha256), re-verifie
 and withheld when the executable is missing, unreadable or inside the workspace, or when trust
 information is missing. Claude's `auto` mode never approves a Bash call itself: Bash always asks the
 host, which alone applies the allowlist. The host approves a command made only of allowlisted
-`nevo-specflow` calls (joined by `&&`, `;`, `|` or new lines, optionally after `cd <folder in the
-worktree>`, literal quoted words, redirections into the worktree or `/dev/null`, quoted
-here-documents); the command is parsed, not pattern-matched, and anything outside that subset goes to
+`nevo-specflow` calls (joined by `&&`, `;`, `|` or new lines, optionally after `cd <absolute folder
+in the worktree>`, literal quoted words, output redirections only into `.nevo/local/scratch/` or
+`/dev/null`, `--…-file` values and input files inside the worktree, relative paths only after that
+absolute `cd`, quoted here-documents); the command is parsed, not pattern-matched, and anything outside that subset goes to
 the owner (ADR 0026, D20). Edit and Write inside the worktree never reach the host in `acceptEdits`
 or `auto`: Claude's own check allows them (dogfood rounds 2 and 3: 0 of 472 owner prompts were file
 edits); Claude refuses file tools outside the worktree itself. SpecFlow installs no permission

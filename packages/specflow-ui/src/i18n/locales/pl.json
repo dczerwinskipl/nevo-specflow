@@ -1855,6 +1855,9 @@
       "interrupted": "Przerwano",
       "expired": "Wygasło"
     },
+    "ownerMessageHold": {
+      "agent-attempt-open": "Ta sesja należy do próby agenta, która jest wciąż otwarta: wiadomość tutaj działałaby poza tą próbą. Aby przekazać coś agentowi, użyj Kontynuuj ze wskazówką w specyfikacji (najpierw zatrzymaj agenta, jeśli pracuje) albo Przejmij. Pisać tutaj możesz znowu, gdy próba się zakończy."
+    },
     "workInspector": {
       "command": "Polecenie",
       "fileContent": "Treść",

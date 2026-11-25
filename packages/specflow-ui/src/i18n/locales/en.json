@@ -1855,6 +1855,9 @@
       "interrupted": "Interrupted",
       "expired": "Expired"
     },
+    "ownerMessageHold": {
+      "agent-attempt-open": "This session belongs to the agent's attempt, which is still open: a message here would run outside that attempt. To tell the agent something, use Continue with a note on the specification (stop the agent first if it is working), or Take over. You can write here again once the attempt has ended."
+    },
     "workInspector": {
       "command": "Command",
       "fileContent": "Content",

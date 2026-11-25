@@ -1,14 +1,25 @@
 import { realpath } from 'node:fs/promises';
 import { posix, win32 } from 'node:path';
 
-import type { AllowlistedCliPaths } from '@nevo/specflow-contracts/documents';
+import {
+  AGENT_SCRATCH_DIRECTORY,
+  type AllowlistedCliPaths,
+} from '@nevo/specflow-contracts/documents';
 
 /**
- * Whether the paths an allowlisted product CLI command touches stay inside the Turn's worktree (D20):
- * the folder of its leading `cd` (relative to the worktree, where Claude's shell starts each command)
- * and each redirection target (relative to that folder). Judged twice and fail-closed: as written
- * (lexically, case-insensitive on Windows) and as canonical real paths, with the deepest existing
- * ancestor resolved, so a link or junction inside the worktree that points out of it is caught. On
+ * Whether the paths an allowlisted product CLI command touches are ones the host may approve (D20),
+ * fail-closed:
+ *
+ * - the leading `cd` folder is absolute (the judge refuses any other) and inside the worktree;
+ * - a relative path is judged only from that folder: without a leading absolute `cd` the shell's
+ *   current folder is not known to the host (Claude's shell may keep an earlier `cd`), so a relative
+ *   path is refused;
+ * - output redirections go only into the worktree's scratch folder (`AGENT_SCRATCH_DIRECTORY`),
+ *   never into `.git`, its hooks, other `.nevo` files or anything else;
+ * - input redirections and `--…-file` values stay inside the worktree.
+ *
+ * Each path is judged as written (lexically, case-insensitive on Windows) and as a canonical real
+ * path, the deepest existing ancestor resolved, so a link or junction pointing out is caught. On
  * Windows a Git Bash drive path (`/c/work`) is read as `C:\work`; any other root-relative path
  * (`/tmp`) is refused, since Git Bash maps it somewhere outside the worktree.
  */
@@ -18,7 +29,7 @@ export async function commandPathsInsideWorkspace(
   platform: NodeJS.Platform,
   files: { realpath(path: string): Promise<string> } = { realpath },
 ): Promise<boolean> {
-  if (paths.cd === undefined && paths.redirections.length === 0) {
+  if (paths.cd === undefined && paths.outputs.length === 0 && paths.inputs.length === 0) {
     return true;
   }
 
@@ -49,10 +60,14 @@ export async function commandPathsInsideWorkspace(
     return false;
   }
 
-  const within = (base: string, path: string) => {
+  const within = (base: string, path: string, strict: boolean) => {
     const relative = flavour.relative(fold(base), fold(path));
 
-    return relative === '' || (!relative.startsWith('..') && !flavour.isAbsolute(relative));
+    return (
+      (relative === '' ? !strict : true) &&
+      !relative.startsWith('..') &&
+      !flavour.isAbsolute(relative)
+    );
   };
 
   /** The canonical path of `path`: its deepest existing ancestor resolved, the rest appended. */
@@ -74,25 +89,52 @@ export async function commandPathsInsideWorkspace(
     }
   };
 
-  const inside = async (path: string) =>
-    within(root, path) && (await canonical(path).then((real) => !!real && within(realRoot, real)));
+  /** Inside `folder` (a folder of the worktree), as written and as a real path. */
+  const inside = async (path: string, folder: string, strict: boolean) => {
+    const real = await canonical(path);
+    const realFolder = flavour.join(realRoot, flavour.relative(root, folder));
 
-  let cwd = root;
+    return within(folder, path, strict) && !!real && within(realFolder, real, strict);
+  };
+
+  let cwd: string | undefined;
   if (paths.cd !== undefined) {
     const target = native(paths.cd);
-    if (target === undefined) {
+    if (target === undefined || !flavour.isAbsolute(target)) {
       return false;
     }
 
-    cwd = flavour.resolve(root, target);
-    if (!(await inside(cwd))) {
+    cwd = flavour.resolve(target);
+    if (!(await inside(cwd, root, false))) {
       return false;
     }
   }
 
-  for (const redirection of paths.redirections) {
-    const target = native(redirection);
-    if (target === undefined || !(await inside(flavour.resolve(cwd, target)))) {
+  /** A path the command names: absolute, or relative to the known folder of the leading `cd`. */
+  const located = (path: string): string | undefined => {
+    const target = native(path);
+    if (target === undefined) {
+      return undefined;
+    }
+
+    if (flavour.isAbsolute(target)) {
+      return flavour.resolve(target);
+    }
+
+    return cwd === undefined ? undefined : flavour.resolve(cwd, target);
+  };
+
+  const scratch = flavour.join(root, ...AGENT_SCRATCH_DIRECTORY.split('/'));
+  for (const output of paths.outputs) {
+    const path = located(output);
+    if (path === undefined || !(await inside(path, scratch, true))) {
+      return false;
+    }
+  }
+
+  for (const input of paths.inputs) {
+    const path = located(input);
+    if (path === undefined || !(await inside(path, root, true))) {
       return false;
     }
   }

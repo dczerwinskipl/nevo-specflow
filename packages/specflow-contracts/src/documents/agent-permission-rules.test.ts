@@ -99,18 +99,50 @@ describe('judgeAgentCliCommand', () => {
     'nevo-specflow specs documents save S overview --expected-revision r --stdin <<"EOF"\nbody\nEOF\nnevo-specflow tasks list S',
   ])('allowlists %j', (command) => expect(judge(command).kind).toBe('allowlisted'));
 
-  it('returns the leading cd and redirection targets for the host to check', () => {
+  it('returns the leading absolute cd, the outputs and the read files for the host to check', () => {
     expect(
-      judge('cd "specs/active/my spec" && nevo-specflow tasks list S --json > out.json 2>&1'),
+      judge(
+        'cd "/work/my repo" && nevo-specflow specs documents save S d --expected-revision r --content-file .nevo/local/scratch/d.md > .nevo/local/scratch/out.json 2>&1 < in.txt',
+      ),
     ).toEqual({
       kind: 'allowlisted',
-      paths: { cd: 'specs/active/my spec', redirections: ['out.json'] },
+      paths: {
+        cd: '/work/my repo',
+        outputs: ['.nevo/local/scratch/out.json'],
+        inputs: ['.nevo/local/scratch/d.md', 'in.txt'],
+      },
     });
     expect(judge('cd C:\\\\work\\\\repo; nevo-specflow tasks list S')).toEqual({
       kind: 'allowlisted',
-      paths: { cd: 'C:\\work\\repo', redirections: [] },
+      paths: { cd: 'C:\\work\\repo', outputs: [], inputs: [] },
+    });
+    expect(
+      judge('nevo-specflow workflow finish S --step b --attempt 1 --tasks-file=C:/w/t.yaml'),
+    ).toEqual({
+      kind: 'allowlisted',
+      paths: { outputs: [], inputs: ['C:/w/t.yaml'] },
     });
   });
+
+  it.each([
+    // cd options all go to $HOME (or behave unlike a folder change); relative cd follows CDPATH.
+    'cd -P && nevo-specflow tasks list S',
+    'cd -L && nevo-specflow tasks list S',
+    'cd -e && nevo-specflow tasks list S',
+    'cd -@ && nevo-specflow tasks list S',
+    'cd -- && nevo-specflow tasks list S',
+    'cd -P /work && nevo-specflow tasks list S',
+    'cd specs && nevo-specflow tasks list S',
+    'cd ./specs && nevo-specflow tasks list S',
+    'cd ../x && nevo-specflow tasks list S',
+    // Tilde after = (bash expands it in assignment-like words), and anywhere unquoted.
+    'nevo-specflow tasks list a=~/x',
+    'nevo-specflow tasks list --content-file=~/.ssh/id_rsa',
+    'nevo-specflow tasks list x:~/y',
+    // A file option without its file.
+    'nevo-specflow tasks list S --content-file',
+    'nevo-specflow tasks list S --content-file=',
+  ])('refuses %j', (command) => expect(judge(command).kind).toBe('not-allowlisted'));
 
   it.each([
     'nevo-specflow tasks list SPEC-1; rm x',

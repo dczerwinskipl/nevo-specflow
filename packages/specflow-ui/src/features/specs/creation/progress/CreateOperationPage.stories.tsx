@@ -912,7 +912,7 @@ export const AgentPathNotStarted: Story = {
     const last = steps(canvasElement).getAllByRole('listitem').at(-1)!;
     await expect(last).toHaveTextContent('Agent nie zaczął kroku Zbieranie wymagań');
     await expect(last).toHaveTextContent('nie wykonano');
-    await expect(canvas.getAllByText('Inny agent pracuje teraz w tym projekcie.')[0]).toBeVisible();
+    await expect(canvas.getByText('Inny agent pracuje teraz w tym projekcie.')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Uruchom z agentem…' })).toBeInTheDocument();
     canvas.getByRole('button', { name: 'Otwórz specyfikację' }).click();
     await expect(args.onOpen).toHaveBeenCalledWith(

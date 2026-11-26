@@ -376,25 +376,6 @@ export function CreateOperationPage({
               ) : (
                 <Button onClick={() => backToForm()}>{t('create.page.backToForm')}</Button>
               ))}
-            {created &&
-              agentNotStarted &&
-              (agentNotStarted.agent?.kind === 'unavailable' ? (
-                <AgentBlocker
-                  option={agentNotStarted.agent}
-                  specId={created.specId}
-                  step={agentNotStarted.step.title}
-                  role={undefined}
-                  checking={false}
-                  urgent
-                />
-              ) : (
-                <Alert role="alert" tone="attention" title={t('create.page.agentNotStarted.title')}>
-                  <p>
-                    {t('create.page.agentNotStarted.body', { step: agentNotStarted.step.title })}
-                  </p>
-                </Alert>
-              ))}
-
             {view === 'not-found' && (
               <Button variant="secondary" onClick={() => onBackToForm()}>
                 {t('create.page.backToCreate')}

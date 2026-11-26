@@ -214,3 +214,11 @@ export const BackKeepsTheDraft: Story = {
     await expect(canvas.queryByRole('heading', { name: 'Agent' })).toBeNull();
   },
 };
+
+/** For review and screenshots: the start screen with every agent available, nothing played. */
+export const Screen: Story = { tags: ['!contract'] };
+/** For review and screenshots: the start screen when no agent can start. */
+export const ScreenNoAgent: Story = {
+  tags: ['!contract'],
+  args: { providers: unavailableProviders },
+};

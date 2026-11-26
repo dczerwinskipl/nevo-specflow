@@ -176,7 +176,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
     ],
     execution: {
       workflow: 'specification-standard',
-      taskTypes: ['implementation'],
+      taskTypes: ['implementation', 'ui-implementation'],
     },
   },
   {

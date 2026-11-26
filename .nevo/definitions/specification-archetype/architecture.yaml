@@ -70,4 +70,4 @@ templates:
       # Note
 execution:
   workflow: specification-standard
-  taskTypes: [implementation]
+  taskTypes: [implementation, ui-implementation]

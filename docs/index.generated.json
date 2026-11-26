@@ -2307,9 +2307,10 @@
       "read_when": [
         "driving workflow steps from managed Sessions",
         "binding a Session or Turn to a workflow attempt",
-        "designing batch, handover, rebind or multi-instance behaviour for managed execution"
+        "designing batch, handover, rebind or multi-instance behaviour for managed execution",
+        "letting the owner choose or remember the agent of a workflow step"
       ],
-      "summary": "Open proposals for connecting managed Sessions to the workflow kernel: attempt association, readiness before dispatch, workflow finish from a Session, batch and handover, native resume after rebind (S07), and multi-instance runs. Session storage and dispatch claims are implemented.",
+      "summary": "Open proposals for connecting managed Sessions to the workflow kernel: attempt association, readiness before dispatch, workflow finish from a Session, batch and handover, native resume after rebind (S07), multi-instance runs, and an owner-chosen agent per step. Session storage and dispatch claims are implemented.",
       "related": [
         "ideas.specflow-engine",
         "ideas.specflow-engine.execution-scopes",

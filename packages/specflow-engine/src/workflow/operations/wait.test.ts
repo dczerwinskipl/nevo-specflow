@@ -11,6 +11,8 @@ import {
   memoryDependencies,
   owner,
   positionOf,
+  RESTRICTED_ARCHETYPE,
+  restrictTaskTypes,
   runToBreakdown,
   seedExecutionCatalogue,
   specification,
@@ -180,11 +182,11 @@ describe('Tasks of a Specification', () => {
   });
 
   it('rejects a task type the Specification archetype does not allow', async () => {
-    const dependencies = memoryDependencies(catalogue);
+    const dependencies = memoryDependencies(restrictTaskTypes(catalogue));
     const start = () =>
       startSpecificationExecution(dependencies, {
         specId: SPEC,
-        archetype: 'architecture',
+        archetype: RESTRICTED_ARCHETYPE,
         actor: claude,
       });
     for (let index = 0; index < 3; index += 1) {

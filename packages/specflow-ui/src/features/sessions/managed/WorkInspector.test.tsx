@@ -31,6 +31,7 @@ import { initialPagedState } from './workInspectorStore';
 // actually-overflowing browser list.
 const ENTRY_HEIGHT = 100;
 const scrollTopValues = new WeakMap<HTMLElement, number>();
+const surfaceResets = new WeakSet<HTMLElement>();
 let originalScrollTop: PropertyDescriptor | undefined;
 
 beforeEach(() => {
@@ -63,6 +64,19 @@ beforeEach(() => {
       return scrollTopValues.get(this) ?? 1000;
     },
     set(this: HTMLElement, value: number) {
+      // A stacked surface starts at its top (`AppWorkspace` resets its page scroller for a new
+      // surface). These tests model a list opened at its newest entries, away from the top, until
+      // a test drives the scroller itself: that first reset is not kept.
+      if (
+        value === 0 &&
+        !surfaceResets.has(this) &&
+        this.classList.contains('mobile-workspace-scroll')
+      ) {
+        surfaceResets.add(this);
+
+        return;
+      }
+
       scrollTopValues.set(this, value);
     },
   });
@@ -188,13 +202,14 @@ async function openWork(api: ManagedSessionsApi) {
 
 /** This test environment's stubbed `ResizeObserver` never reports a measured width, so
  * `AppWorkspace` always renders through its mobile "stacked" runtime here — which wraps the
- * Secondary panel in its own outer `ScrollArea` (`mobile-workspace-scroll-area`) in addition to
- * `WorkInspector.tsx`'s own inner one, so more than one `.scroll-area-viewport` exists in the DOM.
- * Resolving from an element already known to be inside the Work list's own scroller (rather than
- * `document.querySelector('.scroll-area-viewport')`, which would silently grab the outer one and
- * never trigger `WorkInspector.tsx`'s `maybeLoadOlder`) reaches the right one regardless. */
+ * Secondary panel in its own outer `ScrollArea` (`mobile-workspace-scroll`) in addition to
+ * `WorkInspector.tsx`'s own inner one. A stacked surface scrolls its whole page, so that outer
+ * viewport is what scrolls the Work list (`useAppContentScrollOwner`); the inner one only where
+ * no stacked page owns the scroll. */
 function workScroller(withinNode: Element): HTMLElement {
-  const viewport = withinNode.closest<HTMLElement>('.scroll-area-viewport');
+  const viewport =
+    withinNode.closest<HTMLElement>('.mobile-workspace-scroll') ??
+    withinNode.closest<HTMLElement>('.scroll-area-viewport');
   if (!viewport) {
     throw new Error('Expected the Work scroller viewport to be mounted.');
   }
@@ -882,7 +897,9 @@ describe('WorkInspector view state', () => {
     const rects = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
-        const scroller = this.closest<HTMLElement>('.scroll-area-viewport');
+        const scroller =
+          this.closest<HTMLElement>('.mobile-workspace-scroll') ??
+          this.closest<HTMLElement>('.scroll-area-viewport');
         const entries = scroller ? [...scroller.querySelectorAll('[data-history-entry]')] : [];
         const index = entries.indexOf(this);
         const top = index < 0 ? 0 : index * 300 - scroller!.scrollTop;

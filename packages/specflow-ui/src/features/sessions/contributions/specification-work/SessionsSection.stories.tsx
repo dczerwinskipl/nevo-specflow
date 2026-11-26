@@ -30,14 +30,13 @@ function factTexts(root: HTMLElement) {
   );
 }
 
-/** The mark is on the title line, at the top of the row however many lines it wraps to. */
-async function expectMarkOnTitleLine(root: HTMLElement) {
+/** The mark is centred on the row: its title and the lines under it. */
+async function expectMarkCentred(root: HTMLElement) {
   const row = root.querySelector('li')!;
   const mark = row.firstElementChild!.firstElementChild!.firstElementChild!.getBoundingClientRect();
-  const title = row.querySelector('[data-spec-title]')!.getBoundingClientRect();
+  const text = row.querySelector('[data-spec-title]')!.parentElement!.getBoundingClientRect();
   const centre = (box: DOMRect) => box.top + box.height / 2;
-  // The title's first line is 20 px high; a wrapped title only grows below it.
-  await expect(Math.abs(centre(mark) - (title.top + 10))).toBeLessThanOrEqual(1.5);
+  await expect(Math.abs(centre(mark) - centre(text))).toBeLessThanOrEqual(1.5);
 }
 
 /**
@@ -82,7 +81,7 @@ export const ContinueSessionRow: Story = {
     const age = canvasElement.querySelector('[data-inline-fact]')!.getBoundingClientRect();
     const status = canvasElement.querySelector('[data-inline-status]')!.getBoundingClientRect();
     await expect(Math.abs(status.top - age.top)).toBeLessThanOrEqual(0.5);
-    await expectMarkOnTitleLine(canvasElement);
+    await expectMarkCentred(canvasElement);
   },
 };
 
@@ -136,7 +135,7 @@ export const ContinueSessionRowMobile: Story = {
     await expect(status.top).toBeGreaterThanOrEqual(
       facts.at(-1)!.getBoundingClientRect().bottom - 0.5,
     );
-    await expectMarkOnTitleLine(canvasElement);
+    await expectMarkCentred(canvasElement);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   },
 };

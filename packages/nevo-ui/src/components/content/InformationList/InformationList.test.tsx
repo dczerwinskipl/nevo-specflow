@@ -59,7 +59,7 @@ describe('InformationList', () => {
   });
 
   it('anchors the leading box at the row top, a control box by default or a line box on request', () => {
-    const leading = (align?: 'top' | 'first-line') =>
+    const leading = (align?: 'top' | 'first-line' | 'center') =>
       renderToStaticMarkup(<InformationList.Leading align={align}>x</InformationList.Leading>);
     expect(leading()).toContain('h-control-height-default');
     expect(leading()).toContain('self-start');
@@ -68,6 +68,8 @@ describe('InformationList', () => {
     expect(leading('first-line')).toContain('h-5');
     expect(leading('first-line')).toContain('self-start');
     expect(leading('first-line')).not.toContain('h-control-height-default');
+    expect(leading('center')).toContain('self-center');
+    expect(leading('center')).not.toContain('self-start');
   });
 
   it('renders trailing rail only when InformationList.Trailing is present', () => {

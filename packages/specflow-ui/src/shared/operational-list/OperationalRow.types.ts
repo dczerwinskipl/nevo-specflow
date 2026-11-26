@@ -57,7 +57,7 @@ interface OperationalRowBaseProps {
  * `tracked` (default): at Wide the facts sit in shared column tracks, so they compare down a list.
  * `inline`: the facts flow on one line separated by `·` at every width and an absent fact takes no
  * space; the status is the last inline item at Wide and its own line at Narrow; the leading mark is
- * on the title line, at the top of a multi-line row. Chosen explicitly, never inferred from the fact count.
+ * centred on the row (owner, 2026-11-26). Chosen explicitly, never inferred from the fact count.
  */
 export type OperationalRowProps = OperationalRowBaseProps &
   (

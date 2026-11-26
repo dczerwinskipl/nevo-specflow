@@ -71,9 +71,10 @@ order). The title opens `/sessions/:sessionId`. Rows show no ids; mode, effort a
   one line (ellipsis) and puts the status after the facts as the last inline item; a narrower row
   wraps the title and facts and puts the status on its own line. A line breaks between facts, never
   inside the age or the Task count, and never starts with a separator.
-- **Mark placement.** The mark is on the title's first line, at the top of the row at every row
-  height (`InformationList.Leading align="first-line"`), never centred on a multi-line row. It does not
-  capture clicks, so a click on it opens the Session like the rest of the row.
+- **Mark placement.** The mark is centred on the row, against the title and the facts line
+  (`InformationList.Leading align="center"`; owner, 2026-11-26), the same in the Overview's
+  Sessions section and the Overview's attention rows. It does not capture clicks, so a click on it
+  opens the Session like the rest of the row.
 
 ### Status: effective Session readiness only
 

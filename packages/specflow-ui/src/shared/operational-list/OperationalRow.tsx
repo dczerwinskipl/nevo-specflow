@@ -190,8 +190,8 @@ export function OperationalRow({
   const leadingSlot =
     (leading != null && leading !== false) || list?.selectable ? (
       <InformationList.Leading
-        // Inline: a line-height box on the title line, at the top of a multi-line row.
-        align={inline ? 'first-line' : 'top'}
+        // Inline: a short row (the title and one line of facts) with its mark centred on it.
+        align={inline ? 'center' : 'top'}
         className={cn(
           // Outside a selectable list a click on the mark falls through to the primary action.
           inline && !list?.selectable && 'pointer-events-none',

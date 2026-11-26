@@ -195,6 +195,7 @@ function fakes(
     provider: () =>
       options.models || options.autoFor
         ? ({
+            title: 'Controlled',
             models: (options.models ?? []).map((modelId) => ({
               modelId,
               title: modelId,
@@ -691,7 +692,11 @@ describe('Hand to agent', () => {
       execution.startAgentStepExecution(request('00000000-0000-4000-8000-0000000000f4')),
     ).resolves.toMatchObject({ kind: 'started' });
     expect(calls).toContain('session.validate controlled opus');
-    expect(attempt()?.journal.actor.details).toMatchObject({ model: 'opus', modelTitle: 'opus' });
+    expect(attempt()?.journal.actor.details).toMatchObject({
+      providerTitle: 'Controlled',
+      model: 'opus',
+      modelTitle: 'opus',
+    });
   });
 
   it('names the model, effort and work mode a continued Session runs, not the agent settings', async () => {

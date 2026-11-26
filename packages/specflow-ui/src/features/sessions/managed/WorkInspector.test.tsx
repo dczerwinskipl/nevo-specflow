@@ -625,8 +625,11 @@ describe('WorkInspector sparse-state framing', () => {
     // The operation's own title is the way into its ToolAction details.
     clickTrigger('Run a single step');
 
-    const action = await screen.findByText('Read one file');
-    expect(action.closest('.m-auto')).toBeNull();
+    // A single action is not named a second time: the screen's header names it, and its one Wrap
+    // lines toggle sits in the drill-in.
+    const drillIn = await screen.findByText('Wrap lines');
+    expect(screen.queryByText('Read one file')).toBeNull();
+    expect(drillIn.closest('.m-auto')).toBeNull();
   });
 });
 

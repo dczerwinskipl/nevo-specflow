@@ -1403,8 +1403,9 @@ function AppWorkspaceRoot({
       const target = secondaryRegionRef.current?.querySelector<HTMLElement>(
         '[data-workspace-header-title="true"]',
       );
-      // The incoming surface is still translated off-screen here; letting focus scroll would shift
-      // the overflow-hidden workspace container against the running transform.
+      // The incoming surface is still translated off-screen here; focus must not scroll anything
+      // toward it against the running transform (the workspace container clips and is never
+      // scrolled, see `group/workspace`).
       (target ?? secondaryRegionRef.current)?.focus({ preventScroll: true });
     });
 
@@ -1505,7 +1506,13 @@ function AppWorkspaceRoot({
         <WorkspacePrimarySheetContext.Provider value={primarySheetElement}>
           <div
             className={cn(
-              'group/workspace relative flex h-full max-w-full items-stretch overflow-hidden',
+              // `overflow-clip`, not `overflow-hidden`: a hidden box is still a scroll container,
+              // so any programmatic scroll inside a surface (`scrollIntoView`, a focus without
+              // `preventScroll`) also scrolled this box toward the incoming Secondary while it was
+              // still translated off-screen, and on a phone the scroll and the running transform
+              // painted as two offset copies (#67; again from Work history's scroll to a stage).
+              // A clipped box is never scrolled, whoever asks.
+              'group/workspace relative flex h-full max-w-full items-stretch overflow-clip',
               state.mode === 'split' && navigationMode === 'drawer' && workspaceSurfaceClassName,
             )}
             data-layout={state.mode}

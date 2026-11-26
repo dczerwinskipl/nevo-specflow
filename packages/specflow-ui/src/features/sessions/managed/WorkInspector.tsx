@@ -584,16 +584,34 @@ function Work({ data }: { data: Data }) {
       )
       .find((element) => element !== null);
     if (target) {
-      (target.closest<HTMLElement>('[data-history-entry]') ?? target).scrollIntoView({
-        block: 'start',
-      });
+      // Only this screen's own scroller moves: `scrollIntoView` also scrolls every ancestor, and
+      // this runs while the Secondary is still sliding in, so it moved the workspace (and the
+      // phone's window) against the transform — two offset copies on screen.
+      const viewport = scroller.current;
+      if (viewport) {
+        const entry = target.closest<HTMLElement>('[data-history-entry]') ?? target;
+        viewport.scrollTop +=
+          entry.getBoundingClientRect().top - viewport.getBoundingClientRect().top;
+      }
+
       view.update(clearFocus);
     } else if (hasOlder && !state.error) {
       void loadOlder();
     } else {
       view.update(clearFocus);
     }
-  }, [focus, items, tailLoaded, hasOlder, state.busy, state.error, content, view, loadOlder]);
+  }, [
+    focus,
+    items,
+    tailLoaded,
+    hasOlder,
+    state.busy,
+    state.error,
+    content,
+    scroller,
+    view,
+    loadOlder,
+  ]);
   const openActions: OpenActions = (workId, workTitle, heading, permissionId) =>
     void navigation.navTo('actions', {
       workId,

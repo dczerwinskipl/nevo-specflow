@@ -22,6 +22,7 @@ import {
   toolFailuresSnapshot,
   transcriptApi,
 } from './managedSession.transcript.stories-support';
+import { expectOneOpaqueSecondaryAfter } from './managedSession.secondaryTransition.stories-support';
 
 /**
  * `SpecFlow/Screens/Managed Session/Transcript`: an agent step Session read as a whole
@@ -354,6 +355,21 @@ export const WorkHistoryDesktop: Story = {
   play: workHistoryPlay,
 };
 
+/** Context slides in as Work history does: one opaque screen, nothing behind it scrolled. */
+export const ContextSlidesInAsOneScreen: Story = {
+  tags: ['contract'],
+  args: { api: stageWorkApi(longCommentarySnapshot()) },
+  globals: NARROW_VIEWPORT,
+  play: async () => {
+    await settleViewport(412, 915);
+    // At the bottom of the conversation the header steps aside; Context is in the floating menu.
+    const page = within(document.body);
+    await userEvent.click(await page.findByRole('button', { name: 'Więcej akcji' }));
+    const context = await page.findByRole('menuitem', { name: 'Kontekst' });
+    await expectOneOpaqueSecondaryAfter(() => userEvent.click(context));
+  },
+};
+
 /**
  * Owner, 2026-11-26: a work row opens Work history at its own stage, that stage's group expanded
  * and scrolled into view; Back returns to the exact place in the conversation.
@@ -377,7 +393,9 @@ export const WorkRowOpensItsStage: Story = {
     row.scrollIntoView({ block: 'center' });
     await new Promise((resolve) => setTimeout(resolve, 400));
     const before = row.getBoundingClientRect().top;
-    await userEvent.click(row);
+    // Its scroll to the stage runs while the screen slides in: one opaque screen, nothing behind
+    // it scrolled against the slide.
+    await expectOneOpaqueSecondaryAfter(() => userEvent.click(row));
 
     // Work history at that stage: its tool Work is shown, its group open, in the viewport.
     const member = await waitFor(() => {

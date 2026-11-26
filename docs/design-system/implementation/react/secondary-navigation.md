@@ -542,6 +542,15 @@ The properties do not exist in split/desktop mode or in `scroll="content"` works
 overlay. `AppWorkspaceScroll.contract.stories.tsx` verifies 390 and 320 (including `#tasks-heading`
 through `location.hash`) and a safe-area override.
 
+The workspace container (`group/workspace`) clips with `overflow: clip`, never `overflow: hidden`:
+a hidden box is still a scroll container, so a `scrollIntoView` or a focus inside a Secondary that
+is still sliding in scrolled the container toward it against the running transform, which a phone
+paints as two offset copies of the screen. A clipped box cannot be scrolled by anyone. A screen
+that scrolls to a target in its own `scroll="content"` scroller (Work history at a stage) moves only
+that scroller, since `scrollIntoView` also scrolls the window. `MobileTransitionHarness.stories.tsx`
+and the Managed Session `WorkRowOpensItsStage` / `ContextSlidesInAsOneScreen` plays assert that no
+ancestor of a sliding surface is ever scrolled.
+
 ### Reaching Primary's ambient scroll element, and the bottom safe area
 
 A Primary that needs imperative access to its own scroll position under the default

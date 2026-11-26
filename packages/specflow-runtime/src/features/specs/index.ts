@@ -12,6 +12,7 @@ export {
 
 export { ProjectGitCapabilities, SpecCapabilities } from '@nevo/specflow-contracts/specs';
 export { specScope, type ProjectIdSource } from './scope';
+export type { FirstStepStarter } from './create/first-step';
 export { composeWorkspaceActivity } from './workspace/activity';
 export { releaseAfterQuiescence } from './close/release-workspace';
 

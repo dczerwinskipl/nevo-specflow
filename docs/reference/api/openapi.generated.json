@@ -27334,7 +27334,7 @@
         "tags": [
           "Specifications"
         ],
-        "description": "Create a Specification and its selected archetype documents atomically under Engine admission. Requires project-wide spec.create. Omitted target means primary checkout; explicit existing/new-worktree choices use registered workspaces and validated Git policy. Body limit is 2 MiB. A retry MUST reuse the same operationId and identical request; changed data yields 409 CREATE_CONFLICT. With Prefer: respond-async, the Runtime validates/reserves and returns 202 with Location and Preference-Applied while detached work continues, even after client disconnect. Without the preference, successful Create normally returns 201. The inspection route reports the outcome; SSE is optional and display-only. Git-off success may contain uncommitted:true. Invalid Git policy fails closed.",
+        "description": "Create a Specification and its selected archetype documents atomically under Engine admission. Requires project-wide spec.create; with firstStep also project-wide spec.manage, and the first workflow step of the archetype must be one an agent may do (else 400 CREATE_OPERATION_INVALID before anything is written). firstStep asks the Runtime to start that step with the given agent, as the caller, once the Specification exists: the intent is stored with the operation, resumed after a Runtime restart, and the operation stays in-progress until the start is settled; the completed result then carries firstStep (started with its Session, or not-started with the refusal code and agent option). A refused start never undoes the Create. A retry must carry the same firstStep (or none when the first request had none), else 409 CREATE_CONFLICT. Omitted target means primary checkout; explicit existing/new-worktree choices use registered workspaces and validated Git policy. Body limit is 2 MiB. A retry MUST reuse the same operationId and identical request; changed data yields 409 CREATE_CONFLICT. With Prefer: respond-async, the Runtime validates/reserves and returns 202 with Location and Preference-Applied while detached work continues, even after client disconnect. Without the preference, successful Create normally returns 201. The inspection route reports the outcome; SSE is optional and display-only. Git-off success may contain uncommitted:true. Invalid Git policy fails closed.",
         "requestBody": {
           "required": true,
           "content": {
@@ -27470,6 +27470,37 @@
                       "minLength": 1
                     },
                     "uniqueItems": true
+                  },
+                  "firstStep": {
+                    "type": "object",
+                    "required": [
+                      "run",
+                      "provider"
+                    ],
+                    "properties": {
+                      "run": {
+                        "type": "string",
+                        "enum": [
+                          "agent"
+                        ]
+                      },
+                      "provider": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "effort": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false
@@ -27552,6 +27583,378 @@
                       "description": "Present and true when Git is disabled and the new scaffold remains uncommitted; later Git-enabled Close may refuse the dirty checkout.",
                       "enum": [
                         true
+                      ]
+                    },
+                    "firstStep": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": [
+                            "status",
+                            "step",
+                            "sessionId",
+                            "attemptId"
+                          ],
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "started"
+                              ]
+                            },
+                            "step": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "title"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "sessionId": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "attemptId": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "required": [
+                            "status",
+                            "step",
+                            "code"
+                          ],
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "not-started"
+                              ]
+                            },
+                            "step": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "title"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "code": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "agent": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "launch"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "available"
+                                      ]
+                                    },
+                                    "launch": {
+                                      "type": "object",
+                                      "required": [
+                                        "archetype",
+                                        "provider",
+                                        "model",
+                                        "session"
+                                      ],
+                                      "properties": {
+                                        "archetype": {
+                                          "type": "string"
+                                        },
+                                        "provider": {
+                                          "type": "string"
+                                        },
+                                        "model": {
+                                          "type": "string"
+                                        },
+                                        "effort": {
+                                          "type": "string"
+                                        },
+                                        "session": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "required": [
+                                                "mode"
+                                              ],
+                                              "properties": {
+                                                "mode": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "fresh"
+                                                  ]
+                                                }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "required": [
+                                                "mode",
+                                                "sessionId"
+                                              ],
+                                              "properties": {
+                                                "mode": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "reuse"
+                                                  ]
+                                                },
+                                                "sessionId": {
+                                                  "type": "string"
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "independent": {
+                                      "type": "boolean",
+                                      "enum": [
+                                        true
+                                      ]
+                                    },
+                                    "baseline": {
+                                      "type": "string",
+                                      "enum": [
+                                        "unchecked"
+                                      ]
+                                    },
+                                    "modelRequired": {
+                                      "type": "boolean",
+                                      "enum": [
+                                        true
+                                      ]
+                                    },
+                                    "workMode": {
+                                      "type": "object",
+                                      "required": [
+                                        "providerModeId",
+                                        "title"
+                                      ],
+                                      "properties": {
+                                        "providerModeId": {
+                                          "type": "string"
+                                        },
+                                        "title": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "reason"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "unavailable"
+                                      ]
+                                    },
+                                    "reason": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "not-an-executor"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "archetype-missing"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "provider-not-chosen"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "model-missing"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "session-unavailable"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "provider-not-ready"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "dirty-baseline"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "baseline-changed"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "owner-work-uncommitted"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "project-busy"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "demo"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "attempt-commit-pending"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "attempt-commit-failed"
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    "detail": {
+                                      "type": "string"
+                                    },
+                                    "paths": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      },
+                                      "maxItems": 1000
+                                    },
+                                    "count": {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    "launch": {
+                                      "type": "object",
+                                      "required": [
+                                        "archetype",
+                                        "provider",
+                                        "model",
+                                        "session"
+                                      ],
+                                      "properties": {
+                                        "archetype": {
+                                          "type": "string"
+                                        },
+                                        "provider": {
+                                          "type": "string"
+                                        },
+                                        "model": {
+                                          "type": "string"
+                                        },
+                                        "effort": {
+                                          "type": "string"
+                                        },
+                                        "session": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "required": [
+                                                "mode"
+                                              ],
+                                              "properties": {
+                                                "mode": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "fresh"
+                                                  ]
+                                                }
+                                              }
+                                            },
+                                            {
+                                              "type": "object",
+                                              "required": [
+                                                "mode",
+                                                "sessionId"
+                                              ],
+                                              "properties": {
+                                                "mode": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "reuse"
+                                                  ]
+                                                },
+                                                "sessionId": {
+                                                  "type": "string"
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "independent": {
+                                      "type": "boolean",
+                                      "enum": [
+                                        true
+                                      ]
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
                       ]
                     }
                   },
@@ -28104,6 +28507,28 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "firstStep": {
+                            "type": "object",
+                            "required": [
+                              "id",
+                              "title",
+                              "agent"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "agent": {
+                                "type": "boolean"
                               }
                             },
                             "additionalProperties": false
@@ -28944,6 +29369,378 @@
                           "description": "Present and true when Git is disabled and the new scaffold remains uncommitted; later Git-enabled Close may refuse the dirty checkout.",
                           "enum": [
                             true
+                          ]
+                        },
+                        "firstStep": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "status",
+                                "step",
+                                "sessionId",
+                                "attemptId"
+                              ],
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "started"
+                                  ]
+                                },
+                                "step": {
+                                  "type": "object",
+                                  "required": [
+                                    "id",
+                                    "title"
+                                  ],
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                "sessionId": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "attemptId": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "status",
+                                "step",
+                                "code"
+                              ],
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "not-started"
+                                  ]
+                                },
+                                "step": {
+                                  "type": "object",
+                                  "required": [
+                                    "id",
+                                    "title"
+                                  ],
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                "code": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "agent": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "kind",
+                                        "launch"
+                                      ],
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "enum": [
+                                            "available"
+                                          ]
+                                        },
+                                        "launch": {
+                                          "type": "object",
+                                          "required": [
+                                            "archetype",
+                                            "provider",
+                                            "model",
+                                            "session"
+                                          ],
+                                          "properties": {
+                                            "archetype": {
+                                              "type": "string"
+                                            },
+                                            "provider": {
+                                              "type": "string"
+                                            },
+                                            "model": {
+                                              "type": "string"
+                                            },
+                                            "effort": {
+                                              "type": "string"
+                                            },
+                                            "session": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "mode"
+                                                  ],
+                                                  "properties": {
+                                                    "mode": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "fresh"
+                                                      ]
+                                                    }
+                                                  }
+                                                },
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "mode",
+                                                    "sessionId"
+                                                  ],
+                                                  "properties": {
+                                                    "mode": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "reuse"
+                                                      ]
+                                                    },
+                                                    "sessionId": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        "independent": {
+                                          "type": "boolean",
+                                          "enum": [
+                                            true
+                                          ]
+                                        },
+                                        "baseline": {
+                                          "type": "string",
+                                          "enum": [
+                                            "unchecked"
+                                          ]
+                                        },
+                                        "modelRequired": {
+                                          "type": "boolean",
+                                          "enum": [
+                                            true
+                                          ]
+                                        },
+                                        "workMode": {
+                                          "type": "object",
+                                          "required": [
+                                            "providerModeId",
+                                            "title"
+                                          ],
+                                          "properties": {
+                                            "providerModeId": {
+                                              "type": "string"
+                                            },
+                                            "title": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "object",
+                                      "required": [
+                                        "kind",
+                                        "reason"
+                                      ],
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "enum": [
+                                            "unavailable"
+                                          ]
+                                        },
+                                        "reason": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "not-an-executor"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "archetype-missing"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "provider-not-chosen"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "model-missing"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "session-unavailable"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "provider-not-ready"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "dirty-baseline"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "baseline-changed"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "owner-work-uncommitted"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "project-busy"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "demo"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "attempt-commit-pending"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "attempt-commit-failed"
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        "detail": {
+                                          "type": "string"
+                                        },
+                                        "paths": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          },
+                                          "maxItems": 1000
+                                        },
+                                        "count": {
+                                          "type": "integer",
+                                          "minimum": 0
+                                        },
+                                        "launch": {
+                                          "type": "object",
+                                          "required": [
+                                            "archetype",
+                                            "provider",
+                                            "model",
+                                            "session"
+                                          ],
+                                          "properties": {
+                                            "archetype": {
+                                              "type": "string"
+                                            },
+                                            "provider": {
+                                              "type": "string"
+                                            },
+                                            "model": {
+                                              "type": "string"
+                                            },
+                                            "effort": {
+                                              "type": "string"
+                                            },
+                                            "session": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "mode"
+                                                  ],
+                                                  "properties": {
+                                                    "mode": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "fresh"
+                                                      ]
+                                                    }
+                                                  }
+                                                },
+                                                {
+                                                  "type": "object",
+                                                  "required": [
+                                                    "mode",
+                                                    "sessionId"
+                                                  ],
+                                                  "properties": {
+                                                    "mode": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "reuse"
+                                                      ]
+                                                    },
+                                                    "sessionId": {
+                                                      "type": "string"
+                                                    }
+                                                  }
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        "independent": {
+                                          "type": "boolean",
+                                          "enum": [
+                                            true
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "additionalProperties": false
+                            }
                           ]
                         }
                       },

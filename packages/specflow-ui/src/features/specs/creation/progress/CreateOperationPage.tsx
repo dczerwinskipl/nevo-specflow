@@ -2,6 +2,9 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, InlineNote, Separator, Typography } from '@nevo/ui';
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
+import { productIcons } from '../../../../shared/product-icons';
+import { useNotify } from '../../../../shared/notifications/notifications';
+import { AgentBlocker, AgentStartDialog } from '../../../tasks';
 import { FlowParentBack } from '../../../../app/navigation/ApplicationLocation';
 import { useMessage } from '../../../../i18n/message';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
@@ -61,6 +64,7 @@ export function CreateOperationPage({
   onOpen,
   onBackToForm,
   onBackToSpecifications,
+  onOpenSession,
 }: {
   operationId: string;
   /** Opens the created specification (automatically after a short moment, or on the button). */
@@ -72,6 +76,8 @@ export function CreateOperationPage({
   onBackToForm: (restoreDraftOf?: string) => void;
   /** Leaves for the specification list; the operation goes on and is shown there. */
   onBackToSpecifications: () => void;
+  /** Opens the agent's Session (Create with an agent, once the agent started). */
+  onOpenSession?: (sessionId: string) => void;
 }) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -80,6 +86,8 @@ export function CreateOperationPage({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const configurationId = useId();
   const [created, setCreated] = useState<CreatedSpec>();
+  const [runWithAgent, setRunWithAgent] = useState(false);
+  const notify = useNotify();
 
   // The request this browser sent, if any; a direct link has none and shows what the server knows.
   const [stored] = useState(() => {
@@ -103,8 +111,15 @@ export function CreateOperationPage({
     working,
     onStreamHint: actions.setStreamHint,
   });
+  // Create with an agent: the step the agent starts and, once Create completed, what became of it.
+  const agentPath =
+    Boolean(stored?.request.firstStep) || Boolean(ownDraft?.agent) || Boolean(created?.firstStep);
+  const firstStepTitle =
+    created?.firstStep?.step.title ?? ownDraft?.agent?.firstStepTitle ?? undefined;
+  const agentResult = created?.firstStep;
+  const agentNotStarted = agentResult?.status === 'not-started' ? agentResult : undefined;
   // The step that runs now: the subtitle names it instead of a generic line.
-  const runningStep = working ? createRunningStepTitle(progress.steps) : undefined;
+  const runningStep = working ? createRunningStepTitle(progress.steps, firstStepTitle) : undefined;
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -113,17 +128,27 @@ export function CreateOperationPage({
   // The finished checklist is seen for a moment, then the specification opens (the button is faster).
   // The timer starts once, when the result arrives: the host passes a new `onOpen` on every render
   // and the page keeps re-rendering (progress, announcements), which must not restart it.
-  const openLatest = useRef(onOpen);
+  const openLatest = useRef({ onOpen, onOpenSession, notify, t });
   useLayoutEffect(() => {
-    openLatest.current = onOpen;
+    openLatest.current = { onOpen, onOpenSession, notify, t };
   });
   useEffect(() => {
-    // Files left uncommitted stay on this page: what to do about them is read before it opens.
-    if (!created || created.uncommitted) {
+    // Files left uncommitted stay on this page: what to do about them is read before it opens. An
+    // agent that did not start stays too: the page says why and how to go on.
+    if (!created || created.uncommitted || created.firstStep?.status === 'not-started') {
       return;
     }
 
-    const timer = setTimeout(() => openLatest.current(created), openAfterCreatedMs);
+    const started = created.firstStep;
+    const timer = setTimeout(() => {
+      const latest = openLatest.current;
+      if (started?.status === 'started' && latest.onOpenSession) {
+        latest.notify(latest.t('create.page.agentStarted', { step: started.step.title }));
+        latest.onOpenSession(started.sessionId);
+      } else {
+        latest.onOpen(created);
+      }
+    }, openAfterCreatedMs);
 
     return () => clearTimeout(timer);
   }, [created]);
@@ -137,6 +162,7 @@ export function CreateOperationPage({
     ownDraft?.facts,
     ownDraft?.title,
     { title: ownDraft?.archetypeTitle, documents: ownDraft?.documentFiles },
+    ownDraft?.agent,
   );
   const failure = state.failure;
   // A failure that kept the operation (a lost session) is tried again here; a refusal ends it.
@@ -171,6 +197,10 @@ export function CreateOperationPage({
     reading: Boolean(state.sent && state.resumedFrom),
     newWorkspace,
     uncommitted: created?.uncommitted === true,
+    firstStep: agentResult && {
+      title: agentResult.step.title,
+      started: agentResult.status === 'started',
+    },
   });
   const statusText = status ? text(status) : undefined;
   useEffect(() => {
@@ -186,7 +216,7 @@ export function CreateOperationPage({
       : t('create.submit.checkResult');
 
   return (
-    <CreateShell title={t('create.page.location')}>
+    <CreateShell title={created ? t('create.page.heading.completed') : t('create.page.location')}>
       {/* The flow Back takes the Create screens' one gap (gap-6); the page keeps its own rhythm. */}
       <div className="grid gap-6">
         <FlowParentBack view="new-specification" />
@@ -194,7 +224,7 @@ export function CreateOperationPage({
           <header className="flex min-w-0 items-start gap-4">
             {/* Static while running: the active step of the checklist carries the page's only spinner. */}
             <OperationStatusTile
-              tone={created?.uncommitted ? 'attention' : toneOf[view]}
+              tone={created?.uncommitted || agentNotStarted ? 'attention' : toneOf[view]}
               animated={false}
             />
             <div className="grid min-w-0 gap-1">
@@ -224,6 +254,14 @@ export function CreateOperationPage({
                 commits={settings?.commit === true && !created?.uncommitted}
                 newWorkspace={newWorkspace}
                 monitoring={flags.monitoring}
+                firstStep={
+                  agentPath && firstStepTitle
+                    ? {
+                        title: firstStepTitle,
+                        ...(agentResult ? { started: agentResult.status === 'started' } : {}),
+                      }
+                    : undefined
+                }
               />
             </div>
           )}
@@ -233,6 +271,25 @@ export function CreateOperationPage({
               <p>{t('create.page.uncommitted.body')}</p>
             </Alert>
           )}
+
+          {created &&
+            agentNotStarted &&
+            (agentNotStarted.agent?.kind === 'unavailable' ? (
+              <AgentBlocker
+                option={agentNotStarted.agent}
+                specId={created.specId}
+                step={agentNotStarted.step.title}
+                role={undefined}
+                checking={false}
+                // Run with agent checks the agent and the checkout again when it opens.
+                onCheckAgain={() => setRunWithAgent(true)}
+                urgent
+              />
+            ) : (
+              <Alert role="alert" tone="attention" title={t('create.page.agentNotStarted.title')}>
+                <p>{t('create.page.agentNotStarted.body', { step: agentNotStarted.step.title })}</p>
+              </Alert>
+            ))}
 
           {view === 'not-found' && (
             <Alert role="status" tone="info" title={t('create.page.notFound.title')}>
@@ -290,11 +347,25 @@ export function CreateOperationPage({
             </section>
           )}
 
-          {(working || view === 'unknown') && <InlineNote>{t('create.page.leaveNote')}</InlineNote>}
+          {(working || view === 'unknown') && (
+            <InlineNote>
+              {agentPath ? t('create.page.leaveNoteAgent') : t('create.page.leaveNote')}
+            </InlineNote>
+          )}
 
           <div className="flex flex-col gap-3 @lg:flex-row">
+            {created && agentNotStarted && (
+              <Button leadingIcon={productIcons.agent} onClick={() => setRunWithAgent(true)}>
+                {`${t('workflowExecution.now.runWithAgent')}…`}
+              </Button>
+            )}
             {created && (
-              <Button onClick={() => onOpen(created)}>{t('create.page.openSpecification')}</Button>
+              <Button
+                variant={agentNotStarted ? 'secondary' : 'primary'}
+                onClick={() => onOpen(created)}
+              >
+                {t('create.page.openSpecification')}
+              </Button>
             )}
             {view === 'unknown' && (
               <Button disabled={state.checking} onClick={() => void actions.check()}>
@@ -321,6 +392,30 @@ export function CreateOperationPage({
           {region}
         </div>
       </div>
+      {created && agentNotStarted && (
+        // The existing Run with agent dialog: it checks again and sends a new request, with the
+        // agent chosen in the form preselected (it can be changed).
+        <AgentStartDialog
+          subject={{ specId: created.specId }}
+          step={agentNotStarted.step}
+          open={runWithAgent}
+          onOpenChange={setRunWithAgent}
+          initialChoice={
+            ownDraft?.agent && {
+              providerId: ownDraft.agent.providerId,
+              modelId: ownDraft.agent.modelId,
+              ...(ownDraft.agent.effort ? { effort: ownDraft.agent.effort } : {}),
+            }
+          }
+          onStarted={(result) => {
+            if ('sessionId' in result && onOpenSession) {
+              onOpenSession(result.sessionId);
+            } else {
+              onOpen(created);
+            }
+          }}
+        />
+      )}
     </CreateShell>
   );
 }

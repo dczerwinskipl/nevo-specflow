@@ -32,4 +32,20 @@ describe('catalogueEtag', () => {
     ).not.toBe(plain);
     expect(catalogueEtag({ ...base, unstableRead: true })).not.toBe('"abc"');
   });
+
+  it('changes with the first step of an archetype although the revision does not', () => {
+    const archetype = (agent: boolean): ArchetypeCatalogue['archetypes'][number] => ({
+      id: 'feature',
+      version: 1,
+      title: 'Feature',
+      description: 'A feature.',
+      useWhen: 'Always.',
+      requirements: [],
+      documents: [],
+      firstStep: { id: 'gather', title: 'Gather requirements', agent },
+    });
+    const agentStep = catalogueEtag({ ...base, archetypes: [archetype(true)] });
+    expect(agentStep).not.toBe('"abc"');
+    expect(catalogueEtag({ ...base, archetypes: [archetype(false)] })).not.toBe(agentStep);
+  });
 });

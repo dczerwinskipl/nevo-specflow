@@ -405,9 +405,9 @@ Every UI start is from a Specification: **New session** opens `/specs/:specId/se
   the fact **Provider default**, and Effort appears only for a provider whose models have efforts.
   Effort and Work mode stay disabled until a model is chosen, so choosing one never adds rows.
   Changing the provider resets everything below it. Then **Session name** (optional), see Naming.
-  Create with an agent, which exists only in demo mode, keeps its labelled fields and tiles
-  ([Create Specification, Demo mode](../specification-creation.md#demo-mode)); the Composer keeps
-  its compact pickers.
+  Create with an agent uses Run with agent's picker instead
+  ([Ways to start](../specification-creation.md#ways-to-start-and-create-with-an-agent)); the
+  Composer keeps its compact pickers.
 - **Composer before Start.** Split layout: inactive in its final place, placeholder **Start the
   session to send a message**, no pickers, Send disabled. Single-surface (narrow) layout: not shown
   until Start.

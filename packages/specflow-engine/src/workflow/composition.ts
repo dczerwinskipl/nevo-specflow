@@ -11,7 +11,7 @@ import {
   createFilesystemDefinitionSource,
 } from '../specs/definitions/source';
 import { createFilesystemDefinitionWriter } from '../specs/definitions/filesystem-writer';
-import { resolveExecutionCatalogue } from './definitions/catalogue';
+import { resolveExecutionCatalogue, type ExecutionCatalogue } from './definitions/catalogue';
 import { WorkflowError as CoreWorkflowError } from '@nevo/workflow';
 import { WorkflowError } from './errors';
 import type { ExecutionHolds, WorkflowDependencies } from './operations/loaded-execution';
@@ -270,6 +270,16 @@ export function engineExecutionStore(
   );
 }
 
+/** The execution catalogue of the Project Home's definitions as they are now (no workflow state). */
+export async function loadExecutionCatalogue(engine: SpecFlowEngine): Promise<ExecutionCatalogue> {
+  return resolveExecutionCatalogue(
+    await loadDefinitions(
+      createFilesystemDefinitionSource(definitionsRoot(engine)),
+      createDefaultDefinitionRegistry(),
+    ),
+  );
+}
+
 /**
  * Load the execution catalogue now. The returned dependencies hold that snapshot of the definitions:
  * after a definition edit (including `rememberArchetypeModel`) call `openWorkflow` again to see it.
@@ -278,13 +288,7 @@ export async function openWorkflow(
   engine: SpecFlowEngine,
   options: OpenWorkflowOptions = {},
 ): Promise<WorkflowDependencies> {
-  const reloadCatalogue = async () =>
-    resolveExecutionCatalogue(
-      await loadDefinitions(
-        createFilesystemDefinitionSource(definitionsRoot(engine)),
-        createDefaultDefinitionRegistry(),
-      ),
-    );
+  const reloadCatalogue = () => loadExecutionCatalogue(engine);
 
   const owned = ownedTurnOf(options.ownedExecution).ownedExecution;
   const dependencies: Omit<WorkflowDependencies, 'specificationExit'> = {

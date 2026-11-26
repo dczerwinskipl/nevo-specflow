@@ -94,7 +94,8 @@ export function AgentBlocker({
   /** The agent role's name ("Implementer agent"); absent when the Runtime names none. */
   readonly role: string | undefined;
   readonly checking: boolean;
-  readonly onCheckAgain: () => void;
+  /** Absent where another action checks again (Create's progress page: Run with agent). */
+  readonly onCheckAgain?: (() => void) | undefined;
   readonly urgent?: boolean;
 }) {
   const { t } = useTranslation();
@@ -155,7 +156,7 @@ export function AgentBlocker({
             values,
           )}
         </p>
-        {needsCheck ? (
+        {needsCheck && onCheckAgain ? (
           <div className="flex flex-wrap gap-2 pt-1">
             <Button
               size="sm"

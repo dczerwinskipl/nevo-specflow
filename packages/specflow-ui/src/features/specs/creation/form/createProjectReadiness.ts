@@ -1,4 +1,4 @@
-import type { ArchetypeInfo } from '@nevo/specflow-contracts/documents';
+import type { ArchetypeFirstStep, ArchetypeInfo } from '@nevo/specflow-contracts/documents';
 import { message, type Message } from '../../../../i18n/message';
 import type { WorkspaceOptionsState } from '../workspace/model/workspaceChoice';
 import { workspaceProblems } from '../workspace/model/workspaceValidation';
@@ -20,6 +20,21 @@ export interface ProjectCreateReadiness {
   canSubmit: boolean;
 }
 
+/**
+ * The agent path's one extra rule (Create with an agent): the archetype's first step must be an
+ * agent's, and an agent that can start must be chosen.
+ */
+export interface AgentPathReadiness {
+  /** The selected archetype's first step; undefined when it starts no workflow. */
+  readonly firstStep: ArchetypeFirstStep | undefined;
+  /** Whether the agents are read yet. */
+  readonly agents: 'loading' | 'error' | 'ready';
+  /** At least one agent can start. */
+  readonly anyAvailable: boolean;
+  /** The chosen agent can start. */
+  readonly chosenAvailable: boolean;
+}
+
 /** Whether the project Create form can be submitted and, if not, the one reason shown in the footer. */
 export function projectCreateReadiness(input: {
   title: string;
@@ -35,6 +50,8 @@ export function projectCreateReadiness(input: {
   archetype: ArchetypeInfo | undefined;
   /** The Engine catalogue has no usable options, with its actionable recovery message. */
   archetypeUnavailable?: Message;
+  /** Create with an agent: its rule, checked after the archetype (the Agent section comes next). */
+  agent?: AgentPathReadiness;
 }): ProjectCreateReadiness {
   const { title, goal, workspaceState, choice } = input;
   const tooLong =
@@ -84,10 +101,43 @@ export function projectCreateReadiness(input: {
     return blocked(message('create.prerequisite.archetype'), 'archetype');
   }
 
+  const agentProblem = input.agent && agentPathProblem(input.agent);
+  if (agentProblem) {
+    return blocked(agentProblem.message, agentProblem.field);
+  }
+
   const [workspaceProblem] = workspaceProblems(choice, workspaceState.options, title);
   if (workspaceProblem) {
     return blocked(workspaceProblem.message, workspaceProblem.field);
   }
 
   return { prerequisite: undefined, canSubmit: !tooLong };
+}
+
+function agentPathProblem(
+  agent: AgentPathReadiness,
+): { message: Message; field?: CreateProblemField } | undefined {
+  if (!agent.firstStep) {
+    return { message: message('create.agentStep.prerequisite.noWorkflow') };
+  }
+
+  if (!agent.firstStep.agent) {
+    return { message: message('create.agentStep.prerequisite.ownerFirst') };
+  }
+
+  if (agent.agents === 'loading') {
+    return { message: message('create.agentStep.prerequisite.agentsLoading') };
+  }
+
+  if (agent.agents === 'error') {
+    return { message: message('create.agentStep.prerequisite.agentsFailed') };
+  }
+
+  if (!agent.anyAvailable) {
+    return { message: message('create.agentStep.prerequisite.noAgent') };
+  }
+
+  return agent.chosenAvailable
+    ? undefined
+    : { message: message('create.prerequisite.provider'), field: 'provider' };
 }

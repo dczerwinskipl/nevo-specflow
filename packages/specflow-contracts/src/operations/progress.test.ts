@@ -21,6 +21,7 @@ describe('operation progress contract', () => {
       'writing-specification',
       'committing-specification',
       'registering',
+      'starting-agent',
     ]);
   });
 
@@ -42,8 +43,14 @@ describe('operation progress contract', () => {
       'committing-specification',
       'registering',
     ]);
-    expect(specificationCreateSteps('new-worktree', true)).toEqual([
-      ...OPERATION_KINDS['specification-create'].steps,
+    expect(specificationCreateSteps('new-worktree', true)).toEqual(
+      OPERATION_KINDS['specification-create'].steps.filter((step) => step !== 'starting-agent'),
+    );
+    expect(specificationCreateSteps('existing', false, true)).toEqual([
+      'reserving',
+      'writing-specification',
+      'registering',
+      'starting-agent',
     ]);
   });
 

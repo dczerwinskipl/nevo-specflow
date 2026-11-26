@@ -26,6 +26,7 @@ related:
   - adr.0024-tasks-are-resources
   - reference.api.specification-workflow
   - reference.cli.specflow-specification-commands
+  - product.specflow.specification-creation
 ---
 
 # 0026 — Agent step execution
@@ -447,6 +448,46 @@ appears in the Turn's Work history, and a call the owner answered carries its pe
 Which calls Claude's mode decided, and which the allowlist approved, is **not recorded per call**:
 the allowlist note is a separate commentary item without the tool call's id, so no client may
 present it as the decision of a particular row.
+
+### D22 — Create can start the first step with an agent (supersedes dogfood D5)
+
+Create with an agent (owner, 2026-11-26) is one request, not two UI calls. `POST /api/specs` may
+carry `firstStep: { run: 'agent', provider, model?, effort? }`: "then run the first step with this
+agent". The Runtime, not the open page, owns the start, so leaving the page is safe. This replaces
+dogfood decision D5 ("the UI chains Create and Run with agent"), under which only the open Create
+page could make the second call.
+
+- **Admission, before anything is written.** The caller also needs project-wide `spec.manage` (the
+  Specification has no id yet), and the archetype's first workflow step (its workflow's entry
+  step, `ArchetypeInfo.firstStep`) must be one an agent may do; otherwise 403, or 400
+  `CREATE_OPERATION_INVALID`. A retry of the operation must carry the same intent, or none when the
+  first request had none (409 `CREATE_CONFLICT`).
+- **The intent is stored with who asked.** The Runtime writes it under
+  `<stateRoot>/runtime/create-first-step/<operationId>.json` (never committed) before the Engine
+  Create begins: the agent choice, the step, and the principal the start runs as. The settled
+  result is recorded in the same record, so the inspection and the operations list show it after a
+  restart.
+- **The start.** After the Create completes, the Runtime calls agent step execution for the new
+  Specification as the stored principal, with `expected.step` the first step and a request id
+  derived from the operation id, so a replay or a resumed start never starts a second attempt. One
+  start per operation runs at a time in a process.
+- **Restart.** A Runtime startup step (after the server is ready, in the background) starts every
+  intent whose Create completed while no start was made, and drops intents whose Create never
+  reserved anything. An unfinished Create's intent waits for that Create's own retry, which settles
+  it on completion.
+  The resumed start runs as the stored principal without checking again that it may still manage
+  the project: the asker was admitted when the intent was stored, and access is the configured
+  authentication mode (see below), so a revoked grant does not stop a start already asked for.
+- **Final only for a real answer.** A start made, or a refusal that is about the agent, the step or
+  the checkout, is recorded as the result. A failure that may pass (the Session store unavailable,
+  an unexpected error, the Runtime shutting down) is retried in the process a few times and then
+  left pending, so the startup step makes it after the next start. The intent of a Create that was
+  definitely refused is dropped with it; pending intents of Creates that never completed are pruned
+  after 30 days.
+- **Result.** The operation reports `in-progress` until the start is settled; the completed result
+  carries `firstStep`: `started` (Session and attempt) or `not-started` (the refusal code and, when
+  the refusal is about the agent or the checkout, its agent option). A refused start never undoes
+  the Create: the Specification exists and Run with agent, a new request, is the way on.
 
 ### Access is the configured authentication mode (D21 superseded)
 

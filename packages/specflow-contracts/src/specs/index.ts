@@ -27,6 +27,8 @@ export {
 
 export {
   CREATE_RESPOND_ASYNC_PREFERENCE,
+  CreateFirstStepRequestSchema,
+  CreateFirstStepResultSchema,
   CreateOperationAcceptedSchema,
   CreateOperationInspectionSchema,
   CreateOperationParamsSchema,
@@ -36,6 +38,8 @@ export {
   ExistingSpecTargetSchema,
   isCreateSpecRequest,
   NewSpecWorktreeTargetSchema,
+  type CreateFirstStepRequest,
+  type CreateFirstStepResult,
   type CreateOperationAccepted,
   type CreateOperationInspection,
   type CreateSpecRequest,

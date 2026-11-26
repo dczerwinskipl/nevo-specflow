@@ -25,10 +25,11 @@ import {
   type InvocationCapabilityBinding,
   type SessionCoordinator,
 } from '../sessions';
-import type { ProjectIdSource } from '../specs';
+import type { FirstStepStarter, ProjectIdSource } from '../specs';
 import { workflowFailure } from '../workflow';
 import { agentStepExecutionEndpoint } from './step-execution/endpoint';
-import { createAgentStepExecution } from './step-execution/operation';
+import { createAgentStepExecution, derivedId } from './step-execution/operation';
+import { firstStepRefusal } from './step-execution/refusal';
 import {
   createBrokerDispatcher,
   type BrokerDocuments,
@@ -81,6 +82,8 @@ export function createAgentExecutionFeature(
   readonly agentAvailability: ReturnType<typeof createAgentStepExecution>['decorate'];
   /** Agent step execution, Continue and Stop (the owner routes call it). */
   readonly agentStepExecution: ReturnType<typeof createAgentStepExecution>;
+  /** The agent start of Create's first-step intents (the Specifications feature calls it). */
+  readonly firstStepStarter: FirstStepStarter;
   close(): Promise<void>;
 } {
   const { engine } = options;
@@ -116,6 +119,26 @@ export function createAgentExecutionFeature(
     }),
     sessions: () => options.coordinator?.(),
   });
+
+  // Create's "then run the first step with this agent": a start of the new Specification's first
+  // step, as the principal who asked, under a request id derived from the Create operation (a
+  // repeated start, after a retry or a restart, finds the attempt the first one made).
+  const firstStepStarter: FirstStepStarter = {
+    async start(input) {
+      const result = await agentStepExecution.startAgentStepExecution({
+        subject: { kind: 'specification', specId: input.specId },
+        principal: input.principal,
+        requestId: derivedId(input.operationId, 'create-first-step'),
+        expected: { step: input.step },
+        provider: input.provider,
+        ...(input.model !== undefined ? { model: input.model } : {}),
+        ...(input.effort !== undefined ? { effort: input.effort } : {}),
+      });
+
+      return { sessionId: result.sessionId, attemptId: result.attemptId };
+    },
+    refusal: firstStepRefusal,
+  };
 
   /**
    * The scope and actor of a Turn: an agent attempt's, from what the Engine recorded for it (the
@@ -229,6 +252,7 @@ export function createAgentExecutionFeature(
     agentTurns,
     agentAvailability: (subject, projection) => agentStepExecution.decorate(subject, projection),
     agentStepExecution,
+    firstStepStarter,
     close: () => server.close(),
     async register(app) {
       app.addHook('onClose', () => server.close());

@@ -86,7 +86,19 @@ function renderScreen(
     </QueryClientProvider>,
   );
 
+  if (dataMode === 'project' && !props.restoreDraftOf) {
+    chooseManually();
+  }
+
   return { onProjectStarted };
+}
+
+/** A plain entry opens the ways to start: the manual form is one tap away (`restoreDraftOf` opens a form). */
+function chooseManually() {
+  void screen
+    .findByRole('button', { name: /^Manually/ }, { timeout: 5000 })
+    .then((tile) => fireEvent.click(tile))
+    .catch(() => undefined);
 }
 
 const storage = () => createSessionOperationStorage('unknown', sessionStorage);

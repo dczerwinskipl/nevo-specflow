@@ -10,6 +10,9 @@ export const SPECIFICATION_CREATE_STEPS = [
   'writing-specification',
   'committing-specification',
   'registering',
+  // Only for a Create that carries a first-step intent: the Runtime starts the agent after the
+  // Specification is registered.
+  'starting-agent',
 ] as const;
 export type SpecificationCreateStep = (typeof SPECIFICATION_CREATE_STEPS)[number];
 
@@ -17,15 +20,18 @@ export type SpecificationCreateStep = (typeof SPECIFICATION_CREATE_STEPS)[number
  * An `existing` target has no workspace to prepare, so that step is not part of its checklist.
  * `committing-specification` exists only when the Engine commits the scaffold (`git.enabled`);
  * `commits` defaults to false, so a project with Git disabled keeps its former checklist.
+ * `starting-agent` exists only for a Create that carries a first-step intent (`firstStep`).
  */
 export function specificationCreateSteps(
   target: 'existing' | 'new-worktree',
   commits = false,
+  firstStep = false,
 ): readonly SpecificationCreateStep[] {
   return SPECIFICATION_CREATE_STEPS.filter(
     (step) =>
       !(step === 'preparing-workspace' && target === 'existing') &&
-      !(step === 'committing-specification' && !commits),
+      !(step === 'committing-specification' && !commits) &&
+      !(step === 'starting-agent' && !firstStep),
   );
 }
 

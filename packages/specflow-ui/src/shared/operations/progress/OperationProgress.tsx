@@ -5,13 +5,20 @@ import { useTranslation } from 'react-i18next';
 
 import { useMessage, type Message } from '../../../i18n/message';
 
+/**
+ * A step's state in the checklist: the stream's statuses, plus `not-done` for a step the operation
+ * ended without doing (it concluded, but this part did not happen: an attention marker, no spinner
+ * and no waiting dot; the owner explains why next to the checklist).
+ */
+export type OperationProgressStepStatus = OperationStepStatus | 'not-done';
+
 /** One checklist row. The operation's feature owns the copy: label and description are typed Messages. */
 export interface OperationProgressStep {
   readonly id: string;
   readonly label: Message;
   /** One quiet line under the label: what is happening, what happened or what it waits for. */
   readonly description?: Message;
-  readonly status: OperationStepStatus;
+  readonly status: OperationProgressStepStatus;
 }
 
 /** The single honest row shown while no step is known: it names the operation, never invents steps. */
@@ -49,7 +56,7 @@ function StepText({
 }: {
   label: string;
   description?: string;
-  status: OperationStepStatus;
+  status: OperationProgressStepStatus;
   children?: ReactNode;
 }) {
   const pending = status === 'pending';
@@ -87,7 +94,8 @@ function StepText({
 /**
  * Calm step checklist of a long-running operation, driven only by the steps it receives (it knows
  * no operation kind): the running step shows a spinner, finished ones a check, pending ones stay
- * muted; each step may carry a one-line description. It is a labelled group, not a live region: the
+ * muted, a step the operation ended without doing shows an attention marker; each step may carry a
+ * one-line description. It is a labelled group, not a live region: the
  * owner announces changes once through its own announcer. Rows keep a fixed marker column so the layout does not move between states, including at 320 px.
  */
 export function OperationProgress({
@@ -138,6 +146,8 @@ export function OperationProgress({
                   <Spinner size="md" className="text-status-info" />
                 ) : step.status === 'done' ? (
                   <Icon name="check" size="sm" className="text-status-success" />
+                ) : step.status === 'not-done' ? (
+                  <Icon name="circle-alert" size="sm" className="text-status-attention" />
                 ) : (
                   <span className="size-2 rounded-full bg-content-muted" />
                 )}
@@ -150,7 +160,9 @@ export function OperationProgress({
                 <span className="sr-only">
                   {' '}
                   {t(
-                    `operations.progress.status.${step.status === 'skipped' ? 'done' : step.status}`,
+                    step.status === 'not-done'
+                      ? 'operations.progress.status.notDone'
+                      : `operations.progress.status.${step.status === 'skipped' ? 'done' : step.status}`,
                   )}
                 </span>
               </StepText>

@@ -148,7 +148,7 @@ export const CreateBottomFailure: Story = {
   args: { path: '/specs/new?collection=current', createOutcome: 'failure' },
   play: async ({ canvas, userEvent }) => {
     await settle(390, 844);
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Eksport CSV',
@@ -197,7 +197,7 @@ export const CreateUnknown: Story = {
   args: { path: '/specs/new?collection=current', createOutcome: 'unknown' },
   play: async ({ canvas, userEvent }) => {
     await settle(390, 844);
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Eksport CSV',
@@ -213,7 +213,7 @@ export const CreatePending: Story = {
   args: { path: '/specs/new?collection=current', createOutcome: 'pending' },
   play: async ({ canvas, userEvent }) => {
     await settle(390, 844);
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Eksport CSV',
@@ -301,19 +301,13 @@ export const ProviderAndCapabilities: Story = {
     await shot('agent-form', 1440);
     await settle(390, 844);
     await shot('agent-form', 390, 844);
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
-    await userEvent.click(
-      await within(document.body).findByRole('option', { name: 'codex model B' }),
-    );
-    canvas.getByRole('combobox', { name: 'Model' }).scrollIntoView({ block: 'center' });
-    await shot('model-no-effort', 390, 844);
   },
 };
 export const GuardFromDrawer: Story = {
   args: { path: '/specs/new?collection=current' },
   play: async ({ canvas, userEvent }) => {
     await settle(390, 844);
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Eksport CSV',
@@ -412,36 +406,17 @@ export const ResponsiveModeFocus: Story = {
     await shot('dirty-toolbar', 320, 844);
   },
 };
+/**
+ * The demo agent picker is Run with agent's: the work mode is the one the Session starts in (the
+ * provider's default when the model runs it), said as a sentence, not a setting.
+ */
 export const ExplicitModeFallback: Story = {
   args: { path: '/specs/new?collection=current' },
   play: async ({ canvas, userEvent }) => {
-    await canvas.findByRole('button', { name: /Z agentem/ });
-    await userEvent.click(canvas.getByRole('button', { name: /Z agentem/ }));
-    // The Work mode field is there before a model decides it, but waits for one.
-    const workModes = () => within(canvas.getByRole('radiogroup', { name: 'Tryb pracy' }));
-    for (const mode of workModes().getAllByRole('radio')) {
-      await expect(mode).toBeDisabled();
-    }
-
-    await userEvent.click(canvas.getByRole('radio', { name: /Claude/ }));
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
-    await userEvent.click(
-      await within(document.body).findByRole('option', { name: 'claude model B' }),
-    );
-    // No efforts: Effort stays disabled at the provider default.
-    await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
-    // Claude's own catalogue: model B runs Plan and Accept edits only (no dead Auto option),
-    // under Claude's own titles, and starts in the provider's default mode.
-    const modes = workModes().getAllByRole('radio');
-    await expect(modes.map((mode) => mode.textContent)).toEqual(['Plan', 'Accept edits']);
-    await expect(modes[1]).toBeChecked();
-    await userEvent.click(modes[0]!);
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
-    await userEvent.click(
-      await within(document.body).findByRole('option', { name: 'claude model A' }),
-    );
-    // Model A also runs Plan: the picked mode is kept.
-    await expect(canvas.getByRole('radio', { name: 'Plan' })).toBeChecked();
+    await userEvent.click(await canvas.findByRole('button', { name: /Z agentem/ }));
+    await expect(canvas.queryByRole('radiogroup', { name: 'Tryb pracy' })).toBeNull();
+    await userEvent.click(await canvas.findByRole('radio', { name: /Claude/ }));
+    await expect(canvas.getByText(/Agent pracuje w trybie/)).toBeVisible();
   },
 };
 
@@ -449,7 +424,7 @@ export const DeferredFailureKeepsReadingPosition: Story = {
   args: { path: '/specs/new?collection=current', createOutcome: 'deferred-failure' },
   play: async ({ canvas, userEvent }) => {
     await settle(390, 844);
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     const title = canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' });
     await userEvent.type(title, 'Eksport CSV');
     const submit = canvas.getByRole('button', { name: 'Utwórz specyfikację' });
@@ -475,7 +450,7 @@ export const OversizeFeedbackInShortViewport: Story = {
   play: async ({ canvas, userEvent }) => {
     // Short enough that the feedback is taller than the form's view above the 56px pinned footer.
     await settle(390, 180);
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Eksport CSV',

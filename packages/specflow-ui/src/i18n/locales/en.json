@@ -450,7 +450,8 @@
       "status": {
         "pending": "waiting",
         "running": "in progress",
-        "done": "done"
+        "done": "done",
+        "notDone": "not done"
       }
     },
     "panel": {
@@ -517,18 +518,12 @@
     "loadError": "Unable to load the configuration",
     "sessionReady": "Session ready",
     "specificationCreated": "Specification created",
-    "withAI": "With an agent",
-    "manual": "On my own",
     "nameLabel": "Specification name",
     "namePlaceholder": "E.g. SSO sign-in",
     "providerDefault": "Executor default",
-    "changeMethod": "Change the way of working",
     "formRegion": "Specification creation",
     "method": {
-      "title": "Creation method",
-      "intro": "Choose whether to start with a conversation with the Spec Writer or with the document skeleton from the archetype.",
-      "aiText": "Start a Spec Writer session. Later stages can use other agents.",
-      "manualText": "Create the documents of an archetype and edit them yourself."
+      "aiText": "Start a Spec Writer session. Later stages can use other agents."
     },
     "heading": {
       "specification": "New specification"
@@ -1023,6 +1018,14 @@
           "title": "Next step",
           "running": "In progress",
           "done": "Finished"
+        },
+        "starting-agent": {
+          "title": "Starting the agent",
+          "running": "Opening its session",
+          "done": "Agent started",
+          "titleNamed": "Starting the agent on {{step}}",
+          "pending": "After the specification is ready",
+          "notStarted": "The agent did not start {{step}}"
         }
       },
       "neutral": {
@@ -1056,7 +1059,9 @@
         "goal": "Goal",
         "committedTo": "The specification files are committed to <branch/>",
         "archetype": "Archetype",
-        "documents": "Documents"
+        "documents": "Documents",
+        "agent": "Agent",
+        "firstStep": "First step"
       },
       "status": {
         "sending": "Sending the request…",
@@ -1065,7 +1070,9 @@
         "reading": "Reading the operation…",
         "completed": "Done. Opening the specification…",
         "workingNew": "Preparing a new workspace and the specification.",
-        "completedUncommitted": "Done, but the files are not committed yet."
+        "completedUncommitted": "Done, but the files are not committed yet.",
+        "agentStarted": "The agent started {{step}}. Opening its session…",
+        "agentNotStarted": "The specification exists. The agent is not running."
       },
       "leaveNote": "You can leave this page. Creation continues on the server, and you can return to check its status from the specification list.",
       "openSpecification": "Open specification",
@@ -1087,6 +1094,12 @@
       "uncommitted": {
         "title": "The specification files are not committed",
         "body": "Git is disabled in this project (git.enabled in .nevo/config.yaml), so Nevo wrote the files without committing them. Commit them with Git yourself: Close refuses while they are uncommitted."
+      },
+      "leaveNoteAgent": "You can leave this page. SpecFlow finishes creating and starts the agent without it; the operations list shows how it went.",
+      "agentStarted": "The agent started {{step}}",
+      "agentNotStarted": {
+        "title": "The agent did not start",
+        "body": "Something went wrong while starting it. Run {{step}} with an agent again, or open the specification and go on from there."
       }
     },
     "operations": {
@@ -1095,6 +1108,41 @@
     "guide": {
       "goToField": "Go to the field",
       "enterName": "Enter the name"
+    },
+    "start": {
+      "title": "How do you want to start?",
+      "agent": {
+        "title": "With an agent",
+        "text": "Fill in the basics. An agent then starts the first step and works on it in a session."
+      },
+      "manual": {
+        "title": "Manually",
+        "text": "Create the documents from an archetype and write them yourself."
+      },
+      "agentUnavailable": {
+        "none": "No agent can start: {{reasons}}.",
+        "empty": "No agent can start: this server lists no agents.",
+        "failed": "Could not check which agents can start."
+      },
+      "backToStart": "Back to ways to start"
+    },
+    "agentStep": {
+      "title": "Agent",
+      "intro": "Right after the specification is created, an agent starts its first step. You review the result before anything moves on.",
+      "firstStep": "First step: <step>{{step}}</step>",
+      "ownerFirst": "The first step is yours.",
+      "noWorkflow": "This archetype starts no workflow, so an agent has no step to start.",
+      "useManual": "Use Manually",
+      "goalHelp": "Saved in the specification overview. The agent reads it first.",
+      "footNote": "Opens the agent’s session once it starts.",
+      "submit": "Create and run with agent",
+      "prerequisite": {
+        "ownerFirst": "The first step is yours. Use Manually.",
+        "noWorkflow": "No agent can start this archetype. Use Manually.",
+        "agentsLoading": "Checking which agents can start…",
+        "agentsFailed": "Could not check which agents can start. Check again in the Agent section.",
+        "noAgent": "No agent can start right now. Fix one above, or go back and create it manually."
+      }
     }
   },
   "documents": {

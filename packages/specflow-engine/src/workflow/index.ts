@@ -3,6 +3,7 @@ export {
   closeInProgress,
   openArchetypeEditing,
   inspectActionsForRead,
+  loadExecutionCatalogue,
   openWorkflow,
   readExecutionForRead,
   readExecutionSnapshotForRead,
@@ -12,10 +13,13 @@ export {
   type ProjectDocumentHit,
   type SpecificationCheckout,
 } from './composition';
+export { readArchetypeCatalogue, readArchetypeFirstStep } from './archetype-catalogue';
 export {
+  archetypeFirstStep,
   createExecutionCatalogue,
   resolveExecutionCatalogue,
   resolveSpecificationExecution,
+  type ArchetypeFirstStepInfo,
   type ExecutionCatalogue,
   type ExecutionEntities,
   type SpecificationExecutionResolution,

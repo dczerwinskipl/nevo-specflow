@@ -28,6 +28,7 @@ export function CreateOperationProgress({
   commits = false,
   newWorkspace,
   monitoring,
+  firstStep,
 }: {
   progress: OperationProgressView;
   reportedFailure: CreateFailure | undefined;
@@ -41,12 +42,24 @@ export function CreateOperationProgress({
   newWorkspace: boolean;
   /** The Runtime accepted the operation and it is watched through the inspection endpoint. */
   monitoring: boolean;
+  /**
+   * Create with an agent: the first step the agent starts (its row names it) and, once Create
+   * completed, whether the agent started.
+   */
+  firstStep?: { readonly title: string; readonly started?: boolean } | undefined;
 }) {
   const { t } = useTranslation();
   if (completed) {
     return (
       <OperationProgress
-        steps={createCompletedSteps(target, commits, newWorkspace)}
+        steps={createCompletedSteps(
+          target,
+          commits,
+          newWorkspace,
+          firstStep?.started !== undefined
+            ? { title: firstStep.title, started: firstStep.started }
+            : undefined,
+        )}
         label={createProgressLabel}
       />
     );
@@ -59,7 +72,7 @@ export function CreateOperationProgress({
   return (
     <>
       <OperationProgress
-        steps={createProgressSteps(progress.steps, newWorkspace)}
+        steps={createProgressSteps(progress.steps, newWorkspace, firstStep?.title)}
         label={createProgressLabel}
         neutral={createNeutralProgress(monitoring && progress.lost)}
       />

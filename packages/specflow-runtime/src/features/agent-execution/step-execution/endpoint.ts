@@ -16,22 +16,20 @@ import {
   WorkflowSpecParamsSchema,
   WorkflowTaskParamsSchema,
 } from '@nevo/specflow-contracts/workflow';
-import { WorkflowError, type AgentOption, type WorkflowSubject } from '@nevo/specflow-engine';
+import type { WorkflowSubject } from '@nevo/specflow-engine';
 import type { FastifyPluginCallback, FastifyReply, FastifyRequest } from 'fastify';
 
 import { contractRef } from '../../../server/shared-contracts';
 import { requireCapability, type ResourceCapability } from '../../auth';
-import { SessionError } from '../../sessions';
 import { specScope, type ProjectIdSource } from '../../specs';
 import {
-  AgentUnavailableError,
   WorkflowUnavailableError,
   ownerActorOf,
   sendWorkflowFailure,
   toWire,
-  workflowFailure,
 } from '../../workflow';
 import type { AgentStepExecution } from './operation';
+import { stepExecutionRefusal } from './refusal';
 
 export interface AgentStepExecutionRoutesOptions {
   /** Absent: every route answers 503 `WORKFLOW_UNAVAILABLE` (no Engine, the demo). */
@@ -50,48 +48,6 @@ const errors = {
   503: contractRef(WorkflowErrorSchema),
 } as const;
 
-/** What a Session refusal on the way to the Turn means for the agent, by its code. */
-const SESSION_REASONS: Partial<
-  Record<string, Extract<AgentOption, { kind: 'unavailable' }>['reason']>
-> = {
-  PROVIDER_UNAVAILABLE: 'provider-not-ready',
-  PROVIDER_AUTH_REQUIRED: 'provider-not-ready',
-  PROVIDER_CATALOGUE_UNAVAILABLE: 'provider-not-ready',
-  CAPABILITY_UNSUPPORTED: 'provider-not-ready',
-  MODEL_UNSUPPORTED: 'provider-not-ready',
-  SESSION_DISABLED: 'provider-not-ready',
-  TURN_CONFLICT: 'project-busy',
-  SESSION_NOT_FOUND: 'session-unavailable',
-  SESSION_ARCHIVED: 'session-unavailable',
-};
-
-/**
- * A Session refusal on the way to the Turn, in the workflow vocabulary: the agent unavailable for a
- * reason the owner can act on (said in the Session's words), the request invalid, or the Session
- * store unavailable for now (503).
- */
-function refusalOf(error: unknown) {
-  if (error instanceof SessionError) {
-    const reason = SESSION_REASONS[error.code];
-    if (reason !== undefined) {
-      return workflowFailure(
-        new AgentUnavailableError(
-          { kind: 'unavailable', reason, detail: error.message },
-          error.message,
-        ),
-      );
-    }
-
-    return workflowFailure(
-      error.code === 'SESSION_INPUT_INVALID' || error.code === 'IDEMPOTENCY_CONFLICT'
-        ? new WorkflowError('WORKFLOW_INPUT_INVALID', error.message)
-        : new WorkflowUnavailableError(),
-    );
-  }
-
-  return workflowFailure(error);
-}
-
 function refusing<Request, Result>(
   handler: (request: Request, reply: FastifyReply) => Promise<Result>,
 ): (request: Request, reply: FastifyReply) => Promise<Result> {
@@ -100,7 +56,7 @@ function refusing<Request, Result>(
     try {
       return await handler(request, reply);
     } catch (error) {
-      const failure = refusalOf(error);
+      const failure = stepExecutionRefusal(error);
       if (!failure) {
         throw error;
       }

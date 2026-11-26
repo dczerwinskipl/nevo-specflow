@@ -49,8 +49,12 @@ type Server =
   | 'refuses-protected'
   | 'refuses-blocked'
   | 'refuses-path'
-  | 'commit-failed';
-type Stream = 'steps' | 'unavailable' | 'commit-steps' | 'commit-steps-existing';
+  | 'commit-failed'
+  | 'agent-started'
+  | 'agent-not-started';
+type Stream = 'steps' | 'unavailable' | 'commit-steps' | 'commit-steps-existing' | 'agent-steps';
+
+const firstStepRef = { id: 'requirements', title: 'Zbieranie wymagań' };
 
 const apiError = (init: Partial<ConstructorParameters<typeof ApiError>[0]>) =>
   new ApiError({
@@ -67,49 +71,68 @@ function operationsFor(behavior: Stream): OperationsApi {
   // workspace step).
   const committing = behavior === 'commit-steps' || behavior === 'commit-steps-existing';
   const existing = behavior === 'commit-steps-existing';
-  const events: readonly OperationProgressEvent[] = committing
-    ? [
-        {
-          ...event,
-          type: 'snapshot',
-          status: 'running',
-          steps: [
-            { id: 'reserving', status: 'running' },
-            ...(existing ? [] : [{ id: 'preparing-workspace', status: 'pending' as const }]),
-            { id: 'writing-specification', status: 'pending' },
-            { id: 'committing-specification', status: 'pending' },
-            { id: 'registering', status: 'pending' },
-          ],
-        },
-        { ...event, type: 'step', step: 'reserving', status: 'done' },
-        ...(existing
-          ? []
-          : [
-              {
-                ...event,
-                type: 'step' as const,
-                step: 'preparing-workspace',
-                status: 'done' as const,
-              },
-            ]),
-        { ...event, type: 'step', step: 'writing-specification', status: 'done' },
-        { ...event, type: 'step', step: 'committing-specification', status: 'running' },
-      ]
-    : [
-        {
-          ...event,
-          type: 'snapshot',
-          status: 'running',
-          steps: [
-            { id: 'reserving', status: 'running' },
-            { id: 'preparing-workspace', status: 'pending' },
-            { id: 'writing-specification', status: 'pending' },
-            { id: 'registering', status: 'pending' },
-          ],
-        },
-        { ...event, type: 'step', step: 'reserving', status: 'done' },
-        { ...event, type: 'step', step: 'preparing-workspace', status: 'running' },
-      ];
+  const agentSteps: readonly OperationProgressEvent[] = [
+    {
+      ...event,
+      type: 'snapshot',
+      status: 'running',
+      steps: [
+        { id: 'reserving', status: 'running' },
+        { id: 'preparing-workspace', status: 'pending' },
+        { id: 'writing-specification', status: 'pending' },
+        { id: 'registering', status: 'pending' },
+        { id: 'starting-agent', status: 'pending' },
+      ],
+    },
+    { ...event, type: 'step', step: 'reserving', status: 'done' },
+    { ...event, type: 'step', step: 'preparing-workspace', status: 'running' },
+  ];
+  const events: readonly OperationProgressEvent[] =
+    behavior === 'agent-steps'
+      ? agentSteps
+      : committing
+        ? [
+            {
+              ...event,
+              type: 'snapshot',
+              status: 'running',
+              steps: [
+                { id: 'reserving', status: 'running' },
+                ...(existing ? [] : [{ id: 'preparing-workspace', status: 'pending' as const }]),
+                { id: 'writing-specification', status: 'pending' },
+                { id: 'committing-specification', status: 'pending' },
+                { id: 'registering', status: 'pending' },
+              ],
+            },
+            { ...event, type: 'step', step: 'reserving', status: 'done' },
+            ...(existing
+              ? []
+              : [
+                  {
+                    ...event,
+                    type: 'step' as const,
+                    step: 'preparing-workspace',
+                    status: 'done' as const,
+                  },
+                ]),
+            { ...event, type: 'step', step: 'writing-specification', status: 'done' },
+            { ...event, type: 'step', step: 'committing-specification', status: 'running' },
+          ]
+        : [
+            {
+              ...event,
+              type: 'snapshot',
+              status: 'running',
+              steps: [
+                { id: 'reserving', status: 'running' },
+                { id: 'preparing-workspace', status: 'pending' },
+                { id: 'writing-specification', status: 'pending' },
+                { id: 'registering', status: 'pending' },
+              ],
+            },
+            { ...event, type: 'step', step: 'reserving', status: 'done' },
+            { ...event, type: 'step', step: 'preparing-workspace', status: 'running' },
+          ];
 
   return {
     list: () => Promise.resolve({ kind: 'unavailable' as const }),
@@ -141,6 +164,30 @@ function inspect(server: Server): Promise<CreateOperationInspection> {
       return Promise.resolve(accepted);
     case 'completed':
       return Promise.resolve(createdSpec);
+    case 'agent-started':
+      return Promise.resolve({
+        ...createdSpec,
+        firstStep: {
+          status: 'started',
+          step: firstStepRef,
+          sessionId: 'session-1',
+          attemptId: 'attempt-1',
+        },
+      });
+    case 'agent-not-started':
+      return Promise.resolve({
+        ...createdSpec,
+        firstStep: {
+          status: 'not-started',
+          step: firstStepRef,
+          code: 'WORKFLOW_AGENT_UNAVAILABLE',
+          agent: {
+            kind: 'unavailable',
+            reason: 'project-busy',
+            detail: 'Inny agent pracuje teraz w tym projekcie.',
+          },
+        },
+      });
     case 'failed-branch':
       return Promise.resolve({ ...accepted, status: 'failed', code: 'BRANCH_ALREADY_EXISTS' });
     case 'unknown':
@@ -167,6 +214,9 @@ interface FixtureProps {
   onOpen?: (created: CreatedSpec) => void;
   onBackToForm?: () => void;
   onBackToSpecifications?: () => void;
+  /** Create with an agent: the request carries the first-step intent and the draft names the agent. */
+  agent?: boolean;
+  onOpenSession?: (sessionId: string) => void;
 }
 
 function Fixture({
@@ -177,6 +227,8 @@ function Fixture({
   onOpen = () => undefined,
   onBackToForm = () => undefined,
   onBackToSpecifications = () => undefined,
+  agent = false,
+  onOpenSession = () => undefined,
 }: FixtureProps) {
   const client = useMemo(
     () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
@@ -188,7 +240,14 @@ function Fixture({
     const storage = createSessionOperationStorage('unknown', sessionStorage);
     if (request) {
       storage.save({
-        request: { ...archetypeSelectionFixture, ...request, operationId },
+        request: {
+          ...archetypeSelectionFixture,
+          ...request,
+          ...(agent
+            ? { firstStep: { run: 'agent' as const, provider: 'claude', model: 'sonnet' } }
+            : {}),
+          operationId,
+        },
         startedAt: Date.now(),
       });
     }
@@ -202,8 +261,18 @@ function Fixture({
       archetypeTitle: 'Feature',
       documentFiles: ['overview.md', 'behaviour.md', 'ux.md'],
       ...(facts ? { facts } : {}),
+      ...(agent
+        ? {
+            agent: {
+              providerId: 'claude',
+              modelId: 'sonnet',
+              label: 'Claude · Claude Sonnet',
+              firstStepTitle: firstStepRef.title,
+            },
+          }
+        : {}),
     });
-  }, [request, facts]);
+  }, [request, facts, agent]);
   const services = useMemo(
     () =>
       createSpecFlowAppServices({
@@ -281,6 +350,7 @@ function Fixture({
                   onOpen={onOpen}
                   onBackToForm={onBackToForm}
                   onBackToSpecifications={onBackToSpecifications}
+                  onOpenSession={onOpenSession}
                 />
               </AppShell>
             </AppWorkspaceProvider>
@@ -771,5 +841,87 @@ export const CreatedButNotCommitted: Story = {
     await expect(canvas.queryByText(/Nic nie zostało utworzone/)).toBeNull();
     await expect(canvas.getByRole('button', { name: 'Sprawdź stan operacji' })).toBeEnabled();
     await expect(canvas.queryByRole('button', { name: 'Wróć do formularza' })).toBeNull();
+  },
+};
+
+/** Create with an agent, running: the agent row waits for the Specification; leaving is safe. */
+export const AgentPathCreating: Story = {
+  args: { request: newWorkspace, facts: newWorkspaceFacts, agent: true, stream: 'agent-steps' },
+  play: async ({ canvas, canvasElement }) => {
+    await waitFor(() =>
+      expect(steps(canvasElement).getAllByRole('listitem').at(-1)).toHaveTextContent(
+        'Uruchamianie agenta: Zbieranie wymagań',
+      ),
+    );
+    await expect(steps(canvasElement).getAllByRole('listitem').at(-1)).toHaveTextContent(
+      'Gdy specyfikacja będzie gotowa',
+    );
+    await expect(
+      canvas.getByText(/SpecFlow dokończy tworzenie i uruchomi agenta/),
+    ).toBeInTheDocument();
+    const settings = settingsList(canvas);
+    await expect(settings.getByText('Claude · Claude Sonnet')).toBeInTheDocument();
+    await expect(settings.getByText('Zbieranie wymagań')).toBeInTheDocument();
+  },
+};
+
+/** The agent started: the checklist ends with it and the agent's Session opens. */
+export const AgentPathStarted: Story = {
+  args: {
+    request: newWorkspace,
+    facts: newWorkspaceFacts,
+    agent: true,
+    server: 'agent-started',
+    onOpen: fn(),
+    onOpenSession: fn(),
+  },
+  play: async ({ canvas, canvasElement, args }) => {
+    await expect(
+      await canvas.findByText(
+        'Agent zaczął krok Zbieranie wymagań. Otwieranie jego sesji…',
+        visibleText,
+      ),
+    ).toBeInTheDocument();
+    await expect(steps(canvasElement).getAllByRole('listitem').at(-1)).toHaveTextContent(
+      'Agent wystartował',
+    );
+    await waitFor(() => expect(args.onOpenSession).toHaveBeenCalledWith('session-1'), {
+      timeout: 4000,
+    });
+    await expect(args.onOpen).not.toHaveBeenCalled();
+  },
+};
+
+/**
+ * Create succeeded, the agent did not start: the page stays, says the Specification exists, why the
+ * agent did not start and how to go on (Run with agent…, a new request; or the Overview).
+ */
+export const AgentPathNotStarted: Story = {
+  args: {
+    request: newWorkspace,
+    facts: newWorkspaceFacts,
+    agent: true,
+    server: 'agent-not-started',
+    onOpen: fn(),
+    onOpenSession: fn(),
+  },
+  play: async ({ canvas, canvasElement, args }) => {
+    await expect(
+      await canvas.findByText('Specyfikacja istnieje. Agent nie pracuje.', visibleText),
+    ).toBeInTheDocument();
+    const last = steps(canvasElement).getAllByRole('listitem').at(-1)!;
+    await expect(last).toHaveTextContent('Agent nie zaczął kroku Zbieranie wymagań');
+    await expect(last).toHaveTextContent('nie wykonano');
+    await expect(canvas.getByText('Inny agent pracuje teraz w tym projekcie.')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Uruchom z agentem…' })).toBeInTheDocument();
+    // The finished page says so in the top bar, and the alert's Check again opens Run with agent.
+    await expect(canvas.getAllByText('Specyfikacja utworzona').length).toBeGreaterThan(0);
+    await expect(canvas.getByRole('button', { name: 'Sprawdź ponownie' })).toBeInTheDocument();
+    canvas.getByRole('button', { name: 'Otwórz specyfikację' }).click();
+    await expect(args.onOpen).toHaveBeenCalledWith(
+      expect.objectContaining({ specId: createdSpec.specId }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 1800));
+    await expect(args.onOpenSession).not.toHaveBeenCalled();
   },
 };

@@ -78,6 +78,40 @@ export function resolveSpecificationExecution(
   return { kind: 'resolved', workflow, taskTypes };
 }
 
+/** The entry step of the workflow an archetype's Specification would start, and who may do it. */
+export interface ArchetypeFirstStepInfo {
+  readonly id: string;
+  readonly title: string;
+  /** The step's executors include an agent. */
+  readonly agent: boolean;
+}
+
+/**
+ * The first step of a Specification archetype's workflow (what a first start would begin with), or
+ * undefined when the archetype's execution binding does not resolve (no workflow starts it).
+ */
+export function archetypeFirstStep(
+  catalogue: ExecutionCatalogue,
+  archetypeId: string,
+): ArchetypeFirstStepInfo | undefined {
+  const resolved = resolveSpecificationExecution(catalogue, archetypeId);
+  if (resolved.kind === 'problem') {
+    return undefined;
+  }
+
+  const { workflow } = resolved;
+  const entry = workflow.steps.find((step) => step.id === workflow.entryStep);
+  if (!entry) {
+    return undefined;
+  }
+
+  return {
+    id: entry.id,
+    title: entry.title,
+    agent: entry.kind === 'work' && entry.executors.includes('agent'),
+  };
+}
+
 export interface ExecutionEntities {
   readonly workflows: readonly WorkflowDefinition[];
   readonly archetypes: readonly AgentArchetype[];

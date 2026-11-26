@@ -91,6 +91,8 @@ export interface CreateStatusInput {
   readonly newWorkspace: boolean;
   /** The Create finished without committing its files (Git is disabled in the project). */
   readonly uncommitted?: boolean;
+  /** Create with an agent: what became of the agent start, and the step it starts. */
+  readonly firstStep?: { readonly title: string; readonly started: boolean } | undefined;
 }
 
 /**
@@ -101,6 +103,12 @@ export function createPageStatus(input: CreateStatusInput): Message | undefined 
   const { view, failure } = input;
   switch (view) {
     case 'completed':
+      if (input.firstStep) {
+        return input.firstStep.started
+          ? message('create.page.status.agentStarted', { step: input.firstStep.title })
+          : message('create.page.status.agentNotStarted');
+      }
+
       return message(
         input.uncommitted
           ? 'create.page.status.completedUncommitted'
@@ -178,6 +186,9 @@ export interface CreateSettingsModel {
   readonly documents?: readonly string[];
   /** Git is enabled: the specification files are committed (the branch is `branch` or the workspace's). */
   readonly commit?: true;
+  /** Create with an agent: the agent and model, and the first step it starts (as the form showed them). */
+  readonly agent?: string;
+  readonly firstStep?: string;
 }
 
 export function createSettingsModel(
@@ -186,6 +197,7 @@ export function createSettingsModel(
   facts: CreateSettingsFacts | undefined,
   draftTitle?: string,
   archetype?: { title?: string; documents?: readonly string[] },
+  agent?: { label?: string; firstStepTitle?: string },
 ): CreateSettingsModel | undefined {
   if (!request && !facts) {
     return undefined;
@@ -214,5 +226,7 @@ export function createSettingsModel(
     ...(slug ? { slug } : {}),
     ...(goal ? { goal } : {}),
     ...(facts?.commit ? { commit: true as const } : {}),
+    ...(agent?.label ? { agent: agent.label } : {}),
+    ...(agent?.firstStepTitle ? { firstStep: agent.firstStepTitle } : {}),
   };
 }

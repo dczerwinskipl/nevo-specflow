@@ -161,6 +161,32 @@ export function longCommentarySnapshot(): SessionSnapshot {
   ]);
 }
 
+/**
+ * A long Turn: `stages` progress notes, each followed by three commands (dogfood 3 read the code
+ * this way for an hour). A work row near the start, the middle and the end of it opens Work history
+ * at its own stage.
+ */
+export function manyStagesSnapshot(stages = 12): SessionSnapshot {
+  ordinal = 0;
+  const notes = Array.from(
+    { length: stages },
+    (_, index) =>
+      `Stage ${index + 1}: checking the next part of the parity map against the source before changing anything.`,
+  );
+
+  return snapshot([
+    ...opening(),
+    ...notes.flatMap((text, index) => [
+      entry(firstTurn, 'commentary', text),
+      tool(firstTurn, 'Bash', { opened: { command: 2 + index * 3, read: 2 } }),
+      tool(firstTurn, 'Bash', { opened: { command: 3 + index * 3, read: 2 } }),
+      tool(firstTurn, 'Bash', { opened: { command: 4 + index * 3, read: 2 } }),
+    ]),
+    entry(firstTurn, 'answer', 'The parity map matches the source; `backend.md` is updated.'),
+    entry(firstTurn, 'outcome', 'completed'),
+  ]);
+}
+
 export function toolFailuresSnapshot(): SessionSnapshot {
   ordinal = 0;
 

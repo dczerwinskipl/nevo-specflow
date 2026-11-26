@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { ToolActionSummary, WorkCounts, WorkSummary } from '@nevo/specflow-contracts/sessions';
@@ -26,7 +26,10 @@ import {
   useSecondaryDetailHeaderHosted,
   useSecondaryStack,
   WorkspaceHeaderIdentity,
+  type IconGlyph,
+  type WorkspaceHeaderAction,
 } from '@nevo/ui';
+import { WrapText } from 'lucide-react';
 import { translateNow } from '../../../i18n/message';
 import type { ManagedSessionsApi } from './api';
 import type { SessionFeed } from './feed';
@@ -73,10 +76,11 @@ import {
   SingleToolActionDetail,
   SingleToolActionHeader,
   ToolActionTimelineItem,
-  WrapLinesToggle,
 } from './ToolActionDetails';
+import { useCodeWrapPreference } from './codeWrapPreference';
+import { workItemTitle, workItemTitleParts } from './toolLabels';
 
-type OpenActions = (workId: string, title: string, heading: string, permissionId?: string) => void;
+type OpenActions = (item: WorkSummary, permissionId?: string) => void;
 
 interface Root {
   sessionId: string;
@@ -92,12 +96,22 @@ type Data = Root & {
   /** Compact (default) or every operation: the person's remembered choice (`useWorkHistoryView`). */
   view: WorkHistoryView;
   setView: (view: WorkHistoryView) => void;
+  /** Whether the tool detail's code blocks wrap their lines (`useCodeWrapPreference`). */
+  wrap: boolean;
+  setWrap: (wrap: boolean) => void;
 };
 interface Pages {
   work: Record<string, never>;
   /** `permissionId`: the permission Work folded into this tool Work (`foldPermissions`). */
   /** `heading`: the concrete action ("Ran command"), the screen's title; `workTitle` adds its subject. */
-  actions: { workId: string; workTitle: string; heading: string; permissionId?: string };
+  /** `target`: what it acted on, named for the header (`actionTarget`). */
+  actions: {
+    workId: string;
+    workTitle: string;
+    heading: string;
+    target?: string;
+    permissionId?: string;
+  };
 }
 function useWorkRefresh(feed: SessionFeed, turnId: string, refresh: () => Promise<unknown>) {
   useEffect(() => {
@@ -372,7 +386,7 @@ function WorkChapterSection({
   // chronology like any other line rather than being pulled toward what follows it (spacing above
   // and below Commentary must be equal; a Commentary does not own the operations after it).
   return (
-    <section className="grid min-w-0 gap-5">
+    <section className="grid min-w-0 gap-5" data-work-chapter={chapter.id}>
       {chapter.commentary && chapter.commentaryRole === 'match' ? (
         <WorkNarration item={chapter.commentary} voice="commentary" data={data} />
       ) : !chapter.commentary && turnStartLoaded ? (
@@ -490,6 +504,37 @@ function LoadGateNotices({
   );
 }
 
+/** Where an opened stage starts: the list's own padding below the scroller's top edge. */
+const STAGE_TOP_MARGIN_PX = 16;
+
+/**
+ * A brief, subtle highlight of the stage Work history was opened at, so the reader sees which one
+ * it is: the selected-surface tint, bleeding a little past its edges (no layout change), fading out.
+ * Marked `data-stage-highlight` while it shows.
+ */
+function highlightStage(stage: HTMLElement) {
+  if (typeof stage.animate !== 'function') {
+    return;
+  }
+
+  const tint = getComputedStyle(stage).getPropertyValue('--color-surface-selected').trim();
+  if (!tint) {
+    return;
+  }
+
+  stage.setAttribute('data-stage-highlight', '');
+  const frame = (color: string) => ({
+    backgroundColor: color,
+    boxShadow: `0 0 0 8px ${color}`,
+    borderRadius: '8px',
+  });
+  const animation = stage.animate([frame(tint), frame(tint), frame('transparent')], {
+    duration: 1800,
+    easing: 'ease-out',
+  });
+  animation.onfinish = animation.oncancel = () => stage.removeAttribute('data-stage-highlight');
+}
+
 function Work({ data }: { data: Data }) {
   const { t } = useTranslation();
   const navigation = useSecondaryStack<Pages>();
@@ -517,12 +562,15 @@ function Work({ data }: { data: Data }) {
     state,
     items,
     hasOlder,
-    scroller,
+    viewport,
+    coveredTop,
+    scrollReady,
     content,
     loadOlder,
-    maybeLoadOlder,
     stalled,
     loadMore,
+    showAtTop,
+    releaseSpace,
   } = usePagedHistory({
     store: view,
     merge: mergeWorkItems,
@@ -545,7 +593,10 @@ function Work({ data }: { data: Data }) {
   const olderBusy = state.busy;
   const olderError = state.error;
   const loadGate = useLoadGate(query, state.items.length > 0);
-  const setFilter = (next: WorkFilterState) => view.update((value) => ({ ...value, filter: next }));
+  const setFilter = (next: WorkFilterState) => {
+    releaseSpace();
+    view.update((value) => ({ ...value, filter: next }));
+  };
 
   // A permission and the tool Work it was for are one operation, in both views; a kind filter or a
   // search sees every Work as it is (a filter on interactions still finds each permission).
@@ -565,14 +616,17 @@ function Work({ data }: { data: Data }) {
     () => availableWorkFilterKinds(items, counts?.byKind),
     [items, counts],
   );
-  // Opened at a work stage of the Conversation (`focusWork`): once its Work is loaded, it is
-  // scrolled to the top of the screen (its group already open), then the view is the reader's.
-  // Older pages load until it is found; nothing to find leaves the view as it is.
+  // Opened at a work stage of the Conversation (`focusWork`): once its Work is loaded, the stage
+  // (its chapter: the progress note and the operations under it, groups already open) is shown at
+  // the top of the list and briefly highlighted, then the view is the reader's. Older pages load
+  // until it is found; nothing to find leaves the view as it is. A layout effect: the first frame
+  // the reader sees is already at the stage, and the scroll owner (`showAtTop`) keeps it there
+  // through fonts, late content and older pages landing above it.
   const focus = state.focus;
   const tailLoaded = query.data !== undefined;
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = content.current;
-    if (!focus || !root || !tailLoaded || state.busy) {
+    if (!focus || !root || !tailLoaded || state.busy || !scrollReady) {
       return;
     }
 
@@ -584,16 +638,9 @@ function Work({ data }: { data: Data }) {
       )
       .find((element) => element !== null);
     if (target) {
-      // Only this screen's own scroller moves: `scrollIntoView` also scrolls every ancestor, and
-      // this runs while the Secondary is still sliding in, so it moved the workspace (and the
-      // phone's window) against the transform — two offset copies on screen.
-      const viewport = scroller.current;
-      if (viewport) {
-        const entry = target.closest<HTMLElement>('[data-history-entry]') ?? target;
-        viewport.scrollTop +=
-          entry.getBoundingClientRect().top - viewport.getBoundingClientRect().top;
-      }
-
+      const stage = target.closest<HTMLElement>('[data-work-chapter]') ?? target;
+      showAtTop(stage, coveredTop() + STAGE_TOP_MARGIN_PX);
+      highlightStage(stage);
       view.update(clearFocus);
     } else if (hasOlder && !state.error) {
       void loadOlder();
@@ -608,17 +655,22 @@ function Work({ data }: { data: Data }) {
     state.busy,
     state.error,
     content,
-    scroller,
     view,
     loadOlder,
+    showAtTop,
+    coveredTop,
+    scrollReady,
   ]);
-  const openActions: OpenActions = (workId, workTitle, heading, permissionId) =>
+  const openActions: OpenActions = (item, permissionId) => {
+    const target = actionTarget(item);
     void navigation.navTo('actions', {
-      workId,
-      workTitle,
-      heading,
+      workId: item.workId,
+      workTitle: workItemTitle(t, item),
+      heading: workItemTitleParts(t, item).label,
+      ...(target ? { target } : {}),
       ...(permissionId ? { permissionId } : {}),
     });
+  };
 
   return (
     <AppContent className="h-full w-full">
@@ -630,10 +682,9 @@ function Work({ data }: { data: Data }) {
           `SessionContext`).
           A list starts directly under its filter bar and simply scrolls once it overflows. */}
       <ScrollArea
-        viewportRef={scroller}
+        viewportRef={viewport}
         className="min-h-0 w-full flex-1"
         contentClassName="flex min-h-full flex-col p-4"
-        onScroll={(event) => maybeLoadOlder(event.currentTarget)}
       >
         <div ref={content} className="flex w-full flex-1 flex-col gap-4">
           <LoadGateNotices gate={loadGate} retry={() => void query.refetch()} />
@@ -673,7 +724,8 @@ function Work({ data }: { data: Data }) {
                   actions={olderButton}
                 />
               ) : (
-                <div {...historyList} className="grid w-full gap-5">
+                // `content-start`: room added below the list (`showAtTop`) never stretches its rows.
+                <div {...historyList} className="grid w-full content-start gap-5">
                   {visibleChapters.map((chapter, index) => (
                     <WorkChapterSection
                       key={chapterKeys[index]}
@@ -712,6 +764,22 @@ function useActionsQuery(data: Data, params: ActionsParams) {
   });
 }
 
+/**
+ * What a tool Work acted on, as its detail's header names it under the action: a file tool's file
+ * name (the last part of its workspace-relative path, so a long path never truncates it away),
+ * otherwise the subject as it is (a command, a pattern, a URL). Typed data only: the operation
+ * decides, never the text.
+ */
+export function actionTarget(item: Pick<WorkSummary, 'operation' | 'subject'>): string | undefined {
+  if (!item.subject) {
+    return undefined;
+  }
+
+  const file = item.operation === 'read' || item.operation === 'edit' || item.operation === 'write';
+
+  return file ? (item.subject.split('/').filter(Boolean).at(-1) ?? item.subject) : item.subject;
+}
+
 /** What the opened Work acted on: its title without the action's own name in front. */
 function workSubject(params: ActionsParams): string | undefined {
   const prefix = `${params.heading} · `;
@@ -740,20 +808,12 @@ function ActionsHeader({ data, params }: { data: Data; params: ActionsParams }) 
     return null;
   }
 
-  // The screen's one Wrap lines, for every code block below, at the end of its header row.
-  return (
-    <div className="flex min-w-0 items-start justify-between gap-2">
-      <div className="min-w-0">
-        {isSingleAction(items.length, hasOlder) ? (
-          <SingleToolActionHeader item={items[0]!} />
-        ) : (
-          <Typography as="h2" variant="title-sm" className="text-content-primary">
-            {params.workTitle}
-          </Typography>
-        )}
-      </div>
-      <WrapLinesToggle />
-    </div>
+  return isSingleAction(items.length, hasOlder) ? (
+    <SingleToolActionHeader item={items[0]!} />
+  ) : (
+    <Typography as="h2" variant="title-sm" className="text-content-primary">
+      {params.workTitle}
+    </Typography>
   );
 }
 
@@ -764,23 +824,14 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
   const query = useActionsQuery(data, params);
   useWorkRefresh(data.feed, data.turnId, query.refetch);
 
-  const {
-    state,
-    items,
-    hasOlder,
-    scroller,
-    content,
-    loadOlder,
-    maybeLoadOlder,
-    stalled,
-    loadMore,
-  } = usePagedHistory({
-    store: view,
-    merge: mergeToolActions,
-    tail: query.data,
-    fetchOlder: (before) => data.api.actions(data.sessionId, params.workId, before),
-    absorbOlder: (current, page) => absorbPage(current, mergeToolActions, page, 'older'),
-  });
+  const { state, items, hasOlder, viewport, content, loadOlder, stalled, loadMore } =
+    usePagedHistory({
+      store: view,
+      merge: mergeToolActions,
+      tail: query.data,
+      fetchOlder: (before) => data.api.actions(data.sessionId, params.workId, before),
+      absorbOlder: (current, page) => absorbPage(current, mergeToolActions, page, 'older'),
+    });
   const olderBusy = state.busy;
   const olderError = state.error;
   const loadGate = useLoadGate(query, state.items.length > 0);
@@ -798,31 +849,23 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
           `flex-1`; the real Actions Timeline starts at the top of the panel (no `m-auto` vertical
           centring — see `Work`'s comment for why). */}
       <ScrollArea
-        viewportRef={scroller}
+        viewportRef={viewport}
         className="min-h-0 w-full flex-1"
         // `pt-5` under the detail header row: the 20px section rhythm between it and the first section.
         contentClassName={cn('flex min-h-full flex-col px-4 pb-4', headerHosted ? 'pt-5' : 'pt-4')}
-        onScroll={(event) => maybeLoadOlder(event.currentTarget)}
       >
         <div ref={content} className="flex w-full flex-1 flex-col gap-4">
-          {/* Where no header row hosts the detail header, the screen's own header names the action
-              ("Wrote file and 2 more"); the content then says only what it acted on (several
-              actions), never the action's name a second time, with the screen's one Wrap lines. */}
-          {!headerHosted && loadGate.showContent && items.length > 0 && (
-            <div className="flex min-w-0 items-start justify-between gap-2">
-              {!single && workSubject(params) ? (
-                <Typography
-                  as="p"
-                  variant="body-sm"
-                  className="min-w-0 pt-1.5 font-mono text-content-secondary [overflow-wrap:anywhere]"
-                >
-                  {workSubject(params)}
-                </Typography>
-              ) : (
-                <span />
-              )}
-              <WrapLinesToggle />
-            </div>
+          {/* Where no header row hosts the detail header, the screen's header names the action and
+              its target ("Edited file", "backend.md"); several actions keep their full subject
+              here, never the action's name a second time. */}
+          {!headerHosted && loadGate.showContent && !single && workSubject(params) && (
+            <Typography
+              as="p"
+              variant="body-sm"
+              className="min-w-0 font-mono text-content-secondary [overflow-wrap:anywhere]"
+            >
+              {workSubject(params)}
+            </Typography>
           )}
           <LoadGateNotices gate={loadGate} retry={() => void query.refetch()} />
           {loadGate.showContent && (
@@ -888,6 +931,38 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
 }
 
 /**
+ * A page-level toggle (interaction-model.md "Visual conventions"): an icon action in the screen's
+ * header, pressed while on; its words are its accessible name and tooltip, shown beside the icon
+ * from the split width only (`labelWhenWide`); a checked row of the "…" menu where a stacked header
+ * keeps every action there. Work history's view and the tool detail's Wrap lines are the same
+ * control in the same place.
+ */
+function pageToggle(toggle: {
+  id: string;
+  label: string;
+  icon: IconGlyph;
+  pressed: boolean;
+  onPress: () => void;
+}): WorkspaceHeaderAction {
+  return {
+    ...toggle,
+    presentation: 'icon',
+    labelWhenWide: true,
+    direct: 'always',
+    checked: toggle.pressed,
+  };
+}
+
+const wrapLinesAction = (data: Data) =>
+  pageToggle({
+    id: 'tool-detail-wrap-lines',
+    label: translateNow('managedSession.workInspector.wrapLines'),
+    icon: WrapText,
+    pressed: data.wrap,
+    onPress: () => data.setWrap(!data.wrap),
+  });
+
+/**
  * The Work history root tab: one tab per Turn (full-session.md "Work history (L2)"). The tab's
  * identity is the Turn (`instanceId`), so a Work block in the conversation and Context's "Work
  * history" row, both calling `openTab` with the same `turnId`, land on the SAME tab, while another
@@ -907,10 +982,11 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
       // Called as a hook by the workspace's screen host, so the remembered view re-renders the
       // screen and its header action alike.
       const [view, setView] = useWorkHistoryView();
+      const [wrap, setWrap] = useCodeWrapPreference();
 
       return {
         status: 'ready',
-        data: { ...params, api, feed, owner, workView, actionsView, view, setView },
+        data: { ...params, api, feed, owner, workView, actionsView, view, setView, wrap, setWrap },
       };
     },
     screens: {
@@ -918,22 +994,15 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
         get title() {
           return translateNow('managedSession.work');
         },
-        // The one way to every operation (full-session.md "Work history (L2)"): a pressed icon
-        // toggle with its words as tooltip and name in the header, a checked row of the "…" menu
-        // where the stacked header keeps every action there (the DS header's own rules).
+        // The one way to every operation (full-session.md "Work history (L2)").
         actions: ({ data }) => [
-          {
+          pageToggle({
             id: 'work-history-detailed',
             label: translateNow('managedSession.workInspector.detailedView'),
             icon: 'list',
-            presentation: 'icon',
-            // Icon with its words on a wide header, the icon alone on a narrow (phone) one.
-            labelWhenWide: true,
-            direct: 'always',
             pressed: data.view === 'detailed',
-            checked: data.view === 'detailed',
             onPress: () => data.setView(data.view === 'detailed' ? 'compact' : 'detailed'),
-          },
+          }),
         ],
         component: Work,
       },
@@ -943,7 +1012,18 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
         },
         // The header names the concrete action ("Ran command", "Read file and 2 more"), never the
         // page type; a split Secondary shows it in the detail header row instead (`ActionsHeader`).
-        header: ({ params }) => <WorkspaceHeaderIdentity headingLevel={2} title={params.heading} />,
+        // Under it, what it acted on (`actionTarget`): "Edited file" / "backend.md".
+        header: ({ params }) => (
+          <WorkspaceHeaderIdentity
+            headingLevel={2}
+            title={params.heading}
+            subtitle={params.target}
+          />
+        ),
+        // Wrap lines is the screen's, for every code block (one remembered choice): a page-level
+        // toggle, so it lives in the header like Work history's view toggle (interaction-model.md
+        // "Visual conventions"). Each block keeps only its own Copy.
+        actions: ({ data }) => [wrapLinesAction(data)],
         // The breadcrumb names the opened Work ("Read file admission.mjs"), not the page type;
         // the tab itself keeps its root's name ("Historia pracy").
         breadcrumbLabel: (params) => params.workTitle,

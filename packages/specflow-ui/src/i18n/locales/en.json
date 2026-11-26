@@ -1935,7 +1935,7 @@
       "detailedView": "Show every operation",
       "authorization": {
         "title": "Authorization",
-        "answered": "Permission request answered"
+        "answered": "Permission request · who decided is not recorded"
       },
       "interaction": {
         "permission": "Permission request",

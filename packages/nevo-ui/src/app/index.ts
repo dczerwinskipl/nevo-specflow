@@ -8,6 +8,8 @@ export { StandaloneShell, type StandaloneShellProps } from './shell/StandaloneSh
 export {
   AppContent,
   AppContentContainer,
+  useAppContentScrollOwner,
+  type AppContentScrollOwner,
   AppWorkspace,
   AppWorkspaceBody,
   AppWorkspaceHeader,

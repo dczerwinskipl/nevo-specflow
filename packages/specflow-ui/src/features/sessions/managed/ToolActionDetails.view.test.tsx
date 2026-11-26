@@ -5,12 +5,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ContentRef, ToolActionSummary } from '@nevo/specflow-contracts/sessions';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import type { ManagedSessionsApi } from './api';
-import {
-  SingleToolActionDetail,
-  SingleToolActionHeader,
-  WrapLinesToggle,
-} from './ToolActionDetails';
-import { resetCodeWrapPreference } from './codeWrapPreference';
+import { SingleToolActionDetail, SingleToolActionHeader } from './ToolActionDetails';
+import { resetCodeWrapPreference, useCodeWrapPreference } from './codeWrapPreference';
+
+/** Stands in for the actions screen's Wrap lines header action (`WorkInspector.tsx`). */
+function WrapLines() {
+  const [wrap, setWrap] = useCodeWrapPreference();
+
+  return (
+    <button type="button" aria-pressed={wrap} onClick={() => setWrap(!wrap)}>
+      Wrap lines
+    </button>
+  );
+}
 
 const rawInput = '{"pattern":"admission","path":"src","limit":3}';
 const rawOutput = 'src/admission.mjs:42: export function admission() {\n  return true;\n}';
@@ -58,8 +65,7 @@ function renderDetail(
       <QueryClientProvider
         client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
       >
-        {/* The screen's one Wrap lines, as the actions screen's header holds it. */}
-        <WrapLinesToggle />
+        <WrapLines />
         <SingleToolActionDetail
           item={item}
           source={{ api, sessionId: 'session-1' }}

@@ -848,9 +848,12 @@ function MobileRuntimeSurfaceRegion({
   // branch mounts/unmounts the real `ScrollArea` viewport — never for `contentOwnsScroll`, which
   // has no such element at all. React invokes a callback ref with `null` on unmount, so switching
   // back to split/desktop (unmounting this component) already clears it without extra cleanup.
+  // The same element, as state, for the surface's content (`useAppContentScrollOwner`).
+  const [scrollElement, setScrollElementState] = useState<HTMLElement | null>(null);
   const setScrollElement = useCallback(
     (node: HTMLDivElement | null) => {
       viewportRef.current = node;
+      setScrollElementState(node);
       onScrollElementChange?.(node);
     },
     [onScrollElementChange],
@@ -869,6 +872,8 @@ function MobileRuntimeSurfaceRegion({
     [onSheetElementChange],
   );
   const headerRef = useRef<HTMLDivElement>(null);
+  // Once the header has scrolled away, the floating navigation row covers its band.
+  const coveredTop = useCallback(() => headerRef.current?.offsetHeight ?? 0, []);
   const [headerCovered, setHeaderCovered] = useState(false);
   const headerCoveredRef = useRef(false);
   const showHeader =
@@ -1068,7 +1073,7 @@ function MobileRuntimeSurfaceRegion({
                       data-workspace-sheet={surface.stackedSurface ?? 'sheet'}
                       ref={setSheetElement}
                     >
-                      <AppContentScrollProvider>
+                      <AppContentScrollProvider element={scrollElement} coveredTop={coveredTop}>
                         <div
                           aria-labelledby={tabPanelId ? tabPanelLabelledBy : undefined}
                           className="min-h-full"
@@ -1578,8 +1583,10 @@ export {
   AppContentContainer,
   AppWorkspaceBody,
   AppWorkspaceHeader,
+  useAppContentScrollOwner,
   type AppContentContainerProps,
   type AppContentContainerSize,
+  type AppContentScrollOwner,
 } from './AppContent';
 export {
   AppWorkspaceSlots,

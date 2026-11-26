@@ -144,7 +144,12 @@ streaming answer.
 - **One target, a navigation row.** The whole row opens that Turn's Work history (owner,
   2026-11-26), in the navigation-row pattern of Session Context: icon, text and a trailing chevron
   that means "opens", never "expands"; no visible "Work history" label. Work history opens at that
-  stage: its group expanded and scrolled into view (older pages load until it is found). Back
+  stage, the same way every time (first open, reopening, a long history; owner, PR 169): the
+  stage's chapter (its progress note and the operations under it) starts at the top of the list,
+  16 px below the header band (on a phone the floating navigation row), its groups expanded, with
+  a brief, subtle highlight (the selected-surface tint fading out in under 2 s). Older pages load
+  until it is found. Near the end of the list the list gets the room it needs below its last row
+  so the stage can still reach the top. Only the list scrolls, never the workspace. Back
   returns to the exact place in the conversation, also a few lines above the bottom (a resized or
   new scroll owner keeps the reader's distance from the bottom; only new content follows to it). The leading icon is the icon of the kind the stage did most (the
   same icon per operation kind as in Work history), an alert once the settled stage has failed tool
@@ -186,9 +191,12 @@ Live updates never open, switch or reset Work history.
   under its state. The same wording heads the ToolAction detail ("Wrote file", the path under it),
   followed by the readable input (a command wrapped, a written file's content, an edit's text before
   and after), the response with workspace paths relative, and **Raw parameters** collapsed. The
-  screen's header row holds one **Wrap lines** for all its code blocks (one remembered choice, on by
-  default on a narrow screen); each block has its own Copy. Where the shell cannot split (a phone)
-  both are icon-only buttons, their words kept as the accessible name and tooltip.
+  screen's header holds one **Wrap lines** for all its code blocks (one remembered choice, on by
+  default on a narrow screen), the same page-level toggle as Work history's **Show every
+  operation** (see "Page-level toggles" in
+  [Visual conventions](interaction-model.md#visual-conventions)); each block has its own Copy, an
+  icon-only button where the shell cannot split (a phone), its word kept as the accessible name
+  and tooltip.
 - **Commentary structures the operations.** Each Commentary starts a chapter; the operations that
   follow are its chronological rows until the next Commentary. Operations render on the DS
   `Timeline`, **one Timeline per run between narration**: the rail resets at every Commentary or
@@ -208,16 +216,21 @@ Live updates never open, switch or reset Work history.
 - **Start of Turn.** Operations before any Commentary are labelled **Start of Turn** only once the
   Turn's oldest page is loaded; before that they are unlabelled, since their Commentary may be on an
   older page.
-- **Compact by default, every operation on request.** The compact view folds each run of two or
-  more adjacent completed tools under a progress note into one Timeline item, collapsed by default
-  ("6 tool actions", by kind under it: "5 commands · 1 read"; leading disclosure chevron, member
-  rows keep trailing navigation chevrons). Failures, questions, thinking, unpaired permissions and a
-  tool whose permission was denied are always rows of their own, as are cancelled, interrupted,
-  unknown, active and queued tools. The detailed view shows every operation as its own row. One
-  toggle in the screen's header switches the view (**Show every operation**: on a wide header the icon
-  with its words, a neutral button; on a phone the icon alone with its words as tooltip; pressed
-  while detailed); no control in the body. The choice is remembered in the
-  browser for every Turn. Whether a group is open is state of the Turn's view: it survives the group
+- **Compact by default, every operation on request. The compact rule, in one sentence:**
+  neighbouring successful operations collapse into one group; anything else is a row of its own,
+  and anything the agent says starts a new run. In detail: two or more adjacent completed tools
+  fold into one Timeline item, collapsed by default ("6 tool actions", by kind under it:
+  "5 commands · 1 read"; leading disclosure chevron, member rows keep trailing navigation
+  chevrons). A single successful operation between two notes is just its row (there is nothing to
+  collapse). A failed, cancelled, interrupted, unknown, active or queued tool, a tool whose
+  permission was denied, a question and a permission that could not be paired are rows of their
+  own and end the run. A progress note starts a new stage, and Thinking between operations starts
+  a new run. **Allowed** is a badge on the tool's row (the paired permission, below), never a row
+  and never a group breaker. The detailed view shows every operation as its own row. One toggle in
+  the screen's header switches the view (**Show every operation**, a page-level toggle: pressed
+  while detailed); no control in the body. The choice is remembered in the browser for every
+  Turn, so a browser that once chose every operation keeps showing it (dogfood 4: the owner's
+  phone showed three "Ran command" rows because it was on, read as a plain button). Whether a group is open is state of the Turn's view: it survives the group
   growing, a drill-in and back, and a tab switch.
 - **An answered question says what was asked and what was answered.** The Runtime records the
   question (its label, first paragraph and option labels) and the answer (chosen options and the
@@ -265,17 +278,21 @@ Ran command                           the screen's title: the concrete action
 cd . && grep -n "tasks-file" …        compact preview, at most two lines (whole text as tooltip)
 (✓) 2.1 s                             status line
 COMMAND                       Copy    the full command, wrapped
-AUTHORIZATION                         (🛡) Allowed · Permission request answered   (paired only)
+AUTHORIZATION                         (🛡) Allowed · Permission request · who decided is not recorded   (paired only)
 RESULT                        Copy    the original output, verbatim, no gutter
 ```
 
 - **Title.** The screen's header names the concrete action ("Ran command", "Wrote file and 2
-  more"), never "Tool actions"; the content does not repeat it. A split Secondary shows the same in
-  its detail header row. A row in Work history shows the same compact preview of the command.
+  more"), never "Tool actions", and under it what it acted on: a file tool's file name
+  ("backend.md", so a long path never truncates it away), otherwise the subject (a command, a
+  pattern). The content does not repeat the action; it starts with the full path or command and
+  the status line, with no band above them. A split Secondary shows the same in its detail header
+  row. A row in Work history shows the same compact preview of the command.
 - **No interpretation.** A command is never described by what the UI guesses it did: the preview,
   the full command with Copy, and the original output with Copy.
 - **Authorization** appears when a permission was paired with this tool in Work history: the
-  decision with its shield; not who answered and not when (neither is recorded per decision).
+  decision with its shield, and "who decided is not recorded" (Claude's mode, the allowlist or the
+  owner; ADR 0026); not when either.
 
 - **Status.** Completed: a discreet success check, the word announced to assistive technology only,
   no badge. Failed, cancelled or interrupted: the matching icon plus the visible state word (never

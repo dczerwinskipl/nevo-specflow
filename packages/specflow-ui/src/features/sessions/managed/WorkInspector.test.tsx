@@ -625,11 +625,18 @@ describe('WorkInspector sparse-state framing', () => {
     // The operation's own title is the way into its ToolAction details.
     clickTrigger('Run a single step');
 
-    // A single action is not named a second time: the screen's header names it, and its one Wrap
-    // lines toggle sits in the drill-in.
-    const drillIn = await screen.findByText('Wrap lines');
+    // A single action is not named a second time: the screen's header names it and holds the
+    // screen's one Wrap lines, a pressed-state toggle like Work history's view toggle.
+    const toggle = await screen.findByRole('button', { name: 'Wrap lines' });
+    expect(toggle.getAttribute('aria-pressed')).not.toBeNull();
     expect(screen.queryByText('Read one file')).toBeNull();
-    expect(drillIn.closest('.m-auto')).toBeNull();
+    const status = await waitFor(() => {
+      const node = document.querySelector('[data-tool-action-status]');
+      expect(node).not.toBeNull();
+
+      return node!;
+    });
+    expect(status.closest('.m-auto')).toBeNull();
   });
 });
 

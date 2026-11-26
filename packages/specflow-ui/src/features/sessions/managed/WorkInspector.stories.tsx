@@ -11,6 +11,9 @@ import {
   longReadActions,
   longReadWorkId,
   createWorkInspectorFixtureApi,
+  dogfoodEditActions,
+  dogfoodEditWorkId,
+  dogfoodTurnWorkItems,
   largeWorkTimelineItems,
   longRunWorkTimelineItems,
   mixedWorkTimelineActions,
@@ -547,21 +550,32 @@ export const ClaudeTurn: Story = {
       'aria-expanded',
       'false',
     );
-    // One Wrap lines for the screen (none per block), pressed state announced; each block keeps
-    // its own Copy.
-    const toggle = () => canvas.getByRole('button', { name: 'Zawijaj wiersze' });
+    // One Wrap lines for the screen, in its header (none per block), pressed state announced —
+    // the same page-level toggle as Work history's view; each block keeps its own Copy.
+    const toggle = () => within(document.body).getByRole('button', { name: 'Zawijaj wiersze' });
+    await expect(toggle().closest('[data-workspace-header="true"]')).not.toBeNull();
     const before = toggle().getAttribute('aria-pressed');
     await userEvent.click(toggle());
     await expect(toggle()).toHaveAttribute('aria-pressed', before === 'true' ? 'false' : 'true');
-    // Where the shell can split (desktop) the header actions show their words beside the icon.
-    const iconOnly = (button: HTMLElement) => button.querySelector('span.sr-only') !== null;
-    await expect(iconOnly(toggle())).toBe(false);
 
-    // On a phone they are icon-only, the words kept as the accessible name and the tooltip.
+    // On a phone it is icon-only, its words kept as the accessible name (and the tooltip).
     await settleViewport(412, 915);
-    await waitFor(() => expect(iconOnly(toggle())).toBe(true));
-    await expect(toggle()).toHaveAttribute('title', 'Zawijaj wiersze');
+    await waitFor(() => expect(toggle().textContent?.trim()).toBe(''));
+    const iconOnly = (button: HTMLElement) => button.querySelector('span.sr-only') !== null;
     await expect(iconOnly(canvas.getAllByRole('button', { name: /^Kopiuj/ })[0]!)).toBe(true);
+  },
+};
+
+/**
+ * The Turn the owner reported (dogfood 4): allowed commands, five failed edits of one long path, a
+ * failed read under its own note, an interrupted edit. Opening the first failed edit shows its
+ * detail: the action and the file name in the header, the full path under it.
+ */
+export const DogfoodTurn: Story = {
+  args: {
+    api: createWorkInspectorFixtureApi(dogfoodTurnWorkItems(), {
+      [dogfoodEditWorkId]: dogfoodEditActions(),
+    }),
   },
 };
 

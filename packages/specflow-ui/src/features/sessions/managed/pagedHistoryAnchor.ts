@@ -9,8 +9,8 @@
  * restores it on the next change, so only the change since then is compensated.
  */
 
-const ENTRY_ATTRIBUTE = 'data-history-entry';
-const LIST_ATTRIBUTE = 'data-history-list';
+export const ENTRY_ATTRIBUTE = 'data-history-entry';
+export const LIST_ATTRIBUTE = 'data-history-list';
 
 /** Marks one entry of a paged history list with its stable identity (its Work or ToolAction id). */
 export const historyEntry = (id: string) => ({ 'data-history-entry': id });

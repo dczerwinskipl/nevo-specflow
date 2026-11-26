@@ -553,6 +553,14 @@ ancestor of a sliding surface is ever scrolled.
 
 ### Reaching Primary's ambient scroll element, and the bottom safe area
 
+Any surface's content (Primary or Secondary) reads the scroll a stacked surface owns for it with
+`useAppContentScrollOwner()`: `{ element, coveredTop() }` on a stacked surface (`element` the
+page `ScrollArea` viewport once mounted, `coveredTop()` the header band the floating navigation
+row covers once the header scrolled away), `null` where the content owns its scroll (split,
+`scroll="content"`). A screen that keeps a reading position or brings an entry to the top (Work
+history) writes this element on a stacked layout: its own `ScrollArea` viewport never scrolls
+there, since the stacked surface scrolls its whole page.
+
 A Primary that needs imperative access to its own scroll position under the default
 `scroll="workspace"` — auto-scroll-to-bottom on new content, near-top infinite-load of older
 history, away-from-bottom ("jump to latest") detection, or reserving space for its own
@@ -604,7 +612,7 @@ which has no `.mobile-workspace-scroll-area` ancestor, reads the same variable w
   presentation?: 'button' | 'icon',      // 'icon' requires `icon` (type-enforced): IconButton sm + Tooltip(label)
   direct?: 'wide' | 'always' | 'never',  // default: primary -> shown directly, everything else -> 'never'
   pressed?: boolean,                     // icon actions only: toggle state, see below
-  labelWhenWide?: boolean,               // non-primary icon actions: icon + label on wide, icon only on narrow
+  labelWhenWide?: boolean,               // non-primary icon actions: icon + label from the split width on a wide header
   group?: 'display' | 'actions',         // complete menu only: section, default 'actions'
   checked?: boolean,                     // toggle state, both menu modes; wins over `pressed` for icons too
   shortcut?: string }                    // trailing hint in the menu row, e.g. 'Ctrl+S' (both menu modes)
@@ -625,10 +633,12 @@ which has no `.mobile-workspace-scroll-area` ancestor, reads the same variable w
   `onMenuClosed: () => void`. The menu then does not return focus to the `•••` trigger; it calls the
   handler once it has closed and no longer traps focus, so the consumer needs no timers or retakes.
 - An icon action's `label` is its accessible name and its tooltip (also on keyboard focus).
-- `labelWhenWide: true` on a direct non-primary icon action shows the label beside the icon on a
-  wide header, as a neutral `ghost` `Button sm` (same `aria-pressed` and selected style as the icon
-  toggle, never the filled primary look); a narrow header keeps the icon-only button with its
-  tooltip. Use it where the words matter on desktop (the Work history's **Show every operation**).
+- `labelWhenWide: true` on a direct non-primary icon action shows the label beside the icon from
+  the split width (`useWorkspaceCapabilities().supportsSplit`) on a wide header, as a neutral
+  `ghost` `Button sm` (same `aria-pressed` and selected style as the icon toggle, never the filled
+  primary look); below the split width (a phone) and on a narrow header it keeps the icon-only
+  button with its tooltip. A header outside a measured workspace follows its own width only. Use it
+  for page-level toggles (Work history's **Show every operation**, a tool detail's **Wrap lines**).
 - The stacked floating row (`compact` density) lists **all** actions in `•••`, a superset of the in-flow
   header (which is `inert` while covered), so nothing is exposed twice.
 - **Icon toggles.** On non-primary icon actions, `checked ?? pressed` is the **same effective state**

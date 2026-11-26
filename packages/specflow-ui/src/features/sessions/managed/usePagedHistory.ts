@@ -1,4 +1,5 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useAppContentScrollOwner } from '@nevo/ui';
 import { useAutoLoadOlder } from './useAutoLoadOlder';
 import { usePagedHistoryScroll } from './usePagedHistoryScroll';
 import {
@@ -59,7 +60,16 @@ export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extend
   resetKey?: (state: S) => unknown;
 }) {
   const state = useViewState(store);
-  const scroller = useRef<HTMLDivElement>(null);
+  // What scrolls the list: the screen's own `ScrollArea` (`viewport`) on a split layout, the
+  // stacked surface's page scroll otherwise (a stacked Secondary scrolls its whole page, header
+  // included, so the screen's own viewport never scrolls there).
+  const viewport = useRef<HTMLDivElement>(null);
+  const owner = useAppContentScrollOwner();
+  const ambient = owner?.element ?? null;
+  const scroller = useMemo(
+    () => (ambient ? { current: ambient as HTMLDivElement } : viewport),
+    [ambient],
+  );
   const content = useRef<HTMLDivElement>(null);
   const { items, hasOlder } = useMemo(
     () => availablePaged(state, tail, merge),
@@ -69,7 +79,7 @@ export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extend
   // A commit that changed what the list holds or shows (an older page, the tail, a filter, an
   // indicator) is applied before the auto-loader below reads the position (same commit, earlier
   // in declaration order); changes inside rendered entries reach the owner by themselves.
-  const { layoutChanged } = usePagedHistoryScroll(scroller, content);
+  const { layoutChanged, showAtTop, releaseSpace } = usePagedHistoryScroll(scroller, content);
   useLayoutEffect(layoutChanged, [layoutChanged, state, tail]);
 
   async function loadOlder(begin?: () => void) {
@@ -102,15 +112,43 @@ export function usePagedHistory<TItem, S extends PagedState<TItem>, TPage extend
     resetKey: resetKey?.(state),
   });
 
+  const coveredTop = useCallback(
+    () => (ambient && owner ? owner.coveredTop() : 0),
+    [ambient, owner],
+  );
+
+  // Near the top, the next older page loads, whichever element scrolls.
+  const nearTop = useRef(maybeLoadOlder);
+  useLayoutEffect(() => {
+    nearTop.current = maybeLoadOlder;
+  });
+  useEffect(() => {
+    const node = scroller.current;
+    if (!node) {
+      return undefined;
+    }
+
+    const scrolled = () => nearTop.current(node);
+    node.addEventListener('scroll', scrolled, { passive: true });
+
+    return () => node.removeEventListener('scroll', scrolled);
+  }, [scroller]);
+
   return {
     state,
     items,
     hasOlder,
-    scroller,
+    /** The screen's own `ScrollArea` viewport (`viewportRef`). */
+    viewport,
+    /** Space the surface's controls cover at the top of `scroller` (a stacked header band). */
+    coveredTop,
+    /** What scrolls the list is known (a stacked surface reports its page scroller after mount). */
+    scrollReady: owner === null || ambient !== null,
     content,
     loadOlder,
-    maybeLoadOlder,
     stalled,
     loadMore,
+    showAtTop,
+    releaseSpace,
   };
 }

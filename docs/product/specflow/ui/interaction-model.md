@@ -400,6 +400,14 @@ full brief, Show feedback). An **icon action** (`IconButton`, or a header action
 a Session is an icon action that shows its label from the split width (`labelWhenWide`), so it
 never competes with Continue or Start.
 
+**Page-level toggles.** A toggle that changes how the whole screen shows its content (Work
+history's **Show every operation**, a tool detail's **Wrap lines**) is an icon action in the
+screen's header (`presentation: 'icon'`, `labelWhenWide`, pressed while on, a checked row where a
+header keeps its actions in the "…" menu): icon-only below the split width (a phone) and on a
+narrow header, its words as accessible name and tooltip; icon with its words from the split width
+when the header has room. One builder, one place, one pressed state. An action on one block (Copy
+of one code block) stays on the block; a toggle is never placed in the body.
+
 **Colour semantics.** Blue (`content-link`, `action-primary`, the active step of the track) is
 actions and navigation only. Green (`status-success`) is success, and an agent's work running
 normally. Yellow (`status-attention`) is waiting or attention (Waiting for dependencies, an

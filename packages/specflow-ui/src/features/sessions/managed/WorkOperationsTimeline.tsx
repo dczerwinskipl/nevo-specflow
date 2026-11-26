@@ -20,7 +20,8 @@ import { workMarkerTone, workStateTextClassName } from './workStatus';
 import { WorkRowContent, useWorkRowMeta } from './WorkRow';
 import { workFailureText, workItemTitle, workItemTitleParts } from './toolLabels';
 
-type OpenActions = (workId: string, title: string, heading: string, permissionId?: string) => void;
+/** Opens a tool Work's actions; `permissionId`: the permission folded into it. */
+type OpenActions = (item: WorkSummary, permissionId?: string) => void;
 type Authorizations = ReadonlyMap<string, WorkSummary>;
 
 /**
@@ -297,7 +298,6 @@ function ToolTimelineItem({
 }) {
   const { t } = useTranslation();
   const { meta, srStatus } = useWorkRowMeta(item, { actionCount: item.actionCount });
-  const title = workItemTitle(t, item);
 
   return (
     <Timeline.Item {...historyEntry(item.workId)}>
@@ -317,17 +317,7 @@ function ToolTimelineItem({
               </>
             }
             meta={withFailure(withAuthorization(meta, permission), item, t)}
-            onOpen={
-              item.actionCount
-                ? () =>
-                    onOpenActions(
-                      item.workId,
-                      title,
-                      workItemTitleParts(t, item).label,
-                      permission?.workId,
-                    )
-                : undefined
-            }
+            onOpen={item.actionCount ? () => onOpenActions(item, permission?.workId) : undefined}
           />
         }
       />
@@ -348,9 +338,7 @@ function GroupedToolRow({
   permission?: WorkSummary;
   onOpenActions: OpenActions;
 }) {
-  const { t } = useTranslation();
   const { meta, srStatus } = useWorkRowMeta(item, { actionCount: item.actionCount });
-  const title = workItemTitle(t, item);
 
   return (
     <WorkRowContent
@@ -361,17 +349,7 @@ function GroupedToolRow({
         </Typography>
       }
       meta={withAuthorization(meta, permission)}
-      onOpen={
-        item.actionCount
-          ? () =>
-              onOpenActions(
-                item.workId,
-                title,
-                workItemTitleParts(t, item).label,
-                permission?.workId,
-              )
-          : undefined
-      }
+      onOpen={item.actionCount ? () => onOpenActions(item, permission?.workId) : undefined}
     />
   );
 }

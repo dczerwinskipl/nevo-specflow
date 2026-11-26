@@ -1935,7 +1935,7 @@
       "detailedView": "Pokaż każdą operację",
       "authorization": {
         "title": "Autoryzacja",
-        "answered": "Odpowiedziano na prośbę o zgodę"
+        "answered": "Prośba o zgodę · nie zapisano, kto zdecydował"
       },
       "interaction": {
         "permission": "Prośba o zgodę",

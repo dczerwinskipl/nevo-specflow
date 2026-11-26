@@ -13,6 +13,7 @@ import {
 import {
   interruptionSnapshot,
   longCommentarySnapshot,
+  manyStagesSnapshot,
   normalRunSnapshot,
   permissionSnapshot,
   questionSnapshot,
@@ -134,6 +135,16 @@ export const LongCommentaryDesktop: Story = {
   args: { api: transcriptApi(longCommentarySnapshot()) },
   globals: WIDE_VIEWPORT,
   play: longPlay,
+};
+
+/** A long Turn (twelve stages): a work row opens Work history at its own stage. */
+export const ManyStagesMobile: Story = {
+  args: { api: stageWorkApi(manyStagesSnapshot()) },
+  globals: NARROW_VIEWPORT,
+};
+export const ManyStagesDesktop: Story = {
+  args: { api: stageWorkApi(manyStagesSnapshot()) },
+  globals: WIDE_VIEWPORT,
 };
 
 /** Failed tool actions stay in their stage's tool row; a completed Turn adds no outcome. */
@@ -480,5 +491,144 @@ export const WorkRowOpensItsStage: Story = {
         1,
       );
     });
+  },
+};
+
+/** Where an opened stage starts on screen: below the stacked header band (56) plus the list's 16. */
+const STAGE_TOP_STACKED = 56 + 16;
+/** On a split layout: the list's own 16 below the top of the Work screen's scroller. */
+const STAGE_TOP_SPLIT = 16;
+
+async function openStageAndMeasure(
+  canvasElement: HTMLElement,
+  stage: number,
+  workIds: readonly string[],
+  onRowPlaced?: (top: number) => void,
+): Promise<HTMLElement> {
+  const rows = await waitFor(() => {
+    const found = canvasElement.querySelectorAll<HTMLElement>('[data-work-block] button');
+    if (found.length <= stage) {
+      throw new Error('Expected every stage row.');
+    }
+
+    return found;
+  });
+  // The reader scrolls the row to the middle of the conversation, past the settle window of the
+  // last layout change (a resize, a Back), so the scroll is the reader's own.
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const conversation = document.querySelector<HTMLElement>('[data-session-scroller]')!;
+  conversation.scrollTop += rows[stage]!.getBoundingClientRect().top - window.innerHeight / 2;
+  // The conversation settles (its scroll owner may still adjust) before the row's place is taken.
+  let top = Number.NaN;
+  for (let stable = 0; stable < 3;) {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const now = rows[stage]!.getBoundingClientRect().top;
+    stable = Math.abs(now - top) < 0.5 ? stable + 1 : 0;
+    top = now;
+  }
+
+  onRowPlaced?.(top);
+  await userEvent.click(rows[stage]!);
+
+  return waitFor(() => {
+    const chapter = document
+      .querySelector<HTMLElement>(`[data-work-id="${workIds[0]}"]`)
+      ?.closest<HTMLElement>('[data-work-chapter]');
+    if (!chapter) {
+      throw new Error("Expected the stage's chapter in Work history.");
+    }
+
+    return chapter;
+  });
+}
+
+/** The chapter's distance from the top edge of what scrolls it. */
+function topInScroller(chapter: HTMLElement) {
+  let node: HTMLElement | null = chapter.parentElement;
+  while (
+    node &&
+    !(
+      node.scrollHeight > node.clientHeight + 1 &&
+      /auto|scroll/.test(getComputedStyle(node).overflowY)
+    )
+  ) {
+    node = node.parentElement;
+  }
+
+  return chapter.getBoundingClientRect().top - (node?.getBoundingClientRect().top ?? 0);
+}
+
+/**
+ * Owner, PR 169: a work row opens Work history with ITS stage at the top of the list (below the
+ * header band), expanded and briefly highlighted — the same on the first open, on reopening and
+ * in a long history, for a stage near the start, the middle and the end. Back returns to the exact
+ * conversation place; only the list scrolls (the slide-in frame guard runs on the first open).
+ */
+export const WorkRowOpensStageAtTop: Story = {
+  tags: ['contract'],
+  args: { api: stageWorkApi(manyStagesSnapshot()) },
+  globals: NARROW_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    await settleViewport(375, 812);
+    const stages = stageWorkIds(manyStagesSnapshot());
+    // Start, middle, end, then the middle again (reopening).
+    for (const [round, stage] of [0, 6, stages.length - 1, 6].entries()) {
+      const rowTop = () =>
+        canvasElement
+          .querySelectorAll<HTMLElement>('[data-work-block] button')
+          [stage]!.getBoundingClientRect().top;
+      let chapter: HTMLElement | undefined;
+      let before = 0;
+      const open = async () => {
+        chapter = await openStageAndMeasure(canvasElement, stage, stages[stage]!, (top) => {
+          before = top;
+        });
+      };
+
+      // The first open also samples every frame of the slide: nothing behind it scrolls.
+      await (round === 0 ? expectOneOpaqueSecondaryAfter(open) : open());
+
+      await waitFor(() => expect(chapter!.hasAttribute('data-stage-highlight')).toBe(true));
+      await waitFor(async () =>
+        expect(
+          Math.abs(topInScroller(chapter!) - STAGE_TOP_STACKED),
+          `stage ${stage} at the top`,
+        ).toBeLessThanOrEqual(1),
+      );
+      // Still there once late layout settled; its groups open.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await expect(Math.abs(topInScroller(chapter!) - STAGE_TOP_STACKED)).toBeLessThanOrEqual(1);
+      for (const id of stages[stage]!) {
+        await expect(document.querySelector(`[data-work-id="${id}"]`)).toBeVisible();
+      }
+
+      await userEvent.click(
+        within(document.body).getAllByRole('button', { name: /^Wróć do: / })[0]!,
+      );
+      await waitFor(async () =>
+        expect(
+          Math.abs(rowTop() - before),
+          `stage ${stage} row back in place (${before} -> ${rowTop()})`,
+        ).toBeLessThanOrEqual(1),
+      );
+    }
+  },
+};
+
+/** The same at a desktop width, where Work history is a split tab with its own scroller. */
+export const WorkRowOpensStageAtTopDesktop: Story = {
+  tags: ['contract'],
+  args: { api: stageWorkApi(manyStagesSnapshot()) },
+  globals: WIDE_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    await settleViewport(1440, 900);
+    const stages = stageWorkIds(manyStagesSnapshot());
+    for (const stage of [6, stages.length - 1, 0]) {
+      const chapter = await openStageAndMeasure(canvasElement, stage, stages[stage]!);
+      await waitFor(async () =>
+        expect(Math.abs(topInScroller(chapter) - STAGE_TOP_SPLIT)).toBeLessThanOrEqual(1),
+      );
+      await expect(chapter.querySelector('[aria-expanded="true"]')).not.toBeNull();
+    }
   },
 };

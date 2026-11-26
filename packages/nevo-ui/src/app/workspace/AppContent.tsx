@@ -1,4 +1,10 @@
-import { createContext, useContext, type HTMLAttributes, type PropsWithChildren } from 'react';
+import {
+  createContext,
+  useContext,
+  useMemo,
+  type HTMLAttributes,
+  type PropsWithChildren,
+} from 'react';
 import { tv } from 'tailwind-variants/lite';
 import { cn } from '../../lib';
 import { ScrollArea } from '../../components/layout/ScrollArea';
@@ -24,10 +30,42 @@ const appWorkspaceBodyVariants = tv({
   },
 });
 
-const AppContentScrollContext = createContext(false);
+/** The scroll an ancestor owns for the content: a stacked surface's page `ScrollArea`. */
+export interface AppContentScrollOwner {
+  /** The element that scrolls, once mounted. */
+  element: HTMLElement | null;
+  /**
+   * How much of the scroller's top edge the surface's own controls cover once its header has
+   * scrolled away (the floating navigation row): content brought to the top belongs below it.
+   */
+  coveredTop: () => number;
+}
 
-export function AppContentScrollProvider({ children }: PropsWithChildren) {
-  return <AppContentScrollContext.Provider value>{children}</AppContentScrollContext.Provider>;
+const AppContentScrollContext = createContext<AppContentScrollOwner | null>(null);
+
+export function AppContentScrollProvider({
+  element = null,
+  coveredTop,
+  children,
+}: PropsWithChildren<{ element?: HTMLElement | null; coveredTop?: () => number }>) {
+  const value = useMemo(
+    () => ({ element, coveredTop: coveredTop ?? (() => 0) }),
+    [element, coveredTop],
+  );
+
+  return (
+    <AppContentScrollContext.Provider value={value}>{children}</AppContentScrollContext.Provider>
+  );
+}
+
+/**
+ * The scroll an ancestor owns for this content (a stacked surface scrolls its whole page, header
+ * included), or `null` where the content owns its own scroll (a split surface, `scroll="content"`).
+ * A screen that keeps a reading position or brings an entry to the top reads and writes this
+ * element on a stacked layout and its own scroller otherwise. Primary and Secondary alike.
+ */
+export function useAppContentScrollOwner(): AppContentScrollOwner | null {
+  return useContext(AppContentScrollContext);
 }
 
 const appContentContainerVariants = tv({
@@ -59,7 +97,7 @@ export function AppContent({
   className,
   ...props
 }: PropsWithChildren<HTMLAttributes<HTMLDivElement>>) {
-  const ancestorOwnsScroll = useContext(AppContentScrollContext);
+  const ancestorOwnsScroll = useContext(AppContentScrollContext) !== null;
 
   return (
     <div
@@ -113,7 +151,7 @@ export function AppWorkspaceBody({
     scroll?: 'native' | 'area';
   }
 >) {
-  const ancestorOwnsScroll = useContext(AppContentScrollContext);
+  const ancestorOwnsScroll = useContext(AppContentScrollContext) !== null;
 
   if (scroll === 'area' && !ancestorOwnsScroll) {
     return (

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { Check, Copy, WrapText } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 import type { ContentRef, ToolActionSummary } from '@nevo/specflow-contracts/sessions';
 import {
   Alert,
@@ -125,34 +125,9 @@ function ResponsiveLabel({ children }: { children: string }) {
   return measured && !supportsSplit ? <span className="sr-only">{children}</span> : children;
 }
 
-/**
- * "Wrap lines" for every code block of the screen: one toggle in the screen's header, since the
- * choice is one for all blocks and remembered (owner, 2026-11-25: a toggle on each block that
- * changed all of them read as broken). Each block keeps only its own Copy.
- */
-export function WrapLinesToggle() {
-  const { t } = useTranslation();
-  const [wrap, setWrap] = useCodeWrapPreference();
-  const label = t('managedSession.workInspector.wrapLines');
-
-  return (
-    <Button
-      aria-pressed={wrap}
-      title={label}
-      leadingIcon={WrapText}
-      size="sm"
-      variant={wrap ? 'secondary' : 'ghost'}
-      onClick={() => setWrap(!wrap)}
-      data-wrap-lines=""
-    >
-      <ResponsiveLabel>{label}</ResponsiveLabel>
-    </Button>
-  );
-}
-
 /** One labelled code block of a ToolAction: its label, then Copy (the original text, never a
  * reformatted presentation), then the text on the product's code view. Wrap lines is the screen's
- * (`WrapLinesToggle`). */
+ * (a header action of the `actions` screen, `WorkInspector.tsx`). */
 function CodeSection({
   label,
   copyLabel,

@@ -32,6 +32,7 @@ import {
 import { RailTail } from '../../components/navigation/ItemTabs/RailTail';
 import { cn } from '../../lib';
 import { useWorkspaceHeaderIdentityOverride } from './workspaceHeaderIdentityOverride';
+import { useWorkspaceCapabilities } from './useWorkspaceCapabilities';
 import { WORKSPACE_HEADER_NARROW_MAX_WIDTH } from './workspaceSizing';
 
 export type WorkspaceHeaderActionTone = 'neutral' | 'danger';
@@ -98,8 +99,11 @@ interface WorkspaceHeaderIconActionBase extends WorkspaceHeaderActionBase {
   icon: IconGlyph;
   presentation: 'icon';
   /**
-   * A direct non-primary icon action that also shows its label beside the icon on a wide header:
-   * a neutral (ghost) button, never the filled primary look. Narrow headers keep the icon only.
+   * A direct non-primary icon action that also shows its label beside the icon from the split
+   * width (the workspace can show Primary and Secondary side by side) on a wide header: a neutral
+   * (ghost) button, never the filled primary look, the same pressed state. Below the split width (a
+   * phone, a narrow window) and on a narrow header it keeps the icon only, its label the accessible
+   * name and tooltip. Outside a measured workspace (a standalone header) the header width decides.
    */
   labelWhenWide?: boolean;
 }
@@ -434,8 +438,9 @@ function DirectPrimaryAction({
   action: WorkspaceHeaderAction;
   narrow: boolean;
 }) {
+  const { supportsSplit, measured } = useWorkspaceCapabilities();
   if (action.presentation === 'icon') {
-    if (action.labelWhenWide && !narrow && !action.primary) {
+    if (action.labelWhenWide && !narrow && !action.primary && (!measured || supportsSplit)) {
       return (
         <Button
           aria-pressed={menuCheckedState(action)}

@@ -4,6 +4,7 @@ import type { WorkBlockModel } from './workBlockModel';
 import { describeWorkBlock } from './workDigest';
 import { workOperationIcon } from './workOperationIcon';
 import { workStateTextClassName } from './workStatus';
+import { contextRowGridClassName } from './context/ContextNavigationRow';
 
 /**
  * The agent-work element of one work stage in the Conversation (full-session.md "Work block"),
@@ -15,7 +16,9 @@ import { workStateTextClassName } from './workStatus';
  * never said here (`TurnOutcomeEvent` says it once). The whole row opens the Turn's Work history.
  *
  * The leading icon is the kind the stage did most (`workOperationIcon`, the icons Work history uses
- * too); colour is used only for the exception: failed tool actions.
+ * too); colour is used only for the exception: failed tool actions, also counted on their own line.
+ * It is a navigation row (owner, 2026-11-26): it opens Work history at this stage, expanded and
+ * scrolled to; Back returns to the same place in the conversation.
  */
 export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspect: () => void }) {
   const { t } = useTranslation();
@@ -27,37 +30,40 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
   return (
     <article data-entry-id={block.id} data-work-block="" className="grid min-w-0">
       <span className="sr-only">{t('managedSession.entry.work-summary')}</span>
+      {/* The navigation-row pattern of Session Context (`contextRowGridClassName`): icon, text
+          and a trailing chevron that means "opens", never "expands"; on a quiet contained surface
+          so every stage's work reads as the same element between the paragraphs. */}
       <button
         type="button"
         onClick={onInspect}
-        className="group/work flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-control bg-surface-subtle px-3 py-2.5 text-left outline-none transition-colors hover:bg-surface-hover active:bg-surface-selected focus-visible:outline-2 focus-visible:outline-focus-ring"
+        className={cn(
+          contextRowGridClassName,
+          'group/work cursor-pointer rounded-control bg-surface-subtle px-3 outline-none transition-colors hover:bg-surface-hover active:bg-surface-selected focus-visible:outline-2 focus-visible:outline-focus-ring',
+        )}
       >
         <span
           aria-hidden="true"
           className={cn(
-            'inline-flex shrink-0 items-center justify-center',
-            workStateTextClassName(danger ? 'danger' : 'neutral'),
+            'flex items-center justify-center',
+            danger ? workStateTextClassName('danger') : 'text-content-muted',
           )}
         >
           {block.live ? (
             <Spinner size="sm" />
           ) : danger ? (
-            <Icon name="circle-alert" size="sm" />
+            <Icon name="circle-alert" size="md" />
           ) : (
-            <Icon name={workOperationIcon(text.operation)} size="sm" />
+            <Icon name={workOperationIcon(text.operation)} size="md" />
           )}
         </span>
-        <span
-          data-work-block-text=""
-          className="grid min-w-0 flex-1 gap-0.5 [overflow-wrap:anywhere]"
-        >
+        <span data-work-block-text="" className="grid min-w-0 gap-0.5 [overflow-wrap:anywhere]">
           {text.title && (
-            <Typography as="span" variant="body-md" className="font-medium text-content-primary">
+            <Typography as="span" variant="body-md" className="text-content-primary">
               {text.title}
             </Typography>
           )}
           {text.detail && (
-            <Typography as="span" variant="body-sm" className="text-content-secondary">
+            <Typography as="span" variant="body-sm" className="text-content-muted">
               {text.detail}
             </Typography>
           )}
@@ -78,7 +84,7 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
               as="span"
               variant="body-sm"
               aria-hidden="true"
-              className="line-clamp-2 text-content-secondary"
+              className="line-clamp-2 text-content-muted"
               title={text.live}
             >
               {text.live}
@@ -89,7 +95,7 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
         <Icon
           name="chevron-right"
           size="sm"
-          className="shrink-0 text-content-muted transition-colors group-hover/work:text-content-secondary"
+          className="text-content-muted transition-colors group-hover/work:text-content-secondary"
         />
       </button>
       {text.live && (

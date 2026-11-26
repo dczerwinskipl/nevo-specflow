@@ -1821,7 +1821,7 @@
     "workKind": {
       "commentary": "Postęp",
       "reasoning": "Myślenie",
-      "interaction": "Interakcja z użytkownikiem",
+      "interaction": "Pytanie lub prośba o zgodę",
       "tool": "Narzędzie"
     },
     "toolVerb": {
@@ -1918,7 +1918,11 @@
         "interaction_one": "{{count}} pytanie lub prośba o zgodę",
         "interaction_few": "{{count}} pytania i prośby o zgodę",
         "interaction_many": "{{count}} pytań i próśb o zgodę",
-        "interaction_other": "{{count}} pytania i prośby o zgodę"
+        "interaction_other": "{{count}} pytania i prośby o zgodę",
+        "notices_one": "{{count}} notatka SpecFlow",
+        "notices_few": "{{count}} notatki SpecFlow",
+        "notices_many": "{{count}} notatek SpecFlow",
+        "notices_other": "{{count}} notatki SpecFlow"
       },
       "question": {
         "answer": "{{question}} → {{answer}}",
@@ -1930,8 +1934,11 @@
       "detailedView": "Pokaż każdą operację",
       "authorization": {
         "title": "Autoryzacja",
-        "answered": "Odpowiedziano na prośbę o zgodę",
-        "answeredIn": "Odpowiedź po {{duration}}"
+        "answered": "Odpowiedziano na prośbę o zgodę"
+      },
+      "interaction": {
+        "permission": "Prośba o zgodę",
+        "question": "Pytanie"
       }
     },
     "workSummary": {
@@ -2049,7 +2056,8 @@
       "handoff": {
         "from": "Z kroku {{step}} · podejście {{attempt}}",
         "returned": "Powrót do tego kroku",
-        "artifacts": "Przekazane pliki"
+        "artifacts": "Przekazane pliki",
+        "fromUnnamed": "Z poprzedniego kroku · podejście {{attempt}}"
       },
       "fullText": "Pełny tekst wysłany agentowi",
       "fullTextNote": "Dokładnie tak, jak otrzymał go agent, z regułami i odwołaniami SpecFlow."

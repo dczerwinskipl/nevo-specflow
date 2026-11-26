@@ -229,10 +229,30 @@ function AnsweredQuestionTimelineItem({
   );
 }
 
+/**
+ * An interaction Work is a permission request when its data says so: a recorded decision, the tool
+ * call it is for (`operation`/`subject`), or the Runtime's own `Permission` title for one without a
+ * tool; a question carries its recorded `question` or the `Question` title.
+ */
+function isPermission(item: WorkSummary): boolean {
+  return (
+    item.question === undefined &&
+    (item.decision !== undefined ||
+      item.operation !== undefined ||
+      item.subject !== undefined ||
+      item.title.text === 'Permission')
+  );
+}
+
 function InteractionTimelineItem({ item }: { item: WorkSummary }) {
   const { t } = useTranslation();
 
-  const kind = t('managedSession.workKind.interaction');
+  // What kind of request it was, in the row's own words (never a generic "User interaction").
+  const kind = t(
+    isPermission(item)
+      ? 'managedSession.workInspector.interaction.permission'
+      : 'managedSession.workInspector.interaction.question',
+  );
   // The interaction's own title (e.g. "Permission to write workspace") — previously every
   // interaction showed only the generic kind name, losing what was actually asked — with its kind
   // leading the meta line under it.
@@ -243,7 +263,7 @@ function InteractionTimelineItem({ item }: { item: WorkSummary }) {
     <Timeline.Item {...historyEntry(item.workId)}>
       <Timeline.Marker
         active={item.state === 'active'}
-        icon={item.operation || item.subject ? ShieldQuestion : MessageCircleQuestion}
+        icon={isPermission(item) ? ShieldQuestion : MessageCircleQuestion}
         tone={workMarkerTone(item.state)}
       />
       <Timeline.Content
@@ -411,7 +431,7 @@ function ToolBurstTimelineItem({
           <Collapsible.Content>
             <ul className="grid gap-3 pt-1">
               {burst.items.map((item) => (
-                <li key={item.workId} className="min-w-0">
+                <li key={item.workId} className="min-w-0" data-work-id={item.workId}>
                   <GroupedToolRow
                     item={item}
                     permission={authorizations.get(item.workId)}

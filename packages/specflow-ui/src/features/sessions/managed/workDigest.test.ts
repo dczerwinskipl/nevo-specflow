@@ -10,6 +10,7 @@ const block = (overrides: Partial<WorkBlockModel>): WorkBlockModel => ({
   turnId: 't',
   id: 'w',
   actionCount: 0,
+  workIds: [],
   partial: false,
   ...overrides,
 });

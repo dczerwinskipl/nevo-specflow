@@ -67,16 +67,18 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
   const toSpecifications = () =>
     navigate({ to: '/', search: { collection: 'current' }, replace: true });
   const home = homeSpecification(data);
-  // The Specification's uncommitted changes as the Runtime reports them now (only where its
-  // changes view exists): a Turn that ended badly then says what is left and opens it.
-  const homeWorkspace = useSpecificationWorkspace(
-    home?.specId ?? '',
-    services.specificationApi,
-  ).data;
-  const workspaceChanges =
-    homeWorkspace?.sectionAvailability?.changes === 'available'
-      ? homeWorkspace.changes?.uncommitted?.length
+  // The Specification's uncommitted files as the Runtime reports them (only where its changes
+  // view exists): the Session reads them again whenever a Turn ends before stating a count.
+  const homeWorkspace = useSpecificationWorkspace(home?.specId ?? '', services.specificationApi);
+  const uncommitted =
+    homeWorkspace.data?.sectionAvailability?.changes === 'available'
+      ? homeWorkspace.data.changes?.uncommitted
       : undefined;
+  const refreshWorkspace = homeWorkspace.refetch;
+  const workspaceChanges = useMemo(
+    () => (uncommitted ? { count: uncommitted.length, refresh: refreshWorkspace } : undefined),
+    [uncommitted, refreshWorkspace],
+  );
   const onSessionChanged = () => {
     if (home) {
       void invalidateSpecificationSessions(queryClient, home.specId);

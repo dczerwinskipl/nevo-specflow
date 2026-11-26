@@ -45,14 +45,13 @@ describe('briefPurpose', () => {
 });
 
 describe('readableBrief', () => {
-  it('keeps what a person reads: the purpose and the agent profile by title, never ids', () => {
+  it('keeps the texts a person reads, from the blocks tagged by source, never ids or names', () => {
     expect(readableBrief(stepBriefText)).toEqual({
       purpose: 'Draft Tasks that together cover the solution, each one verifiable.',
-      archetype: { title: 'Task planner' },
     });
   });
 
-  it('names the Task by its title and keeps its summary', () => {
+  it('reads the Task summary from its own block', () => {
     expect(
       readableBrief(
         [
@@ -62,6 +61,6 @@ describe('readableBrief', () => {
           '</untrusted>',
         ].join('\n'),
       ),
-    ).toEqual({ task: { title: 'Sign-in screen', summary: 'The form.' } });
+    ).toEqual({ taskSummary: 'The form.' });
   });
 });

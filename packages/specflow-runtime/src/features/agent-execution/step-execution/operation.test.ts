@@ -8,7 +8,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { ActiveAgentAttempt, AgentStepEngine } from './engine-port';
 import { SessionError } from '../../sessions';
-import { createAgentStepExecution, derivedId, type AgentStepSessions } from './operation';
+import {
+  createAgentStepExecution,
+  derivedId,
+  requestOriginOf,
+  type AgentStepSessions,
+} from './operation';
 
 const SPEC = 'spec-1';
 const subject: WorkflowSubject = { kind: 'specification', specId: SPEC };
@@ -776,5 +781,36 @@ describe('Hand to agent', () => {
     ]);
     // What the agent receives is unchanged.
     expect(messages).toEqual(['started']);
+  });
+});
+
+describe('requestOriginOf', () => {
+  it('names the agent profile and the hand-off by the definition, next to their ids', () => {
+    expect(
+      requestOriginOf(
+        { kind: 'specification', specId: 'spec-1' },
+        {
+          step: { id: 'breakdown', title: 'Break it down' },
+          attempt: 2,
+          archetype: { id: 'task-planner', title: 'Task planner' },
+          handoff: {
+            kind: 'transition',
+            from: { step: 'breakdown-review', attempt: 1 },
+            transition: 'changes-requested',
+            result: 'fail',
+            artifacts: [],
+          },
+          handoffNames: { fromTitle: 'Review the breakdown', label: 'Changes requested' },
+          text: 'brief',
+        },
+      ),
+    ).toMatchObject({
+      archetype: { id: 'task-planner', title: 'Task planner' },
+      handoff: {
+        from: { step: 'breakdown-review', attempt: 1, title: 'Review the breakdown' },
+        transition: 'changes-requested',
+        label: 'Changes requested',
+      },
+    });
   });
 });

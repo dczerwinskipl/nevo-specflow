@@ -64,61 +64,41 @@ export function briefSubject(t: TFunction, origin: RequestOrigin): string {
     : t('managedSession.brief.subject', { step: origin.step.title, attempt: origin.attempt });
 }
 
-/** Readable parts of a step's brief: what a person wants to know, without SpecFlow's protocol. */
+/**
+ * The texts of a brief a person reads, from the blocks the Runtime tags by source: the step's
+ * purpose and instructions, the agent profile's instructions and the Task's summary. Names (the
+ * step, the Task, the agent profile, the hand-off's step and result) come from the request origin's
+ * own fields, never from the brief's prose; ids, revisions, documents, rules and commands stay in
+ * the full text.
+ */
 export interface ReadableBrief {
   readonly purpose?: string;
   readonly instructions?: string;
-  /** The agent profile the step runs with, by its title (never its id). */
-  readonly archetype?: { readonly title: string; readonly instructions?: string };
-  /** The Task the step works on, by its title (never its id). */
-  readonly task?: { readonly title: string; readonly summary?: string };
+  readonly archetypeInstructions?: string;
+  readonly taskSummary?: string;
 }
 
-const ARCHETYPE_LINE = /^Archetype: (.+?)(?: \([^()]*\))?\s*$/m;
-const TASK_LINE = /^Task: (.+?)(?: \(type [^()]*\))?\s*$/m;
+const READABLE_SOURCES = {
+  'step.purpose': 'purpose',
+  'step.instructions': 'instructions',
+  'archetype.instructions': 'archetypeInstructions',
+  'task.summary': 'taskSummary',
+} as const satisfies Record<string, keyof ReadableBrief>;
 
-/**
- * The parts of a brief a person reads (the Runtime's brief renderer writes them): the step's
- * purpose and instructions, the agent profile's title and instructions, the Task's title and
- * summary. Everything else (ids, revisions, documents, rules, commands) stays in the full text.
- */
 export function readableBrief(text: string): ReadableBrief {
-  const data = new Map<string, string>();
+  const brief: { -readonly [K in keyof ReadableBrief]: ReadableBrief[K] } = {};
   for (const part of briefParts(text)) {
-    if (part.kind === 'data' && part.text.trim() !== '' && !data.has(part.source)) {
-      data.set(part.source, part.text.trim());
+    if (part.kind !== 'data') {
+      continue;
+    }
+
+    const key = (READABLE_SOURCES as Record<string, keyof ReadableBrief | undefined>)[part.source];
+    if (key && brief[key] === undefined && part.text.trim() !== '') {
+      brief[key] = part.text.trim();
     }
   }
 
-  const archetypeTitle = ARCHETYPE_LINE.exec(text)?.[1]?.trim();
-  const taskTitle = TASK_LINE.exec(text)?.[1]?.trim();
-  const archetypeInstructions = data.get('archetype.instructions');
-  const taskSummary = data.get('task.summary');
-  const purpose = data.get('step.purpose');
-  const instructions = data.get('step.instructions');
-
-  return {
-    ...(purpose ? { purpose } : {}),
-    ...(instructions ? { instructions } : {}),
-    ...(archetypeTitle
-      ? {
-          archetype: {
-            title: archetypeTitle,
-            ...(archetypeInstructions ? { instructions: archetypeInstructions } : {}),
-          },
-        }
-      : {}),
-    ...(taskTitle
-      ? { task: { title: taskTitle, ...(taskSummary ? { summary: taskSummary } : {}) } }
-      : {}),
-  };
-}
-
-/** An id made readable ("breakdown-review" -> "Breakdown review"), for what the origin names by id. */
-function readableId(id: string): string {
-  const words = id.replace(/[._-]+/g, ' ').trim();
-
-  return words ? words.charAt(0).toUpperCase() + words.slice(1) : id;
+  return brief;
 }
 
 /** One titled part of the readable brief: the section-title role, then its content. */
@@ -145,20 +125,26 @@ function BriefMarkdown({ source }: { readonly source: string }) {
   return <MarkdownDocument source={source} labels={markdownLabels} headingOffset={2} />;
 }
 
-/** What the previous step handed over, from the request origin's own fields (never its JSON). */
+/**
+ * What the previous step handed over, from the request origin's own fields (never its JSON): the
+ * step by its title in the workflow definition and the result by the transition's label, as the
+ * Now block's Last hand-off names them. A brief recorded before the origin carried those names says
+ * only the attempt; an id is never turned into a name.
+ */
 function HandoffSection({ handoff }: { readonly handoff: NonNullable<RequestOrigin['handoff']> }) {
   const { t } = useTranslation();
   const from =
     handoff.kind === 'return'
       ? t('managedSession.brief.handoff.returned')
       : handoff.from
-        ? t('managedSession.brief.handoff.from', {
-            step: readableId(handoff.from.step),
-            attempt: handoff.from.attempt,
-          })
+        ? handoff.from.title
+          ? t('managedSession.brief.handoff.from', {
+              step: handoff.from.title,
+              attempt: handoff.from.attempt,
+            })
+          : t('managedSession.brief.handoff.fromUnnamed', { attempt: handoff.from.attempt })
         : undefined;
-  const transition = handoff.transition ? readableId(handoff.transition) : undefined;
-  const line = [from, transition].filter(Boolean).join(' · ');
+  const line = [from, handoff.label].filter(Boolean).join(' · ');
 
   return (
     <BriefSection title={t('managedSession.brief.source.handoff')}>
@@ -213,21 +199,21 @@ export function BriefDocument({
           <BriefMarkdown source={brief.instructions} />
         </BriefSection>
       ) : null}
-      {brief.task ? (
+      {origin.task ? (
         <BriefSection title={t('managedSession.brief.source.task')}>
           <Typography as="p" variant="body-md" className="font-medium text-content-primary">
-            {brief.task.title}
+            {origin.task.title}
           </Typography>
-          {brief.task.summary ? <BriefMarkdown source={brief.task.summary} /> : null}
+          {brief.taskSummary ? <BriefMarkdown source={brief.taskSummary} /> : null}
         </BriefSection>
       ) : null}
-      {brief.archetype ? (
+      {origin.archetype ? (
         <BriefSection title={t('managedSession.brief.source.agentProfile')}>
           <Typography as="p" variant="body-md" className="text-content-primary">
-            {brief.archetype.title}
+            {origin.archetype.title}
           </Typography>
-          {brief.archetype.instructions ? (
-            <BriefMarkdown source={brief.archetype.instructions} />
+          {brief.archetypeInstructions ? (
+            <BriefMarkdown source={brief.archetypeInstructions} />
           ) : null}
         </BriefSection>
       ) : null}

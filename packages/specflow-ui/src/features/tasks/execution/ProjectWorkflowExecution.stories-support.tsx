@@ -987,6 +987,20 @@ async function specificationWorkspace(
     ]);
   }
 
+  if (scenario.startsWith('attempt-')) {
+    // The Task the agent works on, by the title its own page shows ("Kept so far" names it).
+    return withTasks(
+      data.groups.map((group) => ({
+        ...group,
+        tasks: group.tasks.map((task) =>
+          task.id === TASK
+            ? { ...task, title: 'Token exchange endpoint and session cookie' }
+            : task,
+        ),
+      })),
+    );
+  }
+
   if (scenario !== 'abandoned') {
     return withTasks(data.groups);
   }

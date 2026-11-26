@@ -17,6 +17,7 @@ import { transitionWork } from '../lifecycle/reducer';
 import {
   countActionOpened,
   countActionTransition,
+  countNotice,
   countWorkOpened,
   countWorkTransition,
   hasToolActions,
@@ -402,6 +403,12 @@ export function createProviderFacts({
         const w = decode<WorkSummary>(wrow);
         if (!['queued', 'active', 'waiting'].includes(w.state)) {
           fail('SESSION_INPUT_INVALID', 'Cannot append text to settled Work.');
+        }
+
+        // SpecFlow's own note (its first text carries the notice): counted apart from the agent's
+        // progress notes.
+        if (!existing && f.notice && w.kind === 'commentary' && t.work) {
+          t.work = countNotice(t.work);
         }
 
         w.content = ref;

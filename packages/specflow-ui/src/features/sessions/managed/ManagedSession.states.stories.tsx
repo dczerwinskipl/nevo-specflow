@@ -72,6 +72,9 @@ import {
  * Verified in every state story below that uses the Context mock view model, at 1440px.
  */
 async function verifyContextReopens(canvasElement: HTMLElement) {
+  // The side panel and its toggle exist from the split width on: the runner's frame is resized to
+  // the desktop width the story's `globals` name (the static viewport global is not applied there).
+  await settleViewport(1440, 900);
   const canvas = within(canvasElement);
   const contextTab = () => canvas.queryByRole('tab', { name: 'Kontekst' });
   await waitFor(() => expect(contextTab()).toBeVisible());

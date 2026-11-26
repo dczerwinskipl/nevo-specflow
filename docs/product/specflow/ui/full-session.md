@@ -63,8 +63,12 @@ The conversation is a chat, not a debugging console.
   on its own screen like a Work (a tab from the split width, a flow below it). There the brief reads
   as sections, each heading once: **Step purpose**, **Step instructions**, **Task** (its title and
   summary), **Agent profile** (its title, never its id), **Hand-off from the previous step** (in
-  words from the request origin: "From Breakdown review · attempt 1 · Changes requested", the
-  feedback as Markdown, the handed-over files) and the owner's note. No raw id, revision, marker or
+  words: "From Review the breakdown · attempt 1 · Changes requested", the feedback as Markdown, the
+  handed-over files) and the owner's note. Every name comes from the request origin's own fields
+  (`task`, `archetype`, `handoff.from.title` and `handoff.label`, the workflow definition's titles as
+  the Now block's Last hand-off shows them), never from the brief's prose and never an id made
+  readable; a brief recorded before the origin carried them leaves the name out ("From the previous
+  step · attempt 1", no Agent profile section). No raw id, revision, marker or
   JSON there: the **Full text sent to the agent**, verbatim as the agent received it with
   SpecFlow's rules and references, is one collapsed disclosure under the sections.
 - **Resumed Turn vs new attempt.** A request whose `origin.continuation` is set is a Continue of the
@@ -132,8 +136,11 @@ streaming answer.
   header subtitle keeps only the coarse Session state and has no spinner of its own.
 - **No Turn outcome in the row.** How the Turn ended is its own [outcome event](#turn-outcome);
   failed tool actions stay in the row's failed line only.
-- **One target.** The whole row opens that Turn's Work history (chevron and hover surface, no
-  visible "Work history" label). The leading icon is the icon of the kind the stage did most (the
+- **One target, a navigation row.** The whole row opens that Turn's Work history (owner,
+  2026-11-26), in the navigation-row pattern of Session Context: icon, text and a trailing chevron
+  that means "opens", never "expands"; no visible "Work history" label. Work history opens at that
+  stage: its group expanded and scrolled into view (older pages load until it is found). Back
+  returns to the exact place in the conversation. The leading icon is the icon of the kind the stage did most (the
   same icon per operation kind as in Work history), an alert once the settled stage has failed tool
   actions, a spinner while live. Colour is used only for exceptions.
 
@@ -150,12 +157,13 @@ entry, an `Alert` (failed: danger; stopped, interrupted: attention); a completed
   else the outcome in plain words.
 - **Consequence**, only when the Turn opened tool actions that may change the workspace (edit,
   write, command, test in its digest), from the real state when the Runtime reports the
-  Specification's changes: "3 files are uncommitted in the workspace now." or "The workspace has no
+  Specification's changes and that state was read after the last Turn ended (each Turn end reads it
+  again; while a Turn runs or the new read is not in, the count is not known): "3 files are uncommitted in the workspace now." or "The workspace has no
   uncommitted changes now."; only when it does not (a Runtime without the changes view): "Some
   workspace changes may already have been made."
 - **Actions**: **Review workspace changes** opens the Specification's uncommitted changes (the
-  changes view of the Specification's own workspace, where its agent works) only when that view
-  reports some; never a "not available" page. **View technical details** discloses the error code
+  changes view of the Specification's own workspace, where its agent works) when that view exists
+  and reports some, or while the count is not known yet; never a "not available" page. **View technical details** discloses the error code
   and the Runtime's message.
 
 ## Work history (L2)
@@ -222,9 +230,11 @@ Live updates never open, switch or reset Work history.
 - **Counts** above the list appear only when the Runtime's Work aggregate is present; they are
   never computed from a loaded page. The operations lead ("28 tool actions", with "· 2 in
   progress" while some run); the other kinds follow as quieter metadata ("12 progress notes · 4
-  thinking steps · 9 questions and permission requests"). No sum across kinds. The last counts the
-  questions and permission requests that reached the person: an automatic approval is never one (the
-  Runtime records it as a note).
+  thinking steps · 2 SpecFlow notes · 9 questions and permission requests"). No sum across kinds.
+  SpecFlow's own notes (an automatic approval, a relayed error) are counted apart from the agent's
+  progress notes (`counts.notices`). The questions and permission requests are those that reached
+  the person; an automatic approval is never one. An interaction row names its kind: "Permission
+  request" (a shield) or "Question" (a question bubble), never a generic "User interaction".
 - **Type filters and search** keep the parent Commentary context. With no match among loaded
   entries while older history remains, the empty state says so for the loaded entries only.
 - **Reading position.** The entry the reader is reading keeps its place on screen across an older
@@ -248,7 +258,7 @@ Ran command                           the screen's title: the concrete action
 cd . && grep -n "tasks-file" …        compact preview, at most two lines (whole text as tooltip)
 (✓) 2.1 s                             status line
 COMMAND                       Copy    the full command, wrapped
-AUTHORIZATION                         (🛡) Allowed · Answered in 1.7 s   (a paired permission only)
+AUTHORIZATION                         (🛡) Allowed · Permission request answered   (paired only)
 RESULT                        Copy    the original output, verbatim, no gutter
 ```
 
@@ -258,7 +268,7 @@ RESULT                        Copy    the original output, verbatim, no gutter
 - **No interpretation.** A command is never described by what the UI guesses it did: the preview,
   the full command with Copy, and the original output with Copy.
 - **Authorization** appears when a permission was paired with this tool in Work history: the
-  decision with its shield and how long the answer took; not who answered (not recorded).
+  decision with its shield; not who answered and not when (neither is recorded per decision).
 
 - **Status.** Completed: a discreet success check, the word announced to assistive technology only,
   no badge. Failed, cancelled or interrupted: the matching icon plus the visible state word (never

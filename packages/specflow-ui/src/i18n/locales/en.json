@@ -1821,7 +1821,7 @@
     "workKind": {
       "commentary": "Progress",
       "reasoning": "Thinking",
-      "interaction": "User interaction",
+      "interaction": "Question or permission request",
       "tool": "Tool"
     },
     "toolVerb": {
@@ -1918,7 +1918,11 @@
         "interaction_one": "{{count}} question or permission request",
         "interaction_few": "{{count}} questions and permission requests",
         "interaction_many": "{{count}} questions and permission requests",
-        "interaction_other": "{{count}} questions and permission requests"
+        "interaction_other": "{{count}} questions and permission requests",
+        "notices_one": "{{count}} SpecFlow note",
+        "notices_few": "{{count}} SpecFlow notes",
+        "notices_many": "{{count}} SpecFlow notes",
+        "notices_other": "{{count}} SpecFlow notes"
       },
       "question": {
         "answer": "{{question}} → {{answer}}",
@@ -1930,8 +1934,11 @@
       "detailedView": "Show every operation",
       "authorization": {
         "title": "Authorization",
-        "answered": "Permission request answered",
-        "answeredIn": "Answered in {{duration}}"
+        "answered": "Permission request answered"
+      },
+      "interaction": {
+        "permission": "Permission request",
+        "question": "Question"
       }
     },
     "workSummary": {
@@ -2049,7 +2056,8 @@
       "handoff": {
         "from": "From {{step}} · attempt {{attempt}}",
         "returned": "Returned to this step",
-        "artifacts": "Handed-over files"
+        "artifacts": "Handed-over files",
+        "fromUnnamed": "From the previous step · attempt {{attempt}}"
       },
       "fullText": "Full text sent to the agent",
       "fullTextNote": "Exactly as the agent received it, with SpecFlow's rules and references."

@@ -154,6 +154,7 @@ export function transcriptItems(
         turnId: stage.turnId,
         id: work.at(-1)!.id,
         actionCount: work.length,
+        workIds: work.flatMap((entry) => (entry.workId ? [entry.workId] : [])),
         partial: previous === null,
         ...(digest && previous !== null
           ? {
@@ -292,7 +293,7 @@ function placeLive(
   if (last?.type === 'stage') {
     last.block = last.block
       ? { ...last.block, live }
-      : { turnId, id: `work-${turnId}`, actionCount: 0, partial: false, live };
+      : { turnId, id: `work-${turnId}`, actionCount: 0, workIds: [], partial: false, live };
 
     return;
   }
@@ -302,7 +303,7 @@ function placeLive(
     id: `live-${turnId}`,
     turnId,
     commentary: [],
-    block: { turnId, id: `work-${turnId}`, actionCount: 0, partial: hasOlder, live },
+    block: { turnId, id: `work-${turnId}`, actionCount: 0, workIds: [], partial: hasOlder, live },
   };
   const answer = last?.type === 'entry' && last.entry.kind === 'answer';
   const agent: TranscriptItem = { type: 'agent', id: `agent-${turnId}`, turnId };

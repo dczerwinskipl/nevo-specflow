@@ -38,6 +38,8 @@ import { availablePaged, usePagedHistory } from './usePagedHistory';
 import {
   absorbPage,
   absorbWorkPage,
+  clearFocus,
+  focusWork,
   createViewStoreRegistry,
   initialPagedState,
   initialWorkViewState,
@@ -403,7 +405,8 @@ function WorkChapterSection({
  * lead: how many tool actions the Turn ran (and how many still run), then, as quieter metadata,
  * the other kinds of Work. No sum across kinds: "71 work items" counted notes, thinking and
  * questions as if they were work done. `interaction` counts the questions and permission requests
- * that reached the person (an automatic approval is not one: the Runtime records it as a note). */
+ * that reached the person (an automatic approval is not one: the Runtime records it as a SpecFlow
+ * note, counted under `notices`). */
 function WorkCountsSummary({ counts }: { counts: WorkCounts }) {
   const { t } = useTranslation();
   const headline = [
@@ -412,9 +415,14 @@ function WorkCountsSummary({ counts }: { counts: WorkCounts }) {
       t('managedSession.workInspector.counts.inProgress', { count: counts.inProgress }),
   ].filter((label): label is string => typeof label === 'string');
   // A kind with zero items is left out ("0 thinking steps" is noise, not information).
+  // SpecFlow's own notes (an automatic approval, a relayed error) are commentary Work too, counted
+  // apart (`notices`) so they never pass as the agent's progress notes.
+  const notices = counts.notices ?? 0;
+  const progressNotes = counts.byKind.commentary - notices;
   const metadata = [
-    counts.byKind.commentary > 0 &&
-      t('managedSession.workInspector.counts.commentary', { count: counts.byKind.commentary }),
+    progressNotes > 0 &&
+      t('managedSession.workInspector.counts.commentary', { count: progressNotes }),
+    notices > 0 && t('managedSession.workInspector.counts.notices', { count: notices }),
     counts.byKind.reasoning > 0 &&
       t('managedSession.workInspector.counts.reasoning', { count: counts.byKind.reasoning }),
     counts.byKind.interaction > 0 &&
@@ -557,6 +565,35 @@ function Work({ data }: { data: Data }) {
     () => availableWorkFilterKinds(items, counts?.byKind),
     [items, counts],
   );
+  // Opened at a work stage of the Conversation (`focusWork`): once its Work is loaded, it is
+  // scrolled to the top of the screen (its group already open), then the view is the reader's.
+  // Older pages load until it is found; nothing to find leaves the view as it is.
+  const focus = state.focus;
+  const tailLoaded = query.data !== undefined;
+  useEffect(() => {
+    const root = content.current;
+    if (!focus || !root || !tailLoaded || state.busy) {
+      return;
+    }
+
+    const target = focus
+      .map((id) =>
+        root.querySelector<HTMLElement>(
+          `[data-history-entry="${CSS.escape(id)}"], [data-work-id="${CSS.escape(id)}"]`,
+        ),
+      )
+      .find((element) => element !== null);
+    if (target) {
+      (target.closest<HTMLElement>('[data-history-entry]') ?? target).scrollIntoView({
+        block: 'start',
+      });
+      view.update(clearFocus);
+    } else if (hasOlder && !state.error) {
+      void loadOlder();
+    } else {
+      view.update(clearFocus);
+    }
+  }, [focus, items, tailLoaded, hasOlder, state.busy, state.error, content, view, loadOlder]);
   const openActions: OpenActions = (workId, workTitle, heading, permissionId) =>
     void navigation.navTo('actions', {
       workId,
@@ -843,7 +880,7 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
   const workView = createViewStoreRegistry(initialWorkViewState);
   const actionsView = createViewStoreRegistry(initialPagedState<ToolActionSummary>);
 
-  return defineSecondaryStack<Root, Data, Pages>({
+  const stack = defineSecondaryStack<Root, Data, Pages>({
     id: 'managed-session-work',
     initial: 'work',
     instanceId: (params) => params.turnId,
@@ -896,5 +933,11 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
         component: Actions,
       },
     },
+  });
+
+  return Object.assign(stack, {
+    /** Opens the Turn's Work history at this stage's Work (`focusWork`), before the tab opens. */
+    focusWork: (turnId: string, workIds: readonly string[]) =>
+      workView(turnId).update((state) => focusWork(state, workIds)),
   });
 }

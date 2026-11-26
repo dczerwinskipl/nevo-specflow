@@ -40,10 +40,12 @@ export function stepBriefSnapshot(): SessionSnapshot {
         specId: 'a057b992-104e-4dd8-acc7-b105ad7113a8',
         step: { id: 'breakdown', title: 'Break the solution down' },
         attempt: 2,
+        archetype: { id: 'task-planner', title: 'Task planner' },
         handoff: {
           kind: 'transition',
-          from: { step: 'breakdown-review', attempt: 1 },
+          from: { step: 'breakdown-review', attempt: 1, title: 'Review the breakdown' },
           transition: 'changes-requested',
+          label: 'Changes requested',
           result: 'fail',
           feedback: 'Two findings need changes: the detached HEAD case and the skill hold.',
         },

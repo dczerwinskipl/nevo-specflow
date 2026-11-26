@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   countActionOpened,
   countActionTransition,
+  countNotice,
   countWorkOpened,
   countWorkTransition,
   emptyWorkAggregate,
@@ -29,6 +30,15 @@ describe('Turn Work aggregate', () => {
     aggregate = countWorkTransition(aggregate, 'active', 'interrupted');
     aggregate = countWorkTransition(aggregate, 'active', 'failed');
     expect(aggregate.counts).toMatchObject({ total: 3, inProgress: 0 });
+  });
+  it('counts SpecFlow notices apart from the progress notes they stay among', () => {
+    let aggregate = countWorkOpened(emptyWorkAggregate(), 'commentary');
+    aggregate = countWorkOpened(aggregate, 'commentary');
+    aggregate = countNotice(aggregate);
+    expect(aggregate.counts).toMatchObject({
+      byKind: { commentary: 2 },
+      notices: 1,
+    });
   });
   it('tallies every opened ToolAction and failures additionally, once', () => {
     let aggregate = emptyWorkAggregate();

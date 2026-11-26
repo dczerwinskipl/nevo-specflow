@@ -55,7 +55,7 @@ async function openBrief(canvasElement: HTMLElement) {
   // The hand-off reads as words from the request's own fields, never as JSON; each heading once.
   const handoff = body.getByRole('region', { name: 'Przekazanie z poprzedniego kroku' });
   await expect(handoff).toHaveTextContent(
-    'Z kroku Breakdown review · podejście 1 · Changes requested',
+    'Z kroku Review the breakdown · podejście 1 · Changes requested',
   );
   await expect(handoff).toHaveTextContent('Two findings need changes');
   await expect(handoff.textContent).not.toContain('"transition"');

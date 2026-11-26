@@ -107,6 +107,11 @@ export interface StepContext {
     readonly tasks?: { readonly rule: string };
   };
   readonly handoff?: Handoff;
+  /**
+   * A transition hand-off as people name it, from the pinned definition: the title of the step that
+   * handed over and the display label of the transition it took (when the definition gives one).
+   */
+  readonly handoffNames?: { readonly fromTitle: string; readonly label?: string };
   readonly archetype?: {
     readonly id: string;
     readonly title: string;
@@ -183,6 +188,14 @@ export function compileStepContext(input: StepContextInput): StepContext {
   });
   const task = input.task;
   const type = task ? catalogue.taskType(task.type) : undefined;
+  const handoffStep =
+    handoff?.kind === 'transition'
+      ? input.definition.steps.find((candidate) => candidate.id === handoff.from.step)
+      : undefined;
+  const handoffLabel =
+    handoff?.kind === 'transition' && handoffStep?.kind === 'work'
+      ? handoffStep.transitions.find((transition) => transition.id === handoff.transition)?.label
+      : undefined;
 
   return {
     subject: input.subject,
@@ -196,6 +209,14 @@ export function compileStepContext(input: StepContextInput): StepContext {
         : {}),
     },
     ...(handoff ? { handoff } : {}),
+    ...(handoffStep
+      ? {
+          handoffNames: {
+            fromTitle: handoffStep.title,
+            ...(handoffLabel !== undefined ? { label: handoffLabel } : {}),
+          },
+        }
+      : {}),
     ...(archetype
       ? {
           archetype: {

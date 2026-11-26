@@ -57,6 +57,8 @@ export interface WorkBlockModel {
   id: string;
   /** Tool Work the client has loaded for this stage (one real entry per tool Work). */
   actionCount: number;
+  /** The stage's tool Work, by Work id: Work history opens at them (`focusWork`). */
+  workIds: readonly string[];
   /** The stage may continue into older, not-yet-loaded history: `actionCount` is a lower bound. */
   partial: boolean;
   /** This stage's share of the Runtime's by-operation ToolAction digest; absent when unknown. */

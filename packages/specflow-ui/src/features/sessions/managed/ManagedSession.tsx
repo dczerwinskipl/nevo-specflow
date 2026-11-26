@@ -91,6 +91,10 @@ import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import type { ManagedSessionsApi } from './api';
 import { newId } from '../../../shared/ids/newId';
 import { sessionTitleOf } from '../shared/agentStepTitle';
+import {
+  useWorkspaceChangesAfterTurn,
+  type WorkspaceChangesSource,
+} from './conversation/useWorkspaceChangesAfterTurn';
 
 function browserStorage() {
   try {
@@ -540,7 +544,9 @@ function ManagedSessionConversation({
   // resolved layout is (a runtime Secondary already splits from 730px, but there are no root tabs
   // yet): one visible surface, Back follows the path, the single runtime flow Back closes (`open`),
   // so the same Turn opened twice is one flow, never two tabs (workspace-dynamic-split.md).
-  const openWork = (turnId: string) => {
+  const openWork = (turnId: string, workIds: readonly string[] = []) => {
+    // A work row opens the Turn's Work history at that stage: expanded and scrolled to.
+    workStack.focusWork(turnId, workIds);
     const params = { sessionId, turnId };
     void (supportsSplit
       ? navigation.openTab(workStack, params)
@@ -715,7 +721,7 @@ function ManagedSessionConversation({
                             {item.block && (
                               <WorkBlock
                                 block={item.block}
-                                onInspect={() => openWork(item.turnId)}
+                                onInspect={() => openWork(item.turnId, item.block?.workIds)}
                               />
                             )}
                           </div>
@@ -1308,12 +1314,13 @@ export function ManagedSession({
    */
   onReviewChanges?: (specification: ContextSpecification) => void;
   /**
-   * How many files the Specification's workspace has uncommitted now, when the Runtime reports it
-   * (the route composition reads it): a Turn that ended badly says so instead of "may", and
-   * **Review workspace changes** is offered only when there are some to show. Absent: not known
-   * (a Runtime without the changes view), so no review action leads to a dead end.
+   * The Specification's uncommitted files, when the Runtime reports them (the route composition
+   * reads them): a Turn that ended badly states the count once it was read after that Turn ended
+   * (`useWorkspaceChangesAfterTurn`), and **Review workspace changes** is offered while there are
+   * some or the count is not known yet. Absent: a Runtime without the changes view, so the outcome
+   * says "may" and no review action leads to a dead end.
    */
-  workspaceChanges?: number;
+  workspaceChanges?: WorkspaceChangesSource;
 }) {
   const { t } = useTranslation();
   const reviewSpecification =
@@ -1367,6 +1374,7 @@ export function ManagedSession({
   const workStack = useMemo(() => createWorkInspector(api, feed, owner), [api, feed, owner]);
   const briefStack = useMemo(() => createStepBriefStack(api), [api]);
   const snapshot = state.snapshot;
+  const workspaceNow = useWorkspaceChangesAfterTurn(snapshot, workspaceChanges);
   // Started here and not loaded yet: the start values stand in for the snapshot's.
   const fallback = useStartedSessionFallback({
     owner,
@@ -1656,11 +1664,11 @@ export function ManagedSession({
             composerFocusRequested={composerFocusRequested}
             onComposerFocused={onComposerFocused}
             reviewChanges={
-              onReviewChanges && reviewSpecification && workspaceChanges
+              onReviewChanges && reviewSpecification && workspaceNow?.reviewable
                 ? () => onReviewChanges(reviewSpecification)
                 : undefined
             }
-            workspaceChanges={workspaceChanges}
+            workspaceChanges={workspaceNow?.count}
           />
           {sessionActions.dialogs}
         </AppWorkspace.Primary>

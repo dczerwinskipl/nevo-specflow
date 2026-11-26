@@ -278,7 +278,7 @@ export const EveryFilterNarrowsToItsKind: Story = {
     await selectFilterKind(
       canvasElement,
       'Filtruj pracę według typu (aktywny filtr: Myślenie)',
-      'Interakcja z użytkownikiem',
+      'Pytanie lub prośba o zgodę',
     );
     await expect(await canvas.findByText('Permission to write workspace')).toBeVisible();
     await expect(canvas.queryByText('Run command pnpm test')).not.toBeInTheDocument();
@@ -286,7 +286,7 @@ export const EveryFilterNarrowsToItsKind: Story = {
 
     await selectFilterKind(
       canvasElement,
-      'Filtruj pracę według typu (aktywny filtr: Interakcja z użytkownikiem)',
+      'Filtruj pracę według typu (aktywny filtr: Pytanie lub prośba o zgodę)',
       'Wszystkie',
     );
     await expect(await canvas.findByText('Read file session.ts')).toBeVisible();
@@ -562,44 +562,6 @@ export const ClaudeTurn: Story = {
     await waitFor(() => expect(iconOnly(toggle())).toBe(true));
     await expect(toggle()).toHaveAttribute('title', 'Zawijaj wiersze');
     await expect(iconOnly(canvas.getAllByRole('button', { name: /^Kopiuj/ })[0]!)).toBe(true);
-  },
-};
-
-/**
- * Owner, PR 169: the "Show every operation" toggle in the Work header is the icon with its words on
- * a wide (desktop) header and the icon alone on a phone, a neutral (ghost) control, never the filled
- * primary look; it stays in the header, with no segmented switch in the content.
- */
-export const DetailedToggleByWidth: Story = {
-  tags: ['integration'],
-  args: {
-    api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
-      [actionsWorkId]: mixedWorkTimelineActions(),
-      [longReadWorkId]: longReadActions(),
-    }),
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const toggle = () => canvas.getByRole('button', { name: 'Pokaż każdą operację' });
-
-    await settleViewport(1440, 900);
-    await openWork(canvasElement);
-    await waitFor(() => expect(toggle()).toBeVisible());
-    // Desktop: the words are shown beside the icon, and the control is not the primary fill.
-    await expect(toggle()).toHaveTextContent('Pokaż każdą operację');
-    await expect(toggle()).toHaveAttribute('aria-pressed', 'false');
-    await expect(toggle().className).not.toContain('bg-action-primary');
-    await userEvent.click(toggle());
-    await waitFor(() => expect(toggle()).toHaveAttribute('aria-pressed', 'true'));
-    await userEvent.click(toggle());
-
-    await settleViewport(375, 812);
-    // Phone: the icon alone, named for assistive technology by the same words.
-    await waitFor(() => expect(toggle()).toBeVisible());
-    await expect(toggle()).not.toHaveTextContent('Pokaż każdą operację');
-    const bounds = toggle().getBoundingClientRect();
-    await expect(bounds.right).toBeLessThanOrEqual(375);
-    await expect(bounds.width).toBeLessThanOrEqual(40);
   },
 };
 

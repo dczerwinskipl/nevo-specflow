@@ -3,23 +3,13 @@ import { useRouter } from '@tanstack/react-router';
 import { Trans, useTranslation } from 'react-i18next';
 import { CircleStop } from 'lucide-react';
 import { Button, InlineNote, Typography } from '@nevo/ui';
-import type {
-  AgentAttemptView,
-  WorkflowActionProjection,
-  WorkflowActor,
-} from '@nevo/specflow-contracts/workflow';
+import type { AgentAttemptView, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
 import { SessionProviderIcon } from '../../../sessions';
 import type { WorkflowSubjectRef } from '../api';
-import {
-  formatWhen,
-  humanizeId,
-  agentDisplayName,
-  transitionLabel,
-  type ModelTitle,
-} from '../presentation';
-import { useModelTitle } from './modelTitles';
+import { actorLabel, formatWhen, humanizeId, transitionLabel } from '../presentation';
+import { useAgentTitles } from './modelTitles';
 import type { NowLinks } from '../StartBlockerLines';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
 import { workflowRefusalOf } from '../refusal';
@@ -282,29 +272,6 @@ function ContinueRefused({
 }
 
 /**
- * Name of the agent behind a position's actor, as the history's identity line says it
- * ({@link agentDisplayName}): what its Session ran, else the catalogue's title of the model.
- */
-function agentName(
-  actor: WorkflowActor | undefined,
-  catalogue: ModelTitle,
-  session: {
-    readonly providerTitle?: string | undefined;
-    readonly modelTitle?: string | undefined;
-  },
-): string {
-  return actor?.class === 'agent'
-    ? agentDisplayName({
-        provider: actor.details.provider,
-        providerTitle: session.providerTitle,
-        model: actor.details.model,
-        modelTitle: session.modelTitle,
-        catalogue,
-      })
-    : '';
-}
-
-/**
  * The Now block of a step an agent runs (workflow-execution.md "While the agent works", "After the
  * agent stops" and "Pending owner confirmation"): the position line with the agent's Session, the
  * note that explains the state, and the actions the owner has: Stop agent, Check outcome, Continue
@@ -330,7 +297,7 @@ export function useAgentAttemptNow({
   const confirmationCommit = useConfirmationAttemptCommit(subject, projection);
   const { t, i18n } = useTranslation();
   const commands = useAgentAttemptCommands(subject, headingId);
-  const modelTitle = useModelTitle(subject.specId);
+  const titles = useAgentTitles(subject.specId);
   const sessionFacts = useSessionFacts(subject.specId, view?.sessionId ?? '');
   // The attempt whose commit holds the specification's workflow: this subject's or another's.
   const heldStepTitle = (hold: AttemptCommitHold) =>
@@ -423,12 +390,7 @@ export function useAgentAttemptNow({
             heading={t('workflowExecution.confirmation.resultHeading')}
             outcome={result}
             meta={[
-              // The Session's own titles only when they are this attempt's Session.
-              agentName(
-                attempt.actor,
-                modelTitle,
-                sessionId === view?.sessionId ? sessionFacts : {},
-              ),
+              attempt.actor.class === 'agent' ? actorLabel(t, attempt.actor, {}, titles) : '',
               finished,
             ]
               .filter(Boolean)

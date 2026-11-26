@@ -405,15 +405,16 @@ Every screen names an agent the same way, "Claude · Opus 5.5", through one form
 the Task history, the Run with agent dialog and the Sessions screens. The name comes from one
 source order: **what the attempt or its Session actually ran first, the catalogue after it.**
 
-- The provider: the Session's own title, else the provider's id made readable (`claude` is
-  "Claude").
+- The provider: its short name, the provider's id made readable (`claude` is "Claude"), the same
+  for every attempt; a Session's product title ("Claude Code") is the Sessions screens' own name for
+  the Session's executor and does not enter this name.
 - The model: the Session's own title of the model it ran, else the provider catalogue's title of
   the model id the attempt recorded (the attempt's own record, else its actor's, so the history and
   the Now block name one attempt alike), else that id.
 
 The Run with agent dialog has no Session yet: it names the catalogue's choice, and the recorded ids
-when the catalogue cannot be read. The Sessions screens name a Session by the titles the Runtime
-resolved for it, else its ids.
+when the catalogue cannot be read. The Sessions screens' rows name the model by the same order (the
+Session's title, else its id).
 
 ### Start step and Run with agent
 

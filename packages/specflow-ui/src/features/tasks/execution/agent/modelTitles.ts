@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { useAppServices } from '../../../../app/useAppServices';
+import { useSpecificationWorkspace } from '../../../specs/read-model';
+import type { AgentTitles } from '../presentation';
 
 /** The provider catalogue's title of a model; `undefined` when the catalogue does not list it. */
 export function catalogueModelTitle(
@@ -31,4 +33,20 @@ export function useModelTitle(specId: string | undefined) {
 
   return (providerId: string | undefined, modelId: string | undefined): string | undefined =>
     catalogueModelTitle(catalogue.data?.items, providerId, modelId) ?? modelId;
+}
+
+/**
+ * Where an agent is named from ({@link AgentTitles}): the Specification's Sessions (the titles the
+ * Runtime resolved for what each ran, the same read as the Sessions list) and the provider
+ * catalogue. Without a Specification only the catalogue.
+ */
+export function useAgentTitles(specId: string | undefined): AgentTitles {
+  const { specificationApi } = useAppServices();
+  const catalogue = useModelTitle(specId);
+  const sessions = useSpecificationWorkspace(specId ?? '', specificationApi).data?.sessions;
+
+  return {
+    catalogue,
+    session: (sessionId) => sessions?.find((candidate) => candidate.id === sessionId),
+  };
 }

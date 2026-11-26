@@ -464,7 +464,8 @@ function timelineOf(aside: HTMLElement): string[] {
 async function expectActorLinesOnOneLine(aside: HTMLElement) {
   for (const line of Array.from(aside.querySelectorAll<HTMLElement>('[data-attempt-actor]'))) {
     const name = line.querySelector<HTMLElement>('span.truncate')!;
-    await expect(name.textContent).toMatch(/^Claude · /);
+    // The provider by its short name, the model by the Session's title ("Claude Code" is not used).
+    await expect(name.textContent).toMatch(/^Claude · Opus 5.5$/);
     await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
     await expect(line.getBoundingClientRect().height).toBeLessThan(32);
   }

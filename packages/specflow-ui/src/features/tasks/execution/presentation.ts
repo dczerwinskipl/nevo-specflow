@@ -40,24 +40,38 @@ export type ModelTitle = (
   modelId: string | undefined,
 ) => string | undefined;
 
+/** The title a Session carries for the model it ran, as the Runtime names it. */
+export interface SessionTitles {
+  readonly modelTitle?: string | undefined;
+}
+
+/** Where an agent's name comes from ({@link agentDisplayName}): its Session, then the catalogue. */
+export interface AgentTitles {
+  readonly catalogue?: ModelTitle | undefined;
+  readonly session?: ((sessionId: string) => SessionTitles | undefined) | undefined;
+}
+
 /**
- * Who acted, as recorded: a person by {@link personLabel}, an agent by provider and model (the
- * model by its provider's title when `modelTitle` knows it).
+ * Who acted, as recorded: a person by {@link personLabel}, an agent by {@link agentDisplayName}
+ * (its Session's titles when `titles` knows the Session, else the catalogue's).
  */
 export function actorLabel(
   t: TFunction,
   actor: WorkflowActor,
   viewer: Viewer = {},
-  modelTitle?: ModelTitle,
+  titles: AgentTitles = {},
 ): string {
   if (actor.class === 'human') {
     return personLabel(t, actor.details.actorId, viewer);
   }
 
+  const session = actor.details.sessionId ? titles.session?.(actor.details.sessionId) : undefined;
+
   return agentDisplayName({
     provider: actor.details.provider,
     model: actor.details.model,
-    catalogue: modelTitle,
+    modelTitle: session?.modelTitle,
+    catalogue: titles.catalogue,
   });
 }
 
@@ -67,22 +81,21 @@ export function actorLabel(
  * (workflow-execution.md, "Naming the agent"): what the attempt or its Session actually ran comes
  * first, the catalogue after it.
  *
- * - The provider: the Session's own title (`providerTitle`), else its id made readable (`claude`
- *   is "Claude").
+ * - The provider: its short name, the id made readable (`claude` is "Claude"); the same for every
+ *   attempt of a provider, whatever product title a Session reports ("Claude Code" is the Sessions
+ *   screen's own name for the Session's executor).
  * - The model: the Session's own title of the model it ran (`modelTitle`), else the provider
  *   catalogue's title of the recorded model id (`catalogue`), else that id.
  */
 export function agentDisplayName(agent: {
   readonly provider: string | undefined;
-  readonly providerTitle?: string | undefined;
   /** The model id the attempt (or its actor) recorded. */
   readonly model?: string | undefined;
   /** The title of the model the Session ran, as the Runtime names it. */
   readonly modelTitle?: string | undefined;
   readonly catalogue?: ModelTitle | undefined;
 }): string {
-  const provider =
-    agent.providerTitle ?? (agent.provider ? providerFallbackName(agent.provider) : undefined);
+  const provider = agent.provider ? providerFallbackName(agent.provider) : undefined;
   const model =
     agent.modelTitle ??
     (agent.catalogue ? agent.catalogue(agent.provider, agent.model) : undefined) ??

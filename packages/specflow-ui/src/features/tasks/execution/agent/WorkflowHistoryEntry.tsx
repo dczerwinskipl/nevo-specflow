@@ -15,7 +15,7 @@ import {
   type AttemptOutcomeView,
   type HistoryItem,
 } from './AgentAttemptHistory';
-import { useModelTitle } from './modelTitles';
+import { useAgentTitles } from './modelTitles';
 import type { WorkflowTimelineEntry } from './workflowTimeline';
 import type { AttemptRef } from '../StartBlockerLines';
 
@@ -186,7 +186,7 @@ export function WorkflowHistoryEntry({
 }) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
-  const modelTitle = useModelTitle(specId);
+  const titles = useAgentTitles(specId);
   // The attempt's result left the feedback: its own entry opens it, never its later Confirm.
   const feedbackOpen =
     (entry.kind === 'agent-attempt' || entry.kind === 'attempt') &&
@@ -241,7 +241,7 @@ export function WorkflowHistoryEntry({
               item,
               i18n.language,
               false,
-              actorLabel(t, item.actor, viewer, modelTitle),
+              actorLabel(t, item.actor, viewer, titles),
             )}
           </MetaLine>
           <HistoryFeedback
@@ -276,7 +276,7 @@ export function WorkflowHistoryEntry({
           <MetaLine>
             {[
               timeOfDay(confirmation.at, i18n.language),
-              actorLabel(t, confirmation.actor, viewer, modelTitle),
+              actorLabel(t, confirmation.actor, viewer, titles),
               t('taskDetails.attempt', { count: item.attempt }),
             ].join(' · ')}
           </MetaLine>

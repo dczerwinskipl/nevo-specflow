@@ -5,7 +5,7 @@ import {
   actorLabel,
   formatWhen,
   transitionLabel,
-  type ModelTitle,
+  type AgentTitles,
   type Viewer,
 } from '../presentation';
 import type { HandoffTone } from './LastHandoff';
@@ -28,7 +28,7 @@ export interface HandoffView {
 export function handoffView(
   t: TFunction,
   handoff: Handoff,
-  context: { readonly locale: string; readonly viewer?: Viewer; readonly modelTitle?: ModelTitle },
+  context: { readonly locale: string; readonly viewer?: Viewer; readonly titles?: AgentTitles },
 ): HandoffView {
   const when = (at: string) => formatWhen(t, at, context.locale);
   const feedback = handoff.feedback?.trim() ? { feedback: handoff.feedback } : {};
@@ -45,7 +45,7 @@ export function handoffView(
   const meta = [
     handoff.from.title || undefined,
     handoff.from.actor
-      ? actorLabel(t, handoff.from.actor, context.viewer, context.modelTitle)
+      ? actorLabel(t, handoff.from.actor, context.viewer, context.titles)
       : undefined,
     handoff.from.at ? when(handoff.from.at) : undefined,
   ]

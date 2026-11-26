@@ -830,8 +830,12 @@ function controlCenterFixture(scenario: ControlCenterScenario): FixtureProjectio
           transition: 'approved',
           label: 'Breakdown approved',
           result: 'pass',
+          // Longer than the preview's few lines, so Open full feedback leads to the rest.
           feedback:
-            'No gaps or conflicts between the specification, the solution and the tasks. Coverage: every acceptance criterion maps to a task.',
+            'No gaps or conflicts between the specification, the solution and the tasks. Coverage: every acceptance criterion maps to a task.\n\n' +
+            '1. The SSO callback and the token refresh each have a task with its own tests.\n' +
+            '2. The session store migration is ordered before the login screen changes.\n' +
+            '3. Logout clears both the access and the refresh token.',
           artifacts: [],
         },
         position: {

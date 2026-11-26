@@ -317,7 +317,6 @@ export function AgentIdentityLine({
     item.agent.model ?? (item.actor?.class === 'agent' ? item.actor.details.model : undefined);
   const name = agentDisplayName({
     provider: item.agent.provider,
-    providerTitle: session.providerTitle,
     model,
     modelTitle: session.modelTitle,
     catalogue,

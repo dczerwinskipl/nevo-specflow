@@ -644,6 +644,7 @@ export function WorkflowNow({
     <>
       <NowBlock
         projection={projection}
+        specId={subject.specId}
         headingId={headingId}
         status={status}
         links={links}

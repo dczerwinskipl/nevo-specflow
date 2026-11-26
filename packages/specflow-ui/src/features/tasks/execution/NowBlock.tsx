@@ -20,7 +20,7 @@ import { StepProgress } from './progress/StepProgress';
 import { handoffView } from './progress/handoffView';
 import { StartBlockerLines, type NowLinks } from './StartBlockerLines';
 import { useViewer } from './useViewer';
-import { useModelTitle } from './agent/modelTitles';
+import { useAgentTitles } from './agent/modelTitles';
 
 /** An icon inside running text: on the text line, no flex box that would shift the line. */
 function InlineIcon({ name }: { name: ComponentProps<typeof Icon>['name'] }) {
@@ -93,6 +93,8 @@ function StepTitle({ step }: { step: { readonly id: string; readonly title: stri
 
 export interface NowBlockProps {
   readonly projection: WorkflowActionProjection;
+  /** The Specification whose Sessions name the agents (Now names an agent as the history does). */
+  readonly specId?: string | undefined;
   readonly headingId: string;
   /** The subject's own status when it changes what can happen now (draft, on hold, abandoned). */
   readonly status?: ReactNode;
@@ -156,11 +158,12 @@ export function NowBlock({
   hold,
   positionLine,
   handoffCommit,
+  specId,
 }: NowBlockProps) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
-  // Agents by their provider's model title ("Opus 5.5"), not the recorded id.
-  const modelTitle = useModelTitle(undefined);
+  // Agents as every screen names them: their Session's titles, else the catalogue's.
+  const titles = useAgentTitles(specId);
   const { position, handoff } = projection;
   const when = (at: string) => formatWhen(t, at, i18n.language);
   // A Specification's Now places the step among the workflow's steps (Tasks have no outline).
@@ -188,7 +191,7 @@ export function NowBlock({
       facts = attemptLine(t, {
         number: position.attempt.number,
         since: formatWhen(t, position.attempt.startedAt, i18n.language, { timeOnlyToday: true }),
-        actor: actorLabel(t, position.attempt.actor, viewer, modelTitle),
+        actor: actorLabel(t, position.attempt.actor, viewer, titles),
       });
       if (position.attempt.takenOverFrom) {
         facts += ` · ${t('workflowExecution.now.takenOverFrom')}`;
@@ -272,7 +275,7 @@ export function NowBlock({
       facts = position.abandonment
         ? t('workflowExecution.now.abandonedBy', {
             at: when(position.abandonment.at),
-            actor: actorLabel(t, position.abandonment.actor, viewer, modelTitle),
+            actor: actorLabel(t, position.abandonment.actor, viewer, titles),
           })
         : undefined;
       break;
@@ -325,7 +328,7 @@ export function NowBlock({
     position.kind === 'waiting' && waitingContent !== undefined && supporting === waitingContent;
   const lastHandoff =
     showHandoff && handoff && position.kind !== 'terminal'
-      ? handoffView(t, handoff, { locale: i18n.language, viewer, modelTitle })
+      ? handoffView(t, handoff, { locale: i18n.language, viewer, titles })
       : undefined;
 
   return (

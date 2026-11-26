@@ -17,7 +17,8 @@ import type { ManagedSessionsApi } from './api';
 import { historyEntry } from './pagedHistoryAnchor';
 import { ToolActionHeader } from './ToolActionHeader';
 import { ToolDetailCode } from './ToolDetailCode';
-import { workStateTone } from './workStatus';
+import { workMarkerTone, workStateTone } from './workStatus';
+import { workOperationIcon } from './workOperationIcon';
 import { useCodeWrapPreference } from './codeWrapPreference';
 import type { CodeLanguage } from '../../../shared/code-view';
 import { copyText } from '../../../shared/clipboard/copyText';
@@ -373,10 +374,13 @@ function ToolActionContent({
   source,
   withHeader,
   asHeading = false,
+  withHeading = true,
   authorization,
 }: {
   item: ToolActionSummary;
   source: ContentSource;
+  /** False where the screen's own header already names the action. */
+  withHeading?: boolean;
   /** How the permission for this action was answered, between what it ran and its result. */
   authorization?: ReactNode;
   /** Render the header (`ToolActionHeader`) as the first part of the content. */
@@ -397,7 +401,9 @@ function ToolActionContent({
     // `gap-5`: the screen's section rhythm (20px) between the header, the readable input, the
     // response and the raw parameters — separate blocks, not one stack of captions.
     <div className="grid min-w-0 gap-5">
-      {withHeader && <ToolActionHeader item={item} asHeading={asHeading} />}
+      {withHeader && (
+        <ToolActionHeader item={item} asHeading={asHeading} withHeading={withHeading} />
+      )}
       {blocks.map((block) => (
         <CodeSection
           key={block.key}
@@ -480,7 +486,11 @@ export function ToolActionTimelineItem({
 }) {
   return (
     <Timeline.Item {...historyEntry(item.actionId)}>
-      <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
+      <Timeline.Marker
+        active={item.state === 'active'}
+        icon={workOperationIcon(item.operation)}
+        tone={workMarkerTone(item.state)}
+      />
       <Timeline.Content title={<ToolActionContent item={item} source={source} withHeader />} />
     </Timeline.Item>
   );
@@ -523,6 +533,8 @@ export function SingleToolActionDetail({
       source={source}
       withHeader={withHeader}
       asHeading
+      // Where it heads the content, the screen's own header names the action already.
+      withHeading={false}
       authorization={authorization}
     />
   );

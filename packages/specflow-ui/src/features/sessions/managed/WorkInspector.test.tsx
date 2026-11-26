@@ -919,13 +919,13 @@ describe('WorkInspector view state', () => {
     mountTurns(api);
     await openTurn('Open Turn 1');
     const tail = await screen.findByText('Tail 0');
-    await screen.findByText('40 work items');
+    await screen.findByText('40 tool actions');
 
     fireEvent.scroll(workScroller(tail), { target: { scrollTop: 0 } });
     await screen.findByText('Old 0');
 
-    expect(screen.getByText('40 work items')).toBeTruthy();
-    expect(screen.queryByText('7 work items')).toBeNull();
+    expect(screen.getByText('40 tool actions')).toBeTruthy();
+    expect(screen.queryByText('7 tool actions')).toBeNull();
   });
 
   it('hides the counts row for a Turn whose WorkPage carries no counts', async () => {
@@ -935,8 +935,8 @@ describe('WorkInspector view state', () => {
     await openTurn('Open Turn 1');
     await screen.findByText('Tail 0');
 
-    // Never derived from the loaded items: two are loaded, yet no "2 work items" row appears.
-    expect(screen.queryByText(/\d+ work items?/)).toBeNull();
+    // Never derived from the loaded items: two are loaded, yet no counts row appears.
+    expect(document.querySelector('[data-work-counts]')).toBeNull();
   });
 });
 

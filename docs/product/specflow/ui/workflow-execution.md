@@ -536,7 +536,10 @@ Every other subject's Now block shows one note above its own content:
 - **Stopped without a result**: "Attempt 2 · the agent stopped without a result at <time> ·
   <Session>"; an attention note "The agent stopped without proposing a result." with what Continue
   and Take over do; a quiet line "Kept so far: <documents as links> and N changed files. **See the
-  attempt**". Actions **Continue** (main) and **Take over** (secondary); Return stays in ⋯.
+  attempt**", where a Task's documents are named with the Task's title ("Kept so far: Sign-in
+  screen: task.md, screens.md; Audit log: task.md", since every Task has its own `task.md`; the
+  titles come from the Specification's Tasks and the drafts the attempt produced, bare names only
+  when a title is not known). Actions **Continue** (main) and **Take over** (secondary); Return stays in ⋯.
   **Continue** opens a small dialog "Continue <step>" whose description also names the session's
   work mode ("The agent works in the Auto mode.") when the provider lists it, with an optional
   **Note for the agent** (at most 4000 characters) and Cancel / **Continue** (**Continue with the note** once a note is

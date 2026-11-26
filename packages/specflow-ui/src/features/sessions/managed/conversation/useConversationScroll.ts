@@ -62,6 +62,13 @@ function contentTopOf(node: HTMLElement, id: string) {
  */
 export interface ConversationScrollPosition {
   following: boolean;
+  /**
+   * While following: how far above the very bottom the reader left the view (within
+   * `FOLLOW_THRESHOLD_PX`), so a new scroll owner or a resized one (Back from a Secondary on a
+   * phone) puts the view back exactly where the reader left it instead of snapping to the bottom.
+   * New content still follows to the bottom. 0 when unset.
+   */
+  bottomGap?: number;
   anchor?: { scroller: HTMLElement; at: ReadingAnchor };
 }
 
@@ -112,6 +119,10 @@ export function useConversationScroll(
   // saw, or the one the policy itself last wrote. A move up from it that the policy did not make is
   // the reader's, unless the layout made it (`followingAfterScroll`).
   const known = useRef<{ node: HTMLElement; top: number } | undefined>(undefined);
+  // The scroller's box as the policy last applied the position to it: a change of the box (a new
+  // owner, the viewport, the Secondary closing) keeps the reader's place near the bottom; a change
+  // of the content (a new message, a late image) follows it to the very bottom.
+  const box = useRef<{ node: HTMLElement; height: number } | undefined>(undefined);
 
   // Decides the mode from where the view is now (the reader's gesture, or the layout) and records
   // the entry being read; the settled "away" verdict is published once scrolling pauses. A scroll
@@ -122,12 +133,13 @@ export function useConversationScroll(
   const observe = useCallback(
     (node: HTMLElement) => {
       const previous = known.current?.node === node ? known.current.top : node.scrollTop;
-      position.following = followingAfterScroll(
-        position.following,
-        node,
-        previous,
-        isLayoutInduced(),
-      );
+      const layoutInduced = isLayoutInduced();
+      position.following = followingAfterScroll(position.following, node, previous, layoutInduced);
+      // The reader's own resting place near the bottom; a move the layout made never changes it.
+      if (position.following && !layoutInduced) {
+        position.bottomGap = Math.max(0, maxScrollTop(node) - node.scrollTop);
+      }
+
       known.current = { node, top: node.scrollTop };
       if (Math.abs(node.scrollTop - previous) >= 0.5) {
         record(position, node);
@@ -161,9 +173,17 @@ export function useConversationScroll(
       observe(node);
     }
 
+    const boxChanged =
+      box.current?.node !== node || Math.abs(box.current.height - node.clientHeight) >= 0.5;
+    box.current = { node, height: node.clientHeight };
     if (position.following) {
-      if (node.scrollTop < maxScrollTop(node) - 0.5) {
-        node.scrollTop = node.scrollHeight;
+      if (!boxChanged) {
+        delete position.bottomGap;
+      }
+
+      const target = Math.max(0, maxScrollTop(node) - (position.bottomGap ?? 0));
+      if (Math.abs(node.scrollTop - target) >= 0.5) {
+        node.scrollTop = target;
       }
 
       known.current = { node, top: node.scrollTop };
@@ -242,6 +262,7 @@ export function useConversationScroll(
   const followLatest = useCallback(() => {
     position.following = true;
     delete position.anchor;
+    delete position.bottomGap;
     apply();
   }, [apply, position]);
 

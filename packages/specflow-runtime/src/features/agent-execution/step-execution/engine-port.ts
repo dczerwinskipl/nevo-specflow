@@ -111,6 +111,10 @@ export interface AgentBrief {
   readonly task?: { readonly id: string; readonly title: string };
   /** What the previous step handed over (the brief shows it as text too). */
   readonly handoff?: StepContext['handoff'];
+  /** The hand-off's step title and transition label, from the pinned definition. */
+  readonly handoffNames?: StepContext['handoffNames'];
+  /** The agent archetype the step runs with, by its id and title. */
+  readonly archetype?: { readonly id: string; readonly title: string };
   readonly text: string;
 }
 
@@ -165,6 +169,10 @@ export function createAgentStepEngine(dependencies: {
       attempt: context.attempt,
       ...(context.task ? { task: { id: context.task.id, title: context.task.title } } : {}),
       ...(context.handoff ? { handoff: context.handoff } : {}),
+      ...(context.handoffNames ? { handoffNames: context.handoffNames } : {}),
+      ...(context.archetype
+        ? { archetype: { id: context.archetype.id, title: context.archetype.title } }
+        : {}),
       text: renderAgentBrief({ context, scope }),
     };
   }

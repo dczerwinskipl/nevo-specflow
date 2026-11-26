@@ -19033,6 +19033,24 @@
                                 "type": "integer",
                                 "minimum": 1
                               },
+                              "archetype": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "title"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "maxLength": 128
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "maxLength": 512
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
                               "continuation": {
                                 "type": "boolean",
                                 "enum": [
@@ -19079,6 +19097,10 @@
                                       "attempt": {
                                         "type": "integer",
                                         "minimum": 1
+                                      },
+                                      "title": {
+                                        "type": "string",
+                                        "maxLength": 512
                                       }
                                     },
                                     "additionalProperties": false
@@ -19086,6 +19108,10 @@
                                   "transition": {
                                     "type": "string",
                                     "maxLength": 128
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "maxLength": 256
                                   },
                                   "result": {
                                     "type": "string",
@@ -20686,6 +20712,24 @@
                                 "type": "integer",
                                 "minimum": 1
                               },
+                              "archetype": {
+                                "type": "object",
+                                "required": [
+                                  "id",
+                                  "title"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "maxLength": 128
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "maxLength": 512
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
                               "continuation": {
                                 "type": "boolean",
                                 "enum": [
@@ -20732,6 +20776,10 @@
                                       "attempt": {
                                         "type": "integer",
                                         "minimum": 1
+                                      },
+                                      "title": {
+                                        "type": "string",
+                                        "maxLength": 512
                                       }
                                     },
                                     "additionalProperties": false
@@ -20739,6 +20787,10 @@
                                   "transition": {
                                     "type": "string",
                                     "maxLength": 128
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "maxLength": 256
                                   },
                                   "result": {
                                     "type": "string",
@@ -26300,6 +26352,22 @@
                             },
                             "additionalProperties": false
                           },
+                          "interaction": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "permission"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "question"
+                                ]
+                              }
+                            ]
+                          },
                           "decision": {
                             "anyOf": [
                               {
@@ -26455,6 +26523,11 @@
                             }
                           },
                           "additionalProperties": false
+                        },
+                        "notices": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
                         }
                       },
                       "additionalProperties": false

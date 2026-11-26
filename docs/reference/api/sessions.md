@@ -66,7 +66,12 @@ Cursors are scoped and expiring; they are not authorization grants.
 ## Work digest
 
 `GET /api/sessions/{sessionId}/work/{workId}/actions` pages recorded ToolActions.
-Work aggregates and counts are not inferred from a single page. For cursor, content and
+Work aggregates and counts are not inferred from a single page. `counts.notices` is the part of
+`counts.byKind.commentary` SpecFlow wrote itself (an automatic approval, a relayed error), so a
+client tells it from the agent's progress notes; it is absent for Turns counted before it existed.
+An interaction Work carries `interaction` (`permission` or `question`), so a client never
+infers the kind from a title. A step brief's request `origin` names its agent archetype (`archetype`) and the hand-off's step and
+result by the workflow definition (`handoff.from.title`, `handoff.label`). For cursor, content and
 ToolAction semantics, see
 [Session history, Work and content](../../architecture/ai/session-history-and-events.md).
 

@@ -309,6 +309,8 @@ export const RequestOriginSchema = Type.Object(
     task: Type.Optional(Type.Object({ id: text(128), title: text(512) }, closed)),
     step: Type.Object({ id: text(128), title: text(512) }, closed),
     attempt: Type.Integer({ minimum: 1 }),
+    /** The agent archetype the step runs with, by its id and title. Absent on older briefs. */
+    archetype: Type.Optional(Type.Object({ id: text(128), title: text(512) }, closed)),
     /**
      * The request continues the same attempt (a Continue of its Session's agent) instead of
      * starting it: a client says "execution resumed", never a new attempt. Absent for the brief
@@ -326,9 +328,19 @@ export const RequestOriginSchema = Type.Object(
           kind: Type.Union([Type.Literal('transition'), Type.Literal('return')]),
           /** A transition: the step and attempt that finished, and its result. */
           from: Type.Optional(
-            Type.Object({ step: text(128), attempt: Type.Integer({ minimum: 1 }) }, closed),
+            Type.Object(
+              {
+                step: text(128),
+                attempt: Type.Integer({ minimum: 1 }),
+                /** The step's title in the pinned definition; absent on older briefs. */
+                title: Type.Optional(text(512)),
+              },
+              closed,
+            ),
           ),
           transition: Type.Optional(text(128)),
+          /** The transition's display label in the definition, when it gives one. */
+          label: Type.Optional(text(256)),
           result: Type.Optional(text(128)),
           feedback: Type.Optional(text(8192)),
           artifacts: Type.Optional(Type.Array(text(1024), { maxItems: 64 })),
@@ -470,6 +482,8 @@ export const WorkSummarySchema = Type.Object(
         closed,
       ),
     ),
+    /** An interaction Work: whether it asks for a permission or asks a question. */
+    interaction: Type.Optional(Type.Union([Type.Literal('permission'), Type.Literal('question')])),
     /** A permission the person answered: what they decided. */
     decision: Type.Optional(Type.Union([Type.Literal('allowed'), Type.Literal('denied')])),
     /**
@@ -532,6 +546,11 @@ export const WorkCountsSchema = Type.Object(
       },
       closed,
     ),
+    /**
+     * Of `byKind.commentary`, the notes SpecFlow wrote itself (a notice: an automatic approval, a
+     * relayed error), not the agent's progress notes. Absent for Turns counted before it existed.
+     */
+    notices: Type.Optional(SessionSequenceSchema),
   },
   closed,
 );

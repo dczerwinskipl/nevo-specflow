@@ -206,6 +206,7 @@ export function requestOriginOf(
   ownerNote?: string,
 ): RequestOrigin {
   const handoff = brief.handoff;
+  const names = brief.handoffNames;
 
   return {
     kind: 'specflow-step-brief',
@@ -213,6 +214,7 @@ export function requestOriginOf(
     ...(brief.task ? { task: brief.task } : {}),
     step: brief.step,
     attempt: brief.attempt,
+    ...(brief.archetype ? { archetype: brief.archetype } : {}),
     ...(continuation ? { continuation: true as const } : {}),
     ...(ownerNote !== undefined ? { ownerNote } : {}),
     ...(handoff
@@ -221,8 +223,9 @@ export function requestOriginOf(
             handoff.kind === 'transition'
               ? {
                   kind: 'transition' as const,
-                  from: handoff.from,
+                  from: names ? { ...handoff.from, title: names.fromTitle } : handoff.from,
                   transition: handoff.transition,
+                  ...(names?.label !== undefined ? { label: names.label } : {}),
                   ...(handoff.result !== undefined ? { result: handoff.result } : {}),
                   ...(handoff.feedback !== undefined ? { feedback: handoff.feedback } : {}),
                   artifacts: [...handoff.artifacts],

@@ -17,6 +17,8 @@ import {
   questionSnapshot,
   continueNote,
   resumedSnapshot,
+  stageWorkApi,
+  stageWorkIds,
   toolFailuresSnapshot,
   transcriptApi,
 } from './managedSession.transcript.stories-support';
@@ -133,6 +135,10 @@ const interruptionPlay: Story['play'] = async ({ canvasElement }) => {
   });
   await expect(within(outcome).getByText('Tura przerwana')).toBeVisible();
   await expect(canvas.getAllByText(/SpecFlow stopped the Claude process/)).toHaveLength(1);
+  // The real state, when the Runtime reports it: what is left, not "may have been made".
+  await expect(
+    within(outcome).getByText('W przestrzeni roboczej są teraz 3 niezatwierdzone pliki.'),
+  ).toBeVisible();
   await userEvent.click(
     within(outcome).getByRole('button', { name: 'Przejrzyj zmiany w przestrzeni roboczej' }),
   );
@@ -140,22 +146,89 @@ const interruptionPlay: Story['play'] = async ({ canvasElement }) => {
 
 export const InterruptionMobile: Story = {
   tags: ['contract'],
-  args: { api: transcriptApi(interruptionSnapshot()) },
+  args: {
+    api: transcriptApi(interruptionSnapshot()),
+    workspaceChanges: { count: 3, refresh: () => Promise.resolve(true) },
+  },
   globals: NARROW_VIEWPORT,
   play: interruptionPlay,
 };
 export const InterruptionDesktop: Story = {
   tags: ['contract'],
-  args: { api: transcriptApi(interruptionSnapshot()) },
+  args: {
+    api: transcriptApi(interruptionSnapshot()),
+    workspaceChanges: { count: 3, refresh: () => Promise.resolve(true) },
+  },
   globals: WIDE_VIEWPORT,
   play: interruptionPlay,
+};
+
+/**
+ * The count was read before the Turn's last writes and the read after it ends is not in yet: never
+ * "no changes" from a stale count; "may", with Review workspace changes kept.
+ */
+export const InterruptionChangesNotReadYet: Story = {
+  tags: ['contract'],
+  args: {
+    api: transcriptApi(interruptionSnapshot()),
+    workspaceChanges: { count: 0, refresh: () => new Promise<never>(() => undefined) },
+  },
+  globals: NARROW_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    const outcome = await waitFor(() => {
+      const element = canvasElement.querySelector<HTMLElement>('[data-turn-outcome]');
+      if (!element) {
+        throw new Error('Expected the outcome event.');
+      }
+
+      return element;
+    });
+    await expect(
+      within(outcome).getByText('W przestrzeni roboczej mogły już zajść zmiany.'),
+    ).toBeVisible();
+    await expect(
+      within(outcome).getByRole('button', { name: 'Przejrzyj zmiany w przestrzeni roboczej' }),
+    ).toBeVisible();
+  },
+};
+
+/** The read after the Turn ended failed: the earlier count is stale, so "may" and the action. */
+export const InterruptionChangesReadFailed: Story = {
+  tags: ['contract'],
+  args: {
+    api: transcriptApi(interruptionSnapshot()),
+    workspaceChanges: { count: 0, refresh: () => Promise.resolve(false) },
+  },
+  globals: NARROW_VIEWPORT,
+  play: (context) => InterruptionChangesNotReadYet.play!(context),
+};
+
+/** A Runtime without the changes view: "may have been made", and no review action to a dead end. */
+export const InterruptionChangesUnknown: Story = {
+  tags: ['contract'],
+  args: { api: transcriptApi(interruptionSnapshot()) },
+  globals: NARROW_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    const outcome = await waitFor(() => {
+      const element = canvasElement.querySelector<HTMLElement>('[data-turn-outcome]');
+      if (!element) {
+        throw new Error('Expected the outcome event.');
+      }
+
+      return element;
+    });
+    await expect(
+      within(outcome).getByText('W przestrzeni roboczej mogły już zajść zmiany.'),
+    ).toBeVisible();
+    await expect(within(outcome).queryByRole('button', { name: /Przejrzyj zmiany/ })).toBeNull();
+  },
 };
 
 /** A Continue of the same attempt: "Execution resumed", never a second attempt-1 brief. */
 const resumedPlay: Story['play'] = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   await canvas.findByText('Wznowiono wykonanie');
-  await expect(canvas.getByText('Kontynuuj bieżącą próbę workflow.')).toBeVisible();
+  await expect(canvas.getByText('Kontynuacja podejścia 1')).toBeVisible();
   // Two briefs in the conversation: the start, and the continuation that names no new attempt.
   const briefs = canvasElement.querySelectorAll('[data-entry-origin]');
   await expect(briefs).toHaveLength(2);
@@ -279,4 +352,82 @@ export const WorkHistoryDesktop: Story = {
   args: { api: transcriptApi(normalRunSnapshot()) },
   globals: WIDE_VIEWPORT,
   play: workHistoryPlay,
+};
+
+/**
+ * Owner, 2026-11-26: a work row opens Work history at its own stage, that stage's group expanded
+ * and scrolled into view; Back returns to the exact place in the conversation.
+ */
+export const WorkRowOpensItsStage: Story = {
+  tags: ['contract'],
+  args: { api: stageWorkApi(longCommentarySnapshot()) },
+  globals: NARROW_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    await settleViewport(375, 812);
+    const stage = 3;
+    const workIds = stageWorkIds(longCommentarySnapshot())[stage]!;
+    const row = await waitFor(() => {
+      const rows = canvasElement.querySelectorAll<HTMLElement>('[data-work-block] button');
+      if (rows.length <= stage) {
+        throw new Error('Expected every stage row.');
+      }
+
+      return rows[stage]!;
+    });
+    row.scrollIntoView({ block: 'center' });
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const before = row.getBoundingClientRect().top;
+    await userEvent.click(row);
+
+    // Work history at that stage: its tool Work is shown, its group open, in the viewport.
+    const member = await waitFor(() => {
+      const element = document.querySelector<HTMLElement>(`[data-work-id="${workIds[0]}"]`);
+      if (!element) {
+        throw new Error("Expected the stage's Work in Work history.");
+      }
+
+      return element;
+    });
+    await waitFor(async () => {
+      const top = member.getBoundingClientRect().top;
+      await expect(top).toBeGreaterThanOrEqual(0);
+      await expect(top).toBeLessThan(window.innerHeight);
+    });
+    for (const id of workIds) {
+      await expect(document.querySelector(`[data-work-id="${id}"]`)).toBeVisible();
+    }
+
+    // Back: the conversation where it was, the row at the same place on screen.
+    await userEvent.click(within(document.body).getAllByRole('button', { name: /^Wróć do: / })[0]!);
+    await waitFor(async () => {
+      const again = canvasElement.querySelectorAll<HTMLElement>('[data-work-block] button')[stage];
+      await expect(again).toBeDefined();
+      await expect(Math.abs(again!.getBoundingClientRect().top - before)).toBeLessThanOrEqual(1);
+    });
+
+    // Near the bottom, inside the follow threshold but not at it: the same place, no snap.
+    const scroller = () => document.querySelector<HTMLElement>('[data-session-scroller]')!;
+    const gap = 50;
+    scroller().scrollTop = scroller().scrollHeight - scroller().clientHeight - gap;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const last = () => {
+      const rows = canvasElement.querySelectorAll<HTMLElement>('[data-work-block] button');
+
+      return rows[rows.length - 1]!;
+    };
+
+    const lastBefore = last().getBoundingClientRect().top;
+    await userEvent.click(last());
+    await waitFor(() => expect(document.querySelector('[data-work-id]')).not.toBeNull());
+    await userEvent.click(within(document.body).getAllByRole('button', { name: /^Wróć do: / })[0]!);
+    await waitFor(async () => {
+      const node = scroller();
+      await expect(
+        Math.abs(node.scrollHeight - node.clientHeight - node.scrollTop - gap),
+      ).toBeLessThanOrEqual(1);
+      await expect(Math.abs(last().getBoundingClientRect().top - lastBefore)).toBeLessThanOrEqual(
+        1,
+      );
+    });
+  },
 };

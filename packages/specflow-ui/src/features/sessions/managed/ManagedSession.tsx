@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, Send, Square, X } from 'lucide-react';
+import { ArrowDown, Plus, Send, Square, X } from 'lucide-react';
 import {
   Alert,
   InlineNote,
@@ -91,6 +91,10 @@ import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import type { ManagedSessionsApi } from './api';
 import { newId } from '../../../shared/ids/newId';
 import { sessionTitleOf } from '../shared/agentStepTitle';
+import {
+  useWorkspaceChangesAfterTurn,
+  type WorkspaceChangesSource,
+} from './conversation/useWorkspaceChangesAfterTurn';
 
 function browserStorage() {
   try {
@@ -240,9 +244,12 @@ function ManagedSessionConversation({
   composerFocusRequested,
   onComposerFocused,
   reviewChanges,
+  workspaceChanges,
 }: {
-  /** Opens the Session's Specification's workspace changes, when it has one. */
+  /** Opens the Session's Specification's workspace changes, when there are any to show. */
   reviewChanges?: () => void;
+  /** How many files the Specification's workspace has uncommitted now, when the Runtime reports it. */
+  workspaceChanges?: number;
   /** The Unarchive command (shared with the header menu), pressed from the archived bar. */
   unarchive: SessionCommandView & { run: () => void };
   /** Focus the Composer editor once it is back (a Restore succeeded). */
@@ -537,7 +544,9 @@ function ManagedSessionConversation({
   // resolved layout is (a runtime Secondary already splits from 730px, but there are no root tabs
   // yet): one visible surface, Back follows the path, the single runtime flow Back closes (`open`),
   // so the same Turn opened twice is one flow, never two tabs (workspace-dynamic-split.md).
-  const openWork = (turnId: string) => {
+  const openWork = (turnId: string, workIds: readonly string[] = []) => {
+    // A work row opens the Turn's Work history at that stage: expanded and scrolled to.
+    workStack.focusWork(turnId, workIds);
     const params = { sessionId, turnId };
     void (supportsSplit
       ? navigation.openTab(workStack, params)
@@ -712,7 +721,7 @@ function ManagedSessionConversation({
                             {item.block && (
                               <WorkBlock
                                 block={item.block}
-                                onInspect={() => openWork(item.turnId)}
+                                onInspect={() => openWork(item.turnId, item.block?.workIds)}
                               />
                             )}
                           </div>
@@ -723,6 +732,7 @@ function ManagedSessionConversation({
                             key={item.id}
                             item={item}
                             onReviewChanges={reviewChanges}
+                            workspaceChanges={workspaceChanges}
                           />
                         );
                       default:
@@ -756,28 +766,25 @@ function ManagedSessionConversation({
                     )}
                     style={{ bottom: `calc(${composerHeight}px + 0.5rem)` }}
                   >
-                    {/* `variant="secondary"`'s own background token (`--color-action-secondary`)
-                        is deliberately translucent — it is meant for a control sitting on an
-                        already-opaque surface, not one floating directly over scrolling content
-                        (it must stay opaque like the other floating buttons). `workspace-floating-pill`
-                        (`AppWorkspace.css`) overrides it to the same opaque material the mobile
-                        floating-navigation row's own buttons use, and reliably wins the cascade
-                        over the variant's Tailwind utility regardless of class order — see that
-                        rule's own doc comment. `shadow-lg` is this screen's shared "subtle
-                        floating surface" elevation (also applied to the Composer bar below, and
-                        mirrored by value in the floating-navigation row's own shadow) — not the
-                        heavier `shadow-xl` this used before, which read as too strong for a small
-                        pill. */}
-                    <Button
-                      className="workspace-floating-pill shadow-lg"
+                    {/* A small round down arrow just above the Composer (owner, 2026-11-26: the
+                        labelled pill covered several lines of the transcript); its words are its
+                        accessible name and tooltip. `workspace-floating-pill` (`AppWorkspace.css`)
+                        gives it the opaque floating material the mobile floating-navigation
+                        buttons use (the secondary variant's own background is translucent), and
+                        `shadow-lg` is this screen's shared subtle floating elevation. */}
+                    <IconButton
+                      aria-label={t('managedSession.latest')}
+                      title={t('managedSession.latest')}
+                      icon={ArrowDown}
+                      size="md"
                       variant="secondary"
+                      className="workspace-floating-pill rounded-full shadow-lg"
+                      data-return-to-latest=""
                       onClick={() => {
                         conversationScroll.followLatest();
                         void feed.latest();
                       }}
-                    >
-                      {t('managedSession.latest')}
-                    </Button>
+                    />
                   </div>
                 )}
                 <div
@@ -1252,6 +1259,7 @@ export function ManagedSession({
   onSessionChanged,
   onGoToSpecifications,
   onReviewChanges,
+  workspaceChanges,
   namingPending = false,
 }: {
   /**
@@ -1305,6 +1313,14 @@ export function ManagedSession({
    * Turn that ended badly after changing files offers it. Omitted: no such action.
    */
   onReviewChanges?: (specification: ContextSpecification) => void;
+  /**
+   * The Specification's uncommitted files, when the Runtime reports them (the route composition
+   * reads them): a Turn that ended badly states the count once it was read after that Turn ended
+   * (`useWorkspaceChangesAfterTurn`), and **Review workspace changes** is offered while there are
+   * some or the count is not known yet. Absent: a Runtime without the changes view, so the outcome
+   * says "may" and no review action leads to a dead end.
+   */
+  workspaceChanges?: WorkspaceChangesSource;
 }) {
   const { t } = useTranslation();
   const reviewSpecification =
@@ -1358,6 +1374,7 @@ export function ManagedSession({
   const workStack = useMemo(() => createWorkInspector(api, feed, owner), [api, feed, owner]);
   const briefStack = useMemo(() => createStepBriefStack(api), [api]);
   const snapshot = state.snapshot;
+  const workspaceNow = useWorkspaceChangesAfterTurn(snapshot, workspaceChanges);
   // Started here and not loaded yet: the start values stand in for the snapshot's.
   const fallback = useStartedSessionFallback({
     owner,
@@ -1647,10 +1664,11 @@ export function ManagedSession({
             composerFocusRequested={composerFocusRequested}
             onComposerFocused={onComposerFocused}
             reviewChanges={
-              onReviewChanges && reviewSpecification
+              onReviewChanges && reviewSpecification && workspaceNow?.reviewable
                 ? () => onReviewChanges(reviewSpecification)
                 : undefined
             }
+            workspaceChanges={workspaceNow?.count}
           />
           {sessionActions.dialogs}
         </AppWorkspace.Primary>

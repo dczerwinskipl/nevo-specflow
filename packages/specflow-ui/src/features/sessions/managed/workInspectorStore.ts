@@ -153,6 +153,8 @@ export interface WorkViewState extends PagedState<WorkSummary> {
   expanded: ReadonlySet<string>;
   /** Members (Work ids) of the tool groups the reader opened (`isGroupOpen`). */
   openGroups: ReadonlySet<string>;
+  /** Work the history was opened at (a Conversation work row): shown, then cleared (`focusWork`). */
+  focus?: readonly string[];
 }
 
 export const initialWorkViewState = (): WorkViewState => ({
@@ -187,6 +189,35 @@ export function setGroupOpen(
   }
 
   return { ...state, openGroups };
+}
+
+/**
+ * Opens Work history at a work stage of the Conversation (owner, 2026-11-26): its tool Work is
+ * expanded wherever it is grouped, every operation shows (no filter or search hides it), and the
+ * screen scrolls to it once it is loaded (`focus`, cleared when shown).
+ */
+export function focusWork(state: WorkViewState, workIds: readonly string[]): WorkViewState {
+  if (workIds.length === 0) {
+    return state;
+  }
+
+  return {
+    ...setGroupOpen(state, workIds, true),
+    filter: { kind: 'all', search: '' },
+    focus: workIds,
+  };
+}
+
+/** The focus has been shown (or can no longer be found): the view is the reader's again. */
+export function clearFocus(state: WorkViewState): WorkViewState {
+  if (state.focus === undefined) {
+    return state;
+  }
+
+  const next = { ...state };
+  delete next.focus;
+
+  return next;
 }
 
 export type ActionsViewState = PagedState<ToolActionSummary>;

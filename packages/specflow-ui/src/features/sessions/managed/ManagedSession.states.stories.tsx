@@ -72,6 +72,9 @@ import {
  * Verified in every state story below that uses the Context mock view model, at 1440px.
  */
 async function verifyContextReopens(canvasElement: HTMLElement) {
+  // The side panel and its toggle exist from the split width on: the runner's frame is resized to
+  // the desktop width the story's `globals` name (the static viewport global is not applied there).
+  await settleViewport(1440, 900);
   const canvas = within(canvasElement);
   const contextTab = () => canvas.queryByRole('tab', { name: 'Kontekst' });
   await waitFor(() => expect(contextTab()).toBeVisible());
@@ -497,16 +500,13 @@ async function verifyWorkBlocks(canvasElement: HTMLElement) {
     await expect(block.querySelectorAll('button, a, [tabindex]')).toHaveLength(1);
     const button = block.querySelector('button')!;
     await expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth + 1);
-    // The first text line and the chevron are centred on the icon tile, in every state.
+    // The icon, the text and the chevron share one centre line, in every state.
     const centre = (rect: DOMRect) => rect.top + rect.height / 2;
-    const tile = centre(button.firstElementChild!.getBoundingClientRect());
-    const first = block.querySelector('[data-work-block-text] > :not(.sr-only)')!;
-    const lineHeight = parseFloat(getComputedStyle(first).lineHeight);
+    const icon = centre(button.firstElementChild!.getBoundingClientRect());
+    const text = block.querySelector('[data-work-block-text]')!.getBoundingClientRect();
+    await expect(Math.abs(centre(text) - icon)).toBeLessThanOrEqual(1);
     await expect(
-      Math.abs(first.getBoundingClientRect().top + lineHeight / 2 - tile),
-    ).toBeLessThanOrEqual(1);
-    await expect(
-      Math.abs(centre(button.lastElementChild!.getBoundingClientRect()) - tile),
+      Math.abs(centre(button.lastElementChild!.getBoundingClientRect()) - icon),
     ).toBeLessThanOrEqual(1);
   }
 
@@ -525,7 +525,11 @@ async function verifyWorkBlocks(canvasElement: HTMLElement) {
   // on mobile: "2 / odczyty" split across two lines) — a literal-space regex stopped matching.
   await userEvent.click(canvas.getByRole('button', { name: /4\sodczyty\s·\s1\swyszukiwanie/ }));
   // That Turn's own Work history: its 5 tool actions, and nothing from other Turns.
-  await waitFor(() => expect(canvas.getByText('5 elementów przebiegu')).toBeVisible());
+  await waitFor(() =>
+    expect(canvasElement.querySelector('[data-work-counts]')).toHaveTextContent(
+      /^5\sdziałań narzędzia/,
+    ),
+  );
 }
 
 export const WorkSummaryStates: Story = {

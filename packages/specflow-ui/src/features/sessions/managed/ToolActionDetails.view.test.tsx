@@ -142,16 +142,17 @@ describe('ToolAction details', () => {
     const stack = document.querySelector('section')!.parentElement!;
     expect(stack.className).toContain('gap-5');
     expect(stack.className).not.toContain('gap-3');
-    expect(stack.firstElementChild?.querySelector('h2')).not.toBeNull();
+    // The content's header is the subject and the status: the screen's own header names the action.
+    expect(stack.firstElementChild?.querySelector('[data-tool-action-status]')).not.toBeNull();
+    expect(stack.querySelector('h2')).toBeNull();
   });
 
   const status = () => document.querySelector<HTMLElement>('[data-tool-action-status]')!;
 
-  it('heads a completed action with its full title, a success mark and the duration only', async () => {
+  it('heads a completed action with a success mark and the duration only', async () => {
     renderDetail();
     await screen.findByRole('textbox', { name: 'Parameters' });
 
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Search admission');
     const line = status();
     // The success icon is the visible mark; the state word is there for assistive technology only.
     expect(line.querySelector('svg.text-status-success')).not.toBeNull();
@@ -227,7 +228,6 @@ describe('ToolAction details', () => {
     );
     const content = await screen.findByRole('textbox', { name: 'Content' });
 
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Wrote file');
     expect(document.querySelector('[data-tool-action-subject]')!.textContent).toBe('dummy/job.sh');
     expect(content.textContent).toContain('echo "Hello, $1"');
     const response = screen.getByRole('textbox', { name: 'Result' });

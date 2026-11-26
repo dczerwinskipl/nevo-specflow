@@ -1821,7 +1821,7 @@
     "workKind": {
       "commentary": "Postęp",
       "reasoning": "Myślenie",
-      "interaction": "Interakcja z użytkownikiem",
+      "interaction": "Pytanie lub prośba o zgodę",
       "tool": "Narzędzie"
     },
     "toolVerb": {
@@ -1906,10 +1906,6 @@
       "output": "Wynik",
       "errorCode": "Kod błędu: {{code}}",
       "counts": {
-        "total_one": "{{count}} element przebiegu",
-        "total_few": "{{count}} elementy przebiegu",
-        "total_many": "{{count}} elementów przebiegu",
-        "total_other": "{{count}} elementy przebiegu",
         "inProgress": "{{count}} w toku",
         "commentary_one": "{{count}} wpis postępu",
         "commentary_few": "{{count}} wpisy postępu",
@@ -1919,10 +1915,14 @@
         "reasoning_few": "{{count}} etapy myślenia",
         "reasoning_many": "{{count}} etapów myślenia",
         "reasoning_other": "{{count}} etapu myślenia",
-        "interaction_one": "{{count}} interakcja z użytkownikiem",
-        "interaction_few": "{{count}} interakcje z użytkownikiem",
-        "interaction_many": "{{count}} interakcji z użytkownikiem",
-        "interaction_other": "{{count}} interakcji z użytkownikiem"
+        "interaction_one": "{{count}} pytanie lub prośba o zgodę",
+        "interaction_few": "{{count}} pytania i prośby o zgodę",
+        "interaction_many": "{{count}} pytań i próśb o zgodę",
+        "interaction_other": "{{count}} pytania i prośby o zgodę",
+        "notices_one": "{{count}} notatka SpecFlow",
+        "notices_few": "{{count}} notatki SpecFlow",
+        "notices_many": "{{count}} notatek SpecFlow",
+        "notices_other": "{{count}} notatki SpecFlow"
       },
       "question": {
         "answer": "{{question}} → {{answer}}",
@@ -1934,7 +1934,11 @@
       "detailedView": "Pokaż każdą operację",
       "authorization": {
         "title": "Autoryzacja",
-        "byYou": "Twoja decyzja"
+        "answered": "Odpowiedziano na prośbę o zgodę"
+      },
+      "interaction": {
+        "permission": "Prośba o zgodę",
+        "question": "Pytanie"
       }
     },
     "workSummary": {
@@ -2033,27 +2037,40 @@
       "title": "Co otrzymał agent",
       "subject": "{{step}} · podejście {{attempt}}",
       "subjectTask": "{{step}} zadania {{task}} · podejście {{attempt}}",
-      "intro": "Opis zadania, który SpecFlow wysłał na start tego podejścia, tak jak otrzymał go agent.",
-      "dataNote": "Przekazane agentowi jako informacja, nie jako polecenia.",
+      "intro": "Co SpecFlow polecił agentowi na start tego podejścia.",
       "source": {
         "stepPurpose": "Cel kroku",
         "stepInstructions": "Instrukcje kroku",
         "agentProfile": "Profil agenta",
-        "handoff": "Przekazanie z poprzedniego kroku"
+        "handoff": "Przekazanie z poprzedniego kroku",
+        "task": "Zadanie"
       },
       "generated": "Wygenerowane przez SpecFlow",
       "titleTask": "{{step}} zadania {{task}}",
       "openFull": "Zobacz pełny brief",
       "ownerNote": "Twoja wskazówka dla agenta",
       "resumed": "Wznowiono wykonanie",
-      "continue": "Kontynuuj bieżącą próbę workflow.",
+      "continue": "Kontynuacja podejścia {{attempt}}",
       "openContinuation": "Zobacz brief kontynuacji",
-      "introContinuation": "Brief, który SpecFlow wysłał, aby kontynuować tę próbę — tak, jak otrzymał go agent."
+      "introContinuation": "Co SpecFlow polecił agentowi przy kontynuacji tego podejścia.",
+      "handoff": {
+        "from": "Z kroku {{step}} · podejście {{attempt}}",
+        "returned": "Powrót do tego kroku",
+        "artifacts": "Przekazane pliki",
+        "fromUnnamed": "Z poprzedniego kroku · podejście {{attempt}}"
+      },
+      "fullText": "Pełny tekst wysłany agentowi",
+      "fullTextNote": "Dokładnie tak, jak otrzymał go agent, z regułami i odwołaniami SpecFlow."
     },
     "turnOutcome": {
       "consequence": "W przestrzeni roboczej mogły już zajść zmiany.",
       "reviewChanges": "Przejrzyj zmiany w przestrzeni roboczej",
-      "details": "Pokaż szczegóły techniczne"
+      "details": "Pokaż szczegóły techniczne",
+      "changesLeft_one": "W przestrzeni roboczej jest teraz {{count}} niezatwierdzony plik.",
+      "changesLeft_few": "W przestrzeni roboczej są teraz {{count}} niezatwierdzone pliki.",
+      "changesLeft_many": "W przestrzeni roboczej jest teraz {{count}} niezatwierdzonych plików.",
+      "changesLeft_other": "W przestrzeni roboczej jest teraz {{count}} niezatwierdzonego pliku.",
+      "noChangesLeft": "W przestrzeni roboczej nie ma teraz niezatwierdzonych zmian."
     },
     "composerPlaceholder": "Napisz do {{agent}}…"
   },

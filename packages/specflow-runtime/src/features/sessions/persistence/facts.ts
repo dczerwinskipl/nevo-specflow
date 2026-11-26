@@ -17,6 +17,7 @@ import { transitionWork } from '../lifecycle/reducer';
 import {
   countActionOpened,
   countActionTransition,
+  countNotice,
   countWorkOpened,
   countWorkTransition,
   hasToolActions,
@@ -404,6 +405,12 @@ export function createProviderFacts({
           fail('SESSION_INPUT_INVALID', 'Cannot append text to settled Work.');
         }
 
+        // SpecFlow's own note (its first text carries the notice): counted apart from the agent's
+        // progress notes.
+        if (!existing && f.notice && w.kind === 'commentary' && t.work) {
+          t.work = countNotice(t.work);
+        }
+
         w.content = ref;
         // Narration Work reads as its own words (Work history shows its title), never a kind.
         if (w.kind === 'commentary' || w.kind === 'reasoning') {
@@ -490,6 +497,11 @@ export function createProviderFacts({
         workId: w.workId,
         revision: 1,
       };
+      // The Work says which kind of request it is (a client never guesses it from a title).
+      w.interaction = f.interaction.kind === 'permission' ? 'permission' : 'question';
+      w.revision++;
+      run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
+      emit(s, 'work', { turnId: c.turnId, items: [w] });
       run(
         'INSERT INTO interactions VALUES(?,?,?,?,?,?)',
         i.interactionId,

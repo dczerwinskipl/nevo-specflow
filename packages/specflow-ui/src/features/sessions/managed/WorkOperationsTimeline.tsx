@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { ShieldCheck, ShieldX } from 'lucide-react';
+import { MessageCircleQuestion, ShieldCheck, ShieldQuestion, ShieldX } from 'lucide-react';
 import type { ToolOperation, WorkSummary } from '@nevo/specflow-contracts/sessions';
 import { Collapsible, Icon, Timeline, Typography, cn } from '@nevo/ui';
-import { toolOperationOrder } from './workDigest';
+import { leadingOperation, toolOperationOrder } from './workDigest';
+import { workOperationIcon } from './workOperationIcon';
 import { historyEntry } from './pagedHistoryAnchor';
 import { useGroupKeys } from './stableGroupKeys';
 import type { ChapterEntry, ToolBurstEntry } from './workGrouping';
@@ -15,11 +16,11 @@ import {
   type ViewStore,
   type WorkViewState,
 } from './workInspectorStore';
-import { workStateTextClassName, workStateTone } from './workStatus';
+import { workMarkerTone, workStateTextClassName } from './workStatus';
 import { WorkRowContent, useWorkRowMeta } from './WorkRow';
 import { workFailureText, workItemTitle, workItemTitleParts } from './toolLabels';
 
-type OpenActions = (workId: string, title: string, permissionId?: string) => void;
+type OpenActions = (workId: string, title: string, heading: string, permissionId?: string) => void;
 type Authorizations = ReadonlyMap<string, WorkSummary>;
 
 /**
@@ -36,7 +37,7 @@ function WorkTitle({ item }: { item: WorkSummary }) {
       {label}
       {subject && (
         <span
-          className="mt-0.5 line-clamp-2 block font-mono text-body-sm font-normal text-content-secondary [overflow-wrap:anywhere]"
+          className="mt-0.5 line-clamp-2 font-mono text-body-sm font-normal text-content-secondary [overflow-wrap:anywhere]"
           data-work-subject=""
         >
           <span className="sr-only"> · </span>
@@ -102,18 +103,24 @@ function AuthorizationWord({ decision }: { decision: 'allowed' | 'denied' }) {
   return <>{t(`managedSession.permissionState.${decision}`)}</>;
 }
 
-/** What a tool group holds by kind ("5 commands · 1 read"), from the Runtime's `operation`. */
-function burstKinds(burst: ToolBurstEntry, t: TFunction): string | undefined {
-  const counts = new Map<ToolOperation, number>();
+/** How many of each operation a tool group holds (the Runtime's `operation`). */
+function burstCounts(burst: ToolBurstEntry): Partial<Record<ToolOperation, number>> {
+  const counts: Partial<Record<ToolOperation, number>> = {};
   for (const item of burst.items) {
     const operation = item.operation ?? 'other';
-    counts.set(operation, (counts.get(operation) ?? 0) + 1);
+    counts[operation] = (counts[operation] ?? 0) + 1;
   }
 
+  return counts;
+}
+
+/** What a tool group holds by kind ("5 commands · 1 read"), from the Runtime's `operation`. */
+function burstKinds(burst: ToolBurstEntry, t: TFunction): string | undefined {
+  const counts = burstCounts(burst);
   const kinds = toolOperationOrder
-    .filter((operation) => counts.has(operation))
+    .filter((operation) => counts[operation] !== undefined)
     .map((operation) =>
-      t(`managedSession.workSummary.kind.${operation}`, { count: counts.get(operation) }),
+      t(`managedSession.workSummary.kind.${operation}`, { count: counts[operation] }),
     );
 
   return kinds.length > 0 ? kinds.join(' · ') : undefined;
@@ -157,7 +164,7 @@ function AnsweredQuestionTimelineItem({
 
   return (
     <Timeline.Item {...historyEntry(item.workId)}>
-      <Timeline.Marker tone={workStateTone(item.state)} />
+      <Timeline.Marker icon={MessageCircleQuestion} tone={workMarkerTone(item.state)} />
       <Collapsible density="inline" defaultExpanded={false}>
         <Timeline.Content
           title={
@@ -222,10 +229,26 @@ function AnsweredQuestionTimelineItem({
   );
 }
 
+/**
+ * An interaction Work is a permission request by the Runtime's own `interaction` kind; Work recorded
+ * before that field existed is one when its data shows it (a decision, the tool call it is for).
+ * Never decided from a title.
+ */
+function isPermission(item: WorkSummary): boolean {
+  return item.interaction !== undefined
+    ? item.interaction === 'permission'
+    : item.decision !== undefined || item.operation !== undefined || item.subject !== undefined;
+}
+
 function InteractionTimelineItem({ item }: { item: WorkSummary }) {
   const { t } = useTranslation();
 
-  const kind = t('managedSession.workKind.interaction');
+  // What kind of request it was, in the row's own words (never a generic "User interaction").
+  const kind = t(
+    isPermission(item)
+      ? 'managedSession.workInspector.interaction.permission'
+      : 'managedSession.workInspector.interaction.question',
+  );
   // The interaction's own title (e.g. "Permission to write workspace") — previously every
   // interaction showed only the generic kind name, losing what was actually asked — with its kind
   // leading the meta line under it.
@@ -234,7 +257,11 @@ function InteractionTimelineItem({ item }: { item: WorkSummary }) {
 
   return (
     <Timeline.Item {...historyEntry(item.workId)}>
-      <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
+      <Timeline.Marker
+        active={item.state === 'active'}
+        icon={isPermission(item) ? ShieldQuestion : MessageCircleQuestion}
+        tone={workMarkerTone(item.state)}
+      />
       <Timeline.Content
         title={
           <WorkRowContent
@@ -274,7 +301,11 @@ function ToolTimelineItem({
 
   return (
     <Timeline.Item {...historyEntry(item.workId)}>
-      <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
+      <Timeline.Marker
+        active={item.state === 'active'}
+        icon={workOperationIcon(item.operation)}
+        tone={workMarkerTone(item.state)}
+      />
       <Timeline.Content
         title={
           <WorkRowContent
@@ -288,7 +319,13 @@ function ToolTimelineItem({
             meta={withFailure(withAuthorization(meta, permission), item, t)}
             onOpen={
               item.actionCount
-                ? () => onOpenActions(item.workId, title, permission?.workId)
+                ? () =>
+                    onOpenActions(
+                      item.workId,
+                      title,
+                      workItemTitleParts(t, item).label,
+                      permission?.workId,
+                    )
                 : undefined
             }
           />
@@ -325,7 +362,15 @@ function GroupedToolRow({
       }
       meta={withAuthorization(meta, permission)}
       onOpen={
-        item.actionCount ? () => onOpenActions(item.workId, title, permission?.workId) : undefined
+        item.actionCount
+          ? () =>
+              onOpenActions(
+                item.workId,
+                title,
+                workItemTitleParts(t, item).label,
+                permission?.workId,
+              )
+          : undefined
       }
     />
   );
@@ -362,7 +407,7 @@ function ToolBurstTimelineItem({
 
   return (
     <Timeline.Item {...historyEntry(entryId)}>
-      <Timeline.Marker tone="success" />
+      <Timeline.Marker icon={workOperationIcon(leadingOperation(burstCounts(burst)))} />
       <Collapsible
         density="inline"
         isExpanded={open}
@@ -382,7 +427,7 @@ function ToolBurstTimelineItem({
           <Collapsible.Content>
             <ul className="grid gap-3 pt-1">
               {burst.items.map((item) => (
-                <li key={item.workId} className="min-w-0">
+                <li key={item.workId} className="min-w-0" data-work-id={item.workId}>
                   <GroupedToolRow
                     item={item}
                     permission={authorizations.get(item.workId)}

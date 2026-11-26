@@ -417,3 +417,68 @@ export function transcriptApi(served: SessionSnapshot): ManagedSessionsApi {
       }),
   };
 }
+
+/** The stages' tool Work by Work id, in conversation order (a stage starts at each Commentary). */
+export function stageWorkIds(served: SessionSnapshot): string[][] {
+  const stages: string[][] = [];
+  let current: string[] | undefined;
+  for (const item of served.entries) {
+    if (item.kind === 'commentary' && !item.notice) {
+      current = undefined;
+    } else if (item.kind === 'work-summary' && item.workId) {
+      if (!current) {
+        current = [];
+        stages.push(current);
+      }
+
+      current.push(item.workId);
+    }
+  }
+
+  return stages;
+}
+
+/**
+ * `transcriptApi` whose Work history holds the conversation's own Work: each Commentary and each
+ * stage's tool Work under the same ids as the `work-summary` entries, so a work row opens Work
+ * history at its own stage.
+ */
+export function stageWorkApi(served: SessionSnapshot): ManagedSessionsApi {
+  const base = transcriptApi(served);
+  const items: WorkSummary[] = served.entries.flatMap((item, index): WorkSummary[] => {
+    const common = {
+      ordinal: index + 1,
+      revision: 1,
+      state: 'completed' as const,
+      createdAt: at(index),
+      updatedAt: at(index + 1),
+    };
+    if (item.kind === 'commentary') {
+      return [{ ...common, workId: ids(9800 + index), kind: 'commentary', title: item.text }];
+    }
+
+    if (item.kind === 'work-summary' && item.workId) {
+      return [
+        {
+          ...common,
+          workId: item.workId,
+          kind: 'tool',
+          title: { text: 'Bash', complete: true },
+          operation: 'command',
+          subject: `pnpm check --step ${index}`,
+          actionCount: 1,
+        },
+      ];
+    }
+
+    return [];
+  });
+
+  return {
+    ...base,
+    work: async (sessionId, turnId, before, signal) => ({
+      ...(await base.work(sessionId, turnId, before, signal)),
+      items,
+    }),
+  };
+}

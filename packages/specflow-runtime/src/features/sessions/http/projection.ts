@@ -68,19 +68,24 @@ function catalogueTitles(
 }
 
 /**
- * A list row of a stored summary: the provider and model titles of the Runtime's catalogue (absent
- * when not listed) and the effective readiness. The mode facts stay internal.
+ * A list row of a stored summary: the provider, model and provider-mode titles of the Runtime's
+ * catalogue (absent when not listed) and the effective readiness. The mode ids stay internal.
  */
 export function listedSession(
   summary: StoredListSummary,
   providerFor: (providerId: string) => ProviderDescriptor | undefined,
 ): SessionListSummary {
-  const { mode: _mode, providerModeId: _providerModeId, ...row } = summary;
+  const { mode: _mode, providerModeId, ...row } = summary;
   const provider = providerFor(summary.providerId);
+  const providerModeTitle =
+    providerModeId === undefined
+      ? undefined
+      : provider?.providerModes?.find((mode) => mode.modeId === providerModeId)?.title;
 
   return {
     ...row,
     ...catalogueTitles(summary.modelId, provider),
+    ...(providerModeTitle ? { providerModeTitle } : {}),
     readiness: effectiveReadiness(summary, summary.activeTurn !== undefined, provider),
   };
 }

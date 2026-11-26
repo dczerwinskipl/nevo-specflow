@@ -60,6 +60,8 @@ export interface SessionSummary {
   readonly providerTitle?: string;
   readonly modelId?: string;
   readonly modelTitle?: string;
+  /** The provider mode the Session runs in, by the catalogue's title (Auto, Manual, ...). */
+  readonly providerModeTitle?: string;
   readonly activity?: SessionActivity;
   readonly activityCode?: 'active' | 'attention';
 }

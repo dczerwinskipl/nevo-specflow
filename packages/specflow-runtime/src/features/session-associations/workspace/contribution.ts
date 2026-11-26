@@ -29,6 +29,7 @@ interface WorkspaceSessionItem {
   providerTitle?: string;
   modelId?: string;
   modelTitle?: string;
+  providerModeTitle?: string;
   updatedAt: string;
   agentStep?: AgentStepOrigin;
 }
@@ -232,6 +233,7 @@ export function createWorkspaceSessionContribution(options: {
           ...(summary.providerTitle ? { providerTitle: summary.providerTitle } : {}),
           ...(summary.modelId ? { modelId: summary.modelId } : {}),
           ...(summary.modelTitle ? { modelTitle: summary.modelTitle } : {}),
+          ...(summary.providerModeTitle ? { providerModeTitle: summary.providerModeTitle } : {}),
           updatedAt: summary.updatedAt,
           ...(origins.has(row.sessionId) ? { agentStep: origins.get(row.sessionId)! } : {}),
         };

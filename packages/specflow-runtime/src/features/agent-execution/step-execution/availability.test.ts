@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   chosenLaunch,
   withRuntimeReasons,
+  sessionWorkMode,
   workModeFor,
   type AgentRuntimeFacts,
 } from './availability';
@@ -127,5 +128,22 @@ describe('the work mode of a fresh agent Session', () => {
     }
 
     expect(workModeFor({}, 'opus')).toBeUndefined();
+  });
+});
+
+describe('the work mode of a continued agent Session', () => {
+  const providerModes = [
+    { modeId: 'auto', title: 'Auto', nativeMode: 'auto', mode: 'workspace-write' as const },
+    { modeId: 'manual', title: 'Manual', nativeMode: 'default', mode: 'workspace-write' as const },
+  ].map((mode) => ({ ...mode, readiness: 'ready' as const }));
+
+  it("names the Session's own mode by the catalogue's title, never by its id alone", () => {
+    expect(sessionWorkMode({ providerModes }, 'manual')).toEqual({
+      providerModeId: 'manual',
+      title: 'Manual',
+    });
+    expect(sessionWorkMode({ providerModes }, 'plan')).toBeUndefined();
+    expect(sessionWorkMode({ providerModes }, undefined)).toBeUndefined();
+    expect(sessionWorkMode(undefined, 'auto')).toBeUndefined();
   });
 });

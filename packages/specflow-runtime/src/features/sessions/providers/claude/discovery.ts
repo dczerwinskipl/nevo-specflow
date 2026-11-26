@@ -7,8 +7,12 @@ import { claudeMode, toolsForClaudeMode, type ClaudeMode } from './modes';
 
 /**
  * The `--settings` of a Turn. Setting sources are off (`--setting-sources ''`), so no owner or
- * project permission is ever merged. Bash always asks: `ask` outranks `allow`, and an allowlisted
- * product CLI command is approved by the host instead (see `createClaudeOperation`). Only the scoped
+ * project permission is ever merged. SpecFlow adds no Bash rule of its own: the native permission
+ * mode decides each Bash call as it does in Claude Code (`auto`: its classifier; `manual` and
+ * `acceptEdits`: its read-only check, else a prompt; `dontAsk`: refused; `plan`: no Bash tool),
+ * and only what Claude itself would ask reaches the host. No `Bash(...)` rule is ever forwarded as a
+ * native `allow` (Claude matches it as a prefix); an allowlisted product CLI command that Claude
+ * asks about is approved by the host instead (see `createClaudeOperation`). Only the scoped
  * read-tool rules of an agent step execution Turn become native `allow` rules.
  */
 export function claudeSettings(permissions?: { readonly allow: readonly string[] }): string {
@@ -18,7 +22,7 @@ export function claudeSettings(permissions?: { readonly allow: readonly string[]
 
   return JSON.stringify({
     disableAllHooks: true,
-    permissions: { ...(allow.length > 0 ? { allow } : {}), ask: ['Bash'] },
+    ...(allow.length > 0 ? { permissions: { allow } } : {}),
     env: { CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR: '1' },
   });
 }

@@ -22,6 +22,7 @@ import { SPEC, TASK, taskWorkflowProjection } from '../projections.stories-suppo
 import { refusal } from '../ProjectWorkflowExecution.stories-support';
 import { WorkflowNow } from '../WorkflowNow';
 import { needsPolling } from './agentAttempt';
+import { ContinueDialog } from './ContinueDialog';
 import { POLL_MS, usePolling } from './usePolling';
 import {
   ATTEMPT_ID,
@@ -183,6 +184,26 @@ describe('an agent that stopped', () => {
         { requestId: expect.any(String) as string, expected: { step: 'implement', attempt: 2 } },
       ),
     );
+  });
+
+  it('says in the Continue dialog which work mode the continued Turn inherits', async () => {
+    stubLayoutApis();
+    render(
+      <LocalizationProvider instance={createSpecFlowI18n('en')}>
+        <ContinueDialog
+          open
+          onOpenChange={() => undefined}
+          stepTitle="Implement"
+          attempt={2}
+          workMode="Auto"
+          pending={false}
+          onContinue={() => undefined}
+        />
+      </LocalizationProvider>,
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/The agent works in the Auto mode\./)).toBeTruthy();
   });
 
   it("sends the owner's note for the agent with the Continue of the same attempt", async () => {

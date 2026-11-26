@@ -322,7 +322,9 @@ describe('agent brief: what the agent would otherwise search for', () => {
     expect(brief).toContain('Read, Grep and Glob, and Write and Edit inside this worktree');
     expect(brief).toContain('`.nevo/local/scratch/`');
     expect(brief).toContain('No variables (`S=...; $S`)');
-    expect(brief).toContain('Every other shell command waits until the owner approves it.');
+    expect(brief).toContain(
+      "Any other shell command is decided by your work mode's own permission check",
+    );
   });
 
   it('bounds the Task list and points to tasks list for the rest', () => {

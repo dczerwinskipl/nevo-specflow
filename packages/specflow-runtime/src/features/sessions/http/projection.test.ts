@@ -5,7 +5,7 @@ import type {
   SessionSnapshot,
   SessionChange,
 } from '@nevo/specflow-contracts/sessions';
-import { effective, effectiveEvent } from './projection';
+import { effective, effectiveEvent, listedSession } from './projection';
 
 const identity = { projectId: 'project', sessionId: 'session' };
 
@@ -261,4 +261,37 @@ it('keeps Cancel on a Session change (rename) emitted during an active Turn', ()
     cancel: true,
     start: false,
   });
+});
+
+it('names the provider mode of a list row by its catalogue title, keeping the mode ids internal', () => {
+  const f = fixture();
+  f.provider.providerModes = [
+    {
+      modeId: 'auto',
+      nativeMode: 'auto',
+      title: 'Auto',
+      mode: 'workspace-write',
+      readiness: 'ready',
+    },
+  ];
+  const row = (providerModeId?: string) =>
+    listedSession(
+      {
+        sessionId: 'session',
+        providerId: 'controlled',
+        readiness: 'ready',
+        createdAt: 'now',
+        updatedAt: 'now',
+        association: { kind: 'none' },
+        mode: 'workspace-write',
+        ...(providerModeId ? { providerModeId } : {}),
+      } as never,
+      () => f.provider,
+    );
+
+  expect(row('auto')).toMatchObject({ providerModeTitle: 'Auto' });
+  expect(row('auto')).not.toHaveProperty('providerModeId');
+  expect(row('auto')).not.toHaveProperty('mode');
+  expect(row('manual')).not.toHaveProperty('providerModeTitle');
+  expect(row()).not.toHaveProperty('providerModeTitle');
 });

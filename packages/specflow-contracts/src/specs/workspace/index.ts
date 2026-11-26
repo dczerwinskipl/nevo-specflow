@@ -82,6 +82,8 @@ export const WorkspaceSessionSchema = Type.Object(
     providerTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
     modelId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
     modelTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
+    /** The title of the provider mode the Session runs in (for Claude: Auto, Manual, ...). */
+    providerModeTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
     updatedAt: Type.String({ minLength: 1, maxLength: 40 }),
     /** An agent step execution Session's step and attempt (sessions `AgentStepOrigin`). */
     agentStep: Type.Optional(AgentStepOriginSchema),

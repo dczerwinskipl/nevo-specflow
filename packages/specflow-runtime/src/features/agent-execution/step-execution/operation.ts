@@ -27,6 +27,7 @@ import { AgentUnavailableError } from '../../workflow';
 import { untrusted } from '../brief/render';
 import {
   chosenLaunch,
+  sessionWorkMode,
   withOfferedModel,
   withRuntimeReasons,
   workModeFor,
@@ -267,8 +268,9 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
   }
 
   /**
-   * A continued Session runs its own model and effort, not the agent settings': the launch names
-   * them, so the dialog and the attempt's actor (its commit, its hand-off) say what really runs.
+   * A continued Session runs its own model, effort and work mode, not the agent settings': the
+   * launch names them, so the dialog and the attempt's actor (its commit, its hand-off) say what
+   * really runs.
    */
   async function asContinued(option: AvailableOption): Promise<AvailableOption> {
     const sessions = dependencies.sessions();
@@ -278,14 +280,16 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
     }
 
     const own = (await sessions.snapshot(session.sessionId, RUNTIME_ACTOR)).session;
+    const workMode = sessionWorkMode(sessions.provider(own.providerId), own.providerModeId);
+    const continued = workMode ? { ...option, workMode } : option;
     if (own.modelId === undefined) {
-      return option;
+      return continued;
     }
 
     const { effort: _configured, ...launch } = option.launch;
 
     return {
-      ...option,
+      ...continued,
       launch: {
         ...launch,
         model: own.modelId,

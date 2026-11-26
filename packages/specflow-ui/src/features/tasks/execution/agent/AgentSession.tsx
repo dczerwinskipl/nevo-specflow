@@ -64,11 +64,14 @@ function ContinuedSession({
   launch,
   sessionTitle,
   catalogue,
+  workMode,
 }: {
   readonly gone: boolean;
   readonly launch: AgentLaunch | undefined;
   readonly sessionTitle: string | undefined;
   readonly catalogue: AgentCatalogue;
+  /** The work mode the continued Session runs in (the Runtime's `workMode` title). */
+  readonly workMode: string | undefined;
 }) {
   const { t } = useTranslation();
   const sessionId = launch?.session.mode === 'reuse' ? launch.session.sessionId : undefined;
@@ -103,6 +106,11 @@ function ContinuedSession({
           ? t('workflowExecution.agent.session.gone')
           : t('workflowExecution.agent.session.continuesWhy', { model: modelLine })}
       </Typography>
+      {workMode && !gone ? (
+        <Typography as="p" variant="body-sm" className="text-content-secondary">
+          {t('workflowExecution.agent.session.workMode', { mode: workMode })}
+        </Typography>
+      ) : null}
     </div>
   );
 }
@@ -139,7 +147,7 @@ export function AgentSession({
    * model") and says why; the configured id is never shown.
    */
   readonly modelUnassigned?: boolean;
-  /** The work mode a new Session of this choice runs in (the Runtime's `workMode` title). */
+  /** The work mode the Session of this choice runs in (the Runtime's `workMode` title). */
   readonly workMode?: string | undefined;
   readonly onChoice: (choice: FreshChoice) => void;
 }) {
@@ -154,6 +162,7 @@ export function AgentSession({
         launch={launch}
         sessionTitle={sessionTitle}
         catalogue={catalogue}
+        workMode={workMode}
       />
     );
   }

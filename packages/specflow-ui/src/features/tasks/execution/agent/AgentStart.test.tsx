@@ -175,15 +175,20 @@ describe('Run with agent dialog', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
-  it('continues the earlier Session: no picker, nothing but the step is sent', async () => {
+  it('continues the earlier Session in its own work mode: no picker, nothing but the step is sent', async () => {
     const startAgent = vi.fn(never);
-    renderNow(agentOptions.reuse, {
-      checkAgentExecution: () => Promise.resolve(checkOf(agentOptions.reuse)),
+    const reuse = {
+      ...agentOptions.reuse,
+      workMode: { providerModeId: 'manual', title: 'Manual' },
+    };
+    renderNow(reuse, {
+      checkAgentExecution: () => Promise.resolve(checkOf(reuse)),
       startAgentExecution: startAgent,
     });
 
     const dialog = await openDialog();
     expect(within(dialog).getByText('Continues')).toBeTruthy();
+    expect(within(dialog).getByText('The agent works in the Manual mode.')).toBeTruthy();
     expect(within(dialog).queryByRole('radio')).toBeNull();
     fireEvent.click(footerOf(dialog)[1]!);
     await waitFor(() => expect(startAgent).toHaveBeenCalledTimes(1));

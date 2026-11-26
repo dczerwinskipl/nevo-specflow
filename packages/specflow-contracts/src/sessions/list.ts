@@ -76,6 +76,9 @@ export const SessionListItemSchema = Type.Object(
     modelId: Type.Optional(SessionInfoSchema.properties.modelId),
     /** The model's display title from the provider catalogue; absent when it is not listed. */
     modelTitle: Type.Optional(DisplayTitleSchema),
+    /** The title of the provider mode the Session runs in (Auto, Manual, ...); absent when not
+     * listed. */
+    providerModeTitle: Type.Optional(DisplayTitleSchema),
     /** Effective readiness: the same provider projection as the single-Session read. */
     readiness: SessionInfoSchema.properties.readiness,
     activeTurn: Type.Optional(

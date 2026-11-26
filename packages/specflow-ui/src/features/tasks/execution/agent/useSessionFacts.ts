@@ -18,6 +18,8 @@ export function useSessionFacts(specId: string, sessionId: string) {
     title: session?.title ?? t('workflowExecution.agentAttempt.sessionFallback'),
     providerTitle: session?.providerTitle,
     modelTitle: session?.modelTitle,
+    /** The work mode the Session runs in now (the next Turn, a Continue included, inherits it). */
+    providerModeTitle: session?.providerModeTitle,
     /** `attention`: the Session waits for the owner (a question or a permission). */
     status: session?.navigationStatus,
   };

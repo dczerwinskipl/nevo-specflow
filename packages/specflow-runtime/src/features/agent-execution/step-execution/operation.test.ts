@@ -83,7 +83,11 @@ function fakes(
     resolved?: Readonly<Record<string, string>>;
     /** Sessions that exist already, and the model and effort every Session runs. */
     existing?: readonly string[];
-    sessionModel?: { readonly modelId: string; readonly effort?: string };
+    sessionModel?: {
+      readonly modelId: string;
+      readonly effort?: string;
+      readonly providerModeId?: string;
+    };
     /** The models the provider runs in its auto mode (it lists auto and accept edits then). */
     autoFor?: string[];
     /** The Turn keeps running and its Session asks the owner this (a pending interaction). */
@@ -690,7 +694,7 @@ describe('Hand to agent', () => {
     expect(attempt()?.journal.actor.details).toMatchObject({ model: 'opus', modelTitle: 'opus' });
   });
 
-  it('names the model and effort a continued Session runs, not the agent settings', async () => {
+  it('names the model, effort and work mode a continued Session runs, not the agent settings', async () => {
     const reuse = {
       subject,
       position: {
@@ -712,13 +716,16 @@ describe('Hand to agent', () => {
     } as unknown as ActionProjection;
     const { execution } = fakes({
       existing: ['earlier'],
-      sessionModel: { modelId: 'opus', effort: 'high' },
+      autoFor: ['opus'],
+      sessionModel: { modelId: 'opus', effort: 'high', providerModeId: 'acceptEdits' },
     });
 
     const projected = await execution.decorate(subject, reuse);
+    // The Session's own mode, even where a fresh Session would run in auto.
     expect(projected.position.kind === 'ready' && projected.position.next.agent).toMatchObject({
       kind: 'available',
       launch: { model: 'opus', effort: 'high', session: { mode: 'reuse', sessionId: 'earlier' } },
+      workMode: { providerModeId: 'acceptEdits', title: 'Accept edits' },
     });
   });
 

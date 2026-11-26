@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { claudeArguments, claudeModels, verifyClaudeInit, verifyClaudeStatus } from './discovery';
-import { claudeMode } from './modes';
+import { claudeMode, claudeModes } from './modes';
 
 describe('Claude native launch contract', () => {
   it('compares the manual CLI alias against its canonical default protocol mode without accepting escalation', () => {
@@ -56,31 +56,32 @@ describe('Claude native launch contract', () => {
     expect(resume).toContain('stdio');
     expect(JSON.parse(resume[resume.indexOf('--settings') + 1]!)).toEqual({
       disableAllHooks: true,
-      permissions: { ask: ['Bash'] },
       env: { CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR: '1' },
     });
   });
-  it('keeps the Bash ask and the empty setting sources whatever the allowlist, with only scoped reads native', () => {
-    const selection = {
-      providerId: 'claude',
-      mode: 'workspace-write',
-      providerModeId: 'manual',
-    } as const;
-    const settings = (permissions?: { allow: string[] }) => {
-      const args = claudeArguments(selection, undefined, permissions);
-      // No owner or project settings are merged: setting sources stay empty next to --settings.
-      expect(args[args.indexOf('--setting-sources') + 1]).toBe('');
+  it('adds no Bash rule in any mode, so the native permission mode decides each Bash call', () => {
+    for (const mode of claudeModes) {
+      const selection = { providerId: 'claude', mode: mode.mode, providerModeId: mode.modeId };
+      const settings = (permissions?: { allow: string[] }) => {
+        const args = claudeArguments(selection, undefined, permissions);
+        // The mode Claude Code itself runs, with prompts over stdio to the host.
+        expect(args[args.indexOf('--permission-mode') + 1]).toBe(mode.modeId);
+        expect(args[args.indexOf('--permission-prompt-tool') + 1]).toBe('stdio');
+        // No owner or project settings are merged: setting sources stay empty next to --settings.
+        expect(args[args.indexOf('--setting-sources') + 1]).toBe('');
 
-      return JSON.parse(args[args.indexOf('--settings') + 1]!) as { permissions: unknown };
-    };
+        return JSON.parse(args[args.indexOf('--settings') + 1]!) as { permissions?: unknown };
+      };
 
-    expect(
-      settings({ allow: ['Read(src/**)', 'Bash(nevo-specflow specs list *)', 'Write', 'Bash'] })
-        .permissions,
-    ).toEqual({ allow: ['Read(src/**)'], ask: ['Bash'] });
-    expect(settings({ allow: ['Read'] }).permissions).toEqual({ ask: ['Bash'] });
-    expect(settings({ allow: [] }).permissions).toEqual({ ask: ['Bash'] });
-    expect(settings().permissions).toEqual({ ask: ['Bash'] });
+      // Only scoped read rules become native; a Bash rule is never forwarded, as allow or ask.
+      expect(
+        settings({ allow: ['Read(src/**)', 'Bash(nevo-specflow specs list *)', 'Write', 'Bash'] })
+          .permissions,
+      ).toEqual({ allow: ['Read(src/**)'] });
+      expect(settings({ allow: ['Read'] }).permissions).toBeUndefined();
+      expect(settings({ allow: [] }).permissions).toBeUndefined();
+      expect(settings().permissions).toBeUndefined();
+    }
   });
   it('uses native model/effort metadata and refuses changed version or ambiguous models', () => {
     const payload = {

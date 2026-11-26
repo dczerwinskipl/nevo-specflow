@@ -98,7 +98,7 @@ currently verified login is protected.
 | `acceptEdits` | `acceptEdits` | `workspace-write` | Read, Glob, Grep, AskUserQuestion, Edit, Write, Bash |
 | `auto`        | `auto`        | `workspace-write` | as above                                             |
 | `manual`      | `default`     | `workspace-write` | as above                                             |
-| `dontAsk`     | `dontAsk`     | `workspace-write` | as above (Bash is refused rather than asked)         |
+| `dontAsk`     | `dontAsk`     | `workspace-write` | as above (what would ask is refused)                 |
 | `plan`        | `plan`        | `read-only`       | Read, Glob, Grep, AskUserQuestion                    |
 
 `acceptEdits` is the default writable mode when managed execution is available: a writable Turn
@@ -110,8 +110,13 @@ host-side approval of allowlisted product CLI calls is judged on that PATH. That
 closed (ADR 0026, D20): it is bound to the identity of the file a bare `nevo-specflow` resolves to
 at Turn start (canonical real path, size, modification time, sha256), re-verified at each decision,
 and withheld when the executable is missing, unreadable or inside the workspace, or when trust
-information is missing. Claude's `auto` mode never approves a Bash call itself: Bash always asks the
-host, which alone applies the allowlist. The host approves a command made only of allowlisted
+information is missing. **The native mode decides each Bash call** (ADR 0026 D20, owner decision
+2026-11-26, superseding "Bash always asks"): SpecFlow adds no Bash rule, so `auto` runs Claude's
+classifier (it reports a slow check as `system/permission_check_status`), `manual` and `acceptEdits`
+run Claude's read-only commands and ask about the rest, and only what Claude itself asks reaches
+the host. Measured with 2.1.312 and these arguments, twelve typical commands asked 0 times in
+`auto`, 4 in `acceptEdits`, 5 in `manual` (12 in `auto` with the former `ask: [Bash]`). Of
+those requests the host approves a command made only of allowlisted
 `nevo-specflow` calls (joined by `&&`, `;`, `|` or new lines, optionally after `cd <absolute folder
 in the worktree>`, literal quoted words, output redirections only into `.nevo/local/scratch/` or
 `/dev/null`, `--…-file` values and input files inside the worktree, relative paths only after that
@@ -134,8 +139,9 @@ model's list is rejected before dispatch.
 
 - Safe/restricted mode, the selected permission mode, the explicit tool inventory above, strict
   empty MCP, no setting sources, disabled hooks and slash commands, permission prompts over stdio.
-- Fixed settings: `permissions.ask: [Bash]` (every Bash call requires a host request in
-  `acceptEdits`, `auto` and `manual`) and `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1`.
+- Fixed settings: no Bash rule of SpecFlow's own (the native mode decides; no `Bash(...)` rule is
+  ever forwarded, as allow or ask), only an attempt Turn's scoped read-tool `allow` rules, and
+  `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1`.
 - User frames are `client_composed: true`, suppressing path-mention and slash-command
   interpretation.
 - Native `system/init` must report the expected version, cwd, mode, tool inventory and no MCP.

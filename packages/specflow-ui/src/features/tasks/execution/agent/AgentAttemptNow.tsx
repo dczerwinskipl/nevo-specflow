@@ -855,6 +855,9 @@ export function useAgentAttemptNow({
               onOpenChange={setContinuingWithNote}
               stepTitle={stepTitle}
               attempt={attempt}
+              {...(sessionFacts.providerModeTitle
+                ? { workMode: sessionFacts.providerModeTitle }
+                : {})}
               pending={continuing}
               // Answered or refused, the Now block says what happened, as for a Continue without a
               // note (a refusal's reason is shown there, with Check again).

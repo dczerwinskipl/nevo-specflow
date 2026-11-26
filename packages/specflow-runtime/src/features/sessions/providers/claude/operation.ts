@@ -337,12 +337,13 @@ export function createClaudeOperation(
             throw new ClaudeProtocolError();
           }
 
-          // An agent step execution Turn: a command made only of product CLI calls of its allowlist
-          // (judgeAgentCliCommand: parsed, never matched as text), whose `cd` and redirections stay in
-          // the worktree, is approved here, by Nevo's allowlist only, never by the provider's own
-          // rules or work mode (Bash always asks, also in Claude's auto mode), and recorded in the
-          // Turn. It fails closed: without a product CLI identity verified for this very decision,
-          // the owner decides. Anything else goes to the owner.
+          // Only what Claude's own permission mode asks about arrives here (auto: its classifier did
+          // not allow it; manual/acceptEdits: not a read-only command). In an agent step execution
+          // Turn, a command made only of product CLI calls of its allowlist (judgeAgentCliCommand:
+          // parsed, never matched as text), whose `cd` and redirections stay in the worktree, is
+          // approved here by Nevo's allowlist and recorded in the Turn. It fails closed: without a
+          // product CLI identity verified for this very decision, the owner decides. Anything else
+          // goes to the owner.
           const action = request.questions[0]?.interaction;
           const judgement =
             invocation.permissions &&

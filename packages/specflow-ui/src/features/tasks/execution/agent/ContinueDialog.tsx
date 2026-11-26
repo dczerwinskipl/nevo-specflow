@@ -20,6 +20,8 @@ export interface ContinueDialogProps {
   readonly onOpenChange: (open: boolean) => void;
   readonly stepTitle: string;
   readonly attempt: number;
+  /** The work mode the attempt's Session runs in, which the continued Turn inherits. */
+  readonly workMode?: string;
   readonly pending: boolean;
   /** Continue the attempt, with the owner's note when they wrote one. */
   readonly onContinue: (note: string | undefined) => void;
@@ -36,6 +38,7 @@ export function ContinueDialog({
   onOpenChange,
   stepTitle,
   attempt,
+  workMode,
   pending,
   onContinue,
 }: ContinueDialogProps) {
@@ -69,6 +72,9 @@ export function ContinueDialog({
           </DialogTitle>
           <DialogDescription>
             {t('workflowExecution.agentAttempt.continueDialog.description', { attempt })}
+            {workMode
+              ? ' ' + t('workflowExecution.agent.session.workMode', { mode: workMode })
+              : ''}
           </DialogDescription>
         </DialogHeader>
         <DialogBody>

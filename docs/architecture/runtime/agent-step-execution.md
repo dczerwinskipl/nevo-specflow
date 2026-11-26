@@ -245,8 +245,9 @@ relative to the Specification folder.
 optional Task, step, attempt, handoff as data, `continuation: true` when the Turn is a Continue
 of the same attempt rather than its start, and `ownerNote`, the owner's note sent with it); the entry's text is the full brief (its content
 reference reads all of it). A fresh Session is titled "<step title> · attempt <n>" (and the Task
-title), created in `auto` when the provider runs the model in auto, else `acceptEdits` (the option's
-`workMode`). While the Turn waits on a pending question or permission of its Session,
+title), created in `auto` when the provider runs the model in auto, else `acceptEdits`; a continued
+Session keeps its own mode (the option's `workMode`, by the catalogue's title, which Run with agent
+and Continue show). While the Turn waits on a pending question or permission of its Session,
 `agentAttempt.turn.waitingForOwner` names it (`kind`, `interactionId`). A configured model the
 provider does not list is reported as `modelRequired` with an empty model. After a step returned
 (for example a review that requested changes), `handoff` on the projection names the step that
@@ -311,8 +312,10 @@ table; other providers none). `planPermissionAllowlist` applies only rules
 `partitionAgentPermissionRules` accepts and reports ignored ones in the Turn; a driver without
 `supportsPermissionAllowlist` gets none and the Turn says so.
 
-Claude: setting sources are off and `Bash` always asks, so no owner or project permission is merged.
-Scoped read-tool rules become native `allow` rules; a command is approved by the host only when it
+Claude: setting sources are off, so no owner or project permission is merged, and SpecFlow adds no
+Bash rule: the Session's native work mode decides each Bash call (ADR 0026 D20, owner decision
+2026-11-26; in `auto` Claude's classifier). Scoped read-tool rules become native `allow` rules. Of
+the commands Claude itself asks about, one is approved by the host only when it
 consists of allowlisted product CLI calls alone (`judgeAgentCliCommand`: parsed as the shell splits
 it, calls joined by `&&`, `;`, `|` or new lines, an optional leading absolute `cd`, literal words,
 file redirections and quoted here-documents only; the `cd` folder and read files inside the

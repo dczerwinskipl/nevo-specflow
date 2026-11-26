@@ -201,9 +201,10 @@ export function AgentStartDialog({
     ((option?.kind === 'available' && (!fresh || chosenReady)) || (pickable && chosenReady));
   const otherRefusal = start.isError && !refusedOption;
   // The Runtime names the work mode for the launch it resolved; another choice may run in another
-  // mode, so it is shown only for that one.
+  // mode, so it is shown only for that one. A continued Session keeps its own mode.
   const sameAsLaunch =
-    !modelUnassigned && choice.providerId === launch?.provider && choice.modelId === launch.model;
+    launch?.session.mode === 'reuse' ||
+    (!modelUnassigned && choice.providerId === launch?.provider && choice.modelId === launch.model);
   const workModeTitle = option?.kind === 'available' ? option.workMode?.title : undefined;
   const reused = launch?.session.mode === 'reuse' ? launch.session.sessionId : undefined;
   const sessionTitle =

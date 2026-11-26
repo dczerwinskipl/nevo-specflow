@@ -33,8 +33,9 @@ related:
 ## Status
 
 Current. Owner decisions D11 to D20 of PR #169 (2026-11-16), the orchestrator decisions and plan
-amendments of 2026-11-20, and the owner decisions of 2026-11-21 (no device pairing, naming, commit at
-finish). Builds on [ADR 0023](0023-neutral-workflow-coordinator-and-manual-execution.md) (executors
+amendments of 2026-11-20, the owner decisions of 2026-11-21 (no device pairing, naming, commit at
+finish) and the owner decision of 2026-11-26 (the provider's work mode decides shell commands,
+D20). Builds on [ADR 0023](0023-neutral-workflow-coordinator-and-manual-execution.md) (executors
 and actors), [ADR 0024](0024-tasks-are-resources.md) (Tasks as resources) and
 [ADR 0018](0018-engine-commit-policy-and-manual-commit.md) (commit policy, ledger, manual commit),
 which it extends with the attempt commit and ledger authors. The proposal that led here is
@@ -173,7 +174,8 @@ lists the task types of a step that produces Tasks, the Specification's Tasks (i
 status, dependencies; at most 40, then a count and `tasks list`), the documentation commands
 (`docs search` in natural language, `docs find`, `docs get`) and which tools run without the owner:
 Read/Grep/Glob and Write/Edit inside the worktree, and product CLI command lists as D20 approves them;
-every other shell command waits for the owner.
+any other shell command is decided by the Session's work mode (in Auto it may run without asking, in
+other modes it may wait for the owner).
 
 ### D14 and B3 — Attribution at the boundary
 
@@ -308,8 +310,8 @@ projection and the check report the option `available` with an empty `launch.mod
 `modelRequired: true`, never the unknown id, and a start without the owner's choice from the
 provider's list is refused. A fresh Session runs in the provider's `auto` work mode when the provider
 lists it ready and authorized for the model (`providerModes[].modelIds`), otherwise in
-`acceptEdits`; the option names it (`workMode`), for information only: the start request has no
-mode field. Its title is the step and attempt it was made for ("Break the solution down · attempt 2",
+`acceptEdits`; a continued Session keeps its own mode. The option names it (`workMode`, the
+catalogue's title), for information only: the start request has no mode field. Its title is the step and attempt it was made for ("Break the solution down · attempt 2",
 with the Task title for a Task subject). A Session created before it was titled so (titled "Agent
 step execution", or untitled) is named so at read time in the Specification Overview, from the
 committed attempt records that name its Session; nothing is migrated. Every Session read (the list,
@@ -406,10 +408,34 @@ worktree.
 The command's trust stays bound to the product CLI identity above. The brief (D13) states the rule
 and tells the agent to read and write files with its file tools, which do not prompt.
 
-Nevo's allowlist decision is separate from the provider's work mode. Claude's `auto` (or any other
-native mode) never approves a Bash command: the launch settings ask for every Bash call
-(`permissions.ask: [Bash]`, no `Bash(...)` rule is ever forwarded as a native allow rule), so every
-call reaches the host, where only the allowlist and the verified product CLI identity approve it.
+**The provider's work mode decides shell commands** (owner decision 2026-11-26, superseding the
+earlier rule of this ADR that Claude's `auto` mode never approves a Bash command and that every Bash
+call reaches the host). A Session or attempt Turn runs in the provider's native mode with the
+provider's own permission logic, as in Claude Code: SpecFlow adds no Bash rule (no `ask`, no native
+`Bash(...)` allow), so in `auto` Claude's classifier allows ordinary commands itself, `manual` and
+`acceptEdits` allow Claude's read-only commands and ask about the rest (`acceptEdits` also accepts
+edits), `dontAsk` refuses what would ask, and `plan` has no shell. Only what the provider itself
+asks about reaches the host; there the allowlist above approves product CLI command lists (with the
+verified CLI identity), and anything else goes to the owner. SpecFlow builds no classifier of its
+own. Dogfood round 3 (2026-11-25) had 234 owner approvals, all Bash, in Turns that ran in `auto`:
+the launch settings carried `permissions.ask: [Bash]`, which outranks Claude's auto mode. With
+Claude 2.1.312 and SpecFlow's launch arguments, a scripted `auto` Turn of twelve typical commands
+(`cat`, `grep -rn`, `sed -n`, `git status`/`log`/`diff`, `ls && wc`, `nevo-specflow` lists, a
+here-document into the scratch folder, `rm -rf` outside the worktree, `curl`) asked the host twelve
+times with that rule and never without it; the classifier ran (`permission_check_status`) and
+allowed every one, including the two outside the worktree. In `acceptEdits` the same Turn asked
+four times and in `manual` five (the product CLI calls, `rm`, `curl`, and in `manual` the
+here-document).
+
+What Auto does not change: the product actions a Turn may take are the broker's and the capability's
+(D11, scope), judged server-side whatever the mode or the command line; Claude's `--restricted`
+keeps its file tools inside the working directories; setting sources stay off, so no owner or
+project permission is merged. A shell command Auto allows can reach outside the worktree, as in
+Claude Code: that is the provider's judgement the owner chose with the mode, and the attribution
+checks (D14) still judge what changed in the checkout. Every call, decided by the provider or by
+the owner, is recorded in the Turn's Work history: a call with a permission entry was decided by
+the owner, one with an allowlist note by the host, and any other call by the provider's mode (the
+protocol says no more than that).
 
 ### Access is the configured authentication mode (D21 superseded)
 

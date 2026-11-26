@@ -441,7 +441,9 @@ started.") with **Check again** inside the alert. Then, in order:
      says so; when they cannot be listed it says the attempt starts with the preselected agent.
    - **Continues <Session title>** (a link): read-only, with its model and why ("the workflow
      continues the session that did <step> before, so the agent keeps what it learned there. Its
-     agent and model stay as they are.").
+     agent and model stay as they are."), and the session's own work mode ("The agent works in the
+     Auto mode.", the provider's title) when the provider still lists it. A new session states its
+     mode the same way when the Runtime names it for the preselected agent and model.
    - **Independent step** (a review facet): a new session as above and "<step> is done
      independently: it always starts in a new session, never in the one that wrote the change."
 3. **Commit disclosure**, always once the check is read: an info note with the commit icon, "When
@@ -497,8 +499,9 @@ Every other subject's Now block shows one note above its own content:
   <Session>"; an attention note "The agent stopped without proposing a result." with what Continue
   and Take over do; a quiet line "Kept so far: <documents as links> and N changed files. **See the
   attempt**". Actions **Continue** (main) and **Take over** (secondary); Return stays in ⋯.
-  **Continue** opens a small dialog "Continue <step>" with an optional **Note for the agent** (at
-  most 4000 characters) and Cancel / **Continue** (**Continue with the note** once a note is
+  **Continue** opens a small dialog "Continue <step>" whose description also names the session's
+  work mode ("The agent works in the Auto mode.") when the provider lists it, with an optional
+  **Note for the agent** (at most 4000 characters) and Cancel / **Continue** (**Continue with the note** once a note is
   written); Continue has the initial focus, so without a note it is one more press. The note goes
   into the attempt's own Turn after SpecFlow's continuation message, with the attempt's scope and
   permissions (never a separate chat Turn), and is recorded on that Turn in the attempt journal.

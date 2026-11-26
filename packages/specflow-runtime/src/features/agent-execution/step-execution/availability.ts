@@ -154,6 +154,20 @@ export function workModeFor(
   return undefined;
 }
 
+/**
+ * The provider mode a continued Session runs in: its own `providerModeId` under the catalogue's
+ * title, so Run with agent and Continue name it as the Session does; `undefined` when the Session has
+ * none or the catalogue no longer lists it (its id is never shown as a title).
+ */
+export function sessionWorkMode(
+  provider: Pick<ProviderDescriptor, 'providerModes'> | undefined,
+  providerModeId: string | undefined,
+): { readonly providerModeId: string; readonly title: string } | undefined {
+  const mode = provider?.providerModes?.find((candidate) => candidate.modeId === providerModeId);
+
+  return mode ? { providerModeId: mode.modeId, title: mode.title } : undefined;
+}
+
 /** The provider, model and effort a start uses: the owner's choice only for a fresh Session (D18). */
 export function chosenLaunch(
   launch: AgentLaunch,

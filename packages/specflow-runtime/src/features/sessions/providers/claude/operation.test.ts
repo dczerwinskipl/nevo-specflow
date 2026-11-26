@@ -748,6 +748,46 @@ describe('Claude bidirectional operation', () => {
       await f.operation.done;
     });
 
+    it("records a Bash call Claude's auto mode allowed itself, with no host request and no owner prompt", async () => {
+      const f = fixture('stopped', { invocation: turn('auto'), productCli: trusted });
+      await f.ready();
+      const session_id = f.invocation.providerContext!.nativeSessionId;
+      f.push({
+        type: 'assistant',
+        uuid: 'a1',
+        session_id,
+        message: {
+          id: 'a1',
+          content: [
+            { type: 'tool_use', id: 'tool-1', name: 'Bash', input: { command: 'git status' } },
+          ],
+        },
+      });
+      // The classifier's own check, then the call's result: Claude decided, the host was not asked.
+      for (const status of ['checking', 'done']) {
+        f.push({
+          type: 'system',
+          subtype: 'permission_check_status',
+          uuid: 'c-' + status,
+          session_id,
+          tool_use_id: 'tool-1',
+          status,
+        });
+      }
+
+      f.push({
+        type: 'user',
+        session_id,
+        message: { content: [{ type: 'tool_result', tool_use_id: 'tool-1', content: 'clean' }] },
+      });
+      f.result();
+      await f.operation.done;
+      expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+      expect(JSON.stringify(f.facts)).toContain('git status');
+      expect(f.facts.some((fact) => fact.kind === 'interaction')).toBe(false);
+      expect(f.sent.some((frame) => frame.type === 'control_response')).toBe(false);
+    });
+
     it('asks the owner for every command of a Turn without an allowlist', async () => {
       const f = fixture('stopped', {
         invocation: { ...turn('manual'), permissions: undefined },

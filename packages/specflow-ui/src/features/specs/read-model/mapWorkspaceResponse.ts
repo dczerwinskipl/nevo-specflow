@@ -84,6 +84,7 @@ export function mapWorkspaceResponse(
     ...(session.providerTitle ? { providerTitle: session.providerTitle } : {}),
     ...(session.modelId ? { modelId: session.modelId } : {}),
     ...(session.modelTitle ? { modelTitle: session.modelTitle } : {}),
+    ...(session.providerModeTitle ? { providerModeTitle: session.providerModeTitle } : {}),
     activityCode:
       session.status === 'active' || session.status === 'attention' ? session.status : undefined,
     activity:

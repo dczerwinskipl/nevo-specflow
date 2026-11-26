@@ -16,7 +16,7 @@ import {
 import type { AgentOption } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
-import { startCatalogueFromProviders } from '../../../sessions';
+import { agentCanStart, startCatalogueFromProviders } from '../../../sessions';
 import { focusInitial } from '../focusInitial';
 import type { WorkflowSubjectRef } from '../api';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
@@ -155,10 +155,7 @@ export function AgentStartDialog({
         }
       : { providerId: '', modelId: '' });
   const chosenReady =
-    catalogue.status !== 'ready' ||
-    catalogue.catalogue.providers.some(
-      (provider) => provider.id === choice.providerId && provider.available,
-    );
+    catalogue.status !== 'ready' || agentCanStart(catalogue.catalogue, choice.providerId);
   // A new Session's model the chosen provider does not offer (the role's settings name an id the
   // catalogue does not list, or the check says a model must be chosen) is not assigned: the picker
   // asks for one of the provider's models and Start waits for it. The unknown id is never shown

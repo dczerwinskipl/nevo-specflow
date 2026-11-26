@@ -475,6 +475,15 @@ page could make the second call.
   intent whose Create completed while no start was made, and drops intents whose Create never
   reserved anything. An unfinished Create's intent waits for that Create's own retry, which settles
   it on completion.
+  The resumed start runs as the stored principal without checking again that it may still manage
+  the project: the asker was admitted when the intent was stored, and access is the configured
+  authentication mode (see below), so a revoked grant does not stop a start already asked for.
+- **Final only for a real answer.** A start made, or a refusal that is about the agent, the step or
+  the checkout, is recorded as the result. A failure that may pass (the Session store unavailable,
+  an unexpected error, the Runtime shutting down) is retried in the process a few times and then
+  left pending, so the startup step makes it after the next start. The intent of a Create that was
+  definitely refused is dropped with it; pending intents of Creates that never completed are pruned
+  after 30 days.
 - **Result.** The operation reports `in-progress` until the start is settled; the completed result
   carries `firstStep`: `started` (Session and attempt) or `not-started` (the refusal code and, when
   the refusal is about the agent or the checkout, its agent option). A refused start never undoes

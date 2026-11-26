@@ -363,12 +363,13 @@ intent owner is `features/specs/create/first-step.ts` with its store `first-step
 (`<stateRoot>/runtime/create-first-step/`); `run-create.ts` admits the intent before the Engine
 Create and settles it after, and the create endpoint's `onReady` hook runs the startup resume.
 
-| Crash or failure                                   | State left                           | Resolution                                                                                      |
-| -------------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| After the intent is stored, before the reservation | Intent, no journal                   | Dropped (the failed request, or the startup step).                                              |
-| Create journal not completed                       | Intent pending, journal non-terminal | The Create's retry with the same operation id completes it and settles the intent.              |
-| Create completed, start not made or not recorded   | Intent pending, journal completed    | The startup step makes the start with the derived request id (an earlier start is found again). |
-| Start refused                                      | Intent settled `not-started`         | Nothing to recover: Run with agent, a new request, from the Create page or the Overview.        |
+| Crash or failure                                                                  | State left                           | Resolution                                                                                             |
+| --------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| After the intent is stored, before the reservation                                | Intent, no journal                   | Dropped (the failed request, or the startup step).                                                     |
+| Create journal not completed                                                      | Intent pending, journal non-terminal | The Create's retry with the same operation id completes it and settles the intent.                     |
+| Create completed, start not made or not recorded                                  | Intent pending, journal completed    | The startup step makes the start with the derived request id (an earlier start is found again).        |
+| Start failed for a passing reason (store unavailable, unexpected error, shutdown) | Intent pending                       | Retried in the process, then by the startup step; the derived request id finds a start made meanwhile. |
+| Start refused                                                                     | Intent settled `not-started`         | Nothing to recover: Run with agent, a new request, from the Create page or the Overview.               |
 
 ## Limits and non-goals
 

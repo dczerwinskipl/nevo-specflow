@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -62,12 +62,17 @@ async function project(): Promise<SpecFlowEngine> {
   return engine;
 }
 
-/** A starter that records its calls; `refuse` makes it refuse like a busy project. */
-function fakeStarter(options: { refuse?: boolean } = {}) {
+/**
+ * A starter that records its calls; `refuse` makes it refuse like a busy project, `fail` fail like
+ * a shutdown or an unexpected error (not the agent's answer).
+ */
+function fakeStarter(options: { refuse?: boolean; fail?: boolean } = {}) {
   const start = vi.fn<FirstStepStarter['start']>((input) =>
     options.refuse
       ? Promise.reject(new Error('busy'))
-      : Promise.resolve({ sessionId: `session-${input.operationId}`, attemptId: 'attempt-1' }),
+      : options.fail
+        ? Promise.reject(new Error('Runtime is shutting down'))
+        : Promise.resolve({ sessionId: `session-${input.operationId}`, attemptId: 'attempt-1' }),
   );
   const starter: FirstStepStarter = {
     start,
@@ -134,8 +139,11 @@ async function server(engine: SpecFlowEngine, starter: FirstStepStarter) {
       }>(),
     );
 
-  return { post, inspect, untilSettled, operations };
+  return { app, post, inspect, untilSettled, operations };
 }
+
+const intentFiles = async (engine: SpecFlowEngine) =>
+  readdir(firstStepIntentDirectory(engine)).catch(() => [] as string[]);
 
 const firstStep = { run: 'agent', provider: 'claude', model: 'sonnet' } as const;
 
@@ -274,5 +282,97 @@ describe('Create with a first-step intent (real Git)', () => {
         firstStep: { status: 'started', sessionId: `session-${operationId}` },
       }),
     );
+  }, 240000);
+
+  it('keeps a start that failed for a passing reason pending, and the next start makes it once', async () => {
+    const engine = await project();
+    const operationId = randomUUID();
+    const failing = fakeStarter({ fail: true });
+    const first = await server(engine, failing.starter);
+    expect(
+      (
+        await first.post(
+          {
+            operationId,
+            title: 'Agent after a shutdown',
+            firstStep,
+            target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+          },
+          'respond-async',
+        )
+      ).statusCode,
+    ).toBe(202);
+    // The first attempt and its in-process retries fail; nothing is recorded as final.
+    await vi.waitFor(() => expect(failing.start).toHaveBeenCalledTimes(3), { timeout: 30000 });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect((await first.inspect(operationId)).json()).toMatchObject({ status: 'in-progress' });
+    const pending = await createFileFirstStepIntentStore(firstStepIntentDirectory(engine)).read(
+      operationId,
+    );
+    expect(pending?.result).toBeUndefined();
+    await first.app.close();
+
+    // The next Runtime start makes the start, under the same operation (the same request id).
+    const later = fakeStarter();
+    const second = await server(engine, later.starter);
+    await vi.waitFor(() => expect(later.start).toHaveBeenCalledTimes(1), { timeout: 30000 });
+    expect(later.start.mock.calls[0]![0].operationId).toBe(
+      failing.start.mock.calls[0]![0].operationId,
+    );
+    await vi.waitFor(async () =>
+      expect((await second.inspect(operationId)).json()).toMatchObject({
+        status: 'completed',
+        firstStep: { status: 'started' },
+      }),
+    );
+    await second.app.close();
+
+    // A settled start is never made again (no double start after another restart).
+    const third = fakeStarter();
+    await server(engine, third.starter);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(third.start).not.toHaveBeenCalled();
+  }, 240000);
+
+  it('refuses a first step only the owner can do before anything is written', async () => {
+    const engine = await project();
+    const workflow = join(
+      engine.context.project.homeRoot,
+      '.nevo/definitions/workflow/specification-standard.yaml',
+    );
+    await writeFile(
+      workflow,
+      (await readFile(workflow, 'utf8')).replace('executors: [agent, human]', 'executors: [human]'),
+    );
+    const { starter, start } = fakeStarter();
+    const { post, inspect } = await server(engine, starter);
+    const operationId = randomUUID();
+
+    const response = await post({
+      operationId,
+      title: 'Owner first',
+      firstStep,
+      target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: 'CREATE_OPERATION_INVALID' });
+    expect((await inspect(operationId)).statusCode).toBe(404);
+    expect(await intentFiles(engine)).toEqual([]);
+    expect(start).not.toHaveBeenCalled();
+  }, 240000);
+
+  it('drops the intent of a Create that was refused', async () => {
+    const engine = await project();
+    const { starter } = fakeStarter();
+    const { post } = await server(engine, starter);
+    const response = await post({
+      operationId: randomUUID(),
+      title: 'Refused create',
+      firstStep,
+      catalogueRevision: 'stale',
+      target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(await intentFiles(engine)).toEqual([]);
   }, 240000);
 });

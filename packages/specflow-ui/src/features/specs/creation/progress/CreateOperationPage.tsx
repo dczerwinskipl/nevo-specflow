@@ -216,7 +216,7 @@ export function CreateOperationPage({
       : t('create.submit.checkResult');
 
   return (
-    <CreateShell title={t('create.page.location')}>
+    <CreateShell title={created ? t('create.page.heading.completed') : t('create.page.location')}>
       {/* The flow Back takes the Create screens' one gap (gap-6); the page keeps its own rhythm. */}
       <div className="grid gap-6">
         <FlowParentBack view="new-specification" />
@@ -281,6 +281,8 @@ export function CreateOperationPage({
                 step={agentNotStarted.step.title}
                 role={undefined}
                 checking={false}
+                // Run with agent checks the agent and the checkout again when it opens.
+                onCheckAgain={() => setRunWithAgent(true)}
                 urgent
               />
             ) : (

@@ -15,7 +15,7 @@ import {
 import type { OperationProgressRegistry } from '../../operations';
 import { createErrorCode } from './error-status';
 import type { CreateFirstStep } from './first-step';
-import { startCreateProgress, type CreateProgress } from './progress';
+import { isRecoveryCode, startCreateProgress, type CreateProgress } from './progress';
 
 export interface RunCreateInput {
   readonly engine: SpecFlowEngine;
@@ -134,6 +134,12 @@ export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome
       // start never fails the Create: its result says why.
       progress?.startingAgent();
       const started = await firstStep.owner.settle(intent, created.specId);
+      if (!started) {
+        // Not settled (it may pass, or the Runtime is stopping): the intent stays pending, the
+        // operation stays in progress and the startup step makes the start after a restart.
+        return created;
+      }
+
       if (started.status === 'not-started') {
         progress?.agentNotStarted();
       }
@@ -143,9 +149,14 @@ export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome
 
       return withFirstStep;
     } catch (error) {
-      progress?.fail(createErrorCode(error));
+      const code = createErrorCode(error);
+      progress?.fail(code);
       if (intent && firstStep && operationId) {
-        await firstStep.owner.forgetUnreserved(engine, operationId).catch(() => undefined);
+        // A definite refusal ends the operation: its intent goes with it. An uncertain outcome
+        // keeps it for the retry with the same operation id.
+        await firstStep.owner
+          .forgetFailed(engine, operationId, code !== undefined && !isRecoveryCode(code))
+          .catch(() => undefined);
       }
 
       throw error;

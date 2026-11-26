@@ -52,12 +52,22 @@ export interface CreateFirstStep {
     readonly archetypeId: string;
     readonly principal: string;
   }): Promise<StoredFirstStepIntent | undefined>;
-  /** Makes the start for the created Specification once, records and returns its result. */
-  settle(intent: StoredFirstStepIntent, specId: string): Promise<CreateFirstStepResult>;
+  /**
+   * Makes the start for the created Specification once, records and returns its result. Undefined:
+   * the start could not be made for a reason that may pass (the Session store unavailable, an
+   * unexpected failure, the Runtime shutting down); the intent stays pending and the startup step
+   * makes the start after the next Runtime start.
+   */
+  settle(intent: StoredFirstStepIntent, specId: string): Promise<CreateFirstStepResult | undefined>;
   /** The stored intent of an operation (inspection, operations list). */
   read(operationId: string): Promise<StoredFirstStepIntent | undefined>;
-  /** Drops the intent of a Create that was refused before its journal existed. */
-  forgetUnreserved(engine: SpecFlowEngine, operationId: string): Promise<void>;
+  /**
+   * Drops the intent of a Create that failed: always when its journal never existed, and when the
+   * Create was definitely refused (`definite`); an uncertain outcome keeps it for the retry.
+   */
+  forgetFailed(engine: SpecFlowEngine, operationId: string, definite: boolean): Promise<void>;
+  /** The Runtime is shutting down: no further in-process retry of a start is made. */
+  stop(): void;
   /**
    * The Runtime startup step: the start of every intent whose Create completed while no start was
    * made (the Runtime stopped in between), as the principal stored with it. Intents of Creates that
@@ -69,8 +79,17 @@ export interface CreateFirstStep {
   ): Promise<void>;
 }
 
-/** Settled intents are kept this long for the inspection and the operations list, then pruned. */
-const SETTLED_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+/**
+ * Settled intents are kept this long for the inspection and the operations list, then pruned; so
+ * are the pending intents of Creates that never completed.
+ */
+const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Refusals that say nothing final about the agent: the start is tried again later. */
+const TRANSIENT_CODES: ReadonlySet<string> = new Set(['WORKFLOW_UNAVAILABLE']);
+
+/** Waits between in-process attempts of a start that failed for a reason that may pass. */
+const DEFAULT_RETRY_DELAYS_MS = [1000, 3000];
 
 const sameRequest = (left: CreateFirstStepRequest, right: CreateFirstStepRequest) =>
   left.run === right.run &&
@@ -94,6 +113,8 @@ export function createFirstStep(options: {
   /** The Runtime's store directory when no store is injected (read on first use). */
   readonly directory?: () => string;
   readonly now?: () => Date;
+  /** Waits between in-process attempts of a transient failure (tests: `[]`). */
+  readonly retryDelaysMs?: readonly number[];
 }): CreateFirstStep {
   const now = options.now ?? (() => new Date());
   const directory = options.directory;
@@ -121,19 +142,16 @@ export function createFirstStep(options: {
   const startedAt = now().getTime();
   // One start per operation in this process: a retry that arrives while the first start runs waits
   // for it instead of racing it.
-  const inFlight = new Map<string, Promise<CreateFirstStepResult>>();
+  const inFlight = new Map<string, Promise<CreateFirstStepResult | undefined>>();
+  const retryDelays = options.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS;
+  let stopped = false;
 
-  async function makeStart(
-    intent: StoredFirstStepIntent,
+  /** One attempt: the result, `final` only for a start made or a real refusal. */
+  async function attempt(
+    current: StoredFirstStepIntent,
     specId: string,
-  ): Promise<CreateFirstStepResult> {
-    const current = (await store.read(intent.operationId)) ?? intent;
-    if (current.result) {
-      return current.result;
-    }
-
+  ): Promise<CreateFirstStepResult | undefined> {
     const { request, step } = current;
-    let result: CreateFirstStepResult;
     try {
       const started = await options.starter.start({
         operationId: current.operationId,
@@ -144,7 +162,8 @@ export function createFirstStep(options: {
         ...(request.model !== undefined ? { model: request.model } : {}),
         ...(request.effort !== undefined ? { effort: request.effort } : {}),
       });
-      result = {
+
+      return {
         status: 'started',
         step,
         sessionId: started.sessionId,
@@ -152,15 +171,44 @@ export function createFirstStep(options: {
       };
     } catch (error) {
       const refusal = options.starter.refusal(error);
-      result = {
+      // An unexpected failure, a store that is unavailable for now or a shutdown is not the
+      // agent's answer: the intent stays pending (the derived request id finds a start that was
+      // made meanwhile, so a later attempt never starts twice).
+      if (!refusal || TRANSIENT_CODES.has(refusal.code)) {
+        return undefined;
+      }
+
+      return {
         status: 'not-started',
         step,
-        code: refusal?.code ?? 'INTERNAL_ERROR',
-        ...(refusal?.agent ? { agent: refusal.agent } : {}),
+        code: refusal.code,
+        ...(refusal.agent ? { agent: refusal.agent } : {}),
       };
     }
+  }
 
-    await store.write({ ...current, result });
+  async function makeStart(
+    intent: StoredFirstStepIntent,
+    specId: string,
+  ): Promise<CreateFirstStepResult | undefined> {
+    const current = (await store.read(intent.operationId)) ?? intent;
+    if (current.result) {
+      return current.result;
+    }
+
+    let result = await attempt(current, specId);
+    for (const delay of retryDelays) {
+      if (result || stopped) {
+        break;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      result = stopped ? undefined : await attempt(current, specId);
+    }
+
+    if (result) {
+      await store.write({ ...current, result });
+    }
 
     return result;
   }
@@ -196,8 +244,10 @@ export function createFirstStep(options: {
         return existing;
       }
 
-      // A journal without an intent is an earlier request without one: not this request's retry.
-      if (await inspectPublicCreateOperation(engine, operationId)) {
+      // A completed journal without an intent is an earlier request without one: not this
+      // request's retry. (An unfinished one may be the retry of a refused Create whose intent was
+      // dropped with its refusal.)
+      if ((await inspectPublicCreateOperation(engine, operationId))?.status === 'completed') {
         throw conflict();
       }
 
@@ -235,16 +285,23 @@ export function createFirstStep(options: {
     },
     settle,
     read: (operationId) => store.read(operationId),
-    async forgetUnreserved(engine, operationId) {
-      if (!(await inspectPublicCreateOperation(engine, operationId).catch(() => true))) {
+    async forgetFailed(engine, operationId, definite) {
+      const journal = await inspectPublicCreateOperation(engine, operationId).catch(
+        () => 'unknown' as const,
+      );
+      if (!journal || (definite && journal !== 'unknown' && journal.status !== 'completed')) {
         await store.remove(operationId);
       }
+    },
+    stop() {
+      stopped = true;
     },
     async resume(engine, onFailure) {
       for (const intent of await store.list()) {
         try {
+          const expired = now().getTime() - Date.parse(intent.createdAt) > RETENTION_MS;
           if (intent.result) {
-            if (now().getTime() - Date.parse(intent.createdAt) > SETTLED_RETENTION_MS) {
+            if (expired) {
               await store.remove(intent.operationId);
             }
 
@@ -256,7 +313,7 @@ export function createFirstStep(options: {
           }
 
           const inspection = await inspectPublicCreateOperation(engine, intent.operationId);
-          if (!inspection) {
+          if (!inspection || (expired && inspection.status !== 'completed')) {
             await store.remove(intent.operationId);
           } else if (inspection.status === 'completed') {
             await settle(intent, inspection.specId);

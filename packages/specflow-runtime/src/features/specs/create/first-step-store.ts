@@ -45,7 +45,7 @@ export interface FirstStepIntentStore {
 
 export type { CreateFirstStepRequest, CreateFirstStepResult };
 
-/** Under the Project Home's local state, next to the Session store: `state/runtime/create-first-step`. */
+/** Under the Project Home's local state (the Runtime's own part of it): `state/runtime/create-first-step`. */
 export const FIRST_STEP_INTENT_RELATIVE_DIR = join('runtime', 'create-first-step');
 
 const FILE_SUFFIX = '.json';

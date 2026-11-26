@@ -66,3 +66,16 @@ export interface StartCatalogue {
   demo: boolean;
   providers: readonly StartProvider[];
 }
+
+/**
+ * Whether the chosen agent can start a new Session now: the one rule Run with agent and both Create
+ * forms judge an agent choice by.
+ */
+export function agentCanStart(catalogue: StartCatalogue, providerId: string): boolean {
+  return catalogue.providers.some((provider) => provider.id === providerId && provider.available);
+}
+
+/** The agents that can start a new Session now, in the catalogue's order. */
+export function startableAgents(catalogue: StartCatalogue): readonly StartProvider[] {
+  return catalogue.providers.filter((provider) => provider.available);
+}

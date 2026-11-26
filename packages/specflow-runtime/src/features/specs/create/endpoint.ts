@@ -88,6 +88,8 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
 
   const closeGraceMs = options.closeGraceMs ?? DEFAULT_CLOSE_GRACE_MS;
   app.addHook('onClose', async () => {
+    // A start interrupted by the shutdown stays pending for the next Runtime start.
+    options.firstStep?.stop();
     if (inFlight.size === 0) {
       return;
     }

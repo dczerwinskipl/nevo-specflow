@@ -16,6 +16,11 @@ const RECOVERY_CODES: ReadonlySet<string> = new Set([
   'COMMIT_FAILED',
 ]);
 
+/** The Create failed in a way only an operator repairs: its outcome is not a refusal. */
+export function isRecoveryCode(code: string): boolean {
+  return RECOVERY_CODES.has(code);
+}
+
 export interface CreateProgress {
   /** Feed Engine stage transitions (`createSpecificationFromRequest` option `onStage`). */
   onStage(observation: CreateStageObservation): void;

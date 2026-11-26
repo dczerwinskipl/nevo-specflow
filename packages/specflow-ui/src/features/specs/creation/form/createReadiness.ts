@@ -2,6 +2,7 @@ import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import type { ArchetypeInfo } from '@nevo/specflow-contracts/documents';
 import { message, type Message } from '../../../../i18n/message';
 import type { FreshChoice } from '../../../tasks';
+import { agentCanStart, startCatalogueFromDemo } from '../../../sessions';
 import { demoWorkMode } from '../start/demoAgents';
 import type { WorkspaceOptionsState } from '../workspace/model/workspaceChoice';
 import { workspaceProblems } from '../workspace/model/workspaceValidation';
@@ -85,7 +86,7 @@ export function agentProblem(
 ): { message: Message; field: 'provider' | 'model' } | undefined {
   const provider = catalogue.providers.find((p) => p.id === agent.providerId);
   const model = provider?.models.find((m) => m.id === agent.modelId);
-  if (!provider?.available) {
+  if (!provider || !agentCanStart(startCatalogueFromDemo(catalogue), agent.providerId)) {
     return { message: message('create.prerequisite.provider'), field: 'provider' };
   }
 

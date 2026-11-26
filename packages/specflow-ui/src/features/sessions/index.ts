@@ -35,7 +35,11 @@ export { invalidateSpecificationSessions } from './associations/queries';
 export { AgentPicker } from './start/fields/AgentPicker';
 export { ModelEffortPicker } from './managed/ModelEffortPicker';
 export { startCatalogueFromProviders } from './start/catalogue/fromProviderDescriptors';
-export type { StartCatalogue } from './start/catalogue/startCatalogue';
+export {
+  agentCanStart,
+  startableAgents,
+  type StartCatalogue,
+} from './start/catalogue/startCatalogue';
 // Which agents can start and how to fix those that cannot (the Session start screen's diagnosis),
 // also shown by Create with an agent.
 export { AgentAvailabilityNote } from './start/diagnostics/AgentAvailabilityNote';

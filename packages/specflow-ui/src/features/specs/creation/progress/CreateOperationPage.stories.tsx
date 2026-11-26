@@ -914,6 +914,9 @@ export const AgentPathNotStarted: Story = {
     await expect(last).toHaveTextContent('nie wykonano');
     await expect(canvas.getByText('Inny agent pracuje teraz w tym projekcie.')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Uruchom z agentem…' })).toBeInTheDocument();
+    // The finished page says so in the top bar, and the alert's Check again opens Run with agent.
+    await expect(canvas.getAllByText('Specyfikacja utworzona').length).toBeGreaterThan(0);
+    await expect(canvas.getByRole('button', { name: 'Sprawdź ponownie' })).toBeInTheDocument();
     canvas.getByRole('button', { name: 'Otwórz specyfikację' }).click();
     await expect(args.onOpen).toHaveBeenCalledWith(
       expect.objectContaining({ specId: createdSpec.specId }),

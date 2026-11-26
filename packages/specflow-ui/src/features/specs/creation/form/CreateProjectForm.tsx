@@ -57,6 +57,7 @@ import type { WorkspaceChoice } from '../workspace/model/workspaceChoice';
 import { useWorkspacePlace } from '../workspace/useWorkspacePlace';
 import type { FreshChoice } from '../../../tasks';
 import { useCreateAgents } from '../start/useCreateAgents';
+import { agentCanStart, startableAgents } from '../../../sessions';
 import { CreateAgentStepSection } from './CreateAgentStepSection';
 
 /**
@@ -182,7 +183,7 @@ export function CreateProjectForm({
   const createAgents = useCreateAgents(agentPath);
   const { agents } = createAgents;
   const readyAgents = agents.status === 'ready' ? agents : undefined;
-  const startable = readyAgents?.catalogue.providers.filter((provider) => provider.available) ?? [];
+  const startable = readyAgents ? startableAgents(readyAgents.catalogue) : [];
   const defaultAgent = startable[0];
   const agent: FreshChoice = agentChoice ?? {
     providerId: defaultAgent?.id ?? '',
@@ -218,7 +219,9 @@ export function CreateProjectForm({
             firstStep,
             agents: agents.status,
             anyAvailable: startable.length > 0,
-            chosenAvailable: startable.some((provider) => provider.id === agent.providerId),
+            chosenAvailable: readyAgents
+              ? agentCanStart(readyAgents.catalogue, agent.providerId)
+              : false,
           },
         }
       : {}),

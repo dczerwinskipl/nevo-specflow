@@ -460,8 +460,9 @@ describe('CreateOperationPage', () => {
     const get = vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND'));
     const { onOpen } = renderPage({ post, get });
     expect(await heading('Specification created')).toBeTruthy();
-    // The completion page is the durable confirmation; a toast would repeat its heading.
-    expect(screen.queryByText('Specification created')).toBeNull();
+    // The completion page is the durable confirmation; a toast would repeat its heading. The only
+    // plain "Specification created" is the top bar naming the finished page.
+    expect(screen.getAllByText('Specification created')).toHaveLength(1);
     const items = within(
       screen.getByRole('group', { name: 'Specification creation progress' }),
     ).getAllByRole('listitem');

@@ -133,6 +133,10 @@ const interruptionPlay: Story['play'] = async ({ canvasElement }) => {
   });
   await expect(within(outcome).getByText('Tura przerwana')).toBeVisible();
   await expect(canvas.getAllByText(/SpecFlow stopped the Claude process/)).toHaveLength(1);
+  // The real state, when the Runtime reports it: what is left, not "may have been made".
+  await expect(
+    within(outcome).getByText('W przestrzeni roboczej są teraz 3 niezatwierdzone pliki.'),
+  ).toBeVisible();
   await userEvent.click(
     within(outcome).getByRole('button', { name: 'Przejrzyj zmiany w przestrzeni roboczej' }),
   );
@@ -140,22 +144,43 @@ const interruptionPlay: Story['play'] = async ({ canvasElement }) => {
 
 export const InterruptionMobile: Story = {
   tags: ['contract'],
-  args: { api: transcriptApi(interruptionSnapshot()) },
+  args: { api: transcriptApi(interruptionSnapshot()), workspaceChanges: 3 },
   globals: NARROW_VIEWPORT,
   play: interruptionPlay,
 };
 export const InterruptionDesktop: Story = {
   tags: ['contract'],
-  args: { api: transcriptApi(interruptionSnapshot()) },
+  args: { api: transcriptApi(interruptionSnapshot()), workspaceChanges: 3 },
   globals: WIDE_VIEWPORT,
   play: interruptionPlay,
+};
+
+/** A Runtime without the changes view: "may have been made", and no review action to a dead end. */
+export const InterruptionChangesUnknown: Story = {
+  tags: ['contract'],
+  args: { api: transcriptApi(interruptionSnapshot()) },
+  globals: NARROW_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    const outcome = await waitFor(() => {
+      const element = canvasElement.querySelector<HTMLElement>('[data-turn-outcome]');
+      if (!element) {
+        throw new Error('Expected the outcome event.');
+      }
+
+      return element;
+    });
+    await expect(
+      within(outcome).getByText('W przestrzeni roboczej mogły już zajść zmiany.'),
+    ).toBeVisible();
+    await expect(within(outcome).queryByRole('button', { name: /Przejrzyj zmiany/ })).toBeNull();
+  },
 };
 
 /** A Continue of the same attempt: "Execution resumed", never a second attempt-1 brief. */
 const resumedPlay: Story['play'] = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   await canvas.findByText('Wznowiono wykonanie');
-  await expect(canvas.getByText('Kontynuuj bieżącą próbę workflow.')).toBeVisible();
+  await expect(canvas.getByText('Kontynuacja podejścia 1')).toBeVisible();
   // Two briefs in the conversation: the start, and the continuation that names no new attempt.
   const briefs = canvasElement.querySelectorAll('[data-entry-origin]');
   await expect(briefs).toHaveLength(2);

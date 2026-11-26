@@ -43,3 +43,14 @@ export function workStateTextClassName(tone: WorkStateTone): string {
       return 'text-content-secondary';
   }
 }
+
+/**
+ * A Work history marker's tone: colour only for an exception (a failure, a stop or interruption),
+ * neutral otherwise. The marker's icon says the operation kind (`workOperationIcon`); a plain
+ * completion is not coloured on every row.
+ */
+export function workMarkerTone(state: WorkSummary['state']): 'neutral' | 'attention' | 'danger' {
+  const tone = workStateTone(state);
+
+  return tone === 'danger' || tone === 'attention' ? tone : 'neutral';
+}

@@ -321,6 +321,15 @@ export function useAgentAttemptNow({
   const commands = useAgentAttemptCommands(subject, headingId);
   const modelTitle = useModelTitle(subject.specId);
   const sessionFacts = useSessionFacts(subject.specId, view?.sessionId ?? '');
+  // Task titles for the kept documents ("Kept so far: Sign-in screen: task.md"): the Tasks of the
+  // Specification, and the drafts this attempt produced.
+  const { specificationApi } = useAppServices();
+  const specTasks = useSpecificationWorkspace(subject.specId, specificationApi).data?.taskGroups;
+  const taskTitle = (taskId: string): string | undefined =>
+    [
+      view?.work.changes?.tasks.find((task) => task.id === taskId)?.title,
+      specTasks?.flatMap((group) => group.tasks).find((task) => task.id === taskId)?.title,
+    ].find((title) => title !== undefined && title !== '');
   // The attempt whose commit holds the specification's workflow: this subject's or another's.
   const heldStepTitle = (hold: AttemptCommitHold) =>
     hold.subject.taskId !== undefined && hold.subject.taskId !== subject.taskId
@@ -772,7 +781,11 @@ export function useAgentAttemptNow({
         docNames.length > 0 || filePaths.length > 0 ? (
           <Typography as="p" variant="body-sm" className="text-content-secondary">
             {t('workflowExecution.agentAttempt.keptLead')}{' '}
-            <KeptDocuments paths={work.documents} openDocument={links.document} />
+            <KeptDocuments
+              paths={work.documents}
+              openDocument={links.document}
+              taskTitle={taskTitle}
+            />
             {filePaths.length > 0
               ? t(
                   docNames.length > 0

@@ -108,16 +108,19 @@ function ToolActionStatus({ item, glyph }: { item: ToolActionSummary; glyph: boo
 export function ToolActionHeader({
   item,
   asHeading,
+  withHeading = true,
 }: {
   item: ToolActionSummary;
   asHeading: boolean;
+  /** False where the screen's own header already names the action ("Ran command"). */
+  withHeading?: boolean;
 }) {
   const { t } = useTranslation();
   const { heading, subject } = toolActionHeading(t, item);
 
   return (
     <div className="grid min-w-0 gap-1">
-      {asHeading ? (
+      {!withHeading ? null : asHeading ? (
         <Typography
           as="h2"
           variant="title-sm"
@@ -132,7 +135,10 @@ export function ToolActionHeader({
         <Typography
           as="p"
           variant="body-sm"
-          className="min-w-0 font-mono text-content-secondary [overflow-wrap:anywhere]"
+          // A compact preview (two lines at most, the whole text as its tooltip): the full command
+          // is the COMMAND section below, with Copy.
+          className="line-clamp-2 min-w-0 font-mono text-content-secondary [overflow-wrap:anywhere]"
+          title={subject}
           data-tool-action-subject=""
         >
           {subject}

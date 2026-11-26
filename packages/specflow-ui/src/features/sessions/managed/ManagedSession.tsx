@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, Send, Square, X } from 'lucide-react';
+import { ArrowDown, Plus, Send, Square, X } from 'lucide-react';
 import {
   Alert,
   InlineNote,
@@ -240,9 +240,12 @@ function ManagedSessionConversation({
   composerFocusRequested,
   onComposerFocused,
   reviewChanges,
+  workspaceChanges,
 }: {
-  /** Opens the Session's Specification's workspace changes, when it has one. */
+  /** Opens the Session's Specification's workspace changes, when there are any to show. */
   reviewChanges?: () => void;
+  /** How many files the Specification's workspace has uncommitted now, when the Runtime reports it. */
+  workspaceChanges?: number;
   /** The Unarchive command (shared with the header menu), pressed from the archived bar. */
   unarchive: SessionCommandView & { run: () => void };
   /** Focus the Composer editor once it is back (a Restore succeeded). */
@@ -723,6 +726,7 @@ function ManagedSessionConversation({
                             key={item.id}
                             item={item}
                             onReviewChanges={reviewChanges}
+                            workspaceChanges={workspaceChanges}
                           />
                         );
                       default:
@@ -756,28 +760,25 @@ function ManagedSessionConversation({
                     )}
                     style={{ bottom: `calc(${composerHeight}px + 0.5rem)` }}
                   >
-                    {/* `variant="secondary"`'s own background token (`--color-action-secondary`)
-                        is deliberately translucent — it is meant for a control sitting on an
-                        already-opaque surface, not one floating directly over scrolling content
-                        (it must stay opaque like the other floating buttons). `workspace-floating-pill`
-                        (`AppWorkspace.css`) overrides it to the same opaque material the mobile
-                        floating-navigation row's own buttons use, and reliably wins the cascade
-                        over the variant's Tailwind utility regardless of class order — see that
-                        rule's own doc comment. `shadow-lg` is this screen's shared "subtle
-                        floating surface" elevation (also applied to the Composer bar below, and
-                        mirrored by value in the floating-navigation row's own shadow) — not the
-                        heavier `shadow-xl` this used before, which read as too strong for a small
-                        pill. */}
-                    <Button
-                      className="workspace-floating-pill shadow-lg"
+                    {/* A small round down arrow just above the Composer (owner, 2026-11-26: the
+                        labelled pill covered several lines of the transcript); its words are its
+                        accessible name and tooltip. `workspace-floating-pill` (`AppWorkspace.css`)
+                        gives it the opaque floating material the mobile floating-navigation
+                        buttons use (the secondary variant's own background is translucent), and
+                        `shadow-lg` is this screen's shared subtle floating elevation. */}
+                    <IconButton
+                      aria-label={t('managedSession.latest')}
+                      title={t('managedSession.latest')}
+                      icon={ArrowDown}
+                      size="md"
                       variant="secondary"
+                      className="workspace-floating-pill rounded-full shadow-lg"
+                      data-return-to-latest=""
                       onClick={() => {
                         conversationScroll.followLatest();
                         void feed.latest();
                       }}
-                    >
-                      {t('managedSession.latest')}
-                    </Button>
+                    />
                   </div>
                 )}
                 <div
@@ -1252,6 +1253,7 @@ export function ManagedSession({
   onSessionChanged,
   onGoToSpecifications,
   onReviewChanges,
+  workspaceChanges,
   namingPending = false,
 }: {
   /**
@@ -1305,6 +1307,13 @@ export function ManagedSession({
    * Turn that ended badly after changing files offers it. Omitted: no such action.
    */
   onReviewChanges?: (specification: ContextSpecification) => void;
+  /**
+   * How many files the Specification's workspace has uncommitted now, when the Runtime reports it
+   * (the route composition reads it): a Turn that ended badly says so instead of "may", and
+   * **Review workspace changes** is offered only when there are some to show. Absent: not known
+   * (a Runtime without the changes view), so no review action leads to a dead end.
+   */
+  workspaceChanges?: number;
 }) {
   const { t } = useTranslation();
   const reviewSpecification =
@@ -1647,10 +1656,11 @@ export function ManagedSession({
             composerFocusRequested={composerFocusRequested}
             onComposerFocused={onComposerFocused}
             reviewChanges={
-              onReviewChanges && reviewSpecification
+              onReviewChanges && reviewSpecification && workspaceChanges
                 ? () => onReviewChanges(reviewSpecification)
                 : undefined
             }
+            workspaceChanges={workspaceChanges}
           />
           {sessionActions.dialogs}
         </AppWorkspace.Primary>

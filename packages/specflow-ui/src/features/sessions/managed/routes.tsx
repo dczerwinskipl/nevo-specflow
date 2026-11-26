@@ -16,6 +16,7 @@ import {
 } from '../associations/queries';
 import { homeSpecification } from '../associations/useSessionHomeSpecification';
 import { ManagedSession } from './ManagedSession';
+import { useSpecificationWorkspace } from '../../specs/read-model';
 import { useSessionContextNavigation } from './useSessionContextNavigation';
 
 /**
@@ -66,6 +67,16 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
   const toSpecifications = () =>
     navigate({ to: '/', search: { collection: 'current' }, replace: true });
   const home = homeSpecification(data);
+  // The Specification's uncommitted changes as the Runtime reports them now (only where its
+  // changes view exists): a Turn that ended badly then says what is left and opens it.
+  const homeWorkspace = useSpecificationWorkspace(
+    home?.specId ?? '',
+    services.specificationApi,
+  ).data;
+  const workspaceChanges =
+    homeWorkspace?.sectionAvailability?.changes === 'available'
+      ? homeWorkspace.changes?.uncommitted?.length
+      : undefined;
   const onSessionChanged = () => {
     if (home) {
       void invalidateSpecificationSessions(queryClient, home.specId);
@@ -111,6 +122,7 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
         onOpenDocuments={onOpenDocuments}
         onOpenDocumentation={onOpenDocumentation}
         onReviewChanges={onReviewChanges}
+        workspaceChanges={workspaceChanges}
         onSessionDeleted={onSessionDeleted}
         onSessionChanged={onSessionChanged}
         onGoToSpecifications={() => void toSpecifications()}

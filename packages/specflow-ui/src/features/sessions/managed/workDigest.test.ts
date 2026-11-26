@@ -34,6 +34,24 @@ describe('describeWorkBlock', () => {
     ).toBe('1 edycja · 2 zapisy · 3 polecenia · 1 uruchomienie testów i więcej');
   });
 
+  it('titles the row by the tool actions, the kinds under it only when there are several', () => {
+    expect(
+      describeWorkBlock(block({ digest: { opened: { command: 5, read: 1 } } }), en),
+    ).toMatchObject({
+      title: '6 tool actions',
+      detail: '5 commands · 1 read',
+      operation: 'command',
+    });
+    const single = describeWorkBlock(block({ digest: { opened: { command: 2 } } }), en);
+    expect(single).toMatchObject({ title: '2 commands', operation: 'command' });
+    expect(single.detail).toBeUndefined();
+    // Without a digest: the honest loaded count, by no particular kind.
+    expect(describeWorkBlock(block({ actionCount: 3 }), en)).toMatchObject({
+      title: '3 tool actions',
+      operation: 'other',
+    });
+  });
+
   it('lifts failed actions onto their own line', () => {
     expect(
       describeWorkBlock(block({ digest: { opened: { read: 1 }, failed: { test: 1 } } }), en),

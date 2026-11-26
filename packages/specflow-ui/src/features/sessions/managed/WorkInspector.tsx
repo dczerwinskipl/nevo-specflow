@@ -25,6 +25,7 @@ import {
   defineSecondaryStack,
   useSecondaryDetailHeaderHosted,
   useSecondaryStack,
+  WorkspaceHeaderIdentity,
 } from '@nevo/ui';
 import { translateNow } from '../../../i18n/message';
 import type { ManagedSessionsApi } from './api';
@@ -73,7 +74,7 @@ import {
   WrapLinesToggle,
 } from './ToolActionDetails';
 
-type OpenActions = (workId: string, title: string, permissionId?: string) => void;
+type OpenActions = (workId: string, title: string, heading: string, permissionId?: string) => void;
 
 interface Root {
   sessionId: string;
@@ -93,7 +94,8 @@ type Data = Root & {
 interface Pages {
   work: Record<string, never>;
   /** `permissionId`: the permission Work folded into this tool Work (`foldPermissions`). */
-  actions: { workId: string; workTitle: string; permissionId?: string };
+  /** `heading`: the concrete action ("Ran command"), the screen's title; `workTitle` adds its subject. */
+  actions: { workId: string; workTitle: string; heading: string; permissionId?: string };
 }
 function useWorkRefresh(feed: SessionFeed, turnId: string, refresh: () => Promise<unknown>) {
   useEffect(() => {
@@ -219,19 +221,17 @@ function isNarrationLong(item: WorkSummary): boolean {
 type NarrationVoice = 'commentary' | 'reasoning';
 
 /** Commentary AND Thinking (Reasoning) are the agent's own narration, read directly in the flow —
- * never gated behind a click, never a row on the operations rail: Commentary is narration, not the
- * header of a collapsible operations group, and Thinking looks the same apart from its voice.
- * Both use exactly this one block — same size, colour, spacing and long-text handling —
- * and the ONLY visual difference is the voice: Thinking is italic, Commentary upright. They are
- * still two different kinds of Work (full-session.md "Work history (L2)"): the italic voice tells
- * them apart at a glance, and assistive tech gets the kind's own name (`sr-only`), since italics
- * are not announced. No icon, no marker dot, no chevron, no card.
+ * never gated behind a click, never a row on the operations rail. They are two different kinds of
+ * Work (full-session.md "Work history (L2)") with one block and two voices:
  *
- * Same text rendering as the chat's own Commentary row (`ManagedSession.tsx`'s `commentary`
- * branch): plain prose (`body-md`, pre-wrapped, no Markdown), `text-content-muted` — so the same
- * Commentary reads identically at both levels.
+ * - a **progress note** (Commentary) heads the operations after it, so it is styled and announced
+ *   as a heading (h2, the reading size in medium weight and the primary colour; owner, 2026-11-26);
+ * - **Thinking** stays quiet prose: muted and italic.
  *
- * The one exception is `isNarrationLong`: genuinely long narration gets a plain "Show more"/
+ * Assistive tech also gets the kind's own name (`sr-only`). No icon, no marker dot, no chevron,
+ * no card. The text is plain prose (pre-wrapped, no Markdown), as in the chat.
+ *
+ * Long narration is the exception (`isNarrationLong`): genuinely long narration gets a plain "Show more"/
  * "Show less" ghost `Button` (the same label-only disclosure pattern `TaskDetailDisclosure.tsx`
  * already uses elsewhere in this app for "reveal more text", not a new chevron-led control
  * invented for this row) instead of being dumped in full — expanding it mounts `ReadableText`
@@ -253,7 +253,10 @@ function WorkNarration({
   return (
     <div
       {...historyEntry(item.workId)}
-      className={cn('grid min-w-0 gap-1 text-content-muted', voice === 'reasoning' && 'italic')}
+      className={cn(
+        'grid min-w-0 gap-1',
+        voice === 'reasoning' ? 'text-content-muted italic' : 'font-medium text-content-primary',
+      )}
     >
       <span className="sr-only">
         {voice === 'reasoning'
@@ -264,7 +267,8 @@ function WorkNarration({
         <ReadableText api={data.api} sessionId={data.sessionId} value={item.title} />
       ) : (
         <Typography
-          as="p"
+          // A progress note heads the operations after it (h2: the panel's title is the h1).
+          as={voice === 'commentary' ? 'h2' : 'p'}
           variant="body-md"
           className={cn(
             'min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]',
@@ -393,18 +397,22 @@ function WorkChapterSection({
   );
 }
 
-/** The persistent Work summary row (full-session.md "Work block", mockup's "144 elementy
- * przebiegu · 1 w toku" / "48 odczytów · 24 zapisy · …" counts row): rendered only when the
- * Runtime's `WorkPage.counts` aggregate is present — hidden entirely otherwise, never computed
- * from `items.length` (which is only ever a bounded page, not the Turn's true total). `byKind`
- * carries only the canonical Work kinds; the aggregate has no reads/writes/commands/search
- * breakdown of tool Work. */
+/** The Work summary above the list (full-session.md "Work history (L2)"): rendered only when the
+ * Runtime's `WorkPage.counts` aggregate is present — hidden entirely otherwise, never computed from
+ * `items.length` (which is only ever a bounded page, not the Turn's true total). The operations
+ * lead: how many tool actions the Turn ran (and how many still run), then, as quieter metadata,
+ * the other kinds of Work. No sum across kinds: "71 work items" counted notes, thinking and
+ * questions as if they were work done. `interaction` counts the questions and permission requests
+ * that reached the person (an automatic approval is not one: the Runtime records it as a note). */
 function WorkCountsSummary({ counts }: { counts: WorkCounts }) {
   const { t } = useTranslation();
-  // A kind with zero items is left out ("0 analiz · 0 odpowiedzi" is noise, not information).
-  const byKindLabels = [
-    counts.byKind.tool > 0 &&
-      t('managedSession.workInspector.toolBurst', { count: counts.byKind.tool }),
+  const headline = [
+    t('managedSession.workInspector.toolBurst', { count: counts.byKind.tool }),
+    counts.inProgress > 0 &&
+      t('managedSession.workInspector.counts.inProgress', { count: counts.inProgress }),
+  ].filter((label): label is string => typeof label === 'string');
+  // A kind with zero items is left out ("0 thinking steps" is noise, not information).
+  const metadata = [
     counts.byKind.commentary > 0 &&
       t('managedSession.workInspector.counts.commentary', { count: counts.byKind.commentary }),
     counts.byKind.reasoning > 0 &&
@@ -412,24 +420,15 @@ function WorkCountsSummary({ counts }: { counts: WorkCounts }) {
     counts.byKind.interaction > 0 &&
       t('managedSession.workInspector.counts.interaction', { count: counts.byKind.interaction }),
   ].filter((label): label is string => typeof label === 'string');
-  // Plain text, never a badge: an ordinary statistic, quieter than the operation
-  // titles below it (`body-md` secondary vs. `label-md` primary), and "w toku" is the same
-  // `workState.active` word the rows themselves use — not a second status vocabulary. It counts
-  // Work in this Turn only; it says nothing about the Session as a whole.
-  const headline = [
-    t('managedSession.workInspector.counts.total', { count: counts.total }),
-    counts.inProgress > 0 &&
-      t('managedSession.workInspector.counts.inProgress', { count: counts.inProgress }),
-  ].filter((label): label is string => typeof label === 'string');
 
   return (
-    <div className="grid gap-0.5">
-      <Typography as="p" variant="body-md" className="text-content-secondary">
+    <div className="grid gap-0.5" data-work-counts="">
+      <Typography as="p" variant="title-sm" className="text-content-primary">
         {headline.join(' · ')}
       </Typography>
-      {byKindLabels.length > 0 && (
+      {metadata.length > 0 && (
         <Typography as="p" variant="body-sm" className="text-content-muted">
-          {byKindLabels.join(' · ')}
+          {metadata.join(' · ')}
         </Typography>
       )}
     </div>
@@ -558,10 +557,11 @@ function Work({ data }: { data: Data }) {
     () => availableWorkFilterKinds(items, counts?.byKind),
     [items, counts],
   );
-  const openActions: OpenActions = (workId, workTitle, permissionId) =>
+  const openActions: OpenActions = (workId, workTitle, heading, permissionId) =>
     void navigation.navTo('actions', {
       workId,
       workTitle,
+      heading,
       ...(permissionId ? { permissionId } : {}),
     });
 
@@ -657,6 +657,13 @@ function useActionsQuery(data: Data, params: ActionsParams) {
   });
 }
 
+/** What the opened Work acted on: its title without the action's own name in front. */
+function workSubject(params: ActionsParams): string | undefined {
+  const prefix = `${params.heading} · `;
+
+  return params.workTitle.startsWith(prefix) ? params.workTitle.slice(prefix.length) : undefined;
+}
+
 /** The common case — one ToolAction, with no older page behind it — is shown as a single detail. */
 function isSingleAction(count: number, hasOlder: boolean) {
   return count === 1 && !hasOlder;
@@ -743,17 +750,18 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
         onScroll={(event) => maybeLoadOlder(event.currentTarget)}
       >
         <div ref={content} className="flex w-full flex-1 flex-col gap-4">
-          {/* Which Work these actions belong to — only when there are several. A single action's
-              own title is the heading (`SingleToolActionDetail`), and repeating the Work title
-              above it would show the same name twice. Where the
-              workspace hosts the `detailHeader` (`ActionsHeader`) beside Back, it shows either. */}
-          {/* Where no header row hosts it, the screen's one Wrap lines heads the content: beside the
-              Work's title for several actions, above the single action's own heading. */}
+          {/* Where no header row hosts the detail header, the screen's own header names the action
+              ("Wrote file and 2 more"); the content then says only what it acted on (several
+              actions), never the action's name a second time, with the screen's one Wrap lines. */}
           {!headerHosted && loadGate.showContent && items.length > 0 && (
             <div className="flex min-w-0 items-start justify-between gap-2">
-              {!single ? (
-                <Typography as="h2" variant="title-sm" className="text-content-primary">
-                  {params.workTitle}
+              {!single && workSubject(params) ? (
+                <Typography
+                  as="p"
+                  variant="body-sm"
+                  className="min-w-0 pt-1.5 font-mono text-content-secondary [overflow-wrap:anywhere]"
+                >
+                  {workSubject(params)}
                 </Typography>
               ) : (
                 <span />
@@ -878,6 +886,9 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
         get title() {
           return translateNow('managedSession.actions');
         },
+        // The header names the concrete action ("Ran command", "Read file and 2 more"), never the
+        // page type; a split Secondary shows it in the detail header row instead (`ActionsHeader`).
+        header: ({ params }) => <WorkspaceHeaderIdentity headingLevel={2} title={params.heading} />,
         // The breadcrumb names the opened Work ("Read file admission.mjs"), not the page type;
         // the tab itself keeps its root's name ("Historia pracy").
         breadcrumbLabel: (params) => params.workTitle,

@@ -7,8 +7,10 @@ import { workStateTextClassName } from './workStatus';
 
 /**
  * The AUTHORIZATION section of a tool's detail (full-session.md "ToolAction detail (L4)"): how the
- * permission folded into this tool Work (`foldPermissions`) was answered, by whom and how long the
+ * permission request folded into this tool Work (`foldPermissions`) was answered and how long the
  * answer took, between what the tool ran and its result. Nothing when no permission was folded in.
+ * Who answered is not claimed: the Work records the decision, not its author (ADR 0026: what Claude's
+ * mode or the allowlist approved is not recorded per call).
  */
 export function AuthorizationSection({ permission }: { permission: WorkSummary | undefined }) {
   const { t } = useTranslation();
@@ -41,9 +43,9 @@ export function AuthorizationSection({ permission }: { permission: WorkSummary |
             {t(`managedSession.permissionState.${permission.decision}`)}
           </Typography>
           <Typography as="p" variant="body-sm" className="text-content-muted">
-            {[t('managedSession.workInspector.authorization.byYou'), duration]
-              .filter(Boolean)
-              .join(' · ')}
+            {duration
+              ? t('managedSession.workInspector.authorization.answeredIn', { duration })
+              : t('managedSession.workInspector.authorization.answered')}
           </Typography>
         </div>
       </div>

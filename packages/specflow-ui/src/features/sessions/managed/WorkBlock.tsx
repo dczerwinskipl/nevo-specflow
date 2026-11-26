@@ -1,21 +1,21 @@
 import { useTranslation } from 'react-i18next';
-import { Wrench } from 'lucide-react';
 import { Icon, Spinner, Typography, cn } from '@nevo/ui';
 import type { WorkBlockModel } from './workBlockModel';
 import { describeWorkBlock } from './workDigest';
+import { workOperationIcon } from './workOperationIcon';
 import { workStateTextClassName } from './workStatus';
 
 /**
- * The tool row of one work stage in the Conversation (full-session.md "Conversation"), right under
- * that stage's Commentary: what the stage did by operation kind, its failed tool actions on their
- * own line and, on the active Turn's last stage, what is happening right now with a spinner. How the
- * Turn ended is never said here (`TurnOutcomeEvent` says it once). The whole row is the one click
- * target into the Turn's Work history (chevron + hover, no extra visible label).
+ * The agent-work element of one work stage in the Conversation (full-session.md "Work block"),
+ * right under that stage's Commentary: always the same contained row, so the agent's work reads as
+ * one kind of element between the paragraphs, never as a loose button. Its title says how much was
+ * done ("6 tool actions", or "2 commands" when all were of one kind), the breakdown by kind under
+ * it when there were several ("5 commands · 1 read"), failed tool actions on their own line and, on
+ * the active Turn's last stage, what is happening right now with a spinner. How the Turn ended is
+ * never said here (`TurnOutcomeEvent` says it once). The whole row opens the Turn's Work history.
  *
- * Pressed (a tap on a phone, where there is no hover) shows the selected surface, so the tap
- * visibly lands on the whole row. The leading icon sits in a small tile, without a container at
- * rest (layout-and-containment: borderless-first; hover/focus show the surface). Colour is used
- * only for the exception: failed tool actions.
+ * The leading icon is the kind the stage did most (`workOperationIcon`, the icons Work history uses
+ * too); colour is used only for the exception: failed tool actions.
  */
 export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspect: () => void }) {
   const { t } = useTranslation();
@@ -30,12 +30,12 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
       <button
         type="button"
         onClick={onInspect}
-        className="group/work flex w-full min-w-0 cursor-pointer items-start gap-3 rounded-control px-2 py-2 text-left outline-none transition-colors hover:bg-surface-hover active:bg-surface-selected focus-visible:outline-2 focus-visible:outline-focus-ring"
+        className="group/work flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-control bg-surface-subtle px-3 py-2.5 text-left outline-none transition-colors hover:bg-surface-hover active:bg-surface-selected focus-visible:outline-2 focus-visible:outline-focus-ring"
       >
         <span
           aria-hidden="true"
           className={cn(
-            'inline-flex size-7 shrink-0 items-center justify-center rounded-control bg-surface-control',
+            'inline-flex shrink-0 items-center justify-center',
             workStateTextClassName(danger ? 'danger' : 'neutral'),
           )}
         >
@@ -44,25 +44,21 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
           ) : danger ? (
             <Icon name="circle-alert" size="sm" />
           ) : (
-            <Icon name={Wrench} size="sm" />
+            <Icon name={workOperationIcon(text.operation)} size="sm" />
           )}
         </span>
-        {/* The first line is centred on the 28px tile, like the chevron: a `body-md` summary
-            (20px line) sits 4px down, a `body-sm` first line (16px: live or failed without a
-            summary) 6px down. */}
         <span
           data-work-block-text=""
-          className={cn(
-            'grid min-w-0 flex-1 gap-1 [overflow-wrap:anywhere]',
-            text.summary ? 'pt-1' : 'pt-1.5',
-          )}
+          className="grid min-w-0 flex-1 gap-0.5 [overflow-wrap:anywhere]"
         >
-          {/* `body-md` (the conversation's own reading size) for the counts, one step quieter in
-              colour than the answer; the failed/live lines are `body-sm` supporting text, toned
-              from the shared state vocabulary Work history also uses (`workStatus.ts`). */}
-          {text.summary && (
-            <Typography as="span" variant="body-md" className="text-content-secondary">
-              {text.summary}
+          {text.title && (
+            <Typography as="span" variant="body-md" className="font-medium text-content-primary">
+              {text.title}
+            </Typography>
+          )}
+          {text.detail && (
+            <Typography as="span" variant="body-sm" className="text-content-secondary">
+              {text.detail}
             </Typography>
           )}
           {text.failed && (
@@ -93,7 +89,7 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
         <Icon
           name="chevron-right"
           size="sm"
-          className="mt-1.5 shrink-0 text-content-muted transition-colors group-hover/work:text-content-secondary"
+          className="shrink-0 text-content-muted transition-colors group-hover/work:text-content-secondary"
         />
       </button>
       {text.live && (

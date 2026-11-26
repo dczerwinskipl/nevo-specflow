@@ -5,6 +5,7 @@ import { FileText } from 'lucide-react';
 import {
   AppContent,
   Button,
+  Collapsible,
   Icon,
   MarkdownDocument,
   ScrollArea,
@@ -52,33 +53,6 @@ export function briefParts(text: string): BriefPart[] {
   return parts;
 }
 
-/** JSON pretty-printed (the hand-off), else `undefined`. */
-function prettyJson(text: string): string | undefined {
-  const trimmed = text.trim();
-  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-    return undefined;
-  }
-
-  try {
-    return JSON.stringify(JSON.parse(trimmed), null, 2);
-  } catch {
-    return undefined;
-  }
-}
-
-/** The name of a data block for people: a known source by its words, another one made readable. */
-function sourceLabel(t: TFunction, source: string): string {
-  const known: Record<string, string> = {
-    'step.purpose': t('managedSession.brief.source.stepPurpose'),
-    'step.instructions': t('managedSession.brief.source.stepInstructions'),
-    'archetype.profile': t('managedSession.brief.source.agentProfile'),
-    handoff: t('managedSession.brief.source.handoff'),
-  };
-  const words = source.replace(/[._-]+/g, ' ').trim();
-
-  return known[source] ?? (words ? words.charAt(0).toUpperCase() + words.slice(1) : source);
-}
-
 /** "Break the solution down · attempt 2" (with the Task, when the step is a Task's). */
 export function briefSubject(t: TFunction, origin: RequestOrigin): string {
   return origin.task
@@ -90,52 +64,202 @@ export function briefSubject(t: TFunction, origin: RequestOrigin): string {
     : t('managedSession.brief.subject', { step: origin.step.title, attempt: origin.attempt });
 }
 
-/** A brief, readable: SpecFlow's words as Markdown, each data block labelled under a quote rule. */
-export function BriefDocument({ text }: { readonly text: string }) {
-  const { t } = useTranslation();
+/** Readable parts of a step's brief: what a person wants to know, without SpecFlow's protocol. */
+export interface ReadableBrief {
+  readonly purpose?: string;
+  readonly instructions?: string;
+  /** The agent profile the step runs with, by its title (never its id). */
+  readonly archetype?: { readonly title: string; readonly instructions?: string };
+  /** The Task the step works on, by its title (never its id). */
+  readonly task?: { readonly title: string; readonly summary?: string };
+}
+
+const ARCHETYPE_LINE = /^Archetype: (.+?)(?: \([^()]*\))?\s*$/m;
+const TASK_LINE = /^Task: (.+?)(?: \(type [^()]*\))?\s*$/m;
+
+/**
+ * The parts of a brief a person reads (the Runtime's brief renderer writes them): the step's
+ * purpose and instructions, the agent profile's title and instructions, the Task's title and
+ * summary. Everything else (ids, revisions, documents, rules, commands) stays in the full text.
+ */
+export function readableBrief(text: string): ReadableBrief {
+  const data = new Map<string, string>();
+  for (const part of briefParts(text)) {
+    if (part.kind === 'data' && part.text.trim() !== '' && !data.has(part.source)) {
+      data.set(part.source, part.text.trim());
+    }
+  }
+
+  const archetypeTitle = ARCHETYPE_LINE.exec(text)?.[1]?.trim();
+  const taskTitle = TASK_LINE.exec(text)?.[1]?.trim();
+  const archetypeInstructions = data.get('archetype.instructions');
+  const taskSummary = data.get('task.summary');
+  const purpose = data.get('step.purpose');
+  const instructions = data.get('step.instructions');
+
+  return {
+    ...(purpose ? { purpose } : {}),
+    ...(instructions ? { instructions } : {}),
+    ...(archetypeTitle
+      ? {
+          archetype: {
+            title: archetypeTitle,
+            ...(archetypeInstructions ? { instructions: archetypeInstructions } : {}),
+          },
+        }
+      : {}),
+    ...(taskTitle
+      ? { task: { title: taskTitle, ...(taskSummary ? { summary: taskSummary } : {}) } }
+      : {}),
+  };
+}
+
+/** An id made readable ("breakdown-review" -> "Breakdown review"), for what the origin names by id. */
+function readableId(id: string): string {
+  const words = id.replace(/[._-]+/g, ' ').trim();
+
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : id;
+}
+
+/** One titled part of the readable brief: the section-title role, then its content. */
+function BriefSection({
+  title,
+  children,
+}: {
+  readonly title: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    <section aria-label={title} className="grid min-w-0 gap-1.5">
+      <Typography as="h3" variant="section-label">
+        {title}
+      </Typography>
+      {children}
+    </section>
+  );
+}
+
+function BriefMarkdown({ source }: { readonly source: string }) {
   const markdownLabels = useMarkdownLabels();
-  const [wrap] = useCodeWrapPreference();
+
+  return <MarkdownDocument source={source} labels={markdownLabels} headingOffset={2} />;
+}
+
+/** What the previous step handed over, from the request origin's own fields (never its JSON). */
+function HandoffSection({ handoff }: { readonly handoff: NonNullable<RequestOrigin['handoff']> }) {
+  const { t } = useTranslation();
+  const from =
+    handoff.kind === 'return'
+      ? t('managedSession.brief.handoff.returned')
+      : handoff.from
+        ? t('managedSession.brief.handoff.from', {
+            step: readableId(handoff.from.step),
+            attempt: handoff.from.attempt,
+          })
+        : undefined;
+  const transition = handoff.transition ? readableId(handoff.transition) : undefined;
+  const line = [from, transition].filter(Boolean).join(' · ');
 
   return (
-    <div className="grid min-w-0 gap-4">
-      {briefParts(text).map((part, index): ReactNode => {
-        if (part.kind === 'text') {
-          return (
-            <MarkdownDocument
-              key={index}
-              source={part.text}
-              labels={markdownLabels}
-              headingOffset={1}
-            />
-          );
-        }
+    <BriefSection title={t('managedSession.brief.source.handoff')}>
+      {line ? (
+        <Typography as="p" variant="body-sm" className="text-content-secondary">
+          {line}
+        </Typography>
+      ) : null}
+      {handoff.feedback ? <BriefMarkdown source={handoff.feedback} /> : null}
+      {handoff.artifacts?.length ? (
+        <ul className="grid gap-0.5" aria-label={t('managedSession.brief.handoff.artifacts')}>
+          {handoff.artifacts.map((artifact) => (
+            <li
+              key={artifact}
+              className="min-w-0 font-mono text-body-sm text-content-secondary [overflow-wrap:anywhere]"
+            >
+              {artifact}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </BriefSection>
+  );
+}
 
-        const label = sourceLabel(t, part.source);
-        const json = prettyJson(part.text);
+/**
+ * A brief, readable: the step's purpose and instructions, the Task, the agent profile, the previous
+ * step's hand-off and the owner's note, each under its own title once. The full text as the agent
+ * received it (SpecFlow's rules, ids and data blocks) stays one disclosure away, verbatim.
+ */
+export function BriefDocument({
+  text,
+  origin,
+}: {
+  readonly text: string;
+  readonly origin: RequestOrigin;
+}) {
+  const { t } = useTranslation();
+  const [wrap] = useCodeWrapPreference();
+  const brief = readableBrief(text);
+  const raw = t('managedSession.brief.fullText');
 
-        return (
-          <section
-            key={index}
-            aria-label={label}
-            className="grid min-w-0 gap-1.5"
-            data-brief-source={part.source}
+  return (
+    <div className="grid min-w-0 gap-5">
+      {brief.purpose ? (
+        <BriefSection title={t('managedSession.brief.source.stepPurpose')}>
+          <BriefMarkdown source={brief.purpose} />
+        </BriefSection>
+      ) : null}
+      {brief.instructions ? (
+        <BriefSection title={t('managedSession.brief.source.stepInstructions')}>
+          <BriefMarkdown source={brief.instructions} />
+        </BriefSection>
+      ) : null}
+      {brief.task ? (
+        <BriefSection title={t('managedSession.brief.source.task')}>
+          <Typography as="p" variant="body-md" className="font-medium text-content-primary">
+            {brief.task.title}
+          </Typography>
+          {brief.task.summary ? <BriefMarkdown source={brief.task.summary} /> : null}
+        </BriefSection>
+      ) : null}
+      {brief.archetype ? (
+        <BriefSection title={t('managedSession.brief.source.agentProfile')}>
+          <Typography as="p" variant="body-md" className="text-content-primary">
+            {brief.archetype.title}
+          </Typography>
+          {brief.archetype.instructions ? (
+            <BriefMarkdown source={brief.archetype.instructions} />
+          ) : null}
+        </BriefSection>
+      ) : null}
+      {origin.handoff ? <HandoffSection handoff={origin.handoff} /> : null}
+      {origin.ownerNote ? (
+        <BriefSection title={t('managedSession.brief.ownerNote')}>
+          <Typography
+            as="p"
+            variant="body-md"
+            className="whitespace-pre-wrap text-content-primary [overflow-wrap:anywhere]"
           >
-            <Typography as="h3" variant="section-label">
-              {label}
-            </Typography>
+            {origin.ownerNote}
+          </Typography>
+        </BriefSection>
+      ) : null}
+      <Collapsible data-brief-full-text="">
+        <Collapsible.Trigger>{raw}</Collapsible.Trigger>
+        <Collapsible.Content>
+          <div className="grid min-w-0 gap-1.5 pt-1">
             <Typography as="p" variant="body-sm" className="text-content-muted">
-              {t('managedSession.brief.dataNote')}
+              {t('managedSession.brief.fullTextNote')}
             </Typography>
-            {json ? (
-              <ToolDetailCode text={json} language="json" label={label} lineNumbers wrap={wrap} />
-            ) : (
-              <p className="border-l-2 border-border-default pl-3 text-body-md whitespace-pre-wrap text-content-primary wrap-anywhere">
-                {part.text.trim()}
-              </p>
-            )}
-          </section>
-        );
-      })}
+            <ToolDetailCode
+              text={text}
+              language="plain"
+              label={raw}
+              lineNumbers={false}
+              wrap={wrap}
+            />
+          </div>
+        </Collapsible.Content>
+      </Collapsible>
     </div>
   );
 }
@@ -178,7 +302,7 @@ function briefTitle(t: TFunction, origin: RequestOrigin): string {
  * purpose as a short instruction, the full brief one action away; never the raw prompt.
  *
  * A Continue of the same attempt (`origin.continuation`) is not a new brief: an **Execution resumed**
- * divider, then a bubble saying the current attempt continues, with its own brief one action away.
+ * divider, then a bubble **Continue attempt N**, with its own brief one action away.
  */
 export function StepBriefMessage({
   origin,
@@ -214,8 +338,8 @@ export function StepBriefMessage({
             {t('managedSession.brief.generated')}
           </Typography>
           {origin.continuation ? (
-            <Typography as="p" variant="body-md" className="text-content-primary">
-              {t('managedSession.brief.continue')}
+            <Typography as="p" variant="title-sm" className="text-content-primary">
+              {t('managedSession.brief.continue', { attempt: origin.attempt })}
             </Typography>
           ) : (
             <>
@@ -285,7 +409,7 @@ function BriefScreen({ data }: { readonly data: BriefData }) {
 
   return (
     <AppContent className="h-full w-full">
-      <ScrollArea className="min-h-0 w-full flex-1" contentClassName="grid gap-4 px-4 pt-4 pb-6">
+      <ScrollArea className="min-h-0 w-full flex-1" contentClassName="grid gap-5 px-4 pt-4 pb-6">
         <div className="grid gap-1">
           <Typography as="h2" variant="title-sm" className="text-content-primary">
             {briefSubject(t, data.origin)}
@@ -300,7 +424,7 @@ function BriefScreen({ data }: { readonly data: BriefData }) {
           api={data.api}
           sessionId={data.sessionId}
           value={data.text}
-          render={(text) => <BriefDocument text={text} />}
+          render={(text) => <BriefDocument text={text} origin={data.origin} />}
         />
       </ScrollArea>
     </AppContent>

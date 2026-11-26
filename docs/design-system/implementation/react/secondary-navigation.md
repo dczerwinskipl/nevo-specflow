@@ -644,7 +644,8 @@ which has no `.mobile-workspace-scroll-area` ancestor, reads the same variable w
 - **Icon toggles.** On non-primary icon actions, `checked ?? pressed` is the **same effective state**
   for direct `IconButton` `aria-pressed` and menu `menuitemcheckbox` `aria-checked`. With neither set,
   no toggle state is exposed. `checked` takes precedence when both are provided, so direct and menu
-  representations cannot disagree. The selected icon uses subtle `bg-surface-selected`; the icon
+  representations cannot disagree. While pressed, the toggle (icon-only or labelled) is accent-tinted
+  (`bg-action-primary/15`, icon and words in `action-primary`: blue is active); the icon
   and label keep naming the action, never the state. In the menu the check sits in the trailing
   slot. `checked` and `shortcut` work in both menu modes; a row with both shows shortcut then check
   (in `content-primary`). `pressed` on a `primary` icon action is forbidden by the type.

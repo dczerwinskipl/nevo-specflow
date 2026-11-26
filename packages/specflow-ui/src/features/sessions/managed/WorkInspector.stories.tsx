@@ -616,8 +616,12 @@ export const AnsweredQuestions: Story = {
         'All batches A–E (Recommended)',
       );
       await expect(within(detail).getByText('Batch A only')).toBeVisible();
-      // No horizontal overflow at either width.
-      await expect(detail.getBoundingClientRect().right).toBeLessThanOrEqual(width);
+      // No horizontal overflow at either width, against the frame's own width, once the panel
+      // has finished sliding in (a mid-slide panel is translated past the right edge).
+      await waitFor(
+        () => expect(detail.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth),
+        { timeout: 3000 },
+      );
       await userEvent.click(canvas.getByText(row));
     }
   },

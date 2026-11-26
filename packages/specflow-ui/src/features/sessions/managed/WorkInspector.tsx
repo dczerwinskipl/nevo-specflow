@@ -31,6 +31,7 @@ import {
 } from '@nevo/ui';
 import { WrapText } from 'lucide-react';
 import { translateNow } from '../../../i18n/message';
+import { DisclosureToggle } from '../../../shared/actions';
 import type { ManagedSessionsApi } from './api';
 import type { SessionFeed } from './feed';
 import { ReadableText } from './MessageText';
@@ -247,10 +248,9 @@ type NarrationVoice = 'commentary' | 'reasoning';
  * Assistive tech also gets the kind's own name (`sr-only`). No icon, no marker dot, no chevron,
  * no card. The text is plain prose (pre-wrapped, no Markdown), as in the chat.
  *
- * Long narration is the exception (`isNarrationLong`): genuinely long narration gets a plain "Show more"/
- * "Show less" ghost `Button` (the same label-only disclosure pattern `TaskDetailDisclosure.tsx`
- * already uses elsewhere in this app for "reveal more text", not a new chevron-led control
- * invented for this row) instead of being dumped in full — expanding it mounts `ReadableText`
+ * Long narration is the exception (`isNarrationLong`): genuinely long narration gets the shared
+ * "Show more"/"Show less" `DisclosureToggle` (interaction-model.md "Disclosure chevrons") instead of
+ * being dumped in full — expanding it mounts `ReadableText`
  * (which itself auto-fetches and stitches any remaining pages beyond the capped preview). */
 function WorkNarration({
   item,
@@ -295,16 +295,15 @@ function WorkNarration({
         </Typography>
       )}
       {isLong && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 h-auto w-fit justify-start px-2 not-italic"
+        <DisclosureToggle
+          expanded={isExpanded}
+          className="not-italic"
           onClick={() => view.update((state) => toggleExpanded(state, item.workId))}
         >
           {isExpanded
             ? t('managedSession.workInspector.showLess')
             : t('managedSession.workInspector.showMore')}
-        </Button>
+        </DisclosureToggle>
       )}
     </div>
   );
@@ -862,9 +861,9 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
             <Typography
               as="p"
               variant="body-sm"
-              className="min-w-0 font-mono text-content-secondary [overflow-wrap:anywhere]"
+              className="min-w-0 text-content-secondary [overflow-wrap:anywhere]"
             >
-              {workSubject(params)}
+              <span className="font-mono">{workSubject(params)}</span>
             </Typography>
           )}
           <LoadGateNotices gate={loadGate} retry={() => void query.refetch()} />

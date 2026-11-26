@@ -141,7 +141,9 @@ export function ToolActionHeader({
           title={subject}
           data-tool-action-subject=""
         >
-          {subject}
+          {/* Mono on the text itself: the body-sm variant's own font family wins over a class on
+              the Typography element. */}
+          <span className="font-mono">{subject}</span>
         </Typography>
       )}
       <ToolActionStatus item={item} glyph={asHeading} />

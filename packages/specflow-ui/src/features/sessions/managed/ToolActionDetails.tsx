@@ -4,15 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Check, Copy } from 'lucide-react';
 import type { ContentRef, ToolActionSummary } from '@nevo/specflow-contracts/sessions';
-import {
-  Alert,
-  Button,
-  Collapsible,
-  Spinner,
-  Timeline,
-  Typography,
-  useWorkspaceCapabilities,
-} from '@nevo/ui';
+import { Alert, Button, Collapsible, Spinner, Timeline, Typography } from '@nevo/ui';
 import type { ManagedSessionsApi } from './api';
 import { historyEntry } from './pagedHistoryAnchor';
 import { ToolActionHeader } from './ToolActionHeader';
@@ -103,26 +95,17 @@ function CopyTextButton({ text, label }: { text: string; label: string }) {
           });
         }}
       >
-        <ResponsiveLabel>
+        {/* A block action is icon-only at every width, its words the accessible name and tooltip
+            (interaction-model.md "Page-level toggles"): a page toggle's words follow the header. */}
+        <span className="sr-only">
           {copied ? t('managedSession.copy.copied') : t('managedSession.workInspector.copy')}
-        </ResponsiveLabel>
+        </span>
       </Button>
       <span role="status" aria-live="polite" className="sr-only">
         {copied ? t('managedSession.copy.copied') : ''}
       </span>
     </>
   );
-}
-
-/**
- * A code header action's words: beside its icon where the shell can split (desktop), an
- * icon-only button where it cannot (a phone, `useWorkspaceCapabilities`, the signal the Composer's
- * pickers use), the words kept as its accessible name and tooltip.
- */
-function ResponsiveLabel({ children }: { children: string }) {
-  const { supportsSplit, measured } = useWorkspaceCapabilities();
-
-  return measured && !supportsSplit ? <span className="sr-only">{children}</span> : children;
 }
 
 /** One labelled code block of a ToolAction: its label, then Copy (the original text, never a

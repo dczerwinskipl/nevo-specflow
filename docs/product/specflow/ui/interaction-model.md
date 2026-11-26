@@ -406,7 +406,9 @@ screen's header (`presentation: 'icon'`, `labelWhenWide`, pressed while on, a ch
 header keeps its actions in the "…" menu): icon-only below the split width (a phone) and on a
 narrow header, its words as accessible name and tooltip; icon with its words from the split width
 when the header has room. One builder, one place, one pressed state. An action on one block (Copy
-of one code block) stays on the block; a toggle is never placed in the body.
+of one code block) stays on the block, icon-only at every width with its words as accessible name
+and tooltip; a page toggle is never placed in the body. A toggle while on is accent-tinted (blue
+background tint, blue icon and words), never only a brighter icon.
 
 **Colour semantics.** Blue (`content-link`, `action-primary`, the active step of the track) is
 actions and navigation only. Green (`status-success`) is success, and an agent's work running

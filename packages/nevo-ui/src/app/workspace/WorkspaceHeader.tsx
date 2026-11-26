@@ -400,6 +400,14 @@ function WorkspaceActionMenu({
   );
 }
 
+/**
+ * A header toggle while on: the accent (blue is active, interaction-model.md "Visual conventions")
+ * as a tinted background and the icon and words in the accent colour, so "on" never reads as a
+ * plain button. The same look for the icon-only and the labelled form.
+ */
+const PRESSED_TOGGLE_CLASS_NAME =
+  'aria-pressed:bg-action-primary/15 aria-pressed:text-action-primary aria-pressed:hover:bg-action-primary/20';
+
 function DirectIconAction({
   action,
 }: {
@@ -412,11 +420,7 @@ function DirectIconAction({
           <IconButton
             aria-label={action.label}
             aria-pressed={action.primary ? undefined : menuCheckedState(action)}
-            className={
-              action.primary
-                ? undefined
-                : 'aria-pressed:bg-surface-selected aria-pressed:text-content-primary'
-            }
+            className={action.primary ? undefined : PRESSED_TOGGLE_CLASS_NAME}
             disabled={action.disabled}
             aria-disabled={action.busy ? true : undefined}
             icon={action.icon}
@@ -444,7 +448,7 @@ function DirectPrimaryAction({
       return (
         <Button
           aria-pressed={menuCheckedState(action)}
-          className="aria-pressed:bg-surface-selected aria-pressed:text-content-primary"
+          className={PRESSED_TOGGLE_CLASS_NAME}
           disabled={action.disabled}
           aria-disabled={action.busy ? true : undefined}
           leadingIcon={action.icon}

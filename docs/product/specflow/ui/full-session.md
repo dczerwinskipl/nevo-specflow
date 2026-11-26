@@ -194,9 +194,8 @@ Live updates never open, switch or reset Work history.
   screen's header holds one **Wrap lines** for all its code blocks (one remembered choice, on by
   default on a narrow screen), the same page-level toggle as Work history's **Show every
   operation** (see "Page-level toggles" in
-  [Visual conventions](interaction-model.md#visual-conventions)); each block has its own Copy, an
-  icon-only button where the shell cannot split (a phone), its word kept as the accessible name
-  and tooltip.
+  [Visual conventions](interaction-model.md#visual-conventions)); each block has its own Copy, a
+  block action: icon-only at every width, its word kept as the accessible name and tooltip.
 - **Commentary structures the operations.** Each Commentary starts a chapter; the operations that
   follow are its chronological rows until the next Commentary. Operations render on the DS
   `Timeline`, **one Timeline per run between narration**: the rail resets at every Commentary or

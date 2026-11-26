@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { CreateSpecRequest, CreatedSpec } from '@nevo/specflow-contracts/specs';
 import {
+  CreateOperationError,
   createSpecificationFromRequest,
   projectCreatedSpecification,
   readRegistrySnapshot,
@@ -13,6 +14,7 @@ import {
 
 import type { OperationProgressRegistry } from '../../operations';
 import { createErrorCode } from './error-status';
+import type { CreateFirstStep } from './first-step';
 import { startCreateProgress, type CreateProgress } from './progress';
 
 export interface RunCreateInput {
@@ -26,6 +28,11 @@ export interface RunCreateInput {
   readonly track: (finished: Promise<unknown>) => void;
   /** An untyped failure of a Create that was already answered with 202 (log it). */
   readonly onDetachedFailure: (error: unknown) => void;
+  /**
+   * The first-step intent owner and who asks (the principal the agent start runs as). Absent: this
+   * Runtime runs no agent, and a request with `firstStep` is refused.
+   */
+  readonly firstStep?: { readonly owner: CreateFirstStep; readonly principal: string } | undefined;
 }
 
 export type RunCreateOutcome =
@@ -46,8 +53,29 @@ export const createOperationPath = (operationId: string) =>
  */
 export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome> {
   const { engine, body, respondAsync } = input;
-  // Async mode needs an id to answer with a Location; the client may have chosen its own.
-  const operationId = body.operationId ?? (respondAsync ? randomUUID() : undefined);
+  // Async mode needs an id to answer with a Location; the client may have chosen its own. A
+  // first-step intent is stored under the operation, so it needs one too.
+  const operationId =
+    body.operationId ?? (respondAsync || body.firstStep ? randomUUID() : undefined);
+  if (body.firstStep && !input.firstStep) {
+    throw new CreateOperationError(
+      'CREATE_OPERATION_INVALID',
+      'This Runtime runs no agent, so a Create cannot start its first step with one.',
+    );
+  }
+
+  // The intent is admitted and stored before the Engine writes anything (a retry must carry the same).
+  const firstStep = input.firstStep;
+  const intent =
+    firstStep && operationId
+      ? await firstStep.owner.admit({
+          engine,
+          operationId,
+          request: body.firstStep,
+          archetypeId: body.archetypeId,
+          principal: firstStep.principal,
+        })
+      : undefined;
 
   // Best-effort progress for the operation stream; never affects the outcome.
   const progress: CreateProgress | undefined =
@@ -57,6 +85,7 @@ export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome
           operationId,
           body.target?.kind === 'new-worktree' ? 'new-worktree' : 'existing',
           await willCommitCreatedScaffold(engine),
+          intent !== undefined,
         )
       : undefined;
 
@@ -94,12 +123,30 @@ export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome
           },
         },
       );
-      const created = projectCreatedSpecification(result);
-      progress?.complete(created);
+      const created: CreatedSpec = projectCreatedSpecification(result);
+      if (!intent || !firstStep) {
+        progress?.complete(created);
 
-      return created;
+        return created;
+      }
+
+      // The Specification exists; the agent start is the last step of the same operation. A refused
+      // start never fails the Create: its result says why.
+      progress?.startingAgent();
+      const started = await firstStep.owner.settle(intent, created.specId);
+      if (started.status === 'not-started') {
+        progress?.agentNotStarted();
+      }
+
+      const withFirstStep: CreatedSpec = { ...created, firstStep: started };
+      progress?.complete(withFirstStep);
+
+      return withFirstStep;
     } catch (error) {
       progress?.fail(createErrorCode(error));
+      if (intent && firstStep && operationId) {
+        await firstStep.owner.forgetUnreserved(engine, operationId).catch(() => undefined);
+      }
 
       throw error;
     }

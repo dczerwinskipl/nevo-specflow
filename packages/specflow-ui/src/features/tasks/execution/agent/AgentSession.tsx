@@ -133,6 +133,7 @@ export function AgentSession({
   choice,
   modelUnassigned = false,
   workMode,
+  preselected = true,
   onChoice,
 }: {
   readonly mode: SessionMode;
@@ -150,6 +151,11 @@ export function AgentSession({
   readonly modelUnassigned?: boolean;
   /** The work mode the Session of this choice runs in (the Runtime's `workMode` title). */
   readonly workMode?: string | undefined;
+  /**
+   * The choice starts as the agent role's settings (Run with agent). False where no settings
+   * preselect it (Create before the Specification exists): "Preselected from …" is never said.
+   */
+  readonly preselected?: boolean;
   readonly onChoice: (choice: FreshChoice) => void;
 }) {
   const { t } = useTranslation();
@@ -264,7 +270,7 @@ export function AgentSession({
           ) : null}
           {/* "Preselected from the … settings" only while the choice is still the settings' one:
               once the owner picks the agent or model, it is theirs. */}
-          {(ready && !modelUnassigned && !ownChoice) || independent ? (
+          {(ready && preselected && !modelUnassigned && !ownChoice) || independent ? (
             <Typography as="p" variant="body-sm" className="text-content-secondary">
               {independent
                 ? t(

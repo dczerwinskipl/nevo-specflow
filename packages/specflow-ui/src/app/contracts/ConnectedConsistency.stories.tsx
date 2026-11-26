@@ -876,10 +876,10 @@ export const ShortCreateAndBranch: Story = {
   args: { path: '/specs/new?collection=archive' },
   play: async ({ canvas, userEvent, canvasElement }) => {
     await viewport(1440, 900);
-    await canvas.findByRole('button', { name: /Samodzielnie/ });
+    await canvas.findByRole('button', { name: /^Ręcznie/ });
     await settleViewport();
     await viewport(390, 430);
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await expect(canvas.getByRole('heading', { name: 'Nowa specyfikacja' })).toHaveFocus();
     const input = canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' });
     await userEvent.click(input);
@@ -902,11 +902,11 @@ export const ShortCreateAndBranch: Story = {
     await settleViewport(390, 844, () =>
       canvas.getByRole('button', { name: 'Utwórz specyfikację' }),
     );
-    await userEvent.click(canvas.getByRole('button', { name: 'Zmień sposób pracy' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do sposobów rozpoczęcia' }));
     await userEvent.click(canvas.getByRole('link', { name: 'Wróć do: Specyfikacje' }));
     await expect(within(document.body).getByRole('alertdialog')).toBeVisible();
     await userEvent.click(within(document.body).getByRole('button', { name: 'Kontynuuj' }));
-    await userEvent.click(canvas.getByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(canvas.getByRole('button', { name: /^Ręcznie/ }));
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(
       'Logowanie SSO',
     );
@@ -942,7 +942,7 @@ export const FailedCreateAtTheBottomStaysVisible: Story = {
   args: { path: '/specs/new?collection=archive', createOutcome: 'failure' },
   play: async ({ canvas, userEvent }) => {
     await viewport(390, 844);
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await userEvent.type(
       await canvas.findByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Logowanie SSO',
@@ -993,7 +993,7 @@ export const CreateCtaWrapsAt320: Story = {
   args: { path: '/specs/new?collection=archive' },
   play: async ({ canvas, userEvent }) => {
     await viewport(320, 640);
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     const submit = await canvas.findByRole('button', { name: 'Utwórz specyfikację' });
     const standard = submit.getBoundingClientRect().height;
     await expect(submit.getBoundingClientRect().right).toBeLessThanOrEqual(320);
@@ -1125,7 +1125,7 @@ export const ErrorShell: Story = {
 export const NewWorkspaceUnavailableByConfiguration: Story = {
   args: { path: '/specs/new?collection=current', optionsVariant: 'git-disabled' },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     // Unavailable but reachable: aria-disabled with the reason as its description.
     const tile = await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
     await expect(tile).toHaveAttribute('aria-disabled', 'true');
@@ -1271,7 +1271,7 @@ export const HistoryPopPreservesConfiguration: Story = {
   args: { path: '/specs/new?collection=archive', historyFromOverview: true },
   play: async ({ canvas, userEvent }) => {
     await viewport(390, 844);
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Historia konfiguracji',

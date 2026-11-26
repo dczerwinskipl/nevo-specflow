@@ -24,4 +24,17 @@ describe('public catalogue projection', () => {
     expect(overview.include).toBe('always');
     expect('preselected' in overview).toBe(false);
   });
+
+  it('carries the first step the resolver names, and none without one', () => {
+    const withSteps = toArchetypeCatalogue({ catalogue }, (id) =>
+      id === 'feature' ? { id: 'gather', title: 'Gather requirements', agent: true } : undefined,
+    );
+    expect([...Value.Errors(ArchetypeCatalogueSchema, withSteps)]).toEqual([]);
+    expect(withSteps.archetypes.find((item) => item.id === 'feature')?.firstStep).toEqual({
+      id: 'gather',
+      title: 'Gather requirements',
+      agent: true,
+    });
+    expect('firstStep' in withSteps.archetypes.find((item) => item.id === 'minimal')!).toBe(false);
+  });
 });

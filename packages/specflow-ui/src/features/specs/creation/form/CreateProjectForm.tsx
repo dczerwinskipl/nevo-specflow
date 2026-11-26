@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Field, Separator, TextArea, TextInput, cn } from '@nevo/ui';
 import { isApiError } from '../../../../api';
-import { FlowParentBack } from '../../../../app/navigation/ApplicationLocation';
+import { FlowBack } from '../../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useMessage } from '../../../../i18n/message';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
@@ -16,6 +16,8 @@ import { CreateLeaveDialog } from './CreateLeaveDialog';
 import { CreateShell } from '../CreateShell';
 import {
   useCreateOperationStorage,
+  type CreateDraftAgent,
+  type CreateFormDraft,
   type SentCreateRequest,
 } from '../operation/createOperationStorage';
 import {
@@ -53,27 +55,43 @@ import {
 } from '../workspace/model/createRequest';
 import type { WorkspaceChoice } from '../workspace/model/workspaceChoice';
 import { useWorkspacePlace } from '../workspace/useWorkspacePlace';
+import type { FreshChoice } from '../../../tasks';
+import { useCreateAgents } from '../start/useCreateAgents';
+import { CreateAgentStepSection } from './CreateAgentStepSection';
 
 /**
  * The Create form of a project Runtime: the specification name, an optional goal and where it
- * lives (new worktree, main workspace or an existing one). Submitting only prepares the request
+ * lives (new worktree, main workspace or an existing one). The agent path (`agentPath`) is the same
+ * form with one extension: the Agent section above the workspace, its readiness rule, its submit
+ * label and note, and the "then run the first step with this agent" intent in the request. Submitting only prepares the request
  * (`startCreate`: retained operation id, stored request and draft) and hands over to the progress
  * page, which sends, watches and reports it. Each concern has its own owner: the options
  * (`useCreateOptions`), the place choice (`useWorkspacePlace`) and the operation (the page); this
  * component wires the first two to the form fields.
  *
- * Opening Create always shows an empty form, whatever the ledger holds: an unfinished operation is
- * reached from the operations list or its own page, never by this entry. Only the explicit "Back to
- * form" of an operation's page (`restoreDraftOf`) seeds the fields, once, from that operation's draft.
+ * The fields start from `initialDraft` when the start flow carries one (Back from the other form,
+ * "Back to form" of an operation's page); otherwise the form is empty.
  */
 export function CreateProjectForm({
   onStarted,
-  restoreDraftOf,
+  initialDraft,
+  draftEdited = false,
+  agentPath = false,
+  onBack,
+  onUseManual,
 }: {
   /** The request is stored: continue on the page of this operation. */
   onStarted: (operationId: string) => void;
-  /** The operation whose draft to restore ("Back to form"); absent for a plain entry. */
-  restoreDraftOf?: string;
+  /** The values the fields start from; absent: an empty form. */
+  initialDraft?: CreateFormDraft | undefined;
+  /** The draft holds the owner's own entries (from the other form): leaving Create asks first. */
+  draftEdited?: boolean;
+  /** Create with an agent: the Agent section, its rule, label and note, and the intent. */
+  agentPath?: boolean;
+  /** Back to the ways to start, with the draft as it is now. */
+  onBack: (draft: CreateFormDraft) => void;
+  /** The agent path's **Use Manually**: the manual form with the draft as it is now. */
+  onUseManual?: (draft: CreateFormDraft) => void;
 }) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -87,11 +105,21 @@ export function CreateProjectForm({
   const { announce, region } = useAnnouncer();
   const [unprepared, setUnprepared] = useState(false);
 
-  const [draft] = useState(() => (restoreDraftOf ? storage.loadDraft(restoreDraftOf) : undefined));
+  const draft = initialDraft;
   const [title, setTitle] = useState(draft?.title ?? '');
   const [goal, setGoal] = useState(draft?.goal ?? '');
   // Back to form after the archetypes changed: the choice is kept (if it still exists) with the
   // new default ticks; after an unknown archetype the default archetype is selected.
+  // The agent the owner picked (absent: the first one that can start, derived below).
+  const [agentChoice, setAgentChoice] = useState<FreshChoice | undefined>(() =>
+    draft?.agent
+      ? {
+          providerId: draft.agent.providerId,
+          modelId: draft.agent.modelId,
+          ...(draft.agent.effort ? { effort: draft.agent.effort } : {}),
+        }
+      : undefined,
+  );
   const [archetypeChoice, setArchetypeChoice] = useState<ArchetypeChoice>(() => {
     const restored = draft?.archetype ?? initialArchetypeChoice;
 
@@ -145,15 +173,24 @@ export function CreateProjectForm({
   }
 
   const edited =
+    draftEdited ||
     fieldsSnapshot !== initialFields ||
     (initialChoice !== undefined && choiceSnapshot !== initialChoice);
 
-  // The draft is consumed by the first render: a reload of the form starts clean again.
-  useEffect(() => {
-    if (draft) {
-      storage.clearDraft(draft.operationId);
-    }
-  }, [draft, storage]);
+  // The agent path: the agents that can start (one read, shared with the start screen) and the one
+  // the Specification's first step runs with, by default the first that can start.
+  const createAgents = useCreateAgents(agentPath);
+  const { agents } = createAgents;
+  const readyAgents = agents.status === 'ready' ? agents : undefined;
+  const startable = readyAgents?.catalogue.providers.filter((provider) => provider.available) ?? [];
+  const defaultAgent = startable[0];
+  const agent: FreshChoice = agentChoice ?? {
+    providerId: defaultAgent?.id ?? '',
+    modelId:
+      readyAgents?.providers.find((provider) => provider.providerId === defaultAgent?.id)?.models[0]
+        ?.modelId ?? '',
+  };
+  const firstStep = archetype?.firstStep;
 
   // Only unsaved edits ask before leaving; an operation outlives this screen (it has its page).
   const leaveGuard = useCreateLeaveGuard({
@@ -175,12 +212,23 @@ export function CreateProjectForm({
     archetypesFailed: archetypes.isError,
     archetype,
     archetypeUnavailable: unavailableArchetypes,
+    ...(agentPath
+      ? {
+          agent: {
+            firstStep,
+            agents: agents.status,
+            anyAvailable: startable.length > 0,
+            chosenAvailable: startable.some((provider) => provider.id === agent.providerId),
+          },
+        }
+      : {}),
   });
 
   // Back from a name the Engine refused (invalid or too long path): the name says so until edited.
   const [nameRefused, setNameRefused] = useState(draft?.failure?.kind === 'name-invalid');
   const nameRef = useRef<HTMLInputElement>(null);
   const archetypeRef = useRef<HTMLDivElement>(null);
+  const providersRef = useRef<HTMLDivElement>(null);
   const catalogueRefreshFocus = useRef<HTMLElement | null>(null);
 
   function refreshArchetypes() {
@@ -217,12 +265,9 @@ export function CreateProjectForm({
         revealControl(nameRef.current);
       } else if (field === 'archetype') {
         revealControl(firstChoiceControl(archetypeRef.current));
-      } else if (
-        field !== 'provider' &&
-        field !== 'model' &&
-        field !== 'effort' &&
-        field !== 'mode'
-      ) {
+      } else if (field === 'provider') {
+        revealControl(firstChoiceControl(providersRef.current));
+      } else if (field !== 'model') {
         place.handleRef.current?.focusProblem(field);
       }
     },
@@ -248,6 +293,32 @@ export function CreateProjectForm({
       dismissFailure: () => undefined,
       fallbackFocus: () => submitRef.current?.focus(),
     });
+
+  /** The draft as it is now: what Back and Use Manually carry to the next screen. */
+  const currentDraft = (): CreateFormDraft => ({
+    title,
+    goal,
+    choice: place.choice,
+    archetype: archetypeChoice,
+    ...(agentChoice ? { agent: agentChoice } : draft?.agent ? { agent: draft.agent } : {}),
+  });
+
+  /** The agent as the progress page names it: the agent and model the form showed, and the step. */
+  const agentDraft = (): CreateDraftAgent => {
+    const provider = readyAgents?.providers.find(
+      (candidate) => candidate.providerId === agent.providerId,
+    );
+    const model = provider?.models.find((candidate) => candidate.modelId === agent.modelId);
+    const label = [provider?.title ?? agent.providerId, model?.title ?? agent.modelId]
+      .filter(Boolean)
+      .join(' · ');
+
+    return {
+      ...agent,
+      ...(label ? { label } : {}),
+      ...(firstStep ? { firstStepTitle: firstStep.title } : {}),
+    };
+  };
 
   /** What the form says this Create does, so the progress page can state it without guessing. */
   const factsOf = (choice: WorkspaceChoice) => {
@@ -275,8 +346,19 @@ export function CreateProjectForm({
         archetypeTitle: archetype.title,
         documentFiles: documentsToCreate(archetype, archetypeChoice),
         ...factsOf(place.choice),
+        ...(agentPath ? { agent: agentDraft() } : {}),
       },
       selection: archetypeSelection(catalogue, archetype, archetypeChoice),
+      ...(agentPath
+        ? {
+            firstStep: {
+              run: 'agent' as const,
+              provider: agent.providerId,
+              ...(agent.modelId ? { model: agent.modelId } : {}),
+              ...(agent.effort ? { effort: agent.effort } : {}),
+            },
+          }
+        : {}),
       slug,
       buildTarget: () =>
         workspaceOptions ? buildCreateTarget(place.choice, workspaceOptions, title) : undefined,
@@ -319,8 +401,14 @@ export function CreateProjectForm({
           submitRef={submitRef}
           prerequisite={unavailableArchetypes ? undefined : reason}
           blockedDescriptionId={unavailableArchetypes ? unavailableArchetypesId : undefined}
-          note={unavailableArchetypes ? '' : t('create.project.footNote')}
-          submitLabel={t('create.submit.create')}
+          note={
+            unavailableArchetypes
+              ? ''
+              : agentPath
+                ? t('create.agentStep.footNote')
+                : t('create.project.footNote')
+          }
+          submitLabel={agentPath ? t('create.agentStep.submit') : t('create.submit.create')}
           submitDisabled={locked}
           submitBlocked={!canSubmit}
           onGuide={problemField && !locked ? guide : undefined}
@@ -331,7 +419,9 @@ export function CreateProjectForm({
       <div className={cn('grid gap-8', createFormWidth)}>
         <CreateFormHeader
           headingRef={headingRef}
-          lead={<FlowParentBack view="new-specification" />}
+          lead={
+            <FlowBack label={t('create.start.backToStart')} onBack={() => onBack(currentDraft())} />
+          }
           heading={t('create.heading.specification')}
           subheading={t('create.subheading.withArchetype')}
         />
@@ -376,7 +466,9 @@ export function CreateProjectForm({
                   onChange={(event) => setGoal(event.target.value)}
                   placeholder={t('create.project.goalPlaceholder')}
                 />
-                <Field.Description>{t('create.project.goalHelp')}</Field.Description>
+                <Field.Description>
+                  {agentPath ? t('create.agentStep.goalHelp') : t('create.project.goalHelp')}
+                </Field.Description>
               </Field>
             </div>
             <Separator />
@@ -417,6 +509,21 @@ export function CreateProjectForm({
           {/* Between the stacked columns only: side by side, the gap separates them. */}
           <Separator className="@min-[62rem]:hidden" />
           <div className={createFormColumn}>
+            {agentPath && archetype && (
+              <>
+                <CreateAgentStepSection
+                  firstStep={firstStep}
+                  agents={agents}
+                  refreshing={createAgents.refreshing}
+                  onRefresh={createAgents.refresh}
+                  choice={agent}
+                  onChoice={setAgentChoice}
+                  onUseManual={() => onUseManual?.(currentDraft())}
+                  providersRef={providersRef}
+                />
+                <Separator />
+              </>
+            )}
             <CreateWorkspaceSection
               headingId={gitHeadingId}
               createOptions={createOptions}

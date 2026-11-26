@@ -39,6 +39,18 @@ when creating. See [Create options and admission](../../architecture/runtime/spe
 [Create UI](../../product/specflow/specification-creation.md).
 Live progress is available through [SSE](operation-progress.md).
 
+**Create with an agent.** `POST /api/specs` may carry `firstStep` (`run: 'agent'`, `provider`,
+optional `model` and `effort`): once the Specification exists the Runtime starts the archetype's
+first workflow step with that agent, as the caller (it also needs project-wide `spec.manage`). The
+first step comes from `GET /api/specs/archetypes` (`archetypes[].firstStep`: `id`, `title`, `agent`);
+a step only the owner can do is refused with 400 `CREATE_OPERATION_INVALID`. The operation stays
+`in-progress` (step `starting-agent`) until the start is settled; the completed result then carries
+`firstStep` (`started` with `sessionId` and `attemptId`, or `not-started` with `code` and `agent`).
+The intent is stored with the operation and resumed after a Runtime restart; a retry must carry the
+same intent (409 `CREATE_CONFLICT`). The agents to choose from are read before Create with
+`GET /api/session-providers` without a context (authorized as a standalone Session start, not as
+Manage of the new Specification). See [ADR 0026, D22](../../architecture/decisions/0026-agent-step-execution.md#d22--create-can-start-the-first-step-with-an-agent-supersedes-dogfood-d5).
+
 ## Close
 
 Specification, worktree and workspace closure have distinct effects and authorization.

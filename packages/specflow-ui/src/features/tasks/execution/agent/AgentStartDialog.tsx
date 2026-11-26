@@ -28,7 +28,7 @@ import {
   type SessionMode,
 } from './AgentSession';
 import { NO_AGENT_REASONS, archetypeTitle, optionOfRefusal } from './agentOption';
-import { useAgentStart } from './useAgentStart';
+import { useAgentStart, type AgentStartOutcome } from './useAgentStart';
 import { productIcons } from '../../../../shared/product-icons';
 
 const CODE = <span className="font-mono whitespace-nowrap text-content-primary" />;
@@ -46,6 +46,13 @@ export interface AgentStartDialogProps {
   readonly handOver?: { readonly attempt: number } | undefined;
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
+  /**
+   * The agent a new Session starts with before the owner picks another (Create's chosen agent when
+   * its first-step start was refused); absent: the agent role's settings.
+   */
+  readonly initialChoice?: FreshChoice | undefined;
+  /** The attempt started (after the dialog closed). */
+  readonly onStarted?: ((result: AgentStartOutcome) => void) | undefined;
 }
 
 /** The Session section's mode: the workflow decides it, from the option and its launch. */
@@ -77,6 +84,8 @@ export function AgentStartDialog({
   handOver,
   open,
   onOpenChange,
+  initialChoice,
+  onStarted,
 }: AgentStartDialogProps) {
   const { t } = useTranslation();
   const { managedSessionsApi, specificationApi } = useAppServices();
@@ -107,7 +116,7 @@ export function AgentStartDialog({
         submitting: t('workflowExecution.agent.submitting'),
       };
   const workspace = useSpecificationWorkspace(subject.specId, specificationApi).data;
-  const [chosen, setChosen] = useState<FreshChoice>();
+  const [chosen, setChosen] = useState<FreshChoice | undefined>(initialChoice);
 
   const refusedOption = start.isError ? optionOfRefusal(start.error) : undefined;
   const option: AgentOption | undefined = refusedOption ?? check.data?.agent;
@@ -236,7 +245,12 @@ export function AgentStartDialog({
             ...(choice.effort ? { effort: choice.effort } : {}),
           }
         : {},
-      { onSuccess: () => onOpenChange(false) },
+      {
+        onSuccess: (result) => {
+          onOpenChange(false);
+          onStarted?.(result);
+        },
+      },
     );
   };
 

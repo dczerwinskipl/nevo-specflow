@@ -16,3 +16,12 @@ export {
   type SituationAttention,
 } from './execution/progress/SpecificationSituation';
 export { TaskProgress } from './execution/progress/TaskProgress';
+// Run with agent (workflow-execution.md): the agent and model picker of a fresh Session, the dialog
+// and the blocker explanation, also used by Create with an agent.
+export {
+  AgentSession,
+  type AgentCatalogue,
+  type FreshChoice,
+} from './execution/agent/AgentSession';
+export { AgentStartDialog } from './execution/agent/AgentStartDialog';
+export { AgentBlocker } from './execution/agent/AgentBlocker';

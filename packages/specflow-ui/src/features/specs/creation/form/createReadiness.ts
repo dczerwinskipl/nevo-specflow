@@ -1,7 +1,8 @@
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import type { ArchetypeInfo } from '@nevo/specflow-contracts/documents';
 import { message, type Message } from '../../../../i18n/message';
-import { providerDefaultEffort, type AgentChoice } from '../../../sessions';
+import type { FreshChoice } from '../../../tasks';
+import { demoWorkMode } from '../start/demoAgents';
 import type { WorkspaceOptionsState } from '../workspace/model/workspaceChoice';
 import { workspaceProblems } from '../workspace/model/workspaceValidation';
 import { type WorkspaceChoice } from '../workspace/model/workspaceChoice';
@@ -26,7 +27,7 @@ export function createReadiness(input: {
   catalogue: DemoCatalogue;
   /** The selected archetype (undefined when the catalogue has none). */
   archetype: ArchetypeInfo | undefined;
-  agent: AgentChoice;
+  agent: FreshChoice;
   workspaceState: WorkspaceOptionsState;
   choice: WorkspaceChoice;
   configurationUnavailable: boolean;
@@ -42,7 +43,7 @@ export function createReadiness(input: {
         : workspaceState.status === 'forbidden'
           ? { message: message('create.prerequisite.forbidden') }
           : workspaceProblems(choice, workspaceState.options, title)[0];
-  const agentIssue = method === 'ai' ? agentProblem(catalogue, agent) : undefined;
+  const agentIssue = method === 'agent' ? agentProblem(catalogue, agent) : undefined;
   const canSubmit =
     !input.configurationUnavailable &&
     !input.forbiddenCreate &&
@@ -74,37 +75,31 @@ export function createReadiness(input: {
 }
 
 /**
- * The first problem of the agent of a first Session, in the order of its fields: an unavailable
- * provider, a missing model (when the provider lists models), an effort the model does not offer
- * (the Effort field comes before Work mode), a work mode the choice does not run.
- * The form shows it at that field once Create was tried, and a blocked Create leads there.
+ * The first problem of the agent of a first Session, in the order of the picker: an unavailable
+ * provider, a missing model (when the provider lists models), an effort the model does not offer,
+ * no work mode the choice runs. A blocked Create leads to the agent tiles or the model picker.
  */
 export function agentProblem(
   catalogue: DemoCatalogue,
-  agent: AgentChoice,
-): { message: Message; field: 'provider' | 'model' | 'effort' | 'mode' } | undefined {
+  agent: FreshChoice,
+): { message: Message; field: 'provider' | 'model' } | undefined {
   const provider = catalogue.providers.find((p) => p.id === agent.providerId);
   const model = provider?.models.find((m) => m.id === agent.modelId);
-  // A provider that lists no model has nothing to choose (the start rule): its Session runs the
-  // provider's default model, so the modes are the provider's own.
-  // (Same predicate as the sessions start rule `offersModelChoice`, which the sessions barrel does not export.)
-  const modelChoice = (provider?.models.length ?? 0) > 0;
-  const modeIds = modelChoice ? model?.modes : provider?.modes.map((mode) => mode.id);
   if (!provider?.available) {
     return { message: message('create.prerequisite.provider'), field: 'provider' };
   }
 
-  if (modelChoice && !model) {
+  // A provider that lists no model has nothing to choose: its Session runs the provider's default.
+  if (provider.models.length > 0 && !model) {
     return { message: message('create.prerequisite.model'), field: 'model' };
   }
 
-  // Only the provider's default fits a model without efforts (or a provider without models).
-  if (agent.effort !== providerDefaultEffort && !model?.efforts.includes(agent.effort)) {
-    return { message: message('create.prerequisite.effort'), field: 'effort' };
+  if (agent.effort !== undefined && !model?.efforts.includes(agent.effort)) {
+    return { message: message('create.prerequisite.effort'), field: 'model' };
   }
 
-  if (!modeIds?.includes(agent.mode)) {
-    return { message: message('create.prerequisite.mode'), field: 'mode' };
+  if (!demoWorkMode(catalogue, agent)) {
+    return { message: message('create.prerequisite.mode'), field: 'model' };
   }
 
   return undefined;

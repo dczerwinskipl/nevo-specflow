@@ -55,8 +55,17 @@ function renderProject(
     operationsApi: operations,
   });
   mount(services, onProjectStarted);
+  chooseManually();
 
   return { create, onProjectStarted };
+}
+
+/** A plain entry opens the ways to start: the manual form is one tap away (`restoreDraftOf` opens a form). */
+function chooseManually() {
+  void screen
+    .findByRole('button', { name: /^Manually/ }, { timeout: 5000 })
+    .then((tile) => fireEvent.click(tile))
+    .catch(() => undefined);
 }
 
 function renderDemo() {
@@ -258,7 +267,7 @@ describe('a blocked Create on a project Runtime', () => {
 describe('a blocked Create in the demo', () => {
   it('sends no request: the create endpoint is never called for an invalid form', async () => {
     const { create } = renderDemo();
-    fireEvent.click(await screen.findByRole('button', { name: /On my own/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Manually/ }));
     await formReady();
     const submit = createButton();
     expect(submit.getAttribute('aria-disabled')).toBe('true');
@@ -276,15 +285,14 @@ describe('a blocked Create in the demo', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('with an agent, a missing model is the next field after the name and archetype', async () => {
+  it('with an agent, the first agent that can start and its model are chosen (the Run with agent picker)', async () => {
     const { create } = renderDemo();
     fireEvent.click(await screen.findByRole('button', { name: /With an agent/ }));
     await formReady();
-    fireEvent.change(nameField(), { target: { value: 'Payment limits' } });
+    expect(screen.getByText('New session')).toBeTruthy();
     fireEvent.click(createButton('Create and open session'));
-    const model = screen.getByRole('combobox', { name: 'Model' });
-    await waitFor(() => expect(document.activeElement).toBe(model));
-    expect(model.getAttribute('aria-invalid')).toBe('true');
+    // Only the name is missing: the agent never blocks Create.
+    await waitFor(() => expect(document.activeElement).toBe(nameField()));
     expect(create).not.toHaveBeenCalled();
   });
 });

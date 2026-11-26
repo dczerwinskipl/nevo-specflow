@@ -130,3 +130,66 @@ it.each([
   expect(result.problemField).toBeUndefined();
   expect(result.canSubmit).toBe(false);
 });
+
+describe('projectCreateReadiness', () => {
+  describe('the agent path', () => {
+    const agent = {
+      firstStep: { id: 'requirements', title: 'Gather requirements', agent: true },
+      agents: 'ready',
+      anyAvailable: true,
+      chosenAvailable: true,
+    } as const;
+
+    it('allows Create with an agent that can start the first step', () => {
+      expect(projectCreateReadiness({ ...base, agent })).toEqual({
+        prerequisite: undefined,
+        canSubmit: true,
+      });
+    });
+
+    it.each([
+      [
+        'an owner-first archetype',
+        { firstStep: { ...agent.firstStep, agent: false } },
+        'create.agentStep.prerequisite.ownerFirst',
+        undefined,
+      ],
+      [
+        'no workflow',
+        { firstStep: undefined },
+        'create.agentStep.prerequisite.noWorkflow',
+        undefined,
+      ],
+      [
+        'agents loading',
+        { agents: 'loading' as const },
+        'create.agentStep.prerequisite.agentsLoading',
+        undefined,
+      ],
+      [
+        'no agent can start',
+        { anyAvailable: false, chosenAvailable: false },
+        'create.agentStep.prerequisite.noAgent',
+        undefined,
+      ],
+      [
+        'an unavailable choice',
+        { chosenAvailable: false },
+        'create.prerequisite.provider',
+        'provider',
+      ],
+    ])('is blocked by %s, after the archetype', (_name, change, key, field) => {
+      const result = projectCreateReadiness({ ...base, agent: { ...agent, ...change } });
+      expect(result).toEqual({
+        prerequisite: { key },
+        canSubmit: false,
+        ...(field ? { problemField: field } : {}),
+      });
+      expect(
+        projectCreateReadiness({ ...base, title: '', agent: { ...agent, ...change } }).prerequisite,
+      ).toEqual({
+        key: 'create.prerequisite.title',
+      });
+    });
+  });
+});

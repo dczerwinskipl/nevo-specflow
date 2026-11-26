@@ -6,6 +6,12 @@ import type { ProjectIdSource } from './scope';
 import { defaultSpecsFeatureConfig, type SpecsFeatureConfig } from './configuration';
 import { specsCreateEndpoint } from './create/endpoint';
 import { registerSpecsOperationList } from './create/operation-list';
+import {
+  createFirstStep,
+  firstStepIntentDirectory,
+  type CreateFirstStep,
+  type FirstStepStarter,
+} from './create/first-step';
 import { specsCloseEndpoint, type ReleaseWorkspace, type RunningSessions } from './close/endpoint';
 import { specsOverviewEndpoint } from './overview/endpoint';
 import type { SpecsOverviewRepository } from './overview/repository/read-repository';
@@ -36,6 +42,13 @@ export interface SpecsFeatureDependencies {
   readonly releaseWorkspace?: ReleaseWorkspace;
   /** The Sessions whose Turn runs in a workspace now; Close refuses to remove such a checkout. */
   readonly runningSessions?: RunningSessions;
+  /**
+   * The agent start of Create's first-step intents (agent step execution). Absent: this Runtime
+   * runs no agent and a Create with `firstStep` is refused.
+   */
+  readonly firstStepStarter?: FirstStepStarter;
+  /** Replaces the first-step intent owner (tests). */
+  readonly firstStep?: CreateFirstStep;
   /** Generic operation progress registry; absent disables live progress. */
   readonly progress?: {
     readonly registry: OperationProgressRegistry;
@@ -72,12 +85,21 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
   const config = options.config ?? defaultSpecsFeatureConfig();
   const projectId: ProjectIdSource = () =>
     options.dependencies?.projectId?.() ?? options.dependencies?.engine?.context.project.projectId;
+  const engine = options.dependencies?.engine;
+  const starter = options.dependencies?.firstStepStarter;
+  const firstStep =
+    options.dependencies?.firstStep ??
+    (engine && starter
+      ? createFirstStep({ starter, directory: firstStepIntentDirectory(engine) })
+      : undefined);
 
   return {
     authorizationResources: [SpecCapabilities, ProjectGitCapabilities],
     register(app) {
       app.register(specsCreateEndpoint, {
         engine: options.dependencies?.engine,
+        ...(firstStep ? { firstStep } : {}),
+        projectId,
         ...(options.dependencies?.progress
           ? {
               progress: options.dependencies.progress.registry,
@@ -96,6 +118,7 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
       if (options.dependencies?.progress) {
         registerSpecsOperationList(app, {
           engine: options.dependencies.engine,
+          firstStep,
           registry: options.dependencies.progress.registry,
           ...(options.dependencies.progress.now ? { now: options.dependencies.progress.now } : {}),
           ...(options.dependencies.progress.staleAfterMs !== undefined

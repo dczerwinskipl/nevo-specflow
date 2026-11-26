@@ -349,6 +349,8 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
             }
           : {}),
       };
+  // Create's "then run the first step with this agent" is started by agent step execution.
+  const firstStepStarter = dependencies.specs?.firstStepStarter ?? agentExecution?.firstStepStarter;
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
@@ -373,6 +375,8 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
           : {}),
         sessions: sessionReferences,
         projectId,
+        // Create's first-step intent: the Runtime starts the first step with an agent after Create.
+        ...(firstStepStarter ? { firstStepStarter } : {}),
         // Close deletes a checkout only after the documentation index there is released (E9).
         releaseWorkspace: releaseAfterQuiescence(
           workspaceOccupancy,

@@ -483,6 +483,40 @@ does not implement still shows the calm "Not available on this server" state (no
 Retry); actions that cannot work are hidden instead of shown disabled. See the
 [Specification Workspace API](../../reference/api/specification-workspace.md) for the sources.
 
+## Ways to start and Create with an agent
+
+**New specification** first opens the start screen, **How do you want to start?**: one whole-tile
+action per way to start, **Manually** first and **With an agent** second (owner, 2026-11-26). A tap
+on the whole tile opens that way's form; there is no radio, no selection state and no Continue, and
+the form does not repeat the choice. Its Back, **Back to ways to start**, is the only reference to
+it. The tiles are a data-driven list (`start/entryPoints.ts`): a later way to start ("From an
+idea") is one more entry and its own form. Wide: two columns; narrow: stacked; the icon is
+vertically centred in the tile.
+
+- **No agent can start.** The **With an agent** tile is disabled and greyed out, with one short line
+  under it naming each agent and what stops it, then **How to fix** (the Session start screen's
+  diagnosis panel) and **Check again**. Manually stays usable.
+- **Manually** is the project Create form described above.
+- **With an agent** is the same form with one extra **Agent** section in the right column above
+  the workspace: what happens right after Create, **First step: …** (the archetype's first workflow
+  step, from the catalogue) and the agent and model picker of Run with agent (a new Session; no work
+  mode to choose, nothing is said to be preselected). The button reads **Create and run with agent**
+  and the note **Opens the agent's session once it starts.** An archetype whose first step only the
+  owner can do shows only "The first step is yours." with **Use Manually**, which switches to the
+  manual form and keeps the draft; Create is blocked with the same line.
+- **Going back keeps the draft.** Back to ways to start and the other way (or Use Manually) keep the
+  name, goal, archetype, workspace and agent. Leaving Create altogether still asks first.
+- **Progress.** The checklist ends with **Starting the agent on <step>**. The Runtime owns the start
+  ([ADR 0026, D22](../../architecture/decisions/0026-agent-step-execution.md#d22--create-can-start-the-first-step-with-an-agent-supersedes-dogfood-d5)),
+  so the page says it can be left. When the agent started, its Session opens with a toast.
+- **The agent did not start.** The page stays: the specification exists, the agent row reads **The
+  agent did not start <step>** with an attention marker, the alert says why and how to fix it (the
+  Run with agent blocker copy), and the actions are **Run with agent…** (the existing dialog, with
+  the chosen agent preselected; it checks again and sends a new request) and **Open
+  specification**. The Configuration list names the Agent and the First step.
+
+This replaces dogfood decision D5 (the UI chaining Create and Run with agent).
+
 ## Demo mode
 
 A Runtime started with `--demo` serves Create through the bounded in-memory
@@ -490,20 +524,16 @@ A Runtime started with `--demo` serves Create through the bounded in-memory
 provider execution. The project Runtime never receives these capabilities. The demo Create keeps the
 layout, blocked-Create and recovery rules above and adds a method choice and a first Session.
 
-The method choice, and with it **Create with an agent**, exists **only in demo mode**. The project
-Create form has no method step and no agent fields, and the project Create operation allocates no
-Session: a project Specification gets its first Session from New Session afterwards. Create with an
-agent on a project Runtime is an open item in the
-[SpecFlow UI ideas backlog](../../ideas/specflow-ui/README.md#open-items-without-their-own-document).
+The demo uses the same start screen and the same agent picker, over its own catalogue. Its
+Create with an agent still allocates an idle first Session instead of starting a workflow step (the
+demo runs no agent), so its tile says so.
 
-- **Method choice.** The first step (**Creation method**) is two fully active cards, **With an
-  agent** (start a Spec Writer session) and **On my own** (create the archetype's documents and edit
-  them). Wide: equal columns; narrow: stacked. No segments, radios or selects. **Change the way of
-  working** returns to the choice and keeps the name, archetype, workspace choice and the last agent
-  setup. Leaving the method choice returns to the Specifications list.
+- **Ways to start.** The start screen above (Manually, With an agent). **Back to ways to start**
+  keeps the name, archetype, workspace choice and the agent. Leaving the start screen returns to the
+  Specifications list.
 - **Form.** Name, archetype and the workspace place as in project mode; with an agent also the
-  **first Session**: provider tiles and the labelled Model, Effort and Work mode fields (the Session
-  start form groups the same fields, [Full Session](ui/full-session.md)). The agent applies to the first
+  **first Session**: the agent and model picker of Run with agent, with the work mode it starts in
+  said as a sentence (the provider's default when the model runs it). The agent applies to the first
   Session only; a Specification can later have many Sessions with other agents. Provider facts
   (availability, limits) come only from a confirmed source; unknown stays unknown. No prompt is sent
   from the form: the first message is written in the opened Session.

@@ -1,4 +1,4 @@
-import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
+import type { ArchetypeCatalogue, ArchetypeFirstStep } from '@nevo/specflow-contracts/documents';
 
 import type { ProjectCatalogue } from '../definitions/project-catalogue';
 
@@ -7,12 +7,14 @@ import type { ProjectCatalogue } from '../definitions/project-catalogue';
  * `title` defaults to the title of its document type, and the catalogue `documents[].id` is the
  * template id. No default archetype is named (the client chooses) and `workflow` is demo-only.
  * `problems` is reported only when the caller passes the problems of the project catalogue.
+ * `firstStepOf` names each archetype's first workflow step (absent: no archetype carries one).
  */
 export function toArchetypeCatalogue(
   source: Pick<ProjectCatalogue, 'catalogue'> &
     Partial<Pick<ProjectCatalogue, 'problems' | 'problemsTruncated'>> & {
       readonly unstableRead?: boolean;
     },
+  firstStepOf?: (archetypeId: string) => ArchetypeFirstStep | undefined,
 ): ArchetypeCatalogue {
   const { catalogue } = source;
   const titleOfType = (id: string): string => catalogue.findDocumentType(id)?.title ?? id;
@@ -55,6 +57,11 @@ export function toArchetypeCatalogue(
         ...(template.instructions !== undefined ? { instructions: template.instructions } : {}),
         content: template.content,
       })),
+      ...firstStepEntry(firstStepOf?.(archetype.id)),
     })),
   };
+}
+
+function firstStepEntry(step: ArchetypeFirstStep | undefined) {
+  return step ? { firstStep: { id: step.id, title: step.title, agent: step.agent } } : {};
 }

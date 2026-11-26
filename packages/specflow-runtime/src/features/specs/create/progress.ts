@@ -19,6 +19,10 @@ const RECOVERY_CODES: ReadonlySet<string> = new Set([
 export interface CreateProgress {
   /** Feed Engine stage transitions (`createSpecificationFromRequest` option `onStage`). */
   onStage(observation: CreateStageObservation): void;
+  /** The Specification is registered and the Runtime starts the first-step agent. */
+  startingAgent(): void;
+  /** The first-step agent did not start: its row is skipped (the result says why). */
+  agentNotStarted(): void;
   complete(result: unknown): void;
   /** `code` is the Engine's typed public code, or undefined for an unexpected failure. */
   fail(code: string | undefined): void;
@@ -34,8 +38,10 @@ export function startCreateProgress(
   target: 'existing' | 'new-worktree',
   /** The Engine commits the scaffold (`git.enabled`): the checklist gets `committing-specification`. */
   commits = false,
+  /** The Create carries a first-step intent: the checklist ends with `starting-agent`. */
+  firstStep = false,
 ): CreateProgress {
-  const steps = specificationCreateSteps(target, commits);
+  const steps = specificationCreateSteps(target, commits, firstStep);
   const reporter = registry.begin({ operationId, kind: 'specification-create', steps });
 
   const enter = (step: SpecificationCreateStep) => {
@@ -69,6 +75,16 @@ export function startCreateProgress(
       const step = createStepForStage(stage, target, commits);
       if (step && steps.includes(step)) {
         enter(step);
+      }
+    },
+    startingAgent() {
+      if (steps.includes('starting-agent')) {
+        enter('starting-agent');
+      }
+    },
+    agentNotStarted() {
+      if (steps.includes('starting-agent')) {
+        reporter.step('starting-agent', 'skipped');
       }
     },
     complete: (result) => reporter.complete(result),

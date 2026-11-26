@@ -3053,7 +3053,8 @@
         "adr.0023-neutral-workflow-coordinator-and-manual-execution",
         "adr.0024-tasks-are-resources",
         "reference.api.specification-workflow",
-        "reference.cli.specflow-specification-commands"
+        "reference.cli.specflow-specification-commands",
+        "product.specflow.specification-creation"
       ],
       "scope": "specflow",
       "areas": [

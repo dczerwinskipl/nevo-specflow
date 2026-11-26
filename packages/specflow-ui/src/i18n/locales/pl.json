@@ -450,7 +450,8 @@
       "status": {
         "pending": "oczekuje",
         "running": "w toku",
-        "done": "gotowe"
+        "done": "gotowe",
+        "notDone": "nie wykonano"
       }
     },
     "panel": {
@@ -517,18 +518,12 @@
     "loadError": "Nie udało się wczytać konfiguracji",
     "sessionReady": "Sesja gotowa",
     "specificationCreated": "Specyfikacja utworzona",
-    "withAI": "Z agentem",
-    "manual": "Samodzielnie",
     "nameLabel": "Nazwa specyfikacji",
     "namePlaceholder": "Np. Logowanie SSO",
     "providerDefault": "Domyślny wykonawcy",
-    "changeMethod": "Zmień sposób pracy",
     "formRegion": "Utworzenie specyfikacji",
     "method": {
-      "title": "Sposób tworzenia",
-      "intro": "Wybierz, czy zaczniesz od rozmowy ze Spec Writerem, czy od szkieletu dokumentów z archetypu.",
-      "aiText": "Rozpocznij sesję Spec Writera. Kolejne etapy mogą korzystać z innych agentów.",
-      "manualText": "Utwórz dokumenty archetypu i edytuj je samodzielnie."
+      "aiText": "Rozpocznij sesję Spec Writera. Kolejne etapy mogą korzystać z innych agentów."
     },
     "heading": {
       "specification": "Nowa specyfikacja"
@@ -1023,6 +1018,14 @@
           "title": "Kolejny krok",
           "running": "W toku",
           "done": "Zakończony"
+        },
+        "starting-agent": {
+          "title": "Uruchamianie agenta",
+          "running": "Otwieranie jego sesji",
+          "done": "Agent wystartował",
+          "titleNamed": "Uruchamianie agenta: {{step}}",
+          "pending": "Gdy specyfikacja będzie gotowa",
+          "notStarted": "Agent nie zaczął kroku {{step}}"
         }
       },
       "neutral": {
@@ -1056,7 +1059,9 @@
         "goal": "Cel",
         "committedTo": "Pliki specyfikacji trafią do commita na gałęzi <branch/>",
         "archetype": "Archetyp",
-        "documents": "Dokumenty"
+        "documents": "Dokumenty",
+        "agent": "Agent",
+        "firstStep": "Pierwszy krok"
       },
       "status": {
         "sending": "Wysyłanie żądania…",
@@ -1065,7 +1070,9 @@
         "reading": "Odczytywanie operacji…",
         "completed": "Gotowe. Otwieramy specyfikację…",
         "workingNew": "Przygotowujemy nowe środowisko pracy i specyfikację.",
-        "completedUncommitted": "Gotowe, ale pliki nie mają jeszcze commita."
+        "completedUncommitted": "Gotowe, ale pliki nie mają jeszcze commita.",
+        "agentStarted": "Agent zaczął krok {{step}}. Otwieranie jego sesji…",
+        "agentNotStarted": "Specyfikacja istnieje. Agent nie pracuje."
       },
       "leaveNote": "Możesz opuścić tę stronę. Tworzenie trwa dalej na serwerze, a jego stan sprawdzisz, wracając z listy specyfikacji.",
       "openSpecification": "Otwórz specyfikację",
@@ -1087,6 +1094,12 @@
       "uncommitted": {
         "title": "Pliki specyfikacji nie mają commita",
         "body": "Git jest w tym projekcie wyłączony (git.enabled w .nevo/config.yaml), więc Nevo zapisało pliki bez commita. Zrób commit w Git samodzielnie: zamknięcie odmówi, dopóki pliki są bez commita."
+      },
+      "leaveNoteAgent": "Możesz opuścić tę stronę. SpecFlow dokończy tworzenie i uruchomi agenta bez niej; wynik pokaże lista operacji.",
+      "agentStarted": "Agent zaczął krok {{step}}",
+      "agentNotStarted": {
+        "title": "Agent nie wystartował",
+        "body": "Coś poszło nie tak przy uruchamianiu. Uruchom krok {{step}} z agentem ponownie albo otwórz specyfikację i kontynuuj stamtąd."
       }
     },
     "operations": {
@@ -1095,6 +1108,41 @@
     "guide": {
       "goToField": "Przejdź do pola",
       "enterName": "Wpisz nazwę"
+    },
+    "start": {
+      "title": "Jak chcesz zacząć?",
+      "agent": {
+        "title": "Z agentem",
+        "text": "Uzupełnij podstawy. Potem agent zaczyna pierwszy krok i pracuje nad nim w sesji."
+      },
+      "manual": {
+        "title": "Ręcznie",
+        "text": "Utwórz dokumenty z archetypu i napisz je samodzielnie."
+      },
+      "agentUnavailable": {
+        "none": "Żaden agent nie może wystartować: {{reasons}}.",
+        "empty": "Żaden agent nie może wystartować: ten serwer nie ma żadnych agentów.",
+        "failed": "Nie udało się sprawdzić, którzy agenci mogą wystartować."
+      },
+      "backToStart": "Wróć do sposobów rozpoczęcia"
+    },
+    "agentStep": {
+      "title": "Agent",
+      "intro": "Zaraz po utworzeniu specyfikacji agent zaczyna jej pierwszy krok. Przejrzysz wynik, zanim cokolwiek pójdzie dalej.",
+      "firstStep": "Pierwszy krok: <step>{{step}}</step>",
+      "ownerFirst": "Pierwszy krok należy do Ciebie.",
+      "noWorkflow": "Ten archetyp nie uruchamia workflow, więc agent nie ma kroku do rozpoczęcia.",
+      "useManual": "Wybierz Ręcznie",
+      "goalHelp": "Zapisany w przeglądzie specyfikacji. Agent czyta go najpierw.",
+      "footNote": "Otworzy sesję agenta, gdy ten wystartuje.",
+      "submit": "Utwórz i uruchom z agentem",
+      "prerequisite": {
+        "ownerFirst": "Pierwszy krok należy do Ciebie. Wybierz Ręcznie.",
+        "noWorkflow": "Agent nie może zacząć tego archetypu. Wybierz Ręcznie.",
+        "agentsLoading": "Sprawdzanie, którzy agenci mogą wystartować…",
+        "agentsFailed": "Nie udało się sprawdzić agentów. Sprawdź ponownie w sekcji Agent.",
+        "noAgent": "Żaden agent nie może teraz wystartować. Napraw jednego powyżej albo wróć i utwórz specyfikację ręcznie."
+      }
     }
   },
   "documents": {

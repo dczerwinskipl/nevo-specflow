@@ -29,6 +29,7 @@ const stepCopy = {
   'writing-specification': stepEntry('writing-specification'),
   'committing-specification': stepEntry('committing-specification'),
   registering: stepEntry('registering'),
+  'starting-agent': stepEntry('starting-agent'),
 } satisfies Record<SpecificationCreateStep, StepCopy>;
 
 /** A step id this build does not know (a newer Runtime): drawn generically, never dropped. */
@@ -68,10 +69,16 @@ export const createNeutralProgress = (lost: boolean): OperationProgressNeutral =
 export function createProgressSteps(
   steps: readonly OperationStepView[],
   newWorkspace = false,
+  /** The first step the agent starts (a Create with a first-step intent): its row names it. */
+  firstStepTitle?: string,
 ): readonly OperationProgressStep[] {
   return steps
     .filter((step) => step.status !== 'skipped')
     .map((step) => {
+      if (step.id === 'starting-agent' && firstStepTitle !== undefined) {
+        return startingAgentStep(step.status, firstStepTitle);
+      }
+
       const copy =
         step.id === 'reserving' && !newWorkspace
           ? reservingNameCopy
@@ -91,6 +98,37 @@ export function createProgressSteps(
     });
 }
 
+/**
+ * The agent row of a Create with a first-step intent, named by the step: waiting for the
+ * Specification, opening the agent's session, started, or (`not-done`) not started, with the reason
+ * said next to the checklist.
+ */
+function startingAgentStep(
+  status: OperationProgressStep['status'],
+  step: string,
+): OperationProgressStep {
+  if (status === 'not-done') {
+    return {
+      id: 'starting-agent',
+      label: message('create.progress.steps.starting-agent.notStarted', { step }),
+      status,
+    };
+  }
+
+  return {
+    id: 'starting-agent',
+    label: message('create.progress.steps.starting-agent.titleNamed', { step }),
+    description: message(
+      status === 'done'
+        ? 'create.progress.steps.starting-agent.done'
+        : status === 'running'
+          ? 'create.progress.steps.starting-agent.running'
+          : 'create.progress.steps.starting-agent.pending',
+    ),
+    status,
+  };
+}
+
 const stepOrder: readonly SpecificationCreateStep[] = [
   'reserving',
   'preparing-workspace',
@@ -103,19 +141,25 @@ const stepOrder: readonly SpecificationCreateStep[] = [
  * The checklist of a finished Create, for when the live stream is gone (it is closed once the
  * operation concluded): every step done, the workspace step only when one is prepared and the
  * commit step only when the Engine commits the scaffold (Git enabled, `commits` in the options).
+ * A Create with a first-step intent ends with its agent row: started, or not started.
  */
 export function createCompletedSteps(
   target: CreateSpecRequest['target'],
   commits = false,
   newWorkspace = target?.kind === 'new-worktree',
+  firstStep?: { readonly title: string; readonly started: boolean },
 ): readonly OperationProgressStep[] {
-  return createProgressSteps(
+  const steps = createProgressSteps(
     stepOrder
       .filter((id) => id !== 'preparing-workspace' || newWorkspace)
       .filter((id) => id !== 'committing-specification' || commits)
       .map((id) => ({ id, status: 'done' as const })),
     newWorkspace,
   );
+
+  return firstStep
+    ? [...steps, startingAgentStep(firstStep.started ? 'done' : 'not-done', firstStep.title)]
+    : steps;
 }
 
 /** The title of one public step id (the generic title for an id this build does not know). */
@@ -125,8 +169,14 @@ export function createStepTitle(stepId: string): Message {
 }
 
 /** The title of the step that is running now, or undefined while none is (the page then says it generically). */
-export function createRunningStepTitle(steps: readonly OperationStepView[]): Message | undefined {
+export function createRunningStepTitle(
+  steps: readonly OperationStepView[],
+  firstStepTitle?: string,
+): Message | undefined {
   const running = steps.find((step) => step.status === 'running');
+  if (running?.id === 'starting-agent' && firstStepTitle !== undefined) {
+    return message('create.progress.steps.starting-agent.titleNamed', { step: firstStepTitle });
+  }
 
   return running ? createStepTitle(running.id) : undefined;
 }

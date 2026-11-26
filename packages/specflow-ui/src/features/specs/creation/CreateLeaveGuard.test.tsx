@@ -79,6 +79,12 @@ function renderProject(
       </TestServicesRouterContext>
     </QueryClientProvider>,
   );
+  if (!props.restoreDraftOf) {
+    void screen
+      .findByRole('button', { name: /^Manually/ }, { timeout: 5000 })
+      .then((tile) => fireEvent.click(tile))
+      .catch(() => undefined);
+  }
 }
 
 const dirty = () => dirtyValues.at(-1);

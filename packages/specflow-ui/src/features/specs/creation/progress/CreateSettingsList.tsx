@@ -57,6 +57,16 @@ export function CreateSettingsList({ settings }: { settings: CreateSettingsModel
           <span className="wrap-anywhere">{settings.documents.join(', ')}</span>
         </SummaryRow>
       )}
+      {settings.agent && (
+        <SummaryRow label={t('create.page.settings.agent')} override>
+          <span className="wrap-anywhere">{settings.agent}</span>
+        </SummaryRow>
+      )}
+      {settings.firstStep && (
+        <SummaryRow label={t('create.page.settings.firstStep')} override={false}>
+          <span className="wrap-anywhere">{settings.firstStep}</span>
+        </SummaryRow>
+      )}
       <SummaryRow label={t('create.page.settings.where')} override>
         {where}
       </SummaryRow>

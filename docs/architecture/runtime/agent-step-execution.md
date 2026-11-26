@@ -351,6 +351,25 @@ The capability is a secret of the Turn:
 
 An attempt journal moves to `settled/` once the attempt ended and nothing of it is left to run.
 
+## Create's first-step intent
+
+Create with an agent ([ADR 0026, D22](../decisions/0026-agent-step-execution.md#d22--create-can-start-the-first-step-with-an-agent-supersedes-dogfood-d5))
+reaches agent step execution through the Specifications feature, never through the UI. The agent
+execution feature hands it a `FirstStepStarter` (`features/agent-execution/feature.ts`): a start of
+the new Specification's first step as the stored principal, with the request id
+`derivedId(operationId, 'create-first-step')`, and the refusal mapped like the owner route maps it
+(`step-execution/refusal.ts`: a Session refusal becomes the agent option the owner can act on). The
+intent owner is `features/specs/create/first-step.ts` with its store `first-step-store.ts`
+(`<stateRoot>/runtime/create-first-step/`); `run-create.ts` admits the intent before the Engine
+Create and settles it after, and the create endpoint's `onReady` hook runs the startup resume.
+
+| Crash or failure                                   | State left                           | Resolution                                                                                      |
+| -------------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| After the intent is stored, before the reservation | Intent, no journal                   | Dropped (the failed request, or the startup step).                                              |
+| Create journal not completed                       | Intent pending, journal non-terminal | The Create's retry with the same operation id completes it and settles the intent.              |
+| Create completed, start not made or not recorded   | Intent pending, journal completed    | The startup step makes the start with the derived request id (an earlier start is found again). |
+| Start refused                                      | Intent settled `not-started`         | Nothing to recover: Run with agent, a new request, from the Create page or the Overview.        |
+
 ## Limits and non-goals
 
 The trust model is [ADR 0026, Trust model](../decisions/0026-agent-step-execution.md#trust-model-and-its-limits):

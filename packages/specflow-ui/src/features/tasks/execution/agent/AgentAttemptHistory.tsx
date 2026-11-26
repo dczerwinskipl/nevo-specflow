@@ -1,30 +1,27 @@
-import { useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { Icon, InlineNote, Typography, type IconName, type TimelineTone } from '@nevo/ui';
+import { Icon, Typography, type IconName, type TimelineTone } from '@nevo/ui';
 import type { WorkflowHistory } from '@nevo/specflow-contracts/workflow';
-import type { WorkflowActor } from '@nevo/specflow-contracts/workflow';
 import {
-  actorLabel,
   formatRange,
   formatWhen,
   humanizeId,
   personLabel,
+  agentDisplayName,
   transitionLabel,
-  type ModelTitle,
   type Viewer,
 } from '../presentation';
 import { useSessionFacts } from './useSessionFacts';
 import { useModelTitle } from './modelTitles';
 import { useViewer } from '../useViewer';
 import type { WorkflowSubjectRef } from '../api';
-import { InlineAction } from '../InlineAction';
 import { SessionLink } from './AgentSession';
 import { AttemptCommitNote, commitReason, type AttemptCommitView } from './AttemptCommitNote';
 import { AttemptChanges, CommittedRow } from './AttemptChanges';
 import { SessionProviderIcon } from '../../../sessions';
 import { committedFacts } from './useAttemptCommit';
 import { useAgentAttemptCommands } from './useAgentAttemptCommands';
+import { HandoffFeedback } from '../progress/HandoffFeedback';
 
 export type HistoryItem = WorkflowHistory['items'][number];
 export type AgentHistoryItem = Extract<HistoryItem, { kind: 'attempt' }> & {
@@ -300,8 +297,8 @@ export function AgentAttemptMeta({
 
 /**
  * Who worked on the attempt, as the Now block names it: the provider's mark, "Claude · Opus 5.5"
- * ({@link actorLabel}, the model by its presentation title from the provider catalogue, else the
- * Session's), and Open session at the end of the line. The name keeps to one line. The Session is
+ * ({@link agentDisplayName}: what the Session ran, else the catalogue's title of the recorded model),
+ * and Open session at the end of the line. The name keeps to one line. The Session is
  * not named by its title: a Session continued from an earlier step keeps that step's title, which
  * would misname this one.
  */
@@ -314,23 +311,17 @@ export function AgentIdentityLine({
 }) {
   const { t } = useTranslation();
   const session = useSessionFacts(specId, item.agent.sessionId);
-  const catalogueTitle = useModelTitle(specId);
-  const actor: WorkflowActor = {
-    class: 'agent',
-    details: {
-      provider: item.agent.provider,
-      ...(item.agent.model !== undefined ? { model: item.agent.model } : {}),
-    },
-  };
-  const name = actorLabel(
-    t,
-    actor,
-    {},
-    (provider, model) =>
-      catalogueModelTitleOrUndefined(catalogueTitle, provider, model) ??
-      session.modelTitle ??
-      model,
-  );
+  const catalogue = useModelTitle(specId);
+  // The attempt's own record of its model, else its actor's: the Now block names it by the actor.
+  const model =
+    item.agent.model ?? (item.actor?.class === 'agent' ? item.actor.details.model : undefined);
+  const name = agentDisplayName({
+    provider: item.agent.provider,
+    providerTitle: session.providerTitle,
+    model,
+    modelTitle: session.modelTitle,
+    catalogue,
+  });
 
   return (
     <div className="flex min-w-0 items-center gap-2 text-body-sm" data-attempt-actor="">
@@ -349,58 +340,34 @@ export function AgentIdentityLine({
   );
 }
 
-/** The catalogue's title of a model, `undefined` when it only knows the id. */
-function catalogueModelTitleOrUndefined(
-  title: ModelTitle,
-  provider: string | undefined,
-  model: string | undefined,
-): string | undefined {
-  const found = title(provider, model);
-
-  return found === model ? undefined : found;
-}
-
 /**
- * View feedback on a history entry: the feedback a result, a return or a Reject left, behind a
- * quiet toggle, in the tone of the entry's mark.
+ * View feedback on a history entry: the feedback a result, a return or a Reject left, in the
+ * shared hand-off feedback ({@link HandoffFeedback}, whole, in the Markdown renderer), in the tone
+ * of the entry's mark. `open` when the reader came for it ("Open full feedback").
  */
 export function HistoryFeedback({
   feedback,
   attention = false,
+  open = false,
 }: {
   readonly feedback: string | undefined;
   readonly attention?: boolean;
+  readonly open?: boolean;
 }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const text = feedback?.trim() ?? '';
-  if (!text) {
+  if (!feedback?.trim()) {
     return null;
   }
 
   return (
-    <>
-      <div className="text-body-sm" data-agent-actions="">
-        <InlineAction
-          className="inline-flex min-h-6 items-center"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        >
-          {t(
-            open
-              ? 'workflowExecution.attemptHistory.hideFeedback'
-              : 'workflowExecution.attemptHistory.viewFeedback',
-          )}
-        </InlineAction>
-      </div>
-      {open ? (
-        <InlineNote tone={attention ? 'attention' : 'info'} icon="chat">
-          <span className="whitespace-pre-line [overflow-wrap:anywhere]" data-agent-feedback="">
-            {text}
-          </span>
-        </InlineNote>
-      ) : null}
-    </>
+    <HandoffFeedback
+      feedback={feedback}
+      mode="detail"
+      tone={attention ? 'attention' : 'neutral'}
+      initiallyOpen={open}
+      scrollIntoView={open}
+      showLabel={t('workflowExecution.feedback.view')}
+    />
   );
 }
 
@@ -477,6 +444,7 @@ export function AgentAttemptHistory({
   subject,
   openDocument,
   feedback,
+  feedbackOpen = false,
   showOutcome = true,
 }: {
   readonly item: AgentHistoryItem;
@@ -486,6 +454,8 @@ export function AgentAttemptHistory({
   readonly openDocument?: (path: string) => boolean;
   /** The feedback the attempt's result left, behind View feedback. */
   readonly feedback?: string | undefined;
+  /** The reader came for this attempt's feedback ("Open full feedback"): open and in view. */
+  readonly feedbackOpen?: boolean;
   /** Whether to say how the attempt ended (the Specification's entry says it in its own line). */
   readonly showOutcome?: boolean;
 }) {
@@ -545,7 +515,11 @@ export function AgentAttemptHistory({
           {t('workflowExecution.attemptHistory.notCommitted')}
         </Typography>
       ) : null}
-      <HistoryFeedback feedback={feedback} attention={outcome.tone === 'attention'} />
+      <HistoryFeedback
+        feedback={feedback}
+        attention={outcome.tone === 'attention'}
+        open={feedbackOpen}
+      />
     </div>
   );
 }

@@ -2366,7 +2366,7 @@
       "artifactLabel": "Created earlier in the process (for example by another task)",
       "artifactDescription": "Needed before this task starts. It may not exist yet; until then it shows as awaited, without a warning. What this task produces is not context: it is an exit gate of the step that produces it.",
       "specificationLegend": "Documents of {{spec}}",
-      "alreadyInContext": "already in context",
+      "alreadyInContext": "Already in context",
       "documentIdLabel": "Document id",
       "documentIdDescription": "The id it will be registered with. Until then it shows as awaited.",
       "searchLabel": "Search project documentation",
@@ -2389,7 +2389,13 @@
       "ownArtifactBody": "Context lists what the task needs before it starts. {{ref}} is produced by this task, so it belongs to an exit gate of the step that produces it, for example “a findings document exists” before finishing.",
       "notFoundOptional": "Not found: {{ref}} was moved or deleted. Optional, so the next step skips it.",
       "requiredShort": "required",
-      "optionalShort": "optional"
+      "optionalShort": "optional",
+      "confirmCount_one": "Add {{count}} document to context",
+      "confirmCount_other": "Add {{count}} documents to context",
+      "confirmCount_few": "Add {{count}} documents to context",
+      "confirmCount_many": "Add {{count}} documents to context",
+      "noneAvailable": "Every document is in the context already.",
+      "resultsInContext": "Every result is already in the context."
     },
     "dependencies": {
       "none": "No dependencies: the task can start as soon as it is approved.",
@@ -2397,18 +2403,22 @@
       "fixed": "Dependencies are fixed once the task has started.",
       "remove": "Remove dependency",
       "actionsFor": "Actions for {{id}}",
-      "dialogTitle": "Add dependencies to {{id}}",
-      "dialogDescription": "{{id}} becomes ready only when these tasks are done.",
-      "existing": "Already a dependency",
-      "confirm": "Add dependencies",
-      "legend": "Tasks",
+      "dialogTitle": "Add dependencies",
+      "dialogDescription": "Choose the tasks that must be done before “{{title}}” can start.",
       "noCandidates": "There are no other tasks in this specification.",
       "missingTask": "{{id}} is not a task of this specification any more.",
       "unavailable": {
-        "would-create-cycle": "{{other}} already depends on {{id}}; adding it would create a cycle",
+        "dependency": "Already a dependency",
+        "would-create-cycle": "Depends on this task already; adding it would create a cycle",
         "cancelled": "Cancelled; it would never be done",
         "broken": "Broken; restore its files first"
-      }
+      },
+      "confirmNone": "Add dependencies",
+      "confirm_one": "Add {{count}} dependency",
+      "confirm_other": "Add {{count}} dependencies",
+      "confirm_few": "Add {{count}} dependencies",
+      "confirm_many": "Add {{count}} dependencies",
+      "noneAvailable": "No task can be added now."
     },
     "refusal": {
       "generic": "The change was not saved. Try again.",
@@ -2427,6 +2437,14 @@
       "documentPathInvalid": "This file name is not allowed.",
       "documentRevisionConflict": "The document changed since you opened it. Reload and try again.",
       "documentProtected": "task.md is the task's main document: it cannot be renamed or deleted."
+    },
+    "picker": {
+      "availableTasks": "Available tasks",
+      "unavailableTasks": "Unavailable tasks",
+      "unavailableDocuments": "Unavailable documents",
+      "searchTasks": "Search tasks",
+      "searchDocuments": "Search documents",
+      "noMatches": "Nothing matches the search."
     }
   },
   "workflowExecution": {
@@ -2611,11 +2629,7 @@
       "youActTakenOverCanHand": "You took this step over from the agent, so it is yours now: do the rest yourself and finish it, or hand it back to the agent in a new attempt.",
       "handUnavailable": "Hand to agent cannot run now: {{why}}.",
       "personActs": "{{actor}} is doing this step; you can follow it here.",
-      "feedbackAll": "Show the full feedback",
-      "feedbackLess": "Show less",
       "handoffDetails": "{{outcome}}: open it in the work history",
-      "feedbackShow": "Show feedback",
-      "feedbackHide": "Hide feedback",
       "handoffCommitted": "{{what}} committed",
       "handoffCommittedAll": "Work committed"
     },
@@ -3215,13 +3229,18 @@
       },
       "committed": "Committed",
       "notCommitted": "Kept in the checkout, not committed",
-      "viewFeedback": "View feedback",
-      "hideFeedback": "Hide feedback",
       "day": {
         "today": "Today",
         "yesterday": "Yesterday"
       },
       "openSession": "Open session"
+    },
+    "feedback": {
+      "show": "Show feedback",
+      "hide": "Hide feedback",
+      "view": "View feedback",
+      "openFull": "Open full feedback",
+      "label": "Feedback"
     }
   },
   "taskOverview": {

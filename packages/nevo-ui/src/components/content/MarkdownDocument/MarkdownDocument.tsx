@@ -56,6 +56,12 @@ export interface MarkdownDocumentProps {
    * message), whose fences are not edits a person pauses on.
    */
   diagrams?: boolean;
+  /**
+   * The size of the body text (paragraphs, lists, table cells, quotes). `document` (default) reads
+   * as a document; `compact` matches the small body text around Markdown embedded in a dense row,
+   * such as a history entry's feedback. Headings and code keep their sizes.
+   */
+  textSize?: 'document' | 'compact';
 }
 
 export interface MarkdownDocumentLabels {
@@ -224,7 +230,10 @@ function markdownComponents(
   headingOffset = 0,
   renderImage?: (props: MarkdownDocumentImageProps) => ReactNode,
   diagrams = false,
+  textSize: 'document' | 'compact' = 'document',
 ): Components {
+  const body = textSize === 'compact' ? 'body-sm' : 'body-lg';
+  const cell = textSize === 'compact' ? 'body-sm' : 'body-md';
   const heading = (level: number) =>
     `h${Math.min(6, level + headingOffset)}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 
@@ -294,7 +303,7 @@ function markdownComponents(
         {...sourceLine(rest)}
         as="p"
         className="my-3 text-content-secondary first:mt-0 last:mb-0"
-        variant="body-lg"
+        variant={body}
       >
         {children}
       </Typography>
@@ -307,7 +316,7 @@ function markdownComponents(
           'my-3 list-disc pl-6 text-content-secondary first:mt-0 last:mb-0 [li_&]:my-1',
           className?.includes('contains-task-list') && 'list-none pl-0',
         )}
-        variant="body-lg"
+        variant={body}
       >
         {children}
       </Typography>
@@ -317,7 +326,7 @@ function markdownComponents(
         {...sourceLine(rest)}
         as="ol"
         className="my-3 list-decimal pl-6 text-content-secondary first:mt-0 last:mb-0 [li_&]:my-1"
-        variant="body-lg"
+        variant={body}
       >
         {children}
       </Typography>
@@ -339,7 +348,10 @@ function markdownComponents(
     blockquote: ({ children, ...rest }) => (
       <blockquote
         {...sourceLine(rest)}
-        className="my-3 border-l-2 border-border-strong pl-4 text-content-muted first:mt-0 last:mb-0 [&_p]:text-body-md [&_p]:text-content-muted"
+        className={cn(
+          'my-3 border-l-2 border-border-strong pl-4 text-content-muted first:mt-0 last:mb-0 [&_p]:text-content-muted',
+          textSize === 'compact' ? '[&_p]:text-body-sm' : '[&_p]:text-body-md',
+        )}
       >
         {children}
       </blockquote>
@@ -422,7 +434,7 @@ function markdownComponents(
         className="min-w-40 px-3 py-2 text-left align-top [overflow-wrap:break-word]"
         style={{ textAlign: style?.textAlign }}
       >
-        <Typography as="span" className="text-content-secondary" variant="body-md">
+        <Typography as="span" className="text-content-secondary" variant={cell}>
           {children}
         </Typography>
       </td>
@@ -439,6 +451,7 @@ export function MarkdownDocument({
   sourceLines = false,
   headingOffset = 0,
   diagrams = false,
+  textSize = 'document',
 }: MarkdownDocumentProps) {
   const {
     completedTask,
@@ -477,6 +490,7 @@ export function MarkdownDocument({
         headingOffset,
         renderImage,
         diagrams,
+        textSize,
       ),
     [
       completedTask,
@@ -494,6 +508,7 @@ export function MarkdownDocument({
       headingOffset,
       renderImage,
       diagrams,
+      textSize,
     ],
   );
 

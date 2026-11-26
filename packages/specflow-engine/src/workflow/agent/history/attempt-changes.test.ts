@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { TaskManifest } from '../../../tasks/resource/model';
-import { attemptChangesOf, committedPathsOf } from './attempt';
+import { attemptChangesOf } from './attempt';
 
 const SPEC = 'specs/active/sso';
 
@@ -65,35 +65,5 @@ describe('attemptChangesOf', () => {
     expect(changes.documents).toEqual([`${SPEC}/tasks/login/task.md`]);
     expect(changes.state).toEqual([`${SPEC}/.execution/tasks/login.yaml`]);
     expect(changes.truncated).toBe(true);
-  });
-});
-
-describe('committedPathsOf', () => {
-  const dirty = (paths: readonly string[], truncated?: true) => ({
-    invocationId: 'i',
-    recordedAt: '2026-11-25T12:00:00.000Z',
-    paths: paths.map((path) => ({ path, sha256: null })),
-    ...(truncated ? { truncated } : {}),
-  });
-
-  it('takes the paths the commit names', () => {
-    expect(
-      committedPathsOf({ documents: 1, files: 0, paths: ['a.md'] }, dirty(['a.md', 'b.md'])),
-    ).toEqual(['a.md']);
-  });
-
-  it("takes an older journal's dirty set when it holds as many paths as the commit counted", () => {
-    expect(committedPathsOf({ documents: 2, files: 0 }, dirty(['a.md', 'b.md']))).toEqual([
-      'a.md',
-      'b.md',
-    ]);
-  });
-
-  it('names none when the dirty set cannot be the commit', () => {
-    expect(committedPathsOf({ documents: 3, files: 0 }, dirty(['a.md', 'b.md']))).toBeUndefined();
-    expect(
-      committedPathsOf({ documents: 2, files: 0 }, dirty(['a.md', 'b.md'], true)),
-    ).toBeUndefined();
-    expect(committedPathsOf(undefined, dirty(['a.md']))).toBeUndefined();
   });
 });

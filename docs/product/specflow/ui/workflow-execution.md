@@ -110,9 +110,14 @@ In reading order:
    committed · 05f9d80", from the history read, when an agent's attempt committed). A hand-off that
    finished as expected keeps its feedback behind "Show feedback". A hand-off the next attempt must
    act on (a `fail` result such as a review that requested changes, or a return) is marked in the
-   attention tone and shows its feedback open, in an attention note; long feedback opens with its
-   first paragraph and "Show the full feedback" (owner, 2026-11-25: Now says what happens now, the
-   hand-off is the context). The Now of a terminal run shows no hand-off.
+   attention tone and shows its feedback open. Open, the feedback is a short preview of a few lines,
+   rendered by the shared Markdown renderer (as messages and documentation), and **Open full
+   feedback** opens the work history at the attempt that left it, its feedback open (owner,
+   2026-11-26: two levels, never arbitrarily long text in Overview). Feedback the preview shows
+   whole has neither the fade nor Open full feedback. A return's feedback names no attempt: Open
+   full feedback opens the history at its top. Feedback no history holds (the agent's result
+   waiting for confirmation) is shown whole in a bounded box that scrolls. "Hide feedback" closes it. The Now of a terminal run
+   shows no hand-off.
 7. **The main action**, with at most one button-styled secondary, for the Specification and the Task
    alike (one rule, `nowActionPlan`). Finish step is the main action while some result can be taken.
    When every result waits for an unmet gate whose document exists, opening it is the main action
@@ -235,8 +240,17 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
   attention label only. An entry marked "Created earlier in
   the process" (a process artifact) is **Awaited** while missing: neutral, no warning. Marking the Task's own document as a required
   artifact is refused and explained in the dialog: what the Task produces is an exit gate, not context.
-- **Depends on.** Rows with the dependency's state; the add checklist disables existing dependencies
-  and cycles with their reason. After the first start dependencies are fixed (a note, no add action).
+- **Depends on.** Rows with the dependency's state. **Add dependencies** (owner, 2026-11-26) names
+  each Task by its title, never its id: **Available tasks · N** first; the Tasks that cannot be
+  added (already a dependency, shown checked; a cycle, "Depends on this task already; adding it
+  would create a cycle"; cancelled; broken) in a collapsed **Unavailable tasks · N** group, each with
+  its reason. With no Task to add the available group says "No task can be added now." A list longer
+  than a Select's (8) has a search that filters both groups. The confirm names the count ("Add 2
+  dependencies"). After the first start dependencies are fixed (a note, no add action).
+- **One picker.** Add dependencies, New task's Depends on, and Add context's Specification and
+  project documents use the same picker (the available items, then the collapsed unavailable ones
+  with their reason, a search over a long list); Add context's confirm names the count too ("Add 2
+  documents to context").
 - **Edit details** changes Title and Summary; the Task Type is read-only with the remove-and-recreate
   hint. A revision conflict shows "Not saved: T-02 changed since you opened it" with **Copy my
   changes** and **Load the latest version**, edits kept; section edits that meet a newer revision show
@@ -383,6 +397,23 @@ the Engine's projection only (the step's agent option, the attempt, the position
 it never decides from a step id which agent runs. User copy says "the agent stopped", never "turn",
 "claim" or "invocation", and the explanations of states are plain Engine data, never written by an
 AI.
+
+### Naming the agent
+
+Every screen names an agent the same way, "Claude · Opus 5.5", through one formatter: the Now block
+(its position line, Last hand-off and the result waiting for the owner), the Activity history and
+the Task history, the Run with agent dialog and the Sessions screens. The name comes from one
+source order: **what the attempt or its Session actually ran first, the catalogue after it.**
+
+- The provider: the Session's own title, else the provider's id made readable (`claude` is
+  "Claude").
+- The model: the Session's own title of the model it ran, else the provider catalogue's title of
+  the model id the attempt recorded (the attempt's own record, else its actor's, so the history and
+  the Now block name one attempt alike), else that id.
+
+The Run with agent dialog has no Session yet: it names the catalogue's choice, and the recorded ids
+when the catalogue cannot be read. The Sessions screens name a Session by the titles the Runtime
+resolved for it, else its ids.
 
 ### Start step and Run with agent
 
@@ -573,7 +604,7 @@ The attempt is finished and committed before the owner decides.
 
 - "Waiting for your confirmation · the agent finished <time> · <Session>"; under the step's purpose
   the agent's result in the Last hand-off component, labelled "The agent's result" (its result,
-  "<provider> · <model> · <time>", what its commit holds, its feedback open in an info note: the
+  "<provider> · <model> · <time>", what its commit holds, its feedback open in a bounded box (info tone): the
   owner decides on it), then an info note with what Confirm applies ("Confirming approves the 5 draft tasks
   (t-01 to t-05) and moves to <next>.", **See Tasks**; "records the agent's decisions on N tasks"
   when it proposes decisions on Tasks; "completes the workflow" or "ends the workflow as abandoned"
@@ -646,8 +677,8 @@ The attempt is finished and committed before the owner decides.
 - An attempt reads, in order: its time, "Today, 12:35 – 12:40 PM · Attempt 1" (in the Activity
   history the day is the group heading instead): the elapsed range only, never a duration, because
   the range holds interruptions and waits (a rate limit, the owner's reply) the data cannot tell
-  from working time; the agent with its provider's mark, "Claude · Opus 5.5" (the same formatter as
-  Now's Last hand-off: the provider's short name and the model by its presentation title), on one
+  from working time; the agent with its provider's mark, "Claude · Opus 5.5" (the same formatter and
+  source order as Now's Last hand-off, see "Naming the agent"), on one
   line that never wraps, with **Open session** at the end of the same line (the Session is not named by its title: a Session
   continued from an earlier step keeps that step's title, "Gather requirements · attempt 1", which
   would misname this step); what it changed as compact rows, collapsed by default, each only when it
@@ -657,7 +688,8 @@ The attempt is finished and committed before the owner decides.
   tasks"); then its commit as one row, "Committed · cac3c46". A failed commit shows the Now block's
   note with **Retry commit**; work an attempt that ended without its own result left in the
   checkout reads "Kept in the checkout, not committed". **View feedback** shows the feedback its
-  result or return left, when there is any. SpecFlow's own records (execution state, Task resource
+  result or return left, when there is any, whole, in the same feedback component as Now's hand-off
+  (Markdown, at the size of the entry's other lines; the Task history's entries too). SpecFlow's own records (execution state, Task resource
   files, the manifest) are never listed. In the Task history the attempt sits inside the ordinary
   entry (step, result line) and says how it ended when the entry's result does not ("Taken over by
   <person>", "Returned to <step>", "Abandoned", "The agent is working on it"; "The agent stopped
@@ -678,11 +710,11 @@ The attempt is finished and committed before the owner decides.
   line and the lines above. Three levels: the entry by default; the rows open to the files and
   Tasks; the full feedback and, through Open session, the Session's transcript on request. When
   older attempts are cut off it says "Older attempts are not shown."
-- What an attempt changed is listed on every entry that changed anything: from the paths its commit
-  recorded, and, for a journal written before commits recorded their paths, from its last Turn's
-  dirty set when that set holds exactly as many paths as the commit counted (it is then the set the
-  commit took). Otherwise nothing is listed rather than a guess; the history read starts no Git
-  process, so it never reads a commit back from Git.
+- What an attempt changed is listed on every entry that changed anything, from the paths its commit
+  recorded. A commit that did not record its paths lists none: the checkout's dirty set holds the
+  owner's and other attempts' files too, so it is never taken for the commit, and nothing is listed
+  rather than a guess. The history read starts no Git process, so it never reads a commit back from
+  Git.
 
 ### Close: agent work whose commit failed
 

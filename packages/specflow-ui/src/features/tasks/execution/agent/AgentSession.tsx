@@ -10,6 +10,7 @@ import {
   SessionProviderIcon,
   type StartCatalogue,
 } from '../../../sessions';
+import { agentDisplayName } from '../presentation';
 
 /** How a fresh Session's agent is shown: the Runtime's catalogue, or why there is none. */
 export type AgentCatalogue =
@@ -169,7 +170,8 @@ export function AgentSession({
 
   const ready = catalogue.status === 'ready' ? catalogue : undefined;
   const provider = ready?.providers.find((candidate) => candidate.providerId === choice.providerId);
-  const agentLine = [launch?.provider, launch?.model].filter(Boolean).join(' · ');
+  // The catalogue could not be read: the ids as recorded, through the shared formatter.
+  const agentLine = agentDisplayName({ provider: launch?.provider, model: launch?.model });
 
   return (
     <div className="grid gap-3">

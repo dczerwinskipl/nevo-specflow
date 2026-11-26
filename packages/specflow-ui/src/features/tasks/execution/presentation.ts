@@ -54,11 +54,41 @@ export function actorLabel(
     return personLabel(t, actor.details.actorId, viewer);
   }
 
-  const model = modelTitle
-    ? modelTitle(actor.details.provider, actor.details.model)
-    : actor.details.model;
+  return agentDisplayName({
+    provider: actor.details.provider,
+    model: actor.details.model,
+    catalogue: modelTitle,
+  });
+}
 
-  return [providerFallbackName(actor.details.provider), model].filter(Boolean).join(' · ');
+/**
+ * An agent as every screen names it, "Claude · Opus 5.5": the one formatter of the Now block, the
+ * work history, the Run with agent dialog and the Task history. One name-source order
+ * (workflow-execution.md, "Naming the agent"): what the attempt or its Session actually ran comes
+ * first, the catalogue after it.
+ *
+ * - The provider: the Session's own title (`providerTitle`), else its id made readable (`claude`
+ *   is "Claude").
+ * - The model: the Session's own title of the model it ran (`modelTitle`), else the provider
+ *   catalogue's title of the recorded model id (`catalogue`), else that id.
+ */
+export function agentDisplayName(agent: {
+  readonly provider: string | undefined;
+  readonly providerTitle?: string | undefined;
+  /** The model id the attempt (or its actor) recorded. */
+  readonly model?: string | undefined;
+  /** The title of the model the Session ran, as the Runtime names it. */
+  readonly modelTitle?: string | undefined;
+  readonly catalogue?: ModelTitle | undefined;
+}): string {
+  const provider =
+    agent.providerTitle ?? (agent.provider ? providerFallbackName(agent.provider) : undefined);
+  const model =
+    agent.modelTitle ??
+    (agent.catalogue ? agent.catalogue(agent.provider, agent.model) : undefined) ??
+    agent.model;
+
+  return [provider, model].filter(Boolean).join(' · ');
 }
 
 /** `needs-changes` -> `Needs changes`: the fallback for an id that has no label. */

@@ -1,4 +1,4 @@
-import { useSpecificationWorkflowTimeline } from '../../../tasks';
+import { useSpecificationWorkflowTimeline, type AttemptRef } from '../../../tasks';
 import { ActivityHistory, type ActivityHistoryProps } from './ActivityHistory';
 
 /**
@@ -7,16 +7,21 @@ import { ActivityHistory, type ActivityHistoryProps } from './ActivityHistory';
  */
 export function SpecificationActivityHistory({
   specId,
+  feedback,
   onOpenDoc,
   ...props
-}: Omit<ActivityHistoryProps, 'workflow' | 'showHeading'> & { readonly specId: string }) {
+}: Omit<ActivityHistoryProps, 'workflow' | 'showHeading'> & {
+  readonly specId: string;
+  /** The attempt whose feedback the reader opened ("Open full feedback"). */
+  readonly feedback?: AttemptRef | undefined;
+}) {
   const workflow = useSpecificationWorkflowTimeline(specId, onOpenDoc);
 
   return (
     <ActivityHistory
       {...props}
       showHeading={false}
-      workflow={{ ...workflow, specId }}
+      workflow={{ ...workflow, specId, feedback }}
       {...(onOpenDoc ? { onOpenDoc } : {})}
     />
   );

@@ -83,7 +83,7 @@ function addSpecificationDocument(title: string) {
   fireEvent.click(screen.getByRole('menuitem', { name: 'Specification document' }));
   const dialog = screen.getByRole('dialog');
   fireEvent.click(within(dialog).getByRole('checkbox', { name: title }));
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Add to context' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Add 1 document to context' }));
 
   return dialog;
 }

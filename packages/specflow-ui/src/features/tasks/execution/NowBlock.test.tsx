@@ -14,8 +14,12 @@ import { specificationActionsKey } from '../read-model/specificationActions';
 import type { WorkflowExecutionApi } from './api';
 import { SPEC, dominik, withExits } from './projections.stories-support';
 import { WorkflowNow } from './WorkflowNow';
+import type { FeedbackSource, NowLinks } from './StartBlockerLines';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const never = () => new Promise<never>(() => undefined);
 
@@ -99,16 +103,18 @@ function breakdown(attempt = 1): WorkflowActionProjection {
 function OverviewNow({
   projection,
   onNewTask,
+  links = {},
 }: {
   readonly projection: WorkflowActionProjection;
   readonly onNewTask?: () => void;
+  readonly links?: NowLinks;
 }) {
   return (
     <WorkflowNow
       subject={{ specId: SPEC }}
       projection={projection}
       headingId="now"
-      links={{}}
+      links={links}
       artifactOptions={[]}
       specification={{ specId: SPEC, ...(onNewTask ? { onNewTask } : {}) }}
     />
@@ -116,22 +122,36 @@ function OverviewNow({
 }
 
 describe('the Specification Now block', () => {
-  it('says a review requested changes, with the feedback summary, on the rework attempt', () => {
-    const feedback =
-      'Two findings need changes: the detached HEAD case and the skill hold.\n\n' +
-      '1. CONFLICT, detached HEAD: the edge case says install writes and notes it did not commit.';
+  const changesRequested = (feedback: string): WorkflowActionProjection => ({
+    ...breakdown(2),
+    handoff: {
+      kind: 'transition',
+      from: { step: 'review', attempt: 1, title: 'Review the breakdown', actor: dominik },
+      transition: 'changes-requested',
+      label: 'Changes requested',
+      result: 'fail',
+      feedback,
+      artifacts: [],
+    },
+  });
+  const findings =
+    'Two findings need changes: the detached HEAD case and the skill hold.\n\n' +
+    '1. CONFLICT, detached HEAD: the edge case says install writes and notes it did not commit.';
+
+  it('says a review requested changes: a preview of its feedback and Open full feedback', () => {
+    // jsdom lays nothing out: the feedback is taller than the preview's few lines.
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(400);
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(96);
+    const openFull = vi.fn();
+    const sources: FeedbackSource[] = [];
     renderNow(
       <OverviewNow
-        projection={{
-          ...breakdown(2),
-          handoff: {
-            kind: 'transition',
-            from: { step: 'review', attempt: 1, title: 'Review the breakdown', actor: dominik },
-            transition: 'changes-requested',
-            label: 'Changes requested',
-            result: 'fail',
-            feedback,
-            artifacts: [],
+        projection={changesRequested(findings)}
+        links={{
+          feedback: (source) => {
+            sources.push(source);
+
+            return openFull;
           },
         }}
       />,
@@ -139,10 +159,25 @@ describe('the Specification Now block', () => {
 
     const handoff = document.querySelector<HTMLElement>('[data-now-handoff]')!;
     expect(within(handoff).getByText('Changes requested')).toBeTruthy();
-    expect(within(handoff).getByText(/Two findings need changes/)).toBeTruthy();
-    expect(within(handoff).queryByText(/CONFLICT/)).toBeNull();
-    fireEvent.click(within(handoff).getByRole('button', { name: 'Show the full feedback' }));
-    expect(within(handoff).getByText(/CONFLICT, detached HEAD/)).toBeTruthy();
+    // Open and in the attention tone: the next attempt acts on it. A preview, never the whole text.
+    const panel = handoff.querySelector<HTMLElement>('[data-feedback-mode="preview"]')!;
+    expect(panel.dataset.feedbackTone).toBe('attention');
+    expect(within(panel).getByText(/Two findings need changes/)).toBeTruthy();
+    expect(handoff.querySelector('[data-feedback-preview]')?.className).toContain('max-h-');
+    fireEvent.click(within(handoff).getByRole('button', { name: 'Open full feedback' }));
+    expect(openFull).toHaveBeenCalledOnce();
+    expect(sources.at(-1)).toEqual({ step: 'review', attempt: 1 });
+    // Rendered as Markdown: the numbered finding is a list item.
+    expect(panel.querySelector('ol li')?.textContent).toMatch(/CONFLICT, detached HEAD/);
+  });
+
+  it('keeps feedback no detail view holds whole, in a bounded box', () => {
+    renderNow(<OverviewNow projection={changesRequested(findings)} />);
+
+    const handoff = document.querySelector<HTMLElement>('[data-now-handoff]')!;
+    expect(within(handoff).queryByRole('button', { name: 'Open full feedback' })).toBeNull();
+    const box = within(handoff).getByRole('group', { name: 'Feedback' });
+    expect(within(box).getByText(/CONFLICT, detached HEAD/)).toBeTruthy();
   });
 
   it('says the last hand-off, its feedback collapsed when there is nothing to act on', () => {

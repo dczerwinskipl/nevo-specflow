@@ -17,6 +17,7 @@ import {
 } from './AgentAttemptHistory';
 import { useModelTitle } from './modelTitles';
 import type { WorkflowTimelineEntry } from './workflowTimeline';
+import type { AttemptRef } from '../StartBlockerLines';
 
 /** The feedback an attempt's result or return left, if any. */
 function feedbackOf(item: Extract<HistoryItem, { kind: 'attempt' }>): string | undefined {
@@ -165,23 +166,32 @@ function MetaLine({ children }: { readonly children: string }) {
  * history"), in the grammar of the agent attempts: marked by how it ended, titled by its step, the
  * outcome line, then when, who and which attempt. An agent attempt adds its agent with Open session,
  * what it changed and its commit; the owner's own attempt, their Confirm or Reject and their return
- * say who acted in the time line, as the Task history does. Feedback is behind View feedback.
+ * say who acted in the time line, as the Task history does. Feedback is behind View feedback, open
+ * for the attempt the reader came from "Open full feedback" for (`feedback`).
  */
 export function WorkflowHistoryEntry({
   entry,
   items,
   specId,
   openDocument,
+  feedback,
 }: {
   readonly entry: WorkflowTimelineEntry;
   /** The whole history: an attempt that took another over names who did. */
   readonly items: readonly HistoryItem[];
   readonly specId: string;
   readonly openDocument?: ((path: string) => boolean) | undefined;
+  /** The attempt whose feedback the reader opened from the Now block. */
+  readonly feedback?: AttemptRef | undefined;
 }) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
   const modelTitle = useModelTitle(specId);
+  // The attempt's result left the feedback: its own entry opens it, never its later Confirm.
+  const feedbackOpen =
+    (entry.kind === 'agent-attempt' || entry.kind === 'attempt') &&
+    entry.item.step === feedback?.step &&
+    entry.item.attempt === feedback.attempt;
 
   switch (entry.kind) {
     case 'agent-attempt': {
@@ -203,6 +213,7 @@ export function WorkflowHistoryEntry({
             items={items}
             subject={{ specId }}
             feedback={feedbackOf(item)}
+            feedbackOpen={feedbackOpen}
             showOutcome={false}
             {...(openDocument ? { openDocument } : {})}
           />
@@ -233,7 +244,11 @@ export function WorkflowHistoryEntry({
               actorLabel(t, item.actor, viewer, modelTitle),
             )}
           </MetaLine>
-          <HistoryFeedback feedback={feedbackOf(item)} attention={outcome.tone === 'attention'} />
+          <HistoryFeedback
+            feedback={feedbackOf(item)}
+            attention={outcome.tone === 'attention'}
+            open={feedbackOpen}
+          />
         </Entry>
       );
     }

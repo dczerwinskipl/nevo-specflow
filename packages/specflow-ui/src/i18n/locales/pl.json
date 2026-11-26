@@ -2366,7 +2366,7 @@
       "artifactLabel": "Powstaje wcześniej w procesie (na przykład w innym zadaniu)",
       "artifactDescription": "Potrzebny, zanim to zadanie wystartuje. Może jeszcze nie istnieć; do tego czasu jest oczekiwany, bez ostrzeżenia. To, co tworzy to zadanie, nie jest kontekstem: to warunek wyjścia kroku, który to tworzy.",
       "specificationLegend": "Dokumenty specyfikacji {{spec}}",
-      "alreadyInContext": "już w kontekście",
+      "alreadyInContext": "Już w kontekście",
       "documentIdLabel": "Identyfikator dokumentu",
       "documentIdDescription": "Identyfikator, pod którym zostanie zarejestrowany. Do tego czasu jest oczekiwany.",
       "searchLabel": "Szukaj w dokumentacji projektu",
@@ -2389,7 +2389,13 @@
       "ownArtifactBody": "Kontekst wymienia to, czego zadanie potrzebuje przed startem. {{ref}} powstaje w tym zadaniu, więc należy do warunku wyjścia kroku, który go tworzy, na przykład „istnieje dokument z wnioskami” przed zakończeniem.",
       "notFoundOptional": "Nie znaleziono: {{ref}} przeniesiono lub usunięto. Opcjonalny, więc następny krok go pominie.",
       "requiredShort": "wymagany",
-      "optionalShort": "opcjonalny"
+      "optionalShort": "opcjonalny",
+      "confirmCount_one": "Dodaj {{count}} dokument do kontekstu",
+      "confirmCount_few": "Dodaj {{count}} dokumenty do kontekstu",
+      "confirmCount_many": "Dodaj {{count}} dokumentów do kontekstu",
+      "confirmCount_other": "Dodaj {{count}} dokumentu do kontekstu",
+      "noneAvailable": "Wszystkie dokumenty są już w kontekście.",
+      "resultsInContext": "Wszystkie wyniki są już w kontekście."
     },
     "dependencies": {
       "none": "Brak zależności: zadanie może wystartować zaraz po zatwierdzeniu.",
@@ -2397,18 +2403,22 @@
       "fixed": "Zależności są ustalone od pierwszego startu zadania.",
       "remove": "Usuń zależność",
       "actionsFor": "Akcje dla {{id}}",
-      "dialogTitle": "Dodaj zależności do {{id}}",
-      "dialogDescription": "{{id}} będzie gotowe dopiero, gdy te zadania zostaną ukończone.",
-      "existing": "Już jest zależnością",
-      "confirm": "Dodaj zależności",
-      "legend": "Zadania",
+      "dialogTitle": "Dodaj zależności",
+      "dialogDescription": "Wybierz zadania, które muszą zostać ukończone, zanim „{{title}}” będzie mogło wystartować.",
       "noCandidates": "W tej specyfikacji nie ma innych zadań.",
       "missingTask": "{{id}} nie jest już zadaniem tej specyfikacji.",
       "unavailable": {
-        "would-create-cycle": "{{other}} już zależy od {{id}}; dodanie utworzyłoby cykl",
+        "dependency": "Już jest zależnością",
+        "would-create-cycle": "Już zależy od tego zadania; dodanie utworzyłoby cykl",
         "cancelled": "Anulowane; nigdy nie zostanie ukończone",
         "broken": "Uszkodzone; najpierw przywróć jego pliki"
-      }
+      },
+      "confirmNone": "Dodaj zależności",
+      "confirm_one": "Dodaj {{count}} zależność",
+      "confirm_few": "Dodaj {{count}} zależności",
+      "confirm_many": "Dodaj {{count}} zależności",
+      "confirm_other": "Dodaj {{count}} zależności",
+      "noneAvailable": "Teraz nie można dodać żadnego zadania."
     },
     "refusal": {
       "generic": "Zmiana nie została zapisana. Spróbuj ponownie.",
@@ -2427,6 +2437,14 @@
       "documentPathInvalid": "Ta nazwa pliku jest niedozwolona.",
       "documentRevisionConflict": "Dokument zmienił się od otwarcia. Odśwież i spróbuj ponownie.",
       "documentProtected": "task.md jest głównym dokumentem zadania: nie można zmienić jego nazwy ani go usunąć."
+    },
+    "picker": {
+      "availableTasks": "Dostępne zadania",
+      "unavailableTasks": "Niedostępne zadania",
+      "unavailableDocuments": "Niedostępne dokumenty",
+      "searchTasks": "Szukaj zadań",
+      "searchDocuments": "Szukaj dokumentów",
+      "noMatches": "Nic nie pasuje do wyszukiwania."
     }
   },
   "workflowExecution": {
@@ -2611,11 +2629,7 @@
       "youActTakenOverCanHand": "Przejąłeś ten krok od agenta, więc teraz należy do Ciebie: dokończ pracę sam i zakończ krok albo przekaż go z powrotem agentowi w nowej próbie.",
       "handUnavailable": "Przekazanie agentowi nie jest teraz możliwe: {{why}}.",
       "personActs": "Ten krok wykonuje {{actor}}; możesz śledzić go tutaj.",
-      "feedbackAll": "Pokaż wszystkie uwagi",
-      "feedbackLess": "Pokaż mniej",
       "handoffDetails": "{{outcome}}: otwórz w historii pracy",
-      "feedbackShow": "Pokaż uwagi",
-      "feedbackHide": "Ukryj uwagi",
       "handoffCommitted": "Zatwierdzono: {{what}}",
       "handoffCommittedAll": "Praca zatwierdzona"
     },
@@ -3215,13 +3229,18 @@
       },
       "committed": "Zacommitowane",
       "notCommitted": "Zostawione w kopii roboczej, bez commita",
-      "viewFeedback": "Pokaż uwagi",
-      "hideFeedback": "Ukryj uwagi",
       "day": {
         "today": "Dziś",
         "yesterday": "Wczoraj"
       },
       "openSession": "Otwórz sesję"
+    },
+    "feedback": {
+      "show": "Pokaż uwagi",
+      "hide": "Ukryj uwagi",
+      "view": "Pokaż uwagi",
+      "openFull": "Otwórz pełne uwagi",
+      "label": "Uwagi"
     }
   },
   "taskOverview": {

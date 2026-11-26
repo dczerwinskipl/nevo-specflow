@@ -100,6 +100,8 @@ describe('message catalogues', () => {
       'documents.state.withContent',
       // "{{action}} · {{task}}": a list row's attention action on a Task.
       'specifications.summary.attentionOnTask',
+      // "{{question}} → {{answer}}": a question and its answer in the work inspector.
+      'managedSession.workInspector.question.answer',
     ]);
     const identical = plKeys.filter(
       (key) =>

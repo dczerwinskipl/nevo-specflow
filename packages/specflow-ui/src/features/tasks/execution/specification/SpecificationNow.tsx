@@ -7,6 +7,7 @@ import type { TaskProgressData } from '../../../specs/read-model';
 import { terminalSummary } from '../../overview/progress';
 import { TaskProgress } from '../progress/TaskProgress';
 import { WorkflowNow } from '../WorkflowNow';
+import type { AttemptRef } from '../StartBlockerLines';
 import { documentGateFix, stepPurpose } from '../presentation';
 import {
   SPECIFICATION_NOW_HEADING,
@@ -32,6 +33,7 @@ export function SpecificationNow({
   onOpenTask,
   onOpenDocument,
   onOpenHistory,
+  onOpenFeedback,
   documentName,
 }: {
   /** The Specification's documents, offered as finish artifacts. */
@@ -48,6 +50,8 @@ export function SpecificationNow({
   readonly onOpenTask: (taskId: string) => void;
   readonly onOpenDocument: (documentId: string) => void;
   readonly onOpenHistory: () => void;
+  /** Opens the Activity history at an attempt, its feedback open. */
+  readonly onOpenFeedback: (attempt: AttemptRef) => void;
 }) {
   const { t } = useTranslation();
   const workflow = useSpecificationWorkflow();
@@ -143,7 +147,13 @@ export function SpecificationNow({
       subject={{ specId: workflow.specId }}
       projection={projection}
       headingId={SPECIFICATION_NOW_HEADING}
-      links={{ tasks: () => workflow.openTasks(), attempt: onOpenHistory }}
+      links={{
+        tasks: () => workflow.openTasks(),
+        attempt: onOpenHistory,
+        // The Activity history holds every attempt with its feedback, a person's too; a return names
+        // no attempt, so the history opens at its top, as the Task's does.
+        feedback: (source) => (source ? () => onOpenFeedback(source) : onOpenHistory),
+      }}
       primaryAction={
         terminal && projection.specification?.exit ? (
           projection.specification.exit.close.kind === 'unavailable' ? (

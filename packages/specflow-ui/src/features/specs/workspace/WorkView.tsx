@@ -149,6 +149,7 @@ export function WorkView({ specId, data }: WorkViewProps) {
         onOpenTask={(taskId) => runtime.openTask(taskId)}
         onOpenDocument={(documentId) => runtime.openDoc(documentId)}
         onOpenHistory={runtime.openHistory}
+        onOpenFeedback={runtime.openFeedback}
         fallback={preparationShown ? <PreparationSection startSession={data.startSession} /> : null}
       />
     </div>

@@ -865,7 +865,8 @@ function controlCenterFixture(scenario: ControlCenterScenario): FixtureProjectio
 
 /**
  * The Specification's workflow history as far as the Now reads it: the agent's attempt that made the
- * last hand-off, with the commit it made when it finished (its documents and the commit id).
+ * last hand-off, with its result and feedback and the commit it made when it finished (its documents
+ * and the commit id).
  */
 export function controlCenterHistory(scenario: ControlCenterScenario) {
   const handoff = controlCenterProjection(scenario).handoff;
@@ -883,6 +884,19 @@ export function controlCenterHistory(scenario: ControlCenterScenario) {
             attempt: from.attempt,
             startedAt: '2026-11-14T00:40:00Z',
             actor: claude,
+            // The result the hand-off reads, with its feedback (Open full feedback lands on it).
+            ...(handoff?.kind === 'transition'
+              ? {
+                  outcome: {
+                    kind: 'transition' as const,
+                    transition: handoff.transition,
+                    artifacts: [],
+                    ...(handoff.result ? { result: handoff.result } : {}),
+                    ...(handoff.feedback ? { feedback: handoff.feedback } : {}),
+                  },
+                  ...(handoff.label ? { transitionLabel: handoff.label } : {}),
+                }
+              : {}),
             agent: {
               attemptId: 'attempt-review-breakdown-1',
               provider: 'claude',

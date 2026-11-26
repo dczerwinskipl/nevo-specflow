@@ -14,6 +14,7 @@ import type { DependencyTask } from './dependencies/dependencyModel';
 import { TaskDocumentsSection } from './documents/TaskDocumentsSection';
 import { RefusalAlert } from './RefusalAlert';
 import { TaskNow, type LifecyclePrimary } from '../execution/TaskNow';
+import type { AttemptRef } from '../execution/StartBlockerLines';
 
 export interface TaskAuthoringViewProps {
   readonly specId: string;
@@ -35,6 +36,8 @@ export interface TaskAuthoringViewProps {
   readonly onOpenDocument: (documentId: string) => void;
   /** Opens the Task history (also offered in Now's ⋯ menu). */
   readonly onOpenHistory?: () => void;
+  /** Opens the Task history at an attempt, its feedback open. */
+  readonly onOpenFeedback?: (attempt: AttemptRef) => void;
   readonly onReload: () => void;
 }
 
@@ -60,6 +63,7 @@ export function TaskAuthoringView({
   onRemoveTask,
   onOpenDocument,
   onOpenHistory,
+  onOpenFeedback,
   onReload,
 }: TaskAuthoringViewProps) {
   const { t } = useTranslation();
@@ -176,6 +180,7 @@ export function TaskAuthoringView({
           {...(onRemoveTask ? { onRemoveTask } : {})}
           onOpenDocument={onOpenDocument}
           {...(onOpenHistory ? { onOpenHistory } : {})}
+          {...(onOpenFeedback ? { onOpenFeedback } : {})}
         />
       ) : null}
       <TaskDocumentsSection
@@ -204,6 +209,7 @@ export function TaskAuthoringView({
       <TaskDependenciesSection
         specId={specId}
         taskId={task.id}
+        taskTitle={task.title || task.id}
         revision={resource.revision}
         dependsOn={resource.dependsOn}
         tasks={otherTasks}

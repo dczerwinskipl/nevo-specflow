@@ -27,6 +27,7 @@ import { useTaskLifecycle } from '../authoring/lifecycle/useTaskLifecycle';
 import { TaskAuthoringView } from '../authoring/TaskAuthoringView';
 import { useTaskActions, useTaskDocumentTree } from '../authoring/useTaskAuthoring';
 import { FullTaskView } from './FullTaskView';
+import type { AttemptRef } from '../execution/StartBlockerLines';
 
 export interface ProjectTaskWorkspaceProps {
   readonly specId: string;
@@ -40,6 +41,8 @@ export interface ProjectTaskWorkspaceProps {
   readonly reload: () => Promise<FullTaskData | undefined>;
   /** Narrow: opens the Task history as a pushed page (the header's history toggle). */
   readonly onOpenHistory: () => void;
+  /** Opens the Task history at an attempt, its feedback open ("Open full feedback"). */
+  readonly onOpenFeedback: (attempt: AttemptRef) => void;
 }
 
 function versionOf(task: FullTaskData | undefined): TaskDetailsVersion | undefined {
@@ -84,6 +87,7 @@ function Workspace({
   onRetry,
   reload,
   onOpenHistory,
+  onOpenFeedback,
 }: ProjectTaskWorkspaceProps) {
   const { t } = useTranslation();
   const navigation = useSecondaryNavigation();
@@ -188,6 +192,7 @@ function Workspace({
                       : {})}
                     onOpenDocument={openDocument}
                     onOpenHistory={onOpenHistory}
+                    onOpenFeedback={onOpenFeedback}
                     onReload={() => void reload()}
                   />
                 </FullTaskView>

@@ -1,5 +1,4 @@
 import { useState, type ReactNode } from 'react';
-import type { TFunction } from 'i18next';
 import { useRouter } from '@tanstack/react-router';
 import { Trans, useTranslation } from 'react-i18next';
 import { CircleStop } from 'lucide-react';
@@ -14,9 +13,9 @@ import { useSpecificationWorkspace } from '../../../specs/read-model';
 import { SessionProviderIcon } from '../../../sessions';
 import type { WorkflowSubjectRef } from '../api';
 import {
-  actorLabel,
   formatWhen,
   humanizeId,
+  agentDisplayName,
   transitionLabel,
   type ModelTitle,
 } from '../presentation';
@@ -282,9 +281,27 @@ function ContinueRefused({
   );
 }
 
-/** Name of the agent behind a position's actor ({@link actorLabel}, as the history names it). */
-function agentName(t: TFunction, actor: WorkflowActor | undefined, modelTitle: ModelTitle): string {
-  return actor?.class === 'agent' ? actorLabel(t, actor, {}, modelTitle) : '';
+/**
+ * Name of the agent behind a position's actor, as the history's identity line says it
+ * ({@link agentDisplayName}): what its Session ran, else the catalogue's title of the model.
+ */
+function agentName(
+  actor: WorkflowActor | undefined,
+  catalogue: ModelTitle,
+  session: {
+    readonly providerTitle?: string | undefined;
+    readonly modelTitle?: string | undefined;
+  },
+): string {
+  return actor?.class === 'agent'
+    ? agentDisplayName({
+        provider: actor.details.provider,
+        providerTitle: session.providerTitle,
+        model: actor.details.model,
+        modelTitle: session.modelTitle,
+        catalogue,
+      })
+    : '';
 }
 
 /**
@@ -405,7 +422,17 @@ export function useAgentAttemptNow({
           <LastHandoff
             heading={t('workflowExecution.confirmation.resultHeading')}
             outcome={result}
-            meta={[agentName(t, attempt.actor, modelTitle), finished].filter(Boolean).join(' · ')}
+            meta={[
+              // The Session's own titles only when they are this attempt's Session.
+              agentName(
+                attempt.actor,
+                modelTitle,
+                sessionId === view?.sessionId ? sessionFacts : {},
+              ),
+              finished,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
             {...(proposal.feedback ? { feedback: proposal.feedback } : {})}
             {...(committedLine ? { commit: committedLine } : {})}
             tone="waiting"

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ControlCenterApp } from './ControlCenterApp.stories-support';
 
 const meta = {
@@ -48,7 +48,22 @@ export const Default: Story = {
       await within(block).findByText('4 documents committed · 05f9d80', {}, wait),
     ).toBeVisible();
     await expect(within(block).queryByText(/No gaps or conflicts/)).toBeNull();
-    await expect(within(block).getByRole('button', { name: 'Show feedback' })).toBeVisible();
+    // Show feedback: a preview of a few lines, the whole of it in the Activity history.
+    await userEvent.click(within(block).getByRole('button', { name: 'Show feedback' }));
+    await expect(within(block).getByText(/No gaps or conflicts/)).toBeVisible();
+    await userEvent.click(within(block).getByRole('button', { name: 'Open full feedback' }));
+    // The history opens at the attempt that left it, its feedback open.
+    const entry = await waitFor(() => {
+      const found = document.body.querySelector<HTMLElement>(
+        '[data-attempt-entry]:has([data-feedback-mode="detail"])',
+      );
+      if (!found) {
+        throw new Error('the attempt with its feedback open is not shown yet');
+      }
+
+      return found;
+    }, wait);
+    await expect(within(entry).getByText(/Coverage: every acceptance criterion/)).toBeVisible();
   },
 };
 

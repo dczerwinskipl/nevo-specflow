@@ -32,6 +32,8 @@ export interface AgentActor {
   readonly details: {
     readonly archetype?: string;
     readonly provider: string;
+    /** The provider's title (the tool, "Claude Code") in the catalogue when the attempt started. */
+    readonly providerTitle?: string;
     readonly model?: string;
     /** The model's title in the provider's catalogue when the attempt started, for people. */
     readonly modelTitle?: string;

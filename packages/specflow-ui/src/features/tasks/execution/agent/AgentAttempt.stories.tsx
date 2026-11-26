@@ -460,13 +460,21 @@ function timelineOf(aside: HTMLElement): string[] {
     });
 }
 
-/** Neither the agent's name nor Open session wraps: one line each. */
+/**
+ * Neither the agent's name nor Open session wraps: one line each. The name is "Claude Code · Opus
+ * 5.5" where it fits, else the model alone beside the mark; never cut, always whole for assistive
+ * technology.
+ */
 async function expectActorLinesOnOneLine(aside: HTMLElement) {
   for (const line of Array.from(aside.querySelectorAll<HTMLElement>('[data-attempt-actor]'))) {
-    const name = line.querySelector<HTMLElement>('span.truncate')!;
-    // The provider by its short name, the model by the Session's title ("Claude Code" is not used).
-    await expect(name.textContent).toMatch(/^Claude · Opus 5.5$/);
-    await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
+    const name = line.querySelector<HTMLElement>('[data-agent-name]')!;
+    await expect(name).toHaveAccessibleName('Claude Code · Opus 5.5');
+    const model = name.querySelector<HTMLElement>('[data-agent-model]')!;
+    await expect(model.textContent).toBe('Opus 5.5');
+    await expect(model.scrollWidth).toBeLessThanOrEqual(model.clientWidth);
+    await expect(model.getBoundingClientRect().top).toBeLessThan(
+      name.getBoundingClientRect().top + 2,
+    );
     await expect(line.getBoundingClientRect().height).toBeLessThan(32);
   }
 }
@@ -540,7 +548,7 @@ export const SpecificationActivityHistoryExpanded: Story = {
  * nevo-2's history as the dogfood Runtime records it: seven agent attempts, the owner's Finish after
  * the take over and their Confirm of the second review, newest first in one list ending with
  * "Specification created"; no "Session started" rows (every Session is an attempt's). Every
- * committed attempt names what it changed; the agent reads "Claude · Opus 5.5" on one line, at
+ * committed attempt names what it changed; the agent reads "Claude Code · Opus 5.5" on one line (the model alone beside the mark where it does not fit), at
  * 375 px and beside Overview.
  */
 export const Nevo2ActivityHistory: Story = {

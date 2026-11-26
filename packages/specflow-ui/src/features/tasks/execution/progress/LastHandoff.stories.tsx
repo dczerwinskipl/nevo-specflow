@@ -32,7 +32,7 @@ const meta = {
   args: {
     heading: 'Last hand-off',
     outcome: 'Breakdown approved',
-    meta: 'Review the breakdown · Claude · Opus 5.5 · Yesterday 5:09 PM',
+    meta: 'Review the breakdown · Claude Code · Opus 5.5 · Yesterday 5:09 PM',
     commit: '3 documents committed · 3ca401a',
     feedback: approved,
     tone: 'done',
@@ -123,7 +123,7 @@ export const LongTitles: Story = {
   args: {
     outcome:
       'Breakdown approved after the second review round with notes for the implementers of every task',
-    meta: 'Review the breakdown against the specification, the solution and the acceptance criteria · Claude · Opus 5.5 · Yesterday 5:09 PM',
+    meta: 'Review the breakdown against the specification, the solution and the acceptance criteria · Claude Code · Opus 5.5 · Yesterday 5:09 PM',
     commit: '14 documents and 32 files committed · 3ca401a',
   },
 };

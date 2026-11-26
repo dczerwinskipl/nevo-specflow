@@ -103,9 +103,10 @@ describe('the Specification Activity history', () => {
     // Who acted: the owner in the time line, the agent as Now names it.
     expect(screen.getAllByText(/ · dominikczerwinski · Attempt 2$/)).toHaveLength(2);
     expect(
-      Array.from(document.querySelectorAll('[data-attempt-actor] span.truncate')).map(
-        (node) => node.textContent,
+      Array.from(document.querySelectorAll('[data-attempt-actor] [data-agent-name]')).map((node) =>
+        node.getAttribute('aria-label'),
       ),
+      // No title recorded or listed for the tool here: its id made readable.
     ).toContain('Claude · Opus 5.5');
     // The elapsed range, never a duration.
     expect(document.body.textContent).not.toMatch(/\d h \d+ min| min ·/);

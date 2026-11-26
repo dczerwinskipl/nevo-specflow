@@ -22,7 +22,7 @@ describe('the attempt commit message', () => {
   it('names the subject, the step, the attempt and the Specification, with its trailers', () => {
     expect(attemptCommitMessage(journal('api'), 'Implement\nthe API', 'my-spec')).toEqual({
       subject: 'spec(api): Implement the API (attempt 3) by agent in my-spec',
-      body: 'Step implement, attempt 3, by agent claude (opus).',
+      body: 'Step implement, attempt 3, by agent claude · opus.',
       trailers: {
         'Nevo-Action': 'attempt-commit',
         'Nevo-Attempt': '2a1d7b63-7b54-4d66-8e4f-2c8b6e3a9d02',
@@ -33,16 +33,21 @@ describe('the attempt commit message', () => {
     });
   });
 
-  it('names the model by its title for people, and keeps its id in the trailer', () => {
+  it('names the tool and the model by their titles for people, and keeps the id in the trailer', () => {
     const titled = {
       ...journal(),
       actor: {
         class: 'agent',
-        details: { provider: 'claude', model: 'opus', modelTitle: 'Opus 5.5' },
+        details: {
+          provider: 'claude',
+          providerTitle: 'Claude Code',
+          model: 'opus',
+          modelTitle: 'Opus 5.5',
+        },
       },
     } as const;
     expect(attemptCommitMessage(titled, 'Implement', 'my-spec')).toMatchObject({
-      body: 'Step implement, attempt 3, by agent claude (Opus 5.5).',
+      body: 'Step implement, attempt 3, by agent Claude Code · Opus 5.5.',
       trailers: { 'Nevo-Model': 'opus' },
     });
   });
@@ -52,11 +57,11 @@ describe('the attempt commit message', () => {
     const title = 'T'.repeat(60);
     expect(attemptCommitMessage(journal(), 'Short', slug)).toMatchObject({
       subject: 'spec(specification): Short (attempt 3) by agent',
-      body: `Step implement, attempt 3, by agent claude (opus).\nSpecification: ${slug}`,
+      body: `Step implement, attempt 3, by agent claude · opus.\nSpecification: ${slug}`,
     });
     expect(attemptCommitMessage(journal(), title, 'my-spec')).toMatchObject({
       subject: 'spec(specification): attempt 3 by agent in my-spec',
-      body: `Step: ${title}\nStep implement, attempt 3, by agent claude (opus).`,
+      body: `Step: ${title}\nStep implement, attempt 3, by agent claude · opus.`,
     });
     expect(attemptCommitMessage(journal(), title, slug).subject).toBe(
       'spec(specification): attempt 3 by agent',

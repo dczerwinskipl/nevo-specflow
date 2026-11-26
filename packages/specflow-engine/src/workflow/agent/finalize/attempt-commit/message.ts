@@ -35,9 +35,15 @@ export function attemptCommitMessage(
     candidates.find((candidate) => codePoints(candidate.subject) <= COMMIT_SUBJECT_MAX) ??
     candidates.at(-1)!;
   const actor = journal.proposal?.actor ?? journal.actor;
-  // People read the model's title; its id stays in the trailer.
+  // People read the tool and the model by their titles, "Claude Code · Opus 5.5", as the UI names
+  // the agent; the model's id stays in the trailer.
   const model = actor.details.modelTitle ?? actor.details.model;
-  const agent = model ? `${actor.details.provider} (${oneLine(model)})` : actor.details.provider;
+  const agent = [
+    oneLine(actor.details.providerTitle ?? actor.details.provider),
+    model && oneLine(model),
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const body = [
     ...(chosen.title ? [] : [`Step: ${title}`]),
     `Step ${journal.step}, attempt ${String(journal.attempt)}, by agent ${agent}.`,

@@ -69,7 +69,7 @@ The conversation is a chat, not a debugging console.
   the Continue (`origin.ownerNote`), it follows as the owner's own message ("Your note for the
   agent"). A new attempt is a new brief with its attempt number. A Turn is never called an attempt, nor the other way round.
 - **Who answers.** One quiet line before the first agent output of each Turn names the executor,
-  "Claude · Opus 5.5" with the provider's mark (the Session's provider and model titles). No other
+  "Claude Code · Opus 5.5" with the provider's mark (the Session's provider and model titles). No other
   entry carries a visible speaker prefix; the entry kind is announced to assistive technology only.
 - **Work stages.** The agent's Commentary and the tool Work right after it, until its next
   Commentary, are one stage: the Commentary, then directly under it (a tighter gap than the

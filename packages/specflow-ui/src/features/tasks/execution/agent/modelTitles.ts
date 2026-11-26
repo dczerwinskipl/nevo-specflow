@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
-import type { AgentTitles } from '../presentation';
+import type { AgentCatalogue, AgentTitles } from '../presentation';
 
 /** The provider catalogue's title of a model; `undefined` when the catalogue does not list it. */
 export function catalogueModelTitle(
@@ -16,11 +16,11 @@ export function catalogueModelTitle(
 }
 
 /**
- * The provider's own title for a recorded model (`claude-opus-5-5` becomes "Opus 5.5"), read from
- * the Runtime's provider catalogue; the id itself while the catalogue is not read or does not list
- * it. The same catalogue the Run with agent dialog reads for the Specification.
+ * The Runtime's provider catalogue as titles: the tool's ("Claude Code") and a recorded model's
+ * (`claude-opus-5-5` is "Opus 5.5"); `undefined` for what it does not list or before it is read.
+ * The same catalogue the Run with agent dialog reads for the Specification.
  */
-export function useModelTitle(specId: string | undefined) {
+export function useAgentCatalogue(specId: string | undefined): AgentCatalogue {
   const { managedSessionsApi } = useAppServices();
   const catalogue = useQuery({
     queryKey: ['workflow', 'agent-providers', specId ?? null],
@@ -30,9 +30,12 @@ export function useModelTitle(specId: string | undefined) {
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
+  const items = catalogue.data?.items;
 
-  return (providerId: string | undefined, modelId: string | undefined): string | undefined =>
-    catalogueModelTitle(catalogue.data?.items, providerId, modelId) ?? modelId;
+  return {
+    provider: (providerId) => items?.find((provider) => provider.providerId === providerId)?.title,
+    model: (providerId, modelId) => catalogueModelTitle(items, providerId, modelId),
+  };
 }
 
 /**
@@ -42,7 +45,7 @@ export function useModelTitle(specId: string | undefined) {
  */
 export function useAgentTitles(specId: string | undefined): AgentTitles {
   const { specificationApi } = useAppServices();
-  const catalogue = useModelTitle(specId);
+  const catalogue = useAgentCatalogue(specId);
   const sessions = useSpecificationWorkspace(specId ?? '', specificationApi).data?.sessions;
 
   return {

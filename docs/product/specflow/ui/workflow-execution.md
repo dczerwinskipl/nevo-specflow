@@ -105,7 +105,7 @@ In reading order:
    one neutral line.
 6. **Last hand-off** (the Specification and the Task, one shared component): under a divider, the
    label "Last hand-off", then one row: a status mark, the result as its title ("Breakdown
-   approved"), the step, who and when ("Review the breakdown · Claude · Opus 5.5 · Today, 1:12 AM")
+   approved"), the step, who and when ("Review the breakdown · Claude Code · Opus 5.5 · Today, 1:12 AM")
    and a chevron that opens the work history; under it what the attempt committed ("4 documents
    committed · 05f9d80", from the history read, when an agent's attempt committed). A hand-off that
    finished as expected keeps its feedback behind "Show feedback". A hand-off the next attempt must
@@ -400,21 +400,27 @@ AI.
 
 ### Naming the agent
 
-Every screen names an agent the same way, "Claude · Opus 5.5", through one formatter: the Now block
-(its position line, Last hand-off and the result waiting for the owner), the Activity history and
-the Task history, the Run with agent dialog and the Sessions screens. The name comes from one
-source order: **what the attempt or its Session actually ran first, the catalogue after it.**
+Every screen names an agent the same way, **"Claude Code · Opus 5.5"**: the tool (the provider:
+Claude Code, Codex, ...), then the model (owner, 2026-11-26). One formatter (`agentDisplayName`)
+serves the Now block (its position line, Last hand-off and the result waiting for the owner), the
+Activity history and the Task history, the Run with agent dialog, and the attempt's commit message
+says it the same way ("by agent Claude Code · Opus 5.5"). Each part comes from one source order:
+**what the attempt or its Session actually ran first, the catalogue after it, the id last.**
 
-- The provider: its short name, the provider's id made readable (`claude` is "Claude"), the same
-  for every attempt; a Session's product title ("Claude Code") is the Sessions screens' own name for
-  the Session's executor and does not enter this name.
-- The model: the Session's own title of the model it ran, else the provider catalogue's title of
-  the model id the attempt recorded (the attempt's own record, else its actor's, so the history and
-  the Now block name one attempt alike), else that id.
+- The tool: the title the attempt recorded when it started, else its Session's, else the provider
+  catalogue's, else the provider's id made readable (`claude` is "Claude").
+- The model: the title the attempt recorded, else its Session's, else the catalogue's title of the
+  model id the attempt recorded (the attempt's own record, else its actor's, so the history and the
+  Now block name one attempt alike), else that id.
+
+Where a line is too short for the whole name (the history's one-line agent line at 375 px or beside
+Overview), the provider's mark stands for the tool and the line shows the model alone, "Opus 5.5";
+the name is never cut, and the whole name stays the accessible name and the tooltip. The Sessions
+screens follow the same rule: a row shows the mark and the model, the Session's header the whole
+name.
 
 The Run with agent dialog has no Session yet: it names the catalogue's choice, and the recorded ids
-when the catalogue cannot be read. The Sessions screens' rows name the model by the same order (the
-Session's title, else its id).
+when the catalogue cannot be read.
 
 ### Start step and Run with agent
 
@@ -678,8 +684,9 @@ The attempt is finished and committed before the owner decides.
 - An attempt reads, in order: its time, "Today, 12:35 – 12:40 PM · Attempt 1" (in the Activity
   history the day is the group heading instead): the elapsed range only, never a duration, because
   the range holds interruptions and waits (a rate limit, the owner's reply) the data cannot tell
-  from working time; the agent with its provider's mark, "Claude · Opus 5.5" (the same formatter and
-  source order as Now's Last hand-off, see "Naming the agent"), on one
+  from working time; the agent with its provider's mark, "Claude Code · Opus 5.5" (the same formatter and
+  source order as Now's Last hand-off, see "Naming the agent"; the model alone beside the mark where
+  the line is too short), on one
   line that never wraps, with **Open session** at the end of the same line (the Session is not named by its title: a Session
   continued from an earlier step keeps that step's title, "Gather requirements · attempt 1", which
   would misname this step); what it changed as compact rows, collapsed by default, each only when it

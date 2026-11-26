@@ -40,20 +40,27 @@ export type ModelTitle = (
   modelId: string | undefined,
 ) => string | undefined;
 
-/** The title a Session carries for the model it ran, as the Runtime names it. */
+/** The provider catalogue's titles: of a provider (the tool) and of its models. */
+export interface AgentCatalogue {
+  readonly provider?: ((providerId: string) => string | undefined) | undefined;
+  readonly model?: ModelTitle | undefined;
+}
+
+/** The titles a Session carries for what it ran, as the Runtime names them. */
 export interface SessionTitles {
+  readonly providerTitle?: string | undefined;
   readonly modelTitle?: string | undefined;
 }
 
 /** Where an agent's name comes from ({@link agentDisplayName}): its Session, then the catalogue. */
 export interface AgentTitles {
-  readonly catalogue?: ModelTitle | undefined;
+  readonly catalogue?: AgentCatalogue | undefined;
   readonly session?: ((sessionId: string) => SessionTitles | undefined) | undefined;
 }
 
 /**
  * Who acted, as recorded: a person by {@link personLabel}, an agent by {@link agentDisplayName}
- * (its Session's titles when `titles` knows the Session, else the catalogue's).
+ * (the titles its attempt recorded, else its Session's, else the catalogue's).
  */
 export function actorLabel(
   t: TFunction,
@@ -65,41 +72,65 @@ export function actorLabel(
     return personLabel(t, actor.details.actorId, viewer);
   }
 
+  return agentDisplayName(agentOfActor(actor, titles));
+}
+
+/** An agent actor with the titles it is named by, for {@link agentDisplayName}. */
+export function agentOfActor(
+  actor: Extract<WorkflowActor, { class: 'agent' }>,
+  titles: AgentTitles = {},
+): AgentNameSource {
   const session = actor.details.sessionId ? titles.session?.(actor.details.sessionId) : undefined;
 
-  return agentDisplayName({
+  return {
     provider: actor.details.provider,
+    providerTitle: actor.details.providerTitle ?? session?.providerTitle,
     model: actor.details.model,
-    modelTitle: session?.modelTitle,
+    modelTitle: actor.details.modelTitle ?? session?.modelTitle,
     catalogue: titles.catalogue,
-  });
+  };
+}
+
+/** What an agent is named from ({@link agentDisplayName}). */
+export interface AgentNameSource {
+  readonly provider: string | undefined;
+  /** The tool's title as the attempt recorded it or its Session reports it ("Claude Code"). */
+  readonly providerTitle?: string | undefined;
+  /** The model id the attempt (or its actor) recorded. */
+  readonly model?: string | undefined;
+  /** The model's title as the attempt recorded it or its Session reports it ("Opus 5.5"). */
+  readonly modelTitle?: string | undefined;
+  readonly catalogue?: AgentCatalogue | undefined;
 }
 
 /**
- * An agent as every screen names it, "Claude · Opus 5.5": the one formatter of the Now block, the
- * work history, the Run with agent dialog and the Task history. One name-source order
- * (workflow-execution.md, "Naming the agent"): what the attempt or its Session actually ran comes
- * first, the catalogue after it.
- *
- * - The provider: its short name, the id made readable (`claude` is "Claude"); the same for every
- *   attempt of a provider, whatever product title a Session reports ("Claude Code" is the Sessions
- *   screen's own name for the Session's executor).
- * - The model: the Session's own title of the model it ran (`modelTitle`), else the provider
- *   catalogue's title of the recorded model id (`catalogue`), else that id.
+ * An agent's two parts: the provider (the tool) and the model, each by one source order
+ * (workflow-execution.md, "Naming the agent"): what the attempt or its Session actually ran, then
+ * the provider catalogue's title, then the id (a provider's made readable).
  */
-export function agentDisplayName(agent: {
+export function agentNameParts(agent: AgentNameSource): {
   readonly provider: string | undefined;
-  /** The model id the attempt (or its actor) recorded. */
-  readonly model?: string | undefined;
-  /** The title of the model the Session ran, as the Runtime names it. */
-  readonly modelTitle?: string | undefined;
-  readonly catalogue?: ModelTitle | undefined;
-}): string {
-  const provider = agent.provider ? providerFallbackName(agent.provider) : undefined;
+  readonly model: string | undefined;
+} {
+  const provider =
+    agent.providerTitle ??
+    (agent.provider
+      ? (agent.catalogue?.provider?.(agent.provider) ?? providerFallbackName(agent.provider))
+      : undefined);
   const model =
-    agent.modelTitle ??
-    (agent.catalogue ? agent.catalogue(agent.provider, agent.model) : undefined) ??
-    agent.model;
+    agent.modelTitle ?? agent.catalogue?.model?.(agent.provider, agent.model) ?? agent.model;
+
+  return { provider, model };
+}
+
+/**
+ * An agent as every screen names it, "Claude Code · Opus 5.5": the tool, then the model
+ * ({@link agentNameParts}). The one formatter of the Now block, the work history, the Run with
+ * agent dialog and the Task history. Where a line is too short for it, the provider's mark stands
+ * for the tool and the model is shown alone ({@link AgentName}), the whole name kept accessible.
+ */
+export function agentDisplayName(agent: AgentNameSource): string {
+  const { provider, model } = agentNameParts(agent);
 
   return [provider, model].filter(Boolean).join(' · ');
 }

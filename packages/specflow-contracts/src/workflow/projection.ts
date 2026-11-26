@@ -30,6 +30,8 @@ export const WorkflowActorSchema = Type.Union([
     details: Type.Object({
       archetype: Type.Optional(Type.String()),
       provider: Type.String(),
+      /** The provider's title (the tool, "Claude Code") in the catalogue when the attempt started. */
+      providerTitle: Type.Optional(Type.String()),
       model: Type.Optional(Type.String()),
       /** The model's title in the provider's catalogue when the attempt started. */
       modelTitle: Type.Optional(Type.String()),

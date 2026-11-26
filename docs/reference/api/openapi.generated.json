@@ -5617,6 +5617,9 @@
                                   "provider": {
                                     "type": "string"
                                   },
+                                  "providerTitle": {
+                                    "type": "string"
+                                  },
                                   "model": {
                                     "type": "string"
                                   },
@@ -6096,6 +6099,9 @@
                                     "type": "string"
                                   },
                                   "provider": {
+                                    "type": "string"
+                                  },
+                                  "providerTitle": {
                                     "type": "string"
                                   },
                                   "model": {
@@ -7879,6 +7885,9 @@
                                   "provider": {
                                     "type": "string"
                                   },
+                                  "providerTitle": {
+                                    "type": "string"
+                                  },
                                   "model": {
                                     "type": "string"
                                   },
@@ -8008,6 +8017,9 @@
                                     "type": "string"
                                   },
                                   "provider": {
+                                    "type": "string"
+                                  },
+                                  "providerTitle": {
                                     "type": "string"
                                   },
                                   "model": {
@@ -14599,6 +14611,9 @@
                                 "provider": {
                                   "type": "string"
                                 },
+                                "providerTitle": {
+                                  "type": "string"
+                                },
                                 "model": {
                                   "type": "string"
                                 },
@@ -14797,6 +14812,9 @@
                                       "type": "string"
                                     },
                                     "provider": {
+                                      "type": "string"
+                                    },
+                                    "providerTitle": {
                                       "type": "string"
                                     },
                                     "model": {
@@ -29756,6 +29774,9 @@
                                                           "provider": {
                                                             "type": "string"
                                                           },
+                                                          "providerTitle": {
+                                                            "type": "string"
+                                                          },
                                                           "model": {
                                                             "type": "string"
                                                           },
@@ -29882,6 +29903,9 @@
                                                                     "type": "string"
                                                                   },
                                                                   "provider": {
+                                                                    "type": "string"
+                                                                  },
+                                                                  "providerTitle": {
                                                                     "type": "string"
                                                                   },
                                                                   "model": {
@@ -55315,6 +55339,9 @@
                                       "type": "string"
                                     },
                                     "provider": {
+                                      "type": "string"
+                                    },
+                                    "providerTitle": {
                                       "type": "string"
                                     },
                                     "model": {

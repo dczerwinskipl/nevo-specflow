@@ -998,17 +998,19 @@ export function createAgentStepExecution(dependencies: AgentStepExecutionDepende
       // owner's own model as chosen, judged by the provider below (`refuseUnrunnable`).
       launch = request.model === undefined ? option.launch : chosen;
       // Recorded only as the attempt records can hold it (1 to 200 characters).
-      const listedTitle = sessions
-        ?.provider(launch.provider)
-        ?.models.find((model) => model.modelId === launch.model)
-        ?.title.trim();
-      const modelTitle =
-        listedTitle && Array.from(listedTitle).length <= 200 ? listedTitle : undefined;
+      const recordable = (title: string | undefined) =>
+        title && Array.from(title).length <= 200 ? title : undefined;
+      const listedProvider = sessions?.provider(launch.provider);
+      const providerTitle = recordable(listedProvider?.title.trim());
+      const modelTitle = recordable(
+        listedProvider?.models.find((model) => model.modelId === launch.model)?.title.trim(),
+      );
       actor = {
         class: 'agent',
         details: {
           archetype: launch.archetype,
           provider: launch.provider,
+          ...(providerTitle !== undefined ? { providerTitle } : {}),
           model: launch.model,
           ...(modelTitle !== undefined ? { modelTitle } : {}),
           sessionId:

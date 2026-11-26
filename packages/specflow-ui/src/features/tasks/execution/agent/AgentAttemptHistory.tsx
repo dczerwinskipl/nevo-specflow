@@ -7,12 +7,12 @@ import {
   formatWhen,
   humanizeId,
   personLabel,
-  agentDisplayName,
   transitionLabel,
   type Viewer,
 } from '../presentation';
 import { useSessionFacts } from './useSessionFacts';
-import { useModelTitle } from './modelTitles';
+import { useAgentCatalogue } from './modelTitles';
+import { AgentName } from './AgentName';
 import { useViewer } from '../useViewer';
 import type { WorkflowSubjectRef } from '../api';
 import { SessionLink } from './AgentSession';
@@ -296,9 +296,9 @@ export function AgentAttemptMeta({
 }
 
 /**
- * Who worked on the attempt, as the Now block names it: the provider's mark, "Claude · Opus 5.5"
- * ({@link agentDisplayName}: what the Session ran, else the catalogue's title of the recorded model),
- * and Open session at the end of the line. The name keeps to one line. The Session is
+ * Who worked on the attempt, as the Now block names it: the provider's mark, "Claude Code · Opus 5.5"
+ * ({@link AgentName}: the model alone beside the mark where the line is too short), and Open
+ * session at the end of the line. The name keeps to one line. The Session is
  * not named by its title: a Session continued from an earlier step keeps that step's title, which
  * would misname this one.
  */
@@ -311,23 +311,22 @@ export function AgentIdentityLine({
 }) {
   const { t } = useTranslation();
   const session = useSessionFacts(specId, item.agent.sessionId);
-  const catalogue = useModelTitle(specId);
-  // The attempt's own record of its model, else its actor's: the Now block names it by the actor.
-  const model =
-    item.agent.model ?? (item.actor?.class === 'agent' ? item.actor.details.model : undefined);
-  const name = agentDisplayName({
+  const catalogue = useAgentCatalogue(specId);
+  // What the attempt recorded, else its actor's record, else its Session's: the Now block names it
+  // by the actor, so both name one attempt alike.
+  const actor = item.actor?.class === 'agent' ? item.actor.details : undefined;
+  const agent = {
     provider: item.agent.provider,
-    model,
-    modelTitle: session.modelTitle,
+    providerTitle: actor?.providerTitle ?? session.providerTitle,
+    model: item.agent.model ?? actor?.model,
+    modelTitle: actor?.modelTitle ?? session.modelTitle,
     catalogue,
-  });
+  };
 
   return (
     <div className="flex min-w-0 items-center gap-2 text-body-sm" data-attempt-actor="">
       <SessionProviderIcon providerId={item.agent.provider} />
-      <span className="min-w-0 flex-1 truncate text-content-secondary" title={name}>
-        {name}
-      </span>
+      <AgentName agent={agent} className="flex-1 text-content-secondary" />
       {item.agent.sessionId ? (
         <SessionLink
           sessionId={item.agent.sessionId}

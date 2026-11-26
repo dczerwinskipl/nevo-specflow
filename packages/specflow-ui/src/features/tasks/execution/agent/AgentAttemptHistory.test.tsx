@@ -133,9 +133,9 @@ describe('the agent attempt in the history', () => {
     );
     // Who worked on it, by presentation names, with Open session on the same line.
     // The attempt recorded no model: its actor's names it, as the Now block does.
-    expect(document.querySelector('[data-attempt-actor]')?.textContent).toBe(
-      'Claude · Sonnet 5Open session',
-    );
+    expect(
+      document.querySelector('[data-attempt-actor] [data-agent-name]')?.getAttribute('aria-label'),
+    ).toBe('Claude · Sonnet 5');
     expect(screen.getByRole('link', { name: 'Open session' })).toBeTruthy();
   });
 

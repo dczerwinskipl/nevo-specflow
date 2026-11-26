@@ -10,7 +10,7 @@ import {
   SessionProviderIcon,
   type StartCatalogue,
 } from '../../../sessions';
-import { agentDisplayName } from '../presentation';
+import { agentDisplayName } from '../../../../shared/agents/agentDisplayName';
 
 /** How a fresh Session's agent is shown: the Runtime's catalogue, or why there is none. */
 export type AgentCatalogue =

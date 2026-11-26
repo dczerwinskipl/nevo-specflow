@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
-import type { AgentCatalogue, AgentTitles } from '../presentation';
+import type { AgentTitleCatalogue } from '../../../../shared/agents/agentDisplayName';
+import type { AgentTitles } from '../presentation';
 
 /** The provider catalogue's title of a model; `undefined` when the catalogue does not list it. */
 export function catalogueModelTitle(
@@ -20,7 +21,7 @@ export function catalogueModelTitle(
  * (`claude-opus-5-5` is "Opus 5.5"); `undefined` for what it does not list or before it is read.
  * The same catalogue the Run with agent dialog reads for the Specification.
  */
-export function useAgentCatalogue(specId: string | undefined): AgentCatalogue {
+export function useAgentCatalogue(specId: string | undefined): AgentTitleCatalogue {
   const { managedSessionsApi } = useAppServices();
   const catalogue = useQuery({
     queryKey: ['workflow', 'agent-providers', specId ?? null],

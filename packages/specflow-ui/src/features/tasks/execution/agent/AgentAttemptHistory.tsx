@@ -12,7 +12,7 @@ import {
 } from '../presentation';
 import { useSessionFacts } from './useSessionFacts';
 import { useAgentCatalogue } from './modelTitles';
-import { AgentName } from './AgentName';
+import { AgentName } from '../../../../shared/agents/AgentName';
 import { useViewer } from '../useViewer';
 import type { WorkflowSubjectRef } from '../api';
 import { SessionLink } from './AgentSession';

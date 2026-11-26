@@ -1,4 +1,9 @@
 import type { TFunction } from 'i18next';
+import {
+  agentDisplayName,
+  type AgentTitleCatalogue,
+  type AgentNameSource,
+} from '../../../shared/agents/agentDisplayName';
 import type {
   GateStatus,
   OpenTask,
@@ -34,18 +39,6 @@ export function personLabel(t: TFunction, actorId: string, viewer: Viewer = {}):
   return actorId.replace(/^(local|user):/, '');
 }
 
-/** A recorded model's display name: the provider's title for it, else the id (`useModelTitle`). */
-export type ModelTitle = (
-  providerId: string | undefined,
-  modelId: string | undefined,
-) => string | undefined;
-
-/** The provider catalogue's titles: of a provider (the tool) and of its models. */
-export interface AgentCatalogue {
-  readonly provider?: ((providerId: string) => string | undefined) | undefined;
-  readonly model?: ModelTitle | undefined;
-}
-
 /** The titles a Session carries for what it ran, as the Runtime names them. */
 export interface SessionTitles {
   readonly providerTitle?: string | undefined;
@@ -54,7 +47,7 @@ export interface SessionTitles {
 
 /** Where an agent's name comes from ({@link agentDisplayName}): its Session, then the catalogue. */
 export interface AgentTitles {
-  readonly catalogue?: AgentCatalogue | undefined;
+  readonly catalogue?: AgentTitleCatalogue | undefined;
   readonly session?: ((sessionId: string) => SessionTitles | undefined) | undefined;
 }
 
@@ -89,50 +82,6 @@ export function agentOfActor(
     modelTitle: actor.details.modelTitle ?? session?.modelTitle,
     catalogue: titles.catalogue,
   };
-}
-
-/** What an agent is named from ({@link agentDisplayName}). */
-export interface AgentNameSource {
-  readonly provider: string | undefined;
-  /** The tool's title as the attempt recorded it or its Session reports it ("Claude Code"). */
-  readonly providerTitle?: string | undefined;
-  /** The model id the attempt (or its actor) recorded. */
-  readonly model?: string | undefined;
-  /** The model's title as the attempt recorded it or its Session reports it ("Opus 5.5"). */
-  readonly modelTitle?: string | undefined;
-  readonly catalogue?: AgentCatalogue | undefined;
-}
-
-/**
- * An agent's two parts: the provider (the tool) and the model, each by one source order
- * (workflow-execution.md, "Naming the agent"): what the attempt or its Session actually ran, then
- * the provider catalogue's title, then the id (a provider's made readable).
- */
-export function agentNameParts(agent: AgentNameSource): {
-  readonly provider: string | undefined;
-  readonly model: string | undefined;
-} {
-  const provider =
-    agent.providerTitle ??
-    (agent.provider
-      ? (agent.catalogue?.provider?.(agent.provider) ?? providerFallbackName(agent.provider))
-      : undefined);
-  const model =
-    agent.modelTitle ?? agent.catalogue?.model?.(agent.provider, agent.model) ?? agent.model;
-
-  return { provider, model };
-}
-
-/**
- * An agent as every screen names it, "Claude Code · Opus 5.5": the tool, then the model
- * ({@link agentNameParts}). The one formatter of the Now block, the work history, the Run with
- * agent dialog and the Task history. Where a line is too short for it, the provider's mark stands
- * for the tool and the model is shown alone ({@link AgentName}), the whole name kept accessible.
- */
-export function agentDisplayName(agent: AgentNameSource): string {
-  const { provider, model } = agentNameParts(agent);
-
-  return [provider, model].filter(Boolean).join(' · ');
 }
 
 /** `needs-changes` -> `Needs changes`: the fallback for an id that has no label. */
@@ -210,11 +159,6 @@ export function formatRange(t: TFunction, from: string, to: string, locale: stri
     : formatWhen(t, to, locale);
 
   return `${start} – ${end}`;
-}
-
-/** An agent provider's name when the Sessions list does not give its title: `claude` is "Claude". */
-export function providerFallbackName(provider: string): string {
-  return humanizeId(provider);
 }
 
 export interface PreviewStep {

@@ -1,5 +1,5 @@
 import { cn } from '@nevo/ui';
-import { agentDisplayName, agentNameParts, type AgentNameSource } from '../presentation';
+import { agentDisplayName, agentNameParts, type AgentNameSource } from './agentDisplayName';
 
 /**
  * An agent's name on a line that never wraps, beside the provider's mark: "Claude Code · Opus 5.5"

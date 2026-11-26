@@ -695,13 +695,12 @@ function ManagedSessionConversation({
                         return (
                           <AgentIdentity
                             key={item.id}
-                            providerId={snapshot.session.providerId}
-                            providerTitle={
-                              snapshot.session.providerTitle ??
-                              provider?.title ??
-                              snapshot.session.providerId
-                            }
-                            modelTitle={snapshot.session.modelTitle ?? snapshot.session.modelId}
+                            agent={{
+                              provider: snapshot.session.providerId,
+                              providerTitle: snapshot.session.providerTitle ?? provider?.title,
+                              model: snapshot.session.modelId,
+                              modelTitle: snapshot.session.modelTitle,
+                            }}
                           />
                         );
                       case 'stage':

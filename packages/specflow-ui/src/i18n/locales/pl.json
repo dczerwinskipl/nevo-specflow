@@ -3166,7 +3166,6 @@
       }
     },
     "attemptHistory": {
-      "title": "Podejścia agenta",
       "truncated": "Starsze podejścia nie są pokazane.",
       "stopped": "Agent zatrzymał się bez wyniku o {{at}}.",
       "outcome": {
@@ -3222,15 +3221,7 @@
         "today": "Dziś",
         "yesterday": "Wczoraj"
       },
-      "openSession": "Otwórz sesję",
-      "duration": {
-        "underMinute": "poniżej minuty",
-        "minutes_one": "{{count}} min.",
-        "minutes_few": "{{count}} min.",
-        "minutes_many": "{{count}} min.",
-        "minutes_other": "{{count}} min.",
-        "hours": "{{hours}} godz. {{minutes}} min."
-      }
+      "openSession": "Otwórz sesję"
     }
   },
   "taskOverview": {

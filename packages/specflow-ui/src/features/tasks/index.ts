@@ -5,7 +5,10 @@ export {
   useSpecificationExitActions,
   useSpecificationNowVisible,
 } from './execution/specification/SpecificationWorkflow';
-export { SpecificationAgentAttempts } from './execution/agent/SpecificationAgentAttempts';
+export { useSpecificationWorkflowTimeline } from './execution/agent/useSpecificationWorkflowTimeline';
+export { WorkflowHistoryEntry } from './execution/agent/WorkflowHistoryEntry';
+export type { WorkflowTimelineEntry } from './execution/agent/workflowTimeline';
+export { historyDay } from './execution/agent/AgentAttemptHistory';
 export { SpecificationNow } from './execution/specification/SpecificationNow';
 export {
   SpecificationSituation,

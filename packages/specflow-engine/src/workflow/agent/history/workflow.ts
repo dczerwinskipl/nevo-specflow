@@ -29,6 +29,8 @@ export type WorkflowHistoryItem =
       readonly outcome?: AttemptOutcome;
       /** The label the workflow gives the transition the attempt took ("Breakdown approved"). */
       readonly transitionLabel?: string;
+      /** The owner's decision on a result held for confirmation: who decided it, when, and why. */
+      readonly confirmation?: WorkflowHistoryConfirmation;
       /** An agent attempt's own history: its step events and the work it left. */
       readonly agent?: AgentAttemptHistory;
     }
@@ -40,6 +42,15 @@ export type WorkflowHistoryItem =
       readonly to: string;
       readonly feedback?: string;
     };
+
+/** A decided confirmation of an attempt's result, as the run records it (a pending one is not). */
+export interface WorkflowHistoryConfirmation {
+  readonly state: 'confirmed' | 'rejected';
+  readonly at: string;
+  readonly actor: WorkflowActor;
+  /** The feedback of a Reject. */
+  readonly feedback?: string;
+}
 
 export interface WorkflowHistory {
   readonly subject: WorkflowSubject;
@@ -104,6 +115,13 @@ async function historyOfSubject(
     const detail = details.get(`${record.step}#${String(record.attempt)}`);
     const step = findStep(definition, record.step);
     const outcome = record.outcome;
+    const decided = record.confirmation;
+    const confirmation: WorkflowHistoryConfirmation | undefined =
+      decided?.state === 'confirmed'
+        ? { state: 'confirmed', at: decided.at, actor: decided.actor }
+        : decided?.state === 'rejected'
+          ? { state: 'rejected', at: decided.at, actor: decided.actor, feedback: decided.feedback }
+          : undefined;
     const label =
       step?.kind === 'work' && outcome?.kind === 'transition'
         ? step.transitions.find((transition) => transition.id === outcome.transition)?.label
@@ -120,6 +138,7 @@ async function historyOfSubject(
       ...(record.actor !== undefined ? { actor: record.actor } : {}),
       ...(record.outcome !== undefined ? { outcome: record.outcome } : {}),
       ...(label !== undefined ? { transitionLabel: label } : {}),
+      ...(confirmation ? { confirmation } : {}),
       ...(detail ? { agent: detail } : {}),
     };
   });

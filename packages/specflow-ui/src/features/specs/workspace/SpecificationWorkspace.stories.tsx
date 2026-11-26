@@ -158,10 +158,10 @@ export const ProjectModeNoSession: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Start session' }));
     await expect(args.onNewSession).toHaveBeenCalledTimes(1);
 
-    // On demand the history shows the localized created event with its calendar date.
+    // On demand the history shows the localized created event under its calendar day.
     await userEvent.click(canvas.getByRole('button', { name: 'Activity history' }));
     await expect(await canvas.findByText('Specification created')).toBeVisible();
-    await expect(canvas.getByText('Nov 8, 2026')).toBeVisible();
+    await expect(canvas.getByText(/^Nov 8(, 2026)?$/)).toBeVisible();
   },
 };
 

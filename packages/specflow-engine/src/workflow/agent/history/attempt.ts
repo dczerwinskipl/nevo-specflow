@@ -11,7 +11,7 @@ import {
 } from '../finalize/attempt-commit/selection';
 import type { AgentAttemptChanges, AgentAttemptWork } from '../../operations/actions';
 import { loadSubject, type WorkflowDependencies } from '../../operations/loaded-execution';
-import type { AgentAttemptJournal } from '../journal/model';
+import type { AgentAttemptJournal, AgentCommitSummary } from '../journal/model';
 
 export type { AgentAttemptChanges, AgentAttemptWork };
 
@@ -380,6 +380,7 @@ function workOf(
   const made =
     commit?.state === 'done' ? commit.outcomes?.find((entry) => entry.commit)?.commit : undefined;
   const dirty = journal.dirtySet;
+  const committed = committedPathsOf(made, dirty);
   const declared = journal.proposal?.changes?.paths ?? [];
   const changes = input.specification
     ? attemptChangesOf({
@@ -387,16 +388,16 @@ function workOf(
         subject: input.subject,
         manifests: input.manifests,
         produced,
-        paths: [...selection.paths, ...selection.mixed, ...(made?.paths ?? []), ...declared],
+        paths: [...selection.paths, ...selection.mixed, ...(committed ?? []), ...declared],
         ...(made?.truncated ? { truncated: true } : {}),
       })
     : undefined;
   // With the commit's paths named, its counts follow the same groups as `changes`.
   const counts =
-    made && changes && made.paths
+    made && changes && committed
       ? {
-          documents: made.paths.filter((path) => changes.documents.includes(path)).length,
-          files: made.paths.filter((path) => changes.files.includes(path)).length,
+          documents: committed.filter((path) => changes.documents.includes(path)).length,
+          files: committed.filter((path) => changes.files.includes(path)).length,
         }
       : made
         ? { documents: made.documents, files: made.files }
@@ -432,6 +433,28 @@ function workOf(
       : { state: 'none' },
     ...(changes ? { changes } : {}),
   };
+}
+
+/**
+ * The paths an attempt's commit held: as the journal names them, else (a journal written before
+ * commits named their paths) the last Turn's dirty set when it holds exactly as many paths as the
+ * commit counted, which is then the set the commit took. `undefined` when neither says it.
+ */
+export function committedPathsOf(
+  made: AgentCommitSummary | undefined,
+  dirty: AgentAttemptJournal['dirtySet'],
+): readonly string[] | undefined {
+  if (!made) {
+    return undefined;
+  }
+
+  if (made.paths) {
+    return made.paths;
+  }
+
+  return dirty && !dirty.truncated && dirty.paths.length === made.documents + made.files
+    ? dirty.paths.map((entry) => entry.path)
+    : undefined;
 }
 
 /** The Specification manifest's file name in its folder. */

@@ -3,13 +3,15 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Icon, InlineNote, Typography, type IconName, type TimelineTone } from '@nevo/ui';
 import type { WorkflowHistory } from '@nevo/specflow-contracts/workflow';
+import type { WorkflowActor } from '@nevo/specflow-contracts/workflow';
 import {
+  actorLabel,
   formatRange,
   formatWhen,
   humanizeId,
   personLabel,
-  providerFallbackName,
   transitionLabel,
+  type ModelTitle,
   type Viewer,
 } from '../presentation';
 import { useSessionFacts } from './useSessionFacts';
@@ -242,34 +244,18 @@ export function historyDay(t: TFunction, at: Date, locale: string, now = new Dat
   }).format(at);
 }
 
-/** How long it took, rounded to minutes: "5 min", "1 h 20 min", "under a minute". */
-function durationOf(t: TFunction, from: Date, to: Date): string | undefined {
-  const minutes = Math.round((to.getTime() - from.getTime()) / 60_000);
-  if (Number.isNaN(minutes) || minutes < 0) {
-    return undefined;
-  }
-
-  if (minutes < 1) {
-    return t('workflowExecution.attemptHistory.duration.underMinute');
-  }
-
-  return minutes < 60
-    ? t('workflowExecution.attemptHistory.duration.minutes', { count: minutes })
-    : t('workflowExecution.attemptHistory.duration.hours', {
-        hours: Math.floor(minutes / 60),
-        minutes: minutes % 60,
-      });
-}
-
 /**
- * When the attempt ran: "Today, 12:35 – 12:40 PM · 5 min · Attempt 1" (`withDay` false drops the
- * day, for a history grouped by day). The end carries its own day when it is another one.
+ * When the attempt ran: "Today, 12:35 – 12:40 PM · Attempt 1" (`withDay` false drops the day, for a
+ * history grouped by day; `actor` names who worked on it before the attempt, as the Task history
+ * does). The end carries its own day when it is another one. Only the elapsed range is said, never a
+ * duration: the range holds interruptions and waits the data cannot tell from working time.
  */
 export function attemptTimeLine(
   t: TFunction,
   item: Pick<AgentHistoryItem, 'startedAt' | 'endedAt' | 'attempt'>,
   locale: string,
   withDay = true,
+  actor?: string,
 ): string {
   const start = new Date(item.startedAt);
   const end = item.endedAt ? new Date(item.endedAt) : undefined;
@@ -290,11 +276,7 @@ export function attemptTimeLine(
       ? `${historyDay(t, start, locale)}, `
       : '';
 
-  return [
-    `${day}${when}`,
-    end ? durationOf(t, start, end) : undefined,
-    t('taskDetails.attempt', { count: item.attempt }),
-  ]
+  return [`${day}${when}`, actor, t('taskDetails.attempt', { count: item.attempt })]
     .filter(Boolean)
     .join(' · ');
 }
@@ -317,10 +299,11 @@ export function AgentAttemptMeta({
 }
 
 /**
- * Who worked on the attempt, as the Sessions list names it: the provider's mark, "Claude · Opus 5.5"
- * (the model by its presentation title: the Session's own, else the provider catalogue's), and
- * Open session at the end of the line. The Session is not named by its title: a Session continued
- * from an earlier step keeps that step's title, which would misname this one.
+ * Who worked on the attempt, as the Now block names it: the provider's mark, "Claude · Opus 5.5"
+ * ({@link actorLabel}, the model by its presentation title from the provider catalogue, else the
+ * Session's), and Open session at the end of the line. The name keeps to one line. The Session is
+ * not named by its title: a Session continued from an earlier step keeps that step's title, which
+ * would misname this one.
  */
 export function AgentIdentityLine({
   item,
@@ -331,26 +314,93 @@ export function AgentIdentityLine({
 }) {
   const { t } = useTranslation();
   const session = useSessionFacts(specId, item.agent.sessionId);
-  const modelTitle = useModelTitle(specId);
-  const name = [
-    session.providerTitle ?? providerFallbackName(item.agent.provider),
-    session.modelTitle ?? modelTitle(item.agent.provider, item.agent.model),
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const catalogueTitle = useModelTitle(specId);
+  const actor: WorkflowActor = {
+    class: 'agent',
+    details: {
+      provider: item.agent.provider,
+      ...(item.agent.model !== undefined ? { model: item.agent.model } : {}),
+    },
+  };
+  const name = actorLabel(
+    t,
+    actor,
+    {},
+    (provider, model) =>
+      catalogueModelTitleOrUndefined(catalogueTitle, provider, model) ??
+      session.modelTitle ??
+      model,
+  );
 
   return (
     <div className="flex min-w-0 items-center gap-2 text-body-sm" data-attempt-actor="">
       <SessionProviderIcon providerId={item.agent.provider} />
-      <span className="min-w-0 flex-1 text-content-secondary [overflow-wrap:anywhere]">{name}</span>
+      <span className="min-w-0 flex-1 truncate text-content-secondary" title={name}>
+        {name}
+      </span>
       {item.agent.sessionId ? (
         <SessionLink
           sessionId={item.agent.sessionId}
           title={t('workflowExecution.attemptHistory.openSession')}
-          className="inline-flex min-h-6 shrink-0 items-center font-medium"
+          className="inline-flex min-h-6 shrink-0 items-center whitespace-nowrap font-medium"
         />
       ) : null}
     </div>
+  );
+}
+
+/** The catalogue's title of a model, `undefined` when it only knows the id. */
+function catalogueModelTitleOrUndefined(
+  title: ModelTitle,
+  provider: string | undefined,
+  model: string | undefined,
+): string | undefined {
+  const found = title(provider, model);
+
+  return found === model ? undefined : found;
+}
+
+/**
+ * View feedback on a history entry: the feedback a result, a return or a Reject left, behind a
+ * quiet toggle, in the tone of the entry's mark.
+ */
+export function HistoryFeedback({
+  feedback,
+  attention = false,
+}: {
+  readonly feedback: string | undefined;
+  readonly attention?: boolean;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const text = feedback?.trim() ?? '';
+  if (!text) {
+    return null;
+  }
+
+  return (
+    <>
+      <div className="text-body-sm" data-agent-actions="">
+        <InlineAction
+          className="inline-flex min-h-6 items-center"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {t(
+            open
+              ? 'workflowExecution.attemptHistory.hideFeedback'
+              : 'workflowExecution.attemptHistory.viewFeedback',
+          )}
+        </InlineAction>
+      </div>
+      {open ? (
+        <InlineNote tone={attention ? 'attention' : 'info'} icon="chat">
+          <span className="whitespace-pre-line [overflow-wrap:anywhere]" data-agent-feedback="">
+            {text}
+          </span>
+        </InlineNote>
+      ) : null}
+    </>
   );
 }
 
@@ -442,7 +492,6 @@ export function AgentAttemptHistory({
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
   const commands = useAgentAttemptCommands(subject);
-  const [showFeedback, setShowFeedback] = useState(false);
   const { agent } = item;
   const { work } = agent;
   const commit = commitOf(item);
@@ -460,7 +509,6 @@ export function AgentAttemptHistory({
     changes.documents.length + changes.tasks.length + changes.files.length > 0;
   // Work an attempt that ended without its own result left in the checkout, uncommitted (D19).
   const kept = changed && work.commit.state === 'none' && agent.ended !== 'active';
-  const text = feedback?.trim() ?? '';
 
   return (
     <div className="grid min-w-0 gap-1.5" data-agent-attempt={agent.ended}>
@@ -497,28 +545,7 @@ export function AgentAttemptHistory({
           {t('workflowExecution.attemptHistory.notCommitted')}
         </Typography>
       ) : null}
-      {text ? (
-        <div className="text-body-sm" data-agent-actions="">
-          <InlineAction
-            className="inline-flex min-h-6 items-center"
-            aria-expanded={showFeedback}
-            onClick={() => setShowFeedback((open) => !open)}
-          >
-            {t(
-              showFeedback
-                ? 'workflowExecution.attemptHistory.hideFeedback'
-                : 'workflowExecution.attemptHistory.viewFeedback',
-            )}
-          </InlineAction>
-        </div>
-      ) : null}
-      {showFeedback && text ? (
-        <InlineNote tone={outcome.tone === 'attention' ? 'attention' : 'info'} icon="chat">
-          <span className="whitespace-pre-line [overflow-wrap:anywhere]" data-agent-feedback="">
-            {text}
-          </span>
-        </InlineNote>
-      ) : null}
+      <HistoryFeedback feedback={feedback} attention={outcome.tone === 'attention'} />
     </div>
   );
 }

@@ -640,10 +640,12 @@ The attempt is finished and committed before the owner decides.
   diagnosis and recovery and is never listed. Only exceptions get a line: a result the Engine did
   not accept ("Result not accepted · <time>"); an interruption, a take over, a failed commit and a
   result waiting for the owner are the outcome line and the commit note.
-- An attempt reads, in order: its time, "Today, 12:35 – 12:40 PM · 5 min · Attempt 1" (in the
-  Activity history the day is the group heading instead); the agent with its provider's mark,
-  "Claude · Opus 5.5" (the model by its presentation title, as the Sessions list names it), with
-  **Open session** at the end of the same line (the Session is not named by its title: a Session
+- An attempt reads, in order: its time, "Today, 12:35 – 12:40 PM · Attempt 1" (in the Activity
+  history the day is the group heading instead): the elapsed range only, never a duration, because
+  the range holds interruptions and waits (a rate limit, the owner's reply) the data cannot tell
+  from working time; the agent with its provider's mark, "Claude · Opus 5.5" (the same formatter as
+  Now's Last hand-off: the provider's short name and the model by its presentation title), on one
+  line that never wraps, with **Open session** at the end of the same line (the Session is not named by its title: a Session
   continued from an earlier step keeps that step's title, "Gather requirements · attempt 1", which
   would misname this step); what it changed as compact rows, collapsed by default, each only when it
   has any: "N changed files" (the registered documents first, as links where they open, then the
@@ -658,8 +660,13 @@ The attempt is finished and committed before the owner decides.
   <person>", "Returned to <step>", "Abandoned", "The agent is working on it"; "The agent stopped
   without a result at <time>" when it never proposed one).
 - The Specification's own steps (Breakdown and the like) appear in the Activity history (beside
-  Overview, and as its stacked screen on a phone) under an **Agent attempts** heading above its
-  events, newest first and grouped by day (**Today**, **Yesterday**, then the date). Each entry is
+  Overview, and as its stacked screen on a phone) in its one chronological timeline with the
+  Specification's events (see
+  [Specification Overview](specification-overview.md#activity-history)), newest first and grouped
+  by day (**Today**, **Yesterday**, then the date). The owner's entries use the same grammar: the
+  owner's own attempt (the step, its result line, "1:12 – 1:13 PM · you · Attempt 2", View feedback),
+  the owner's Confirm ("Result confirmed") or Reject ("Result rejected", with its feedback) at the
+  time it was decided with who decided, and a return ("Returned to <step>"). Each agent entry is
   marked by how the attempt ended, with the marks of the Now block's Last hand-off: completed
   (circle-check, success; the line names the result, "Breakdown approved", or "Completed"),
   waiting for your confirmation (clock, info), changes requested, result rejected and a commit that
@@ -667,8 +674,12 @@ The attempt is finished and committed before the owner decides.
   or returned (undo, neutral), abandoned (close, neutral). Then the step as its title, the outcome
   line and the lines above. Three levels: the entry by default; the rows open to the files and
   Tasks; the full feedback and, through Open session, the Session's transcript on request. When
-  older attempts are cut off it says "Older attempts are not shown." Nothing is shown while the
-  Specification has no agent attempt.
+  older attempts are cut off it says "Older attempts are not shown."
+- What an attempt changed is listed on every entry that changed anything: from the paths its commit
+  recorded, and, for a journal written before commits recorded their paths, from its last Turn's
+  dirty set when that set holds exactly as many paths as the commit counted (it is then the set the
+  commit took). Otherwise nothing is listed rather than a guess; the history read starts no Git
+  process, so it never reads a commit back from Git.
 
 ### Close: agent work whose commit failed
 

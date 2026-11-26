@@ -14702,6 +14702,123 @@
                     "transitionLabel": {
                       "type": "string"
                     },
+                    "confirmation": {
+                      "type": "object",
+                      "required": [
+                        "state",
+                        "at",
+                        "actor"
+                      ],
+                      "properties": {
+                        "state": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "confirmed"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "rejected"
+                              ]
+                            }
+                          ]
+                        },
+                        "at": {
+                          "type": "string"
+                        },
+                        "actor": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "required": [
+                                "class",
+                                "details"
+                              ],
+                              "properties": {
+                                "class": {
+                                  "type": "string",
+                                  "enum": [
+                                    "human"
+                                  ]
+                                },
+                                "details": {
+                                  "type": "object",
+                                  "required": [
+                                    "actorId",
+                                    "trust"
+                                  ],
+                                  "properties": {
+                                    "actorId": {
+                                      "type": "string"
+                                    },
+                                    "trust": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "local"
+                                          ]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "authenticated"
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "required": [
+                                "class",
+                                "details"
+                              ],
+                              "properties": {
+                                "class": {
+                                  "type": "string",
+                                  "enum": [
+                                    "agent"
+                                  ]
+                                },
+                                "details": {
+                                  "type": "object",
+                                  "required": [
+                                    "provider"
+                                  ],
+                                  "properties": {
+                                    "archetype": {
+                                      "type": "string"
+                                    },
+                                    "provider": {
+                                      "type": "string"
+                                    },
+                                    "model": {
+                                      "type": "string"
+                                    },
+                                    "modelTitle": {
+                                      "type": "string"
+                                    },
+                                    "sessionId": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "feedback": {
+                          "type": "string"
+                        }
+                      }
+                    },
                     "agent": {
                       "type": "object",
                       "required": [

@@ -35,6 +35,8 @@ import {
   confirmationWithCommit,
   finishedAttemptHistory,
   finishedAttemptProjection,
+  NEVO_2_SESSIONS,
+  nevo2AttemptsHistory,
   specificationAttemptsHistory,
   takenOverAttemptHistory,
   type AttemptCase,
@@ -118,7 +120,8 @@ export type HandStoryScenario = 'hand-fresh' | 'hand-owner-work';
  * The Task whose Implementation the owner took over from the agent, with its history; the
  * Specification whose Activity history lists its agent's attempts, one per way an attempt ends.
  */
-export type HistoryStoryScenario = 'history-taken-over' | 'history-specification';
+export type HistoryStoryScenario =
+  'history-taken-over' | 'history-specification' | 'history-nevo-2';
 
 /** Another subject's agent holds the project: its outcome is unknown (Overview), or it works (Task). */
 export type HoldStoryScenario = 'hold-outcome-unknown' | 'hold-working';
@@ -157,6 +160,7 @@ const closeScenarios: readonly string[] = [
 const specScenarios: readonly string[] = [
   'attempt-confirmation',
   'history-specification',
+  'history-nevo-2',
   'hold-outcome-unknown',
   'waiting',
   'close-blocked',
@@ -437,7 +441,8 @@ function closePreviewOf(scenario: WorkflowStoryScenario) {
 function specificationScenario(scenario: WorkflowStoryScenario): SpecificationWorkflowScenario {
   return scenario === 'attempt-confirmation' ||
     scenario === 'hold-outcome-unknown' ||
-    scenario === 'history-specification'
+    scenario === 'history-specification' ||
+    scenario === 'history-nevo-2'
     ? 'waiting'
     : closeScenarios.includes(scenario)
       ? 'completed'
@@ -626,17 +631,19 @@ function services(scenario: WorkflowStoryScenario, confirmationCommit?: Confirma
           ? Promise.resolve(takenOverAttemptHistory() as never)
           : scenario === 'history-specification'
             ? Promise.resolve(specificationAttemptsHistory() as never)
-            : finished
-              ? Promise.resolve(
-                  finishedAttemptHistory(
-                    scenario === 'finished-committed'
-                      ? { state: 'committed', sha: STORY_SHA, documents: 2, files: 3 }
-                      : scenario === 'finished-commit-pending'
-                        ? { state: 'pending' }
-                        : { state: 'failed', code: 'COMMIT_BLOCKED' },
-                  ) as never,
-                )
-              : never(),
+            : scenario === 'history-nevo-2'
+              ? Promise.resolve(nevo2AttemptsHistory() as never)
+              : finished
+                ? Promise.resolve(
+                    finishedAttemptHistory(
+                      scenario === 'finished-committed'
+                        ? { state: 'committed', sha: STORY_SHA, documents: 2, files: 3 }
+                        : scenario === 'finished-commit-pending'
+                          ? { state: 'pending' }
+                          : { state: 'failed', code: 'COMMIT_BLOCKED' },
+                    ) as never,
+                  )
+                : never(),
     rejectResult: never,
     closePreview: () => closePreviewOf(scenario),
     // An agent Session still works in the worktree of the blocked Specification.
@@ -855,6 +862,70 @@ function tasksSection(
 }
 
 /**
+ * The Activity history events of the history stories: a "Session started" per Session (those of an
+ * attempt are represented by it and left out of the timeline; a chat Session outside the workflow
+ * keeps its event) and "Specification created".
+ */
+function historyActivity(
+  scenario: WorkflowStoryScenario,
+): SpecificationWorkspaceResponse['sections']['activity'] {
+  const started = (id: string, title: string, occurredAt: string) => ({
+    id: `session-started.${id}`,
+    occurredAt,
+    kind: 'session' as const,
+    event: 'session_started' as const,
+    title,
+    description: 'Session started',
+    targetId: id,
+    relatedSessionId: id,
+  });
+  const created = (daysAgo: number) => {
+    const day = new Date();
+    day.setDate(day.getDate() - daysAgo);
+    const pad = (value: number) => String(value).padStart(2, '0');
+
+    return {
+      id: 'specification-created',
+      occurredAt: `${String(day.getFullYear())}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`,
+      kind: 'info' as const,
+      event: 'specification_created' as const,
+      title: 'Specification created',
+      description: '',
+    };
+  };
+
+  if (scenario === 'history-nevo-2') {
+    return {
+      state: 'available',
+      data: {
+        items: [
+          ...NEVO_2_SESSIONS.map((session) => started(session.id, session.title, session.at)),
+          created(1),
+        ],
+      },
+    };
+  }
+
+  if (scenario === 'history-specification') {
+    const chat = new Date();
+    chat.setHours(0, 20, 0, 0);
+
+    return {
+      state: 'available',
+      data: {
+        items: [
+          started('s-chat', 'Questions about the install matrix', chat.toISOString()),
+          started(PLAN_SESSION_ID, PLAN_SESSION_TITLE, chat.toISOString()),
+          created(2),
+        ],
+      },
+    };
+  }
+
+  return { state: 'available', data: { items: [] } };
+}
+
+/**
  * The workspace read: the waiting Specification's Tasks, all of them done for a completed one, or
  * the open ones cancelled by abandon. Now, the Overview's Tasks section and the Close dialog read
  * the same counts.
@@ -883,10 +954,26 @@ async function specificationWorkspace(
                 attention: [],
               },
             },
+            activity: scenario.startsWith('history-')
+              ? historyActivity(scenario)
+              : plain.sections.activity,
             sessions: {
               state: 'available',
               data: {
                 items: [
+                  ...(scenario === 'history-nevo-2'
+                    ? NEVO_2_SESSIONS.map((session) => ({
+                        id: session.id,
+                        title: session.title,
+                        status: 'quiet' as const,
+                        taskIds: [],
+                        providerId: 'claude',
+                        // As the live Runtime names them: the provider's own product title.
+                        providerTitle: 'Claude Code',
+                        modelTitle: 'Opus 5.5',
+                        updatedAt: session.at,
+                      }))
+                    : []),
                   ...(scenario === 'attempt-confirmation'
                     ? [
                         {

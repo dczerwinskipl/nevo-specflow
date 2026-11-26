@@ -10,10 +10,12 @@ read_when:
   - driving workflow steps from managed Sessions
   - binding a Session or Turn to a workflow attempt
   - designing batch, handover, rebind or multi-instance behaviour for managed execution
+  - letting the owner choose or remember the agent of a workflow step
 summary: >
   Open proposals for connecting managed Sessions to the workflow kernel: attempt association,
   readiness before dispatch, workflow finish from a Session, batch and handover, native resume
-  after rebind (S07), and multi-instance runs. Session storage and dispatch claims are implemented.
+  after rebind (S07), multi-instance runs, and an owner-chosen agent per step. Session storage and
+  dispatch claims are implemented.
 related:
   - ideas.specflow-engine
   - ideas.specflow-engine.execution-scopes
@@ -100,6 +102,35 @@ The future association is `workflowAttempt -> instance slots -> execution runs -
 Session/Turn`; Sessions are not canonical workflow owners. Slots keep identity across retries, while
 invocations have distinct fencing and recovery identity. A terminal Turn does not count as a
 contribution. See [multi-instance execution](multi-instance-execution.md).
+
+## Agent per step, chosen by the owner
+
+**Today.** The agent of a step is the `archetype` of that step in the workflow the run is pinned to.
+A Task's workflow comes from its task type (`implementation` runs `task-standard`, whose implement
+step names `implementer`; `ui-implementation` runs `task-ui`, which names `implementer-ui`). The type
+is chosen when the Task is created and does not change, and a Specification's run keeps the task
+types its archetype allowed when the run started. In Run with agent the owner can change the
+provider, model and effort for one attempt only. The agent itself cannot be changed, and nothing the
+owner picks is saved. The Engine can already write a model into an agent archetype file
+(`rememberArchetypeModel`), but no Runtime route or UI uses it.
+
+**Gap (dogfood #189).** An Architecture Specification allowed only `implementation`, so its UI Tasks
+ran as `implementer` without the frontend rules. The shipped Architecture archetype now also allows
+`ui-implementation`. Runs that already started keep their task types, and their Tasks keep their
+type.
+
+**Minimal design (not decided).**
+
+1. Run with agent shows the agent as a choice, preselected from the step. The list is the agent
+   archetypes the step allows (the step's own `archetype` plus an optional `alternatives` list in the
+   workflow step). The start request carries the chosen `archetype`, and the Engine checks it against
+   that list.
+2. "Remember this choice" in the dialog calls `rememberArchetypeModel` through a Runtime route. The
+   provider and model are saved into the agent archetype file, which is project data committed with
+   the next definitions commit.
+3. A per-step override for the project goes in the workflow definition (the step's `archetype`), not
+   in local settings, so every workstation runs the same agent.
+4. Changing a Task's type, or a running Specification's allowed task types, is a separate decision.
 
 ## Tests
 

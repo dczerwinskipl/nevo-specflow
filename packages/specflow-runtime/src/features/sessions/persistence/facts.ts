@@ -497,6 +497,11 @@ export function createProviderFacts({
         workId: w.workId,
         revision: 1,
       };
+      // The Work says which kind of request it is (a client never guesses it from a title).
+      w.interaction = f.interaction.kind === 'permission' ? 'permission' : 'question';
+      w.revision++;
+      run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
+      emit(s, 'work', { turnId: c.turnId, items: [w] });
       run(
         'INSERT INTO interactions VALUES(?,?,?,?,?,?)',
         i.interactionId,

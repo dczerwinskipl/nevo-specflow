@@ -171,6 +171,7 @@ export function mixedWorkTimelineItems(): WorkSummary[] {
     }),
     workItem({
       kind: 'interaction',
+      interaction: 'permission',
       state: 'completed',
       title: { text: 'Permission to write workspace', complete: true },
     }),

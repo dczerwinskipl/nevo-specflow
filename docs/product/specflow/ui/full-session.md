@@ -140,7 +140,8 @@ streaming answer.
   2026-11-26), in the navigation-row pattern of Session Context: icon, text and a trailing chevron
   that means "opens", never "expands"; no visible "Work history" label. Work history opens at that
   stage: its group expanded and scrolled into view (older pages load until it is found). Back
-  returns to the exact place in the conversation. The leading icon is the icon of the kind the stage did most (the
+  returns to the exact place in the conversation, also a few lines above the bottom (a resized or
+  new scroll owner keeps the reader's distance from the bottom; only new content follows to it). The leading icon is the icon of the kind the stage did most (the
   same icon per operation kind as in Work history), an alert once the settled stage has failed tool
   actions, a spinner while live. Colour is used only for exceptions.
 
@@ -158,7 +159,7 @@ entry, an `Alert` (failed: danger; stopped, interrupted: attention); a completed
 - **Consequence**, only when the Turn opened tool actions that may change the workspace (edit,
   write, command, test in its digest), from the real state when the Runtime reports the
   Specification's changes and that state was read after the last Turn ended (each Turn end reads it
-  again; while a Turn runs or the new read is not in, the count is not known): "3 files are uncommitted in the workspace now." or "The workspace has no
+  again; while a Turn runs, or the new read is not in or failed, the count is not known): "3 files are uncommitted in the workspace now." or "The workspace has no
   uncommitted changes now."; only when it does not (a Runtime without the changes view): "Some
   workspace changes may already have been made."
 - **Actions**: **Review workspace changes** opens the Specification's uncommitted changes (the
@@ -233,8 +234,9 @@ Live updates never open, switch or reset Work history.
   thinking steps · 2 SpecFlow notes · 9 questions and permission requests"). No sum across kinds.
   SpecFlow's own notes (an automatic approval, a relayed error) are counted apart from the agent's
   progress notes (`counts.notices`). The questions and permission requests are those that reached
-  the person; an automatic approval is never one. An interaction row names its kind: "Permission
-  request" (a shield) or "Question" (a question bubble), never a generic "User interaction".
+  the person; an automatic approval is never one. An interaction row names its kind from the Work's
+  `interaction` field: "Permission request" (a shield) or "Question" (a question bubble), never a
+  generic "User interaction" and never guessed from a title.
 - **Type filters and search** keep the parent Commentary context. With no match among loaded
   entries while older history remains, the empty state says so for the loaded entries only.
 - **Reading position.** The entry the reader is reading keeps its place on screen across an older

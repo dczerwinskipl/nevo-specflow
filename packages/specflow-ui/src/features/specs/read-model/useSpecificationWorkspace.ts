@@ -21,7 +21,8 @@ export interface UseSpecificationWorkspaceResult {
   readonly isDomainNotFound: boolean;
   /** The Runtime has no source for this read at all (permanent; retrying cannot help). */
   readonly isNotInRuntime: boolean;
-  readonly refetch: () => Promise<unknown>;
+  /** Reads again; resolves with whether that read failed. */
+  readonly refetch: () => Promise<{ readonly isError: boolean }>;
 }
 
 export function useSpecificationWorkspace(

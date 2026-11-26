@@ -230,18 +230,14 @@ function AnsweredQuestionTimelineItem({
 }
 
 /**
- * An interaction Work is a permission request when its data says so: a recorded decision, the tool
- * call it is for (`operation`/`subject`), or the Runtime's own `Permission` title for one without a
- * tool; a question carries its recorded `question` or the `Question` title.
+ * An interaction Work is a permission request by the Runtime's own `interaction` kind; Work recorded
+ * before that field existed is one when its data shows it (a decision, the tool call it is for).
+ * Never decided from a title.
  */
 function isPermission(item: WorkSummary): boolean {
-  return (
-    item.question === undefined &&
-    (item.decision !== undefined ||
-      item.operation !== undefined ||
-      item.subject !== undefined ||
-      item.title.text === 'Permission')
-  );
+  return item.interaction !== undefined
+    ? item.interaction === 'permission'
+    : item.decision !== undefined || item.operation !== undefined || item.subject !== undefined;
 }
 
 function InteractionTimelineItem({ item }: { item: WorkSummary }) {

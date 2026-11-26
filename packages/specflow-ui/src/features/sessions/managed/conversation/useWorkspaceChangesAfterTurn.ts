@@ -5,8 +5,8 @@ import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
 export interface WorkspaceChangesSource {
   /** Uncommitted files in the Specification's workspace, as last read. */
   readonly count: number;
-  /** Reads them again; resolves once the new count is in. */
-  readonly refresh: () => Promise<unknown>;
+  /** Reads them again; resolves `true` once a new count is in, `false` when the read failed. */
+  readonly refresh: () => Promise<boolean>;
 }
 
 /** What a Turn's outcome may say about the workspace now. */
@@ -50,8 +50,9 @@ export function useWorkspaceChangesAfterTurn(
     }
 
     let current = true;
-    void refresh().then(() => {
-      if (current) {
+    // A failed read leaves the earlier count stale: it is never stated as the workspace's state.
+    void refresh().then((read) => {
+      if (current && read) {
         setReadAfter(lastOutcome);
       }
     });

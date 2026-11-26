@@ -76,7 +76,14 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
       : undefined;
   const refreshWorkspace = homeWorkspace.refetch;
   const workspaceChanges = useMemo(
-    () => (uncommitted ? { count: uncommitted.length, refresh: refreshWorkspace } : undefined),
+    () =>
+      uncommitted
+        ? {
+            count: uncommitted.length,
+            // A failed read is not a new count.
+            refresh: async () => !(await refreshWorkspace()).isError,
+          }
+        : undefined,
     [uncommitted, refreshWorkspace],
   );
   const onSessionChanged = () => {

@@ -482,6 +482,8 @@ export const WorkSummarySchema = Type.Object(
         closed,
       ),
     ),
+    /** An interaction Work: whether it asks for a permission or asks a question. */
+    interaction: Type.Optional(Type.Union([Type.Literal('permission'), Type.Literal('question')])),
     /** A permission the person answered: what they decided. */
     decision: Type.Optional(Type.Union([Type.Literal('allowed'), Type.Literal('denied')])),
     /**

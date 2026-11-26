@@ -148,7 +148,7 @@ export const InterruptionMobile: Story = {
   tags: ['contract'],
   args: {
     api: transcriptApi(interruptionSnapshot()),
-    workspaceChanges: { count: 3, refresh: () => Promise.resolve() },
+    workspaceChanges: { count: 3, refresh: () => Promise.resolve(true) },
   },
   globals: NARROW_VIEWPORT,
   play: interruptionPlay,
@@ -157,7 +157,7 @@ export const InterruptionDesktop: Story = {
   tags: ['contract'],
   args: {
     api: transcriptApi(interruptionSnapshot()),
-    workspaceChanges: { count: 3, refresh: () => Promise.resolve() },
+    workspaceChanges: { count: 3, refresh: () => Promise.resolve(true) },
   },
   globals: WIDE_VIEWPORT,
   play: interruptionPlay,
@@ -190,6 +190,17 @@ export const InterruptionChangesNotReadYet: Story = {
       within(outcome).getByRole('button', { name: 'Przejrzyj zmiany w przestrzeni roboczej' }),
     ).toBeVisible();
   },
+};
+
+/** The read after the Turn ended failed: the earlier count is stale, so "may" and the action. */
+export const InterruptionChangesReadFailed: Story = {
+  tags: ['contract'],
+  args: {
+    api: transcriptApi(interruptionSnapshot()),
+    workspaceChanges: { count: 0, refresh: () => Promise.resolve(false) },
+  },
+  globals: NARROW_VIEWPORT,
+  play: (context) => InterruptionChangesNotReadYet.play!(context),
 };
 
 /** A Runtime without the changes view: "may have been made", and no review action to a dead end. */
@@ -392,6 +403,31 @@ export const WorkRowOpensItsStage: Story = {
       const again = canvasElement.querySelectorAll<HTMLElement>('[data-work-block] button')[stage];
       await expect(again).toBeDefined();
       await expect(Math.abs(again!.getBoundingClientRect().top - before)).toBeLessThanOrEqual(1);
+    });
+
+    // Near the bottom, inside the follow threshold but not at it: the same place, no snap.
+    const scroller = () => document.querySelector<HTMLElement>('[data-session-scroller]')!;
+    const gap = 50;
+    scroller().scrollTop = scroller().scrollHeight - scroller().clientHeight - gap;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const last = () => {
+      const rows = canvasElement.querySelectorAll<HTMLElement>('[data-work-block] button');
+
+      return rows[rows.length - 1]!;
+    };
+
+    const lastBefore = last().getBoundingClientRect().top;
+    await userEvent.click(last());
+    await waitFor(() => expect(document.querySelector('[data-work-id]')).not.toBeNull());
+    await userEvent.click(within(document.body).getAllByRole('button', { name: /^Wróć do: / })[0]!);
+    await waitFor(async () => {
+      const node = scroller();
+      await expect(
+        Math.abs(node.scrollHeight - node.clientHeight - node.scrollTop - gap),
+      ).toBeLessThanOrEqual(1);
+      await expect(Math.abs(last().getBoundingClientRect().top - lastBefore)).toBeLessThanOrEqual(
+        1,
+      );
     });
   },
 };

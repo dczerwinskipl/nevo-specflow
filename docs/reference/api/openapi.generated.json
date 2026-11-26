@@ -26217,6 +26217,22 @@
                             },
                             "additionalProperties": false
                           },
+                          "interaction": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "permission"
+                                ]
+                              },
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "question"
+                                ]
+                              }
+                            ]
+                          },
                           "decision": {
                             "anyOf": [
                               {

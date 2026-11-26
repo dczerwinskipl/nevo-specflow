@@ -326,6 +326,9 @@ comparison at 16 and 20 px across every icon here, states included, then by the 
 | History               | History                        | Activity, Work and attempt history (Clock is Waiting).    |
 | Overview              | Home                           | A Specification's Overview area.                          |
 | Tool action           | Wrench                         | Something an agent did with a tool.                       |
+| File read             | Glasses                        | A file an agent read (a Work row), not a Document.        |
+| Changed files         | Diff                           | The repository files an attempt changed.                  |
+| Review                | ScanEye                        | A result waits for the owner's review (Eye: preview).     |
 | Instructions          | ScrollText                     | Standing instructions (an agent's, a step's).             |
 | Artifacts             | Package                        | Files an agent produced.                                  |
 | Environment           | Container                      | Where a Session runs.                                     |
@@ -345,3 +348,10 @@ dictionary by concept (`productIcons.task.item`, `productIcons.task.collection`,
 glyphs from `lucide-react` under any of their names, and their `Icon` registry names in an icon
 position, everywhere in SpecFlow UI's production sources but that module. A test keeps the rule's
 list (`productGlyphs.json`) equal to the module and checks that no glyph means two things.
+
+**A concept's icon means only that concept.** A glyph reused through the dictionary is still a
+second meaning: a file an agent read is not a Document, and the files an attempt changed are not the
+Documents collection. A new meaning gets its own named entry, chosen with the all-pairs silhouette
+test (no pair above 0.75 at 16 or 20 px). Rows whose concept sits next to a dictionary item (the
+Work rows' operations, an attempt's changes) have a test that pins their entry. Review checklist: a
+changed `productIcons.<concept>` use shows that concept, and nothing near it.

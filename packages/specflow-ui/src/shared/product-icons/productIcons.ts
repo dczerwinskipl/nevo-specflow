@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Container,
+  Diff,
   FileSearch,
   FileText,
   Files,
@@ -13,6 +14,7 @@ import {
   GitBranch,
   GitCommitHorizontal,
   GitCompare,
+  Glasses,
   History,
   Home,
   Library,
@@ -25,6 +27,7 @@ import {
   PanelsTopLeft,
   Paperclip,
   Scale,
+  ScanEye,
   ScrollText,
   Server,
   Telescope,
@@ -84,6 +87,12 @@ export const productIcons = {
   overview: Home,
   /** Something an agent did with a tool. */
   toolAction: Wrench,
+  /** A file an agent read (a Work row): not a Document, which is a file of a Specification or Task. */
+  fileRead: Glasses,
+  /** The files an attempt changed in the repository (its changes list), whatever they are. */
+  changedFiles: Diff,
+  /** A step's result waits for the owner's review (an attention reason; the Eye is a preview). */
+  review: ScanEye,
   /** The agent's standing instructions. */
   instructions: ScrollText,
   /** Files an agent produced. */

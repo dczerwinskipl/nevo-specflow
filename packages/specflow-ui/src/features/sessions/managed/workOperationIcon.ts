@@ -21,8 +21,7 @@ const operationIcons: Record<ToolOperation, LucideIcon> = {
   write: FilePlus,
   command: SquareTerminal,
   test: FlaskConical,
-  // The file the agent read: the Document glyph (a file, as in the document tree).
-  read: productIcons.document.item,
+  read: productIcons.fileRead,
   search: Search,
   list: FolderOpen,
   web: Globe,

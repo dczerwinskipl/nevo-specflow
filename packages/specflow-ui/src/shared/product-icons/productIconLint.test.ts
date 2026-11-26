@@ -41,6 +41,22 @@ describe('the product icon lint rule', () => {
     expect(problems("import * as lucide from 'lucide-react';")).toEqual([`1:${rule}`]);
   });
 
+  it('refuses a dictionary glyph re-exported or imported by its deep icon path', () => {
+    expect(
+      problems(
+        [
+          "export { FileText, ChevronDown } from 'lucide-react';",
+          "export { Home as Overview } from 'lucide-react';",
+          "export * from 'lucide-react';",
+          "import Glyph from 'lucide-react/dist/esm/icons/file-text';",
+          "import House from 'lucide-react/dist/esm/icons/house.js';",
+          "export { default as Repo } from 'lucide-react/dist/esm/icons/folder-git-2';",
+          "import Chevron from 'lucide-react/dist/esm/icons/chevron-down';",
+        ].join('\n'),
+      ),
+    ).toEqual([1, 2, 3, 4, 5, 6].map((line) => `${line}:${rule}`));
+  });
+
   it('refuses the Icon registry names of product glyphs in icon positions only', () => {
     expect(
       problems(

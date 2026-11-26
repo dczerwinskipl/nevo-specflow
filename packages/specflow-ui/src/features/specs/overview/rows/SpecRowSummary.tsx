@@ -86,7 +86,7 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
               summary.reason === 'blocked'
                 ? 'triangle-alert'
                 : summary.reason === 'review'
-                  ? 'eye'
+                  ? productIcons.review
                   : productIcons.session.item
             }
             size="sm"

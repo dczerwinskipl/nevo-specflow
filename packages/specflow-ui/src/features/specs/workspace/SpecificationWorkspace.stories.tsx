@@ -78,16 +78,22 @@ function projectMode(state: ProjectState): SpecificationWorkspaceData {
 
 function Workspace({
   state,
+  specificationKey,
   onNewSession,
 }: {
   readonly state: ProjectState;
+  /** The Specification's key; without one the line under the title names only the type. */
+  readonly specificationKey?: string;
   readonly onNewSession?: () => void;
 }) {
   const setup = useMemo(
     () => ({ query: createSpecFlowQueryClient(), services: createSpecFlowAppServices({}) }),
     [],
   );
-  const data = useMemo(() => projectMode(state), [state]);
+  const data = useMemo(
+    () => ({ ...projectMode(state), ...(specificationKey ? { key: specificationKey } : {}) }),
+    [state, specificationKey],
+  );
 
   return (
     <QueryClientProvider client={setup.query}>
@@ -114,6 +120,7 @@ function Workspace({
 
 const viewports = {
   w1440: { name: '1440', styles: { width: '1440px', height: '900px' }, type: 'desktop' },
+  w375: { name: '375', styles: { width: '375px', height: '812px' }, type: 'mobile' },
 } as const;
 
 const meta = {
@@ -190,5 +197,27 @@ export const ProjectModeSessionsDisabled: Story = {
     await expect(canvas.queryByRole('button', { name: 'Start session' })).toBeNull();
     await expect(canvasElement.querySelector('#resume-heading')).toBeNull();
     await expectNothingUnavailable(canvasElement);
+  },
+};
+
+const pageKind = (canvasElement: HTMLElement) =>
+  canvasElement.querySelector('[data-page-kind]')?.textContent;
+
+/** Page identity: the line under the title names the type and the Specification's key. */
+export const ProjectModeWithKey: Story = {
+  args: { state: 'no-session', specificationKey: 'nevo-2' },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('heading', { level: 1 });
+    await expect(pageKind(canvasElement)).toBe('Specification · nevo-2');
+  },
+};
+
+/** A Specification without a key (created before keys, or a manifest without one): only its type. */
+export const ProjectModeWithoutKey: Story = {
+  args: { state: 'no-session' },
+  globals: { viewport: { value: 'w375', isRotated: false } },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('heading', { level: 1 });
+    await expect(pageKind(canvasElement)).toBe('Specification');
   },
 };

@@ -94,6 +94,15 @@ function TaskTitleLink({
  * One change summary row: its icon and count, collapsed by default; the list opens under it. The
  * DS disclosure without its leading chevron: the category icon leads, the chevron trails.
  */
+/**
+ * The icon of each change category: the repository files the attempt changed (not Documents: any
+ * file, typed or not) and the Tasks it created or changed.
+ */
+export const changeRowIcons = {
+  files: productIcons.changedFiles,
+  tasks: productIcons.task.collection,
+} as const;
+
 function ChangeRow({
   icon,
   label,
@@ -187,7 +196,7 @@ export function AttemptChanges({
       {documents.length + files.length > 0 ? (
         <ChangeRow
           kind="files"
-          icon={productIcons.document.collection}
+          icon={changeRowIcons.files}
           label={t('workflowExecution.attemptHistory.changes.files', {
             count: documents.length + files.length,
           })}
@@ -211,7 +220,7 @@ export function AttemptChanges({
       {tasks.length > 0 ? (
         <ChangeRow
           kind="tasks"
-          icon={productIcons.task.collection}
+          icon={changeRowIcons.tasks}
           label={t('workflowExecution.attemptHistory.changes.tasks', { count: tasks.length })}
         >
           <TaskList specId={specId} tasks={tasks} />

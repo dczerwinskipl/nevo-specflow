@@ -15,6 +15,7 @@ import { TaskDocumentsSection } from './documents/TaskDocumentsSection';
 import { RefusalAlert } from './RefusalAlert';
 import { TaskNow, type LifecyclePrimary } from '../execution/TaskNow';
 import type { AttemptRef } from '../execution/StartBlockerLines';
+import { CopyableIdentifier } from '../../../shared/clipboard/CopyableIdentifier';
 import { productIcons } from '../../../shared/product-icons';
 
 export interface TaskAuthoringViewProps {
@@ -120,8 +121,8 @@ export function TaskAuthoringView({
         >
           {task.title}
         </Typography>
-        {/* What the page is: its type, by icon and name, and the Task type. Its key names the page in
-          the header and the trail (interaction-model.md "Page identity"). */}
+        {/* What the page is: its type, by icon and name, and the Task type; its key is the
+          secondary metadata under it, with a copy action (interaction-model.md "Page identity"). */}
         <Typography
           variant="body-sm"
           className="flex min-w-0 items-center gap-1.5 text-content-muted"
@@ -135,6 +136,12 @@ export function TaskAuthoringView({
             {` · ${typeTitle}`}
           </span>
         </Typography>
+        <CopyableIdentifier
+          value={task.id}
+          copyLabel={t('taskAuthoring.page.copyKey')}
+          copiedLabel={t('taskAuthoring.page.keyCopied')}
+          failedLabel={t('taskAuthoring.page.keyCopyFailed')}
+        />
         {/* The status with its own glyph and a neutral tone: a status alone is not attention. */}
         {resource.status === 'draft' ? (
           <InlineNote icon="edit" className="mt-2">

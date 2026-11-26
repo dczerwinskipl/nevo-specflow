@@ -43,9 +43,12 @@ export interface NowLinks {
 export function StartBlockerLines({
   blockers,
   links,
+  omitWaitingDependencies = false,
 }: {
   readonly blockers: readonly StartBlocker[];
   readonly links: NowLinks;
+  /** The Now block already leads with "Waiting for dependencies" and says how many remain. */
+  readonly omitWaitingDependencies?: boolean;
 }) {
   const { t } = useTranslation();
   const see = (label: string, go: (() => void) | undefined) =>
@@ -66,7 +69,7 @@ export function StartBlockerLines({
       case 'dependencies':
         return (
           <div key={key} className="grid gap-1">
-            {blocker.waitingFor.length > 0 ? (
+            {blocker.waitingFor.length > 0 && !omitWaitingDependencies ? (
               <InlineNote tone="attention" icon="clock">
                 <span className="font-medium text-content-primary">
                   {t('workflowExecution.blocker.dependencies', {

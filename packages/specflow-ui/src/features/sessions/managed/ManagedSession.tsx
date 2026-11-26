@@ -204,11 +204,11 @@ function EntryRow({
     );
   }
 
-  // The agent's Commentary (the first line of a work stage): plain muted prose, no icon, no
-  // container. `text-content-muted` (not `-secondary`) so it is clearly quieter than the final
-  // answer without a box to lean on, while still reading against the page background.
+  // The agent's Commentary (the first line of a work stage), the progress-commentary level of the
+  // shared typography (interaction-model.md "Visual conventions"): plain secondary prose, no icon,
+  // no container; quieter than the final answer (primary), louder than its tool row (muted).
   return (
-    <article data-entry-id={entry.id} className="grid min-w-0 gap-1 text-content-muted">
+    <article data-entry-id={entry.id} className="grid min-w-0 gap-1 text-content-secondary">
       {srLabel}
       <ReadableText api={api} sessionId={sessionId} value={entry.text} onGrow={onGrow} />
     </article>
@@ -1554,16 +1554,17 @@ export function ManagedSession({
         onPress: () => void navigation.open(sessionContextStack, {}),
       }
     : {
-        // Split layout: a persistent toggle that hides and shows the WHOLE side panel — Context
-        // and every opened tab, not only Context.
-        // With the tab rail shown the panel has no close of its own, so this is the one way to
+        // Split layout: Context as a secondary action (interaction-model.md "Visual
+        // conventions"): the Context icon and label, quieter than Continue or Start. It is a
+        // persistent toggle that hides and shows the side panel Context heads, with every opened
+        // tab. With the tab rail shown the panel has no close of its own, so this is the one way to
         // hide it. Hiding keeps the tabs and their stacks (`navigation.close` retains them);
         // showing again restores Context and the tab that was active.
         id: 'context',
-        label: t('managedSession.sidePanel'),
-        // The standard side-panel glyph, not a document.
-        icon: 'panel-right',
+        label: t('sessions.context.title'),
+        icon: productIcons.context,
         presentation: 'icon',
+        labelWhenWide: true,
         pressed: sidePanel.sidePanelOpen,
         direct: 'always',
         onPress: () => void sidePanel.toggle(),

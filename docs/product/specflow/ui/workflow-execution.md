@@ -80,7 +80,15 @@ In reading order:
    track and its label (see [Specification Overview](specification-overview.md#sections-and-order));
    and one quiet line ("In progress since 11:18 · started by you", "Attempt 2 · …" only from the
    second attempt on; or the first step, "First step · Design" before a Task's first start; or how
-   it continues; "Starting…" while a start is recorded).
+   it continues; "Starting…" while a start is recorded). When an agent holds the step, the quiet
+   line is the **executor row** instead (`NowExecutor`, one piece for every agent state): the
+   provider's mark, the agent ("Claude Code · Opus 5.5"), the state of its work under it in its tone
+   (green while it works, yellow while it waits for you or stopped without a result, red when its
+   outcome is unknown) and **Open session** as the text action. **Actionable readiness leads**
+   (owner, 2026-11-26): a Task its dependencies hold reads **Waiting for dependencies** (clock,
+   attention tone) as its title, "Not started · First step · Implement" as the quiet line, and
+   closes the state with "2 dependencies remaining · View dependencies ›". The domain state is
+   unchanged; only the order and weight of its presentation.
 3. **What the step is for.** The Specification shows the step's purpose. A Task shows it as
    **Goal**; without a purpose, the first paragraph of the step's instructions (three lines, **Show
    more**); with neither, nothing. Before a Task's first start it is the first step's Goal.
@@ -100,8 +108,9 @@ In reading order:
    names the next step already). A step with no document gates (the shipped workflows declare none)
    has no "Done when" at all, never an empty heading: a Task shows only the "Then" line, the
    Specification nothing; no document carries a relation label then, only its content state.
-5. **Blocking reasons**, one line each with a link to where it is fixed ("Waiting for 1 dependency ·
-   See Depends on", a missing required context entry · See Context). An awaited process artifact is
+5. **Blocking reasons**, one line each with a link to where it is fixed (a missing required
+   context entry · See Context; dependencies that can never finish). Dependencies still to finish
+   are the readiness lead above, not a second line. An awaited process artifact is
    one neutral line.
 6. **Last hand-off** (the Specification and the Task, one shared component): under a divider, the
    label "Last hand-off", then one row: a status mark, the result as its title ("Breakdown
@@ -496,8 +505,8 @@ started.") with **Check again** inside the alert. Then, in order:
 The Now block reads the attempt again every few seconds while the agent works, is stopping, may still
 run, a return waits or its result is being applied.
 
-- **Working**: the position line names the attempt and its Session: "Attempt 2 · agent working since
-  <time> · <provider mark> <Session title>"; the title opens the Session. Goal, "Done when" and the
+- **Working**: the executor row names the agent and, under it, the attempt ("Attempt 2 · agent
+  working since <time>", green), with **Open session** beside it. Goal, "Done when" and the
   hand-off stay as for a person's attempt; the viewer has no Finish step. The action row holds
   **Stop agent** (secondary, stop icon). The ⋯ menu stays.
 - **Stopping**: "Attempt 2 · stopping the agent · <Session>", **Stopping…** (disabled, busy) and an

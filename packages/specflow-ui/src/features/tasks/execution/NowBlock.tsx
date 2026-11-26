@@ -7,6 +7,7 @@ import { InlineAction } from './InlineAction';
 import { closableInFinishDialog } from './FinishTasksOpen';
 import {
   actorLabel,
+  agentOfActor,
   attemptLine,
   doneWhen,
   formatWhen,
@@ -21,6 +22,8 @@ import { handoffView } from './progress/handoffView';
 import { StartBlockerLines, type NowLinks } from './StartBlockerLines';
 import { useViewer } from './useViewer';
 import { useAgentTitles } from './agent/modelTitles';
+import { NowExecutor } from './NowExecutor';
+import { ReadinessLine } from './ReadinessLine';
 
 /** An icon inside running text: on the text line, no flex box that would shift the line. */
 function InlineIcon({ name }: { name: ComponentProps<typeof Icon>['name'] }) {
@@ -127,10 +130,11 @@ export interface NowBlockProps {
    */
   readonly hold?: { readonly reason?: string };
   /**
-   * Replaces the quiet position line (Run with agent mock proposal): an agent attempt's line with its
-   * Session link, a stop that waits for proof, an attempt that ended without a finish.
+   * Who works on the step: the shared executor row ({@link NowExecutor}) of an agent's attempt in
+   * any of its states. It replaces the quiet position line. Without it, a step an agent holds
+   * still shows the agent and its Session.
    */
-  readonly positionLine?: ReactNode;
+  readonly executor?: ReactNode;
   /** What the attempt that handed over committed ("4 documents committed · 05f9d80"). */
   readonly handoffCommit?: string;
 }
@@ -156,7 +160,7 @@ export function NowBlock({
   summary,
   starting = false,
   hold,
-  positionLine,
+  executor: givenExecutor,
   handoffCommit,
   specId,
 }: NowBlockProps) {
@@ -174,6 +178,9 @@ export function NowBlock({
   let current: ReactNode;
   let facts: string | undefined;
   let supporting: ReactNode;
+  let executor = givenExecutor;
+  // Actionable readiness before the lifecycle state: dependencies hold the start.
+  let readiness: ReactNode;
   switch (position.kind) {
     case 'not-started':
       current = t('workflowExecution.now.notStarted');
@@ -195,6 +202,31 @@ export function NowBlock({
       });
       if (position.attempt.takenOverFrom) {
         facts += ` · ${t('workflowExecution.now.takenOverFrom')}`;
+      }
+
+      // An agent holds the step: the same executor row as its attempt's other states.
+      if (!executor && position.attempt.actor.class === 'agent') {
+        const since = formatWhen(t, position.attempt.startedAt, i18n.language, {
+          timeOnlyToday: true,
+        });
+        executor = (
+          <NowExecutor
+            agent={{
+              ...agentOfActor(position.attempt.actor, titles),
+              provider: position.attempt.actor.details.provider,
+            }}
+            state={
+              position.attempt.number > 1
+                ? t('workflowExecution.now.agentWorkingAttempt', {
+                    attempt: position.attempt.number,
+                    since,
+                  })
+                : t('workflowExecution.now.agentWorking', { since })
+            }
+            tone="success"
+            sessionId={position.attempt.actor.details.sessionId}
+          />
+        );
       }
 
       break;
@@ -263,7 +295,39 @@ export function NowBlock({
         current = t('workflowExecution.now.cannotStartTitle');
       }
 
-      supporting = <StartBlockerLines blockers={position.blockers} links={links} />;
+      {
+        const waitingFor = position.blockers.flatMap((blocker) =>
+          blocker.kind === 'dependencies' ? blocker.waitingFor : [],
+        );
+        if (waitingFor.length > 0 && !hold) {
+          // "Waiting for dependencies" leads; where the workflow stands is the quiet line under it
+          // and the count with its way to the dependencies closes the block's state.
+          readiness = (
+            <ReadinessLine
+              text={t('workflowExecution.now.dependenciesRemaining', {
+                count: waitingFor.length,
+              })}
+              action={
+                links.dependencies
+                  ? {
+                      label: t('workflowExecution.now.viewDependencies'),
+                      onPress: links.dependencies,
+                    }
+                  : undefined
+              }
+            />
+          );
+        }
+
+        supporting = (
+          <StartBlockerLines
+            blockers={position.blockers}
+            links={links}
+            omitWaitingDependencies={readiness !== undefined}
+          />
+        );
+      }
+
       break;
     case 'terminal':
       current = (
@@ -286,7 +350,27 @@ export function NowBlock({
   }
 
   // On hold, the hold leads with its reason; where the workflow stands is the quiet line under it.
-  let quiet: ReactNode = positionLine ?? facts;
+  let quiet: ReactNode = executor ? undefined : facts;
+  let titleTone =
+    position.kind === 'terminal' && position.outcome === 'completed'
+      ? 'text-status-success'
+      : undefined;
+  if (readiness) {
+    quiet = (
+      <>
+        {current}
+        {facts ? ` · ${facts}` : null}
+      </>
+    );
+    current = (
+      <>
+        <InlineIcon name="clock" />
+        {t('workflowExecution.now.waitingForDependencies')}
+      </>
+    );
+    titleTone = 'text-status-attention';
+  }
+
   if (hold) {
     quiet = (
       <>
@@ -310,10 +394,6 @@ export function NowBlock({
         )
       : [];
 
-  const titleTone =
-    position.kind === 'terminal' && position.outcome === 'completed'
-      ? 'text-status-success'
-      : undefined;
   const quietLine = (
     <Typography
       as="p"
@@ -369,7 +449,9 @@ export function NowBlock({
           ) : null}
           {quietAfterWaiting ? null : quietLine}
         </div>
+        {executor}
         {summary}
+        {readiness}
         {done ? (
           <DoneWhenList
             done={done}

@@ -442,7 +442,8 @@
     "noSpecificationSelectedTitle": "Select a specification",
     "noSpecificationSelectedDescription": "Open a specification from the list to see its documents and sessions.",
     "activeCount_few": "{{count}} active",
-    "activeCount_many": "{{count}} active"
+    "activeCount_many": "{{count}} active",
+    "taskPage": "Task"
   },
   "operations": {
     "progress": {
@@ -2249,7 +2250,10 @@
       "onHold": "On hold",
       "cancelled": "Cancelled",
       "loadFailed": "What can be done with this task could not be loaded.",
-      "kind": "Task"
+      "kind": "Task",
+      "copyKey": "Copy task key",
+      "keyCopied": "Task key copied",
+      "keyCopyFailed": "Could not copy the task key"
     },
     "lifecycle": {
       "approve": "Approve",
@@ -2649,7 +2653,17 @@
       "personActs": "{{actor}} is doing this step; you can follow it here.",
       "handoffDetails": "{{outcome}}: open it in the work history",
       "handoffCommitted": "{{what}} committed",
-      "handoffCommittedAll": "Work committed"
+      "handoffCommittedAll": "Work committed",
+      "openSession": "Open session",
+      "sessionGone": "Session deleted",
+      "agentWorking": "Working since {{since}}",
+      "agentWorkingAttempt": "Attempt {{attempt}} · working since {{since}}",
+      "waitingForDependencies": "Waiting for dependencies",
+      "dependenciesRemaining_one": "{{count}} dependency remaining",
+      "dependenciesRemaining_few": "{{count}} dependencies remaining",
+      "dependenciesRemaining_many": "{{count}} dependencies remaining",
+      "dependenciesRemaining_other": "{{count}} dependencies remaining",
+      "viewDependencies": "View dependencies"
     },
     "blocker": {
       "dependencies_one": "Waiting for {{count}} dependency",

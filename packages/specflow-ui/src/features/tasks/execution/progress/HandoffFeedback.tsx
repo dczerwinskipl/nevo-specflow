@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Icon, MarkdownDocument, ScrollArea, cn } from '@nevo/ui';
 import { useMarkdownLabels } from '../../../../i18n/useMarkdownLabels';
 import { InlineAction } from '../InlineAction';
+import { DisclosureToggle } from '../../../../shared/actions';
 
 /**
  * How the feedback is marked: `neutral` (a step that finished as expected), `attention` (what the
@@ -109,20 +110,14 @@ export function HandoffFeedback({
       className="grid min-w-0 justify-items-stretch gap-1.5 text-body-sm"
       data-handoff-feedback=""
     >
-      <InlineAction
-        className="inline-flex min-h-6 items-center gap-1 justify-self-start"
-        aria-expanded={open}
+      <DisclosureToggle
+        className="justify-self-start"
+        expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((value) => !value)}
       >
         {open ? t('workflowExecution.feedback.hide') : showLabel}
-        <Icon
-          name="chevron-down"
-          size="sm"
-          aria-hidden="true"
-          className={cn('transition-transform motion-reduce:transition-none', open && 'rotate-180')}
-        />
-      </InlineAction>
+      </DisclosureToggle>
       {open ? (
         <div
           ref={panel}

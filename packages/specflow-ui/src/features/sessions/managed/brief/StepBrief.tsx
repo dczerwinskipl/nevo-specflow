@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
   AppContent,
-  Button,
   Collapsible,
   MarkdownDocument,
   ScrollArea,
@@ -13,6 +12,7 @@ import {
 } from '@nevo/ui';
 import type { RequestOrigin, TextPreview } from '@nevo/specflow-contracts/sessions';
 import { NevoMark } from '../../../../brand';
+import { TextAction } from '../../../../shared/actions';
 import { translateNow } from '../../../../i18n/message';
 import { useMarkdownLabels } from '../../../../i18n/useMarkdownLabels';
 import type { ManagedSessionsApi } from '../api';
@@ -313,7 +313,7 @@ export function StepBriefMessage({
         </div>
       )}
       <div className="grid min-w-0 justify-end">
-        <div className="grid max-w-content-standard min-w-0 gap-1 rounded-composite bg-surface-primary px-4 pt-3 pb-1.5">
+        <div className="grid max-w-content-standard min-w-0 gap-1 rounded-composite bg-surface-primary px-4 pt-3 pb-2.5">
           <Typography
             as="p"
             variant="body-sm"
@@ -342,19 +342,16 @@ export function StepBriefMessage({
               )}
             </>
           )}
-          <span className="-ml-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              // Readable on the request surface (the ghost tone is meant for neutral surfaces).
-              className="text-content-primary"
-              onClick={onOpen}
-            >
-              {origin.continuation
-                ? t('managedSession.brief.openContinuation')
-                : t('managedSession.brief.openFull')}
-            </Button>
-          </span>
+          {/* A text action to the brief's own screen (chevron right: it navigates). */}
+          <TextAction
+            chevron="navigate"
+            className="mt-1 min-h-6 w-fit text-body-sm"
+            onClick={onOpen}
+          >
+            {origin.continuation
+              ? t('managedSession.brief.openContinuation')
+              : t('managedSession.brief.openFull')}
+          </TextAction>
         </div>
       </div>
       {origin.ownerNote ? (

@@ -33,13 +33,13 @@ function actionsOf(now: HTMLElement) {
   return Array.from(row?.querySelectorAll('button') ?? []).map((button) => button.textContent);
 }
 
-/** Running: the Session in the position line and Stop agent as the one action. */
+/** Running: the executor row (agent, its state, Open session) and Stop agent as the one action. */
 export const Running: Story = {
   play: async ({ canvasElement }) => {
     const now = await findNow(canvasElement);
     await expect(await within(now).findByText(/agent working since/, {}, wait)).toBeVisible();
     await expect(
-      await within(now).findByRole('link', { name: 'Implement token exchange' }, wait),
+      await within(now).findByRole('link', { name: 'Open session' }, wait),
     ).toBeVisible();
     await expect(actionsOf(now)).toEqual(['Stop agent']);
   },

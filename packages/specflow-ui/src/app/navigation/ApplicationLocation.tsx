@@ -60,8 +60,12 @@ const viewIcons: Partial<Record<ApplicationView, LucideIcon>> = {
   session: productIcons.session.item,
 };
 
-/** A stacked item named by an identifier (a Task's key) rather than by words. */
-const identifierViews: ReadonlySet<ApplicationView> = new Set(['task']);
+/**
+ * A stacked item whose identifier is a long technical key (a Task's): the application header names
+ * the page by its type ("Task · nevo-2"), never the key; the body carries the key as secondary
+ * metadata with a copy action (interaction-model.md "Visual conventions").
+ */
+const typeNamedViews: ReadonlySet<ApplicationView> = new Set(['task']);
 
 export function applicationLocationHeader({
   title,
@@ -135,26 +139,23 @@ function RoutedIdentity({
   const { collection, identity, specificationKey, contextNotice, parent } =
     useApplicationLocationModel(specId, view);
   const icon = viewIcons[view];
-  const identifier = identifierViews.has(view);
+  // A Task page is named by its type; its key stays the trail item's tooltip.
+  const typeName = typeNamedViews.has(view) ? t('applicationNavigation.taskPage') : undefined;
+  const itemLabel = typeName ?? detailLabel;
   if (!supportsSplit) {
-    // Narrow: the header names the screen with its icon: a peer area by its name and the
-    // Specification's key, a stacked item by its own identifier alone (a Task's key, as a document
-    // tab names its file). It carries the context notice in full (two lines fit the 56 px header),
-    // so a peer area needs no line in its body.
+    // Narrow: the header names the screen with its icon: a peer area and a Task page by their name
+    // and the Specification's key ("Task · nevo-2"), another stacked item by its own identifier (as
+    // a document tab names its file). It carries the context notice in full (two lines fit the
+    // 56 px header), so a peer area needs no line in its body.
     return (
       <span className="flex min-w-0 items-center gap-2.5" data-narrow-identity="">
         {icon ? <Icon name={icon} size="md" className="text-content-secondary" /> : null}
         <span className="grid min-w-0">
           <span className="flex min-w-0 items-baseline gap-1.5">
-            <span
-              className={cn(
-                'truncate text-title-sm text-content-primary',
-                identifier && detailLabel && 'font-mono font-normal',
-              )}
-            >
-              {detailLabel ?? title}
+            <span className="truncate text-title-sm text-content-primary">
+              {itemLabel ?? title}
             </span>
-            {specificationKey && !detailLabel ? (
+            {specificationKey && (typeName || !detailLabel) ? (
               <span className="shrink-0 whitespace-nowrap text-body-sm text-content-secondary">
                 · {specificationKey}
               </span>
@@ -220,9 +221,9 @@ function RoutedIdentity({
           ...(specId || view === 'new-specification'
             ? [
                 <BreadcrumbItem key="view" current title={detailLabel}>
-                  {detailLabel ? (
-                    <LocationItem icon={icon} className={cn('max-w-56', identifier && 'font-mono')}>
-                      {detailLabel}
+                  {itemLabel ? (
+                    <LocationItem icon={icon} className="max-w-56">
+                      {itemLabel}
                     </LocationItem>
                   ) : (
                     title

@@ -677,7 +677,7 @@ export function WorkflowNow({
         // The agent's attempt names its own state; a stop that waits for proof locks the menu.
         menu={agentNow?.keepsMenu === false ? undefined : menu}
         summary={summary}
-        {...(agentNow?.positionLine ? { positionLine: agentNow.positionLine } : {})}
+        {...(agentNow?.executor ? { executor: agentNow.executor } : {})}
         // The last hand-off is always said (its feedback collapsed unless it must be acted on); an
         // agent's attempt that names its own state leaves it out.
         showHandoff={agentNow?.showHandoff !== false}

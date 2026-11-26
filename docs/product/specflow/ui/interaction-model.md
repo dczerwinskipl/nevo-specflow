@@ -8,11 +8,14 @@ read_when:
   - choosing between an inline surface, an inspector, a sheet, and a page
   - defining what state is preserved across navigation
   - choosing an icon for a product concept, or naming a page in its header and trail
+  - choosing typography, action emphasis, colour, spacing, containers or disclosure on the
+    Specification Overview, the Task page or a Session
 summary: >
   Responsive shell with independent navigation and workspace breakpoints, the product
   hierarchy and routes, the reachability of every surface, starting a Session and the
-  navigator, Back/Close semantics, page identity and the product icon dictionary, and when to
-  use floating, Secondary, pushed-detail, or full-workspace surfaces.
+  navigator, Back/Close semantics, page identity and the product icon dictionary, the shared visual
+  conventions of the Specification, Task and Session screens, and when to use floating, Secondary,
+  pushed-detail, or full-workspace surfaces.
 related:
   - product.specflow.ui.personas
   - product.specflow.ui.ai-session-ux
@@ -279,12 +282,14 @@ normal browser semantics; Secondary does not become a URL-addressable route.
 **Page identity.** Every page says what it is and which item, and never shows its title twice
 (the Document pattern: a document's tab names its file, its body carries its title):
 
-- A **stacked item page** names itself in its location by its type's icon and the item's
-  identifier. On Narrow the header reads `← [Task] create-port-engine-adapter` (the key in mono,
-  without the Specification's key); on Wide and Compact the trail ends with it:
-  `Specifications › [Specification] nevo-2 › Tasks › [Task] create-port-engine-adapter`. The body
-  keeps the title as its heading, and the line under it starts with the type's icon and name:
-  "[Task] Task · Implementation". A Task opened from a Session's Context is the same page.
+- A **Task page** names itself in its location by its type, never by its long technical key
+  (owner, 2026-11-26): on Narrow the header reads `← [Task] Task · nevo-2` (the Specification's
+  key); on Wide and Compact the trail ends with it: `Specifications › [Specification] nevo-2 ›
+Tasks › [Task] Task` (the Task's key is the item's tooltip). The body keeps the title as its
+  heading; the line under it starts with the type's icon and name, "[Task] Task · Implementation",
+  and the Task's key follows as secondary metadata in mono with a copy icon action. A Task opened
+  from a Session's Context is the same page. Another stacked item (a document) is named by its own
+  identifier, as its tab names its file.
 - The **Specification Overview**'s line under its title reads "[Specification] Specification ·
   nevo-2", only "Specification" when the Specification has no key. The trail's Specification item
   carries the Specification icon and the key (its title when there is no key).
@@ -355,3 +360,87 @@ Documents collection. A new meaning gets its own named entry, chosen with the al
 test (no pair above 0.75 at 16 or 20 px). Rows whose concept sits next to a dictionary item (the
 Work rows' operations, an attempt's changes) have a test that pins their entry. Review checklist: a
 changed `productIcons.<concept>` use shows that concept, and nothing near it.
+
+## Visual conventions
+
+The Specification Overview, the Task page and a Session read as one product (owner review,
+2026-11-26). Each convention maps to an existing token or component; a feature never restyles one
+locally. The semantic roles are in
+[Semantic information hierarchy](../../../design-system/principles/information-hierarchy.md); this
+section names what the three screens use them for.
+
+**Application header vs workspace header.** The application header (the `WorkspaceHeader` of
+`AppWorkspace`, with `ApplicationLocationIdentity`) carries navigation, the view's identity (its
+icon, a short name and the Specification's key: "Overview · nevo-2", "Task · nevo-2"), its context
+notice and the screen's actions. The workspace header is the top of the body: the entity's human
+title (`title-lg`, the page's `h1`), its type line ("[icon] Task · Implementation", `body-sm`), a
+technical identifier as secondary metadata (`CopyableIdentifier`) and its description. A Session is
+the exception: a conversation has no workspace header above the transcript, and its application
+header carries its title and state.
+
+**Typography levels.** One level per role, tokens only:
+
+| Level                 | Token and colour                                       | Example                                  |
+| --------------------- | ------------------------------------------------------ | ---------------------------------------- |
+| Entity title          | `title-lg`, `content-primary`                          | the Specification's or Task's title      |
+| Current workflow step | `title-sm`, `content-primary`                          | "Waiting for Tasks", "Implement" in Now  |
+| Section label         | `section-label`                                        | NOW, DOCUMENTS, TASKS                    |
+| Primary content       | `body-md`, `content-primary`                           | the Goal, an agent's answer, a count     |
+| Progress commentary   | `body-md` or `body-sm`, `content-secondary`            | a step's purpose, the agent's Commentary |
+| Metadata              | `body-sm`, `content-muted`                             | "Task · Implementation", a time          |
+| Agent name            | `AgentName` (`body-md` in Now, `body-sm` in a Session) | "Claude Code · Opus 5.5"                 |
+| Text action           | `TextAction` or the DS `Link`, `content-link`          | View dependencies, Open session          |
+
+**Action hierarchy.** **Primary** (`Button`, default variant) is the one main action of the state
+(Continue, Start Implement, Approve). **Secondary** (`Button variant="secondary"`) is its
+alternative, at most one beside it (Take over, Run with agent). A **text action** (`TextAction` for
+an in-page action, `Link` for an address) leads to details (View dependencies, Open session, View
+full brief, Show feedback). An **icon action** (`IconButton`, or a header action with
+`presentation: 'icon'`) is a compact auxiliary action with a tooltip (copy, history, ⋯). Context in
+a Session is an icon action that shows its label from the split width (`labelWhenWide`), so it
+never competes with Continue or Start.
+
+**Colour semantics.** Blue (`content-link`, `action-primary`, the active step of the track) is
+actions and navigation only. Green (`status-success`) is success, and an agent's work running
+normally. Yellow (`status-attention`) is waiting or attention (Waiting for dependencies, an
+interrupted attempt). Red (`content-error`, `status-danger`) is an error (failed tool actions, an
+unknown outcome). Colour never stands alone: a word or an icon carries the meaning too.
+
+**Spacing.** Tighter inside a logical group (`gap-0.5` to `gap-2`: a title and its quiet line, a
+description and its Show more, a Commentary and its tool row), larger between groups (`gap-3`
+inside Now, `gap-4` between conversation entries, the section rhythm between page sections).
+Backgrounds and borders appear only where they separate or highlight: Now's `AccentBlock`, the
+request and brief bubbles, notices and interaction prompts.
+
+**Containers.** Errors, warnings and required interactions keep a strong container (`Alert`,
+`InlineNote` in its tone, the interaction prompt). Routine items have none: an agent's Commentary
+is plain prose and its tool work a light row ("[icon] 5 commands ›").
+
+**Monospace.** `font-mono` only for code, commands and technical ids (a Task's key, a commit, a
+path), never for a title, a header name or a trail item.
+
+**Disclosure chevrons.** Chevron down expands in place and turns up while open
+(`DisclosureToggle`: Show more, Show description, Show feedback, the Goal's Show more). Chevron
+right navigates to details elsewhere (`TextAction chevron="navigate"`, navigation rows, the tool
+row, Last hand-off).
+
+**One shared Now.** The Now block of a Specification and of a Task is one composition
+(`NowBlock`) of shared pieces: the state (the step, or an actionable readiness such as "Waiting for
+dependencies" with the lifecycle position as its quiet line, `ReadinessLine`), the progress
+(`StepProgress`, `TaskProgress`), the executor (`NowExecutor`: the agent's mark and name, the state
+of its work in its tone, Open session) and the actions. There is no per-execution-kind component;
+actions and ownership come from the workflow projection.
+
+**The edges of the screen.** The floating ☰ and ⋯ of a stacked layout stay as decided (#208). The
+Composer and the scroll-to-latest button never cover the last content: the conversation reserves
+the Composer's height under its last entry, and scroll-to-latest floats above the Composer.
+
+| Need                            | Use                             | Owner                      |
+| ------------------------------- | ------------------------------- | -------------------------- |
+| Text action, navigating chevron | `TextAction`                    | `shared/actions`           |
+| Expand in place                 | `DisclosureToggle`              | `shared/actions`           |
+| Identifier with copy            | `CopyableIdentifier`            | `shared/clipboard`         |
+| Agent name                      | `AgentName`, `agentDisplayName` | `shared/agents`            |
+| Who works on the step           | `NowExecutor`                   | `features/tasks/execution` |
+| Actionable readiness count      | `ReadinessLine`                 | `features/tasks/execution` |
+| Status tone                     | `StatusIndicator`, `statusTone` | `@nevo/ui`                 |

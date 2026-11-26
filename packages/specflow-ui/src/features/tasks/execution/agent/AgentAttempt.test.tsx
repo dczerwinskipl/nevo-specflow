@@ -303,9 +303,9 @@ describe('an agent that stopped', () => {
     renderNow('session-gone');
 
     expect(screen.getByRole('alert').textContent).toContain('its session no longer exists');
-    // A Session that is gone is never a link: struck through, in the position line too.
+    // A Session that is gone is never a link: the executor row says it is deleted.
     expect(screen.queryByRole('link')).toBeNull();
-    expect(document.querySelector('.line-through')).toBeTruthy();
+    expect(screen.getByText('Session deleted')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Continue' }).hasAttribute('disabled')).toBe(true);
   });
 });

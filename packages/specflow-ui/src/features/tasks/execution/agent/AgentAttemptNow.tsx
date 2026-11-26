@@ -2,13 +2,12 @@ import { useState, type ReactNode } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { Trans, useTranslation } from 'react-i18next';
 import { CircleStop } from 'lucide-react';
-import { Button, InlineNote, Typography } from '@nevo/ui';
+import { Button, InlineNote, Typography, type StatusTone } from '@nevo/ui';
 import type { AgentAttemptView, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
-import { SessionProviderIcon } from '../../../sessions';
 import type { WorkflowSubjectRef } from '../api';
-import { actorLabel, formatWhen, humanizeId, transitionLabel } from '../presentation';
+import { actorLabel, agentOfActor, formatWhen, humanizeId, transitionLabel } from '../presentation';
 import { useAgentTitles } from './modelTitles';
 import type { NowLinks } from '../StartBlockerLines';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
@@ -34,6 +33,7 @@ import { ConfirmApplies, RejectResultDialog } from './ConfirmationParts';
 import { LastHandoff } from '../progress/LastHandoff';
 import { commitLine } from '../progress/handoffView';
 import { useAgentAttemptCommands } from './useAgentAttemptCommands';
+import { NowExecutor } from '../NowExecutor';
 
 const MONO = 'font-mono text-content-primary [overflow-wrap:anywhere]';
 const STRONG = 'font-medium text-content-primary';
@@ -90,8 +90,8 @@ function OpenSessionButton({
 
 /** What an agent's attempt (or its result waiting for the owner) adds to the Now block. */
 export interface AgentNow {
-  /** Replaces the quiet position line: the attempt, its state and the agent's Session. */
-  readonly positionLine?: ReactNode;
+  /** Who works on the step: the shared executor row (agent, the state of its work, its Session). */
+  readonly executor?: ReactNode;
   readonly note: ReactNode;
   readonly actions?: ReactNode;
   readonly dialogs?: ReactNode;
@@ -101,35 +101,6 @@ export interface AgentNow {
   readonly showHandoff: boolean;
   /** What the attempt that handed over committed, said in the Last hand-off row. */
   readonly handoffCommit?: string;
-}
-
-/** The agent's Session in a position line: its mark and its title as a link. */
-export function AttemptSession({
-  specId,
-  sessionId,
-  provider,
-  gone = false,
-}: {
-  readonly specId: string;
-  readonly sessionId: string;
-  readonly provider: string;
-  /** The Session no longer exists: its title is struck through, never a link. */
-  readonly gone?: boolean;
-}) {
-  const { title } = useSessionFacts(specId, sessionId);
-
-  return (
-    <span className="inline-flex items-baseline gap-1">
-      <span className="inline-flex h-[1lh] items-center self-start">
-        <SessionProviderIcon providerId={provider} />
-      </span>
-      {gone ? (
-        <span className="text-content-muted line-through">{title}</span>
-      ) : (
-        <SessionLink sessionId={sessionId} title={title} />
-      )}
-    </span>
-  );
 }
 
 /** The take-over dialog with the title of the agent's Session. */
@@ -349,16 +320,28 @@ export function useAgentAttemptNow({
   const [continuingWithNote, setContinuingWithNote] = useState(false);
   const when = (at: string, timeOnlyToday = false) =>
     formatWhen(t, at, i18n.language, { timeOnlyToday });
-  const line = (text: string, view: AgentAttemptView) => (
-    <>
-      {text} ·{' '}
-      <AttemptSession
-        specId={subject.specId}
-        sessionId={view.sessionId}
-        provider={view.provider}
-        gone={ownRefusal(view.continue) === 'session-gone'}
-      />
-    </>
+  // The agent as every screen names it: its Session's titles, else the catalogue's.
+  const agentOf = (provider: string, sessionId: string, model?: string) => {
+    const session = titles.session?.(sessionId);
+
+    return {
+      provider,
+      model,
+      providerTitle: session?.providerTitle,
+      modelTitle: session?.modelTitle,
+      catalogue: titles.catalogue,
+    };
+  };
+
+  // Who works on the step and how its work stands: the shared executor row of the Now block.
+  const line = (text: string, view: AgentAttemptView, tone: StatusTone) => (
+    <NowExecutor
+      agent={agentOf(view.provider, view.sessionId, view.model)}
+      state={text}
+      tone={tone}
+      sessionId={view.sessionId}
+      sessionGone={ownRefusal(view.continue) === 'session-gone'}
+    />
   );
 
   if (position.kind === 'awaiting-confirmation') {
@@ -383,12 +366,17 @@ export function useAgentAttemptNow({
     const committedLine = commitLine(t, confirmationCommit);
 
     return {
-      positionLine:
+      executor:
         sessionId && provider ? (
-          <>
-            {text} ·{' '}
-            <AttemptSession specId={subject.specId} sessionId={sessionId} provider={provider} />
-          </>
+          <NowExecutor
+            agent={{
+              ...agentOf(provider, sessionId),
+              ...(attempt.actor.class === 'agent' ? agentOfActor(attempt.actor, titles) : {}),
+            }}
+            state={text}
+            tone="attention"
+            sessionId={sessionId}
+          />
         ) : (
           text
         ),
@@ -538,7 +526,7 @@ export function useAgentAttemptNow({
     const applies = returnRequest.appliesOn === 'next-action';
 
     return {
-      positionLine: line(
+      executor: line(
         t(
           applies
             ? 'workflowExecution.agentAttempt.line.returnStopped'
@@ -546,6 +534,7 @@ export function useAgentAttemptNow({
           { attempt },
         ),
         view,
+        'neutral',
       ),
       note: (
         <div className="grid gap-2">
@@ -609,12 +598,13 @@ export function useAgentAttemptNow({
         const what = waiting.kind ?? 'input';
 
         return {
-          positionLine: line(
+          executor: line(
             t('workflowExecution.agentAttempt.line.waiting', {
               attempt,
               since: when(view.turn.boundAt, true),
             }),
             view,
+            'attention',
           ),
           note: (
             <InlineNote tone="attention" role="status">
@@ -640,12 +630,13 @@ export function useAgentAttemptNow({
       }
 
       return {
-        positionLine: line(
+        executor: line(
           t('workflowExecution.agentAttempt.line.working', {
             attempt,
             since: when(view.turn.boundAt, true),
           }),
           view,
+          'success',
         ),
         note: failed ? (
           <WorkflowRefusalAlert error={failed} />
@@ -663,7 +654,11 @@ export function useAgentAttemptNow({
 
     case 'stopping':
       return {
-        positionLine: line(t('workflowExecution.agentAttempt.line.stopping', { attempt }), view),
+        executor: line(
+          t('workflowExecution.agentAttempt.line.stopping', { attempt }),
+          view,
+          'neutral',
+        ),
         note: (
           <InlineNote tone="info" icon="loader">
             {t('workflowExecution.agentAttempt.stoppingNote', { step: stepTitle })}
@@ -680,7 +675,11 @@ export function useAgentAttemptNow({
       };
     case 'unknown':
       return {
-        positionLine: line(t('workflowExecution.agentAttempt.line.unknown', { attempt }), view),
+        executor: line(
+          t('workflowExecution.agentAttempt.line.unknown', { attempt }),
+          view,
+          'danger',
+        ),
         note: (
           <div className="grid gap-2">
             <InlineNote tone="danger" role="alert">
@@ -791,7 +790,11 @@ export function useAgentAttemptNow({
       const takeOverPaths = [...new Set([...work.documents, ...work.mixed, ...filePaths])];
 
       return {
-        positionLine: line(text, view),
+        executor: line(
+          text,
+          view,
+          missing ? 'danger' : proposal?.state === 'pending' ? 'info' : 'attention',
+        ),
         note: (
           <div className="grid gap-2">
             {explanation}

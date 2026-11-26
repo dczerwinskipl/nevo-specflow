@@ -442,7 +442,8 @@
     "staleContext": "Kontekst może być nieaktualny",
     "contextUnavailable": "Nie udało się wczytać informacji o specyfikacji.",
     "noSpecificationSelectedTitle": "Wybierz specyfikację",
-    "noSpecificationSelectedDescription": "Otwórz specyfikację z listy, aby zobaczyć jej dokumenty i sesje."
+    "noSpecificationSelectedDescription": "Otwórz specyfikację z listy, aby zobaczyć jej dokumenty i sesje.",
+    "taskPage": "Zadanie"
   },
   "operations": {
     "progress": {
@@ -2249,7 +2250,10 @@
       "onHold": "Wstrzymane",
       "cancelled": "Anulowane",
       "loadFailed": "Nie udało się wczytać, co można zrobić z tym zadaniem.",
-      "kind": "Zadanie"
+      "kind": "Zadanie",
+      "copyKey": "Kopiuj klucz zadania",
+      "keyCopied": "Skopiowano klucz zadania",
+      "keyCopyFailed": "Nie udało się skopiować klucza zadania"
     },
     "lifecycle": {
       "approve": "Zatwierdź",
@@ -2649,7 +2653,17 @@
       "personActs": "Ten krok wykonuje {{actor}}; możesz śledzić go tutaj.",
       "handoffDetails": "{{outcome}}: otwórz w historii pracy",
       "handoffCommitted": "Zatwierdzono: {{what}}",
-      "handoffCommittedAll": "Praca zatwierdzona"
+      "handoffCommittedAll": "Praca zatwierdzona",
+      "openSession": "Otwórz sesję",
+      "sessionGone": "Sesja usunięta",
+      "agentWorking": "Pracuje od {{since}}",
+      "agentWorkingAttempt": "Próba {{attempt}} · pracuje od {{since}}",
+      "waitingForDependencies": "Czeka na zależności",
+      "dependenciesRemaining_one": "Pozostała {{count}} zależność",
+      "dependenciesRemaining_few": "Pozostały {{count}} zależności",
+      "dependenciesRemaining_many": "Pozostało {{count}} zależności",
+      "dependenciesRemaining_other": "Pozostało {{count}} zależności",
+      "viewDependencies": "Pokaż zależności"
     },
     "blocker": {
       "dependencies_one": "Czeka na {{count}} zależność",

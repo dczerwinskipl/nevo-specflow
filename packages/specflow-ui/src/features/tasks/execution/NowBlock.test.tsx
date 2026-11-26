@@ -12,7 +12,8 @@ import { stubLayoutApis } from '../../../../test-support/app/stubLayoutApis';
 import { fakeTaskAuthoringApi } from '../authoring/authoring.test-support';
 import { specificationActionsKey } from '../read-model/specificationActions';
 import type { WorkflowExecutionApi } from './api';
-import { SPEC, dominik, withExits } from './projections.stories-support';
+import { SPEC, dominik, taskWorkflowProjection, withExits } from './projections.stories-support';
+import { NowBlock } from './NowBlock';
 import { WorkflowNow } from './WorkflowNow';
 import type { FeedbackSource, NowLinks } from './StartBlockerLines';
 
@@ -508,4 +509,90 @@ it('keeps Start pending and its refusal across remounts, scoped to its subject, 
   } finally {
     unsubscribe();
   }
+});
+
+describe('the shared Now composition', () => {
+  /** A Task that never started, held by two dependencies that are still open. */
+  function waitingForDependencies(): WorkflowActionProjection {
+    const held = taskWorkflowProjection('on-hold');
+    if (held.position.kind !== 'blocked') {
+      throw new Error('Expected a blocked position.');
+    }
+
+    return {
+      ...held,
+      position: {
+        ...held.position,
+        blockers: [{ kind: 'dependencies', waitingFor: ['t-01', 't-02'], unsatisfiable: [] }],
+      },
+    };
+  }
+
+  it('leads with the actionable readiness, the lifecycle position second', () => {
+    const dependencies = vi.fn();
+    renderNow(
+      <NowBlock projection={waitingForDependencies()} headingId="now" links={{ dependencies }} />,
+    );
+    const now = screen.getByRole('region', { name: 'Now' });
+
+    const lead = within(now).getByText('Waiting for dependencies');
+    expect(lead.closest('p')?.className).toContain('text-status-attention');
+    expect(within(now).getByText('Not started · First step · Design')).toBeTruthy();
+    expect(within(now).getByText('2 dependencies remaining')).toBeTruthy();
+    // Said once: no second "Waiting for 2 dependencies" blocker line.
+    expect(within(now).queryByText(/Waiting for 2 dependencies/)).toBeNull();
+    fireEvent.click(within(now).getByRole('button', { name: 'View dependencies' }));
+    expect(dependencies).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the hold first when the Task is on hold, whatever else holds it', () => {
+    renderNow(
+      <NowBlock
+        projection={waitingForDependencies()}
+        headingId="now"
+        links={{}}
+        hold={{ reason: 'Paused by the owner.' }}
+      />,
+    );
+
+    expect(screen.getByText('On hold')).toBeTruthy();
+    expect(screen.queryByText('Waiting for dependencies')).toBeNull();
+  });
+
+  it('names the agent that holds the step and opens its Session from the executor row', () => {
+    const projection = breakdown();
+    if (projection.position.kind !== 'active') {
+      throw new Error('Expected an active position.');
+    }
+
+    const held: WorkflowActionProjection = {
+      ...projection,
+      position: {
+        ...projection.position,
+        attempt: {
+          ...projection.position.attempt,
+          actor: {
+            class: 'agent',
+            details: {
+              provider: 'claude',
+              providerTitle: 'Claude Code',
+              model: 'claude-opus-5-5',
+              modelTitle: 'Opus 5.5',
+              sessionId: 'session-7',
+            },
+          },
+        },
+      },
+    };
+    renderNow(<NowBlock projection={held} headingId="now" links={{}} />);
+    const executor = document.querySelector<HTMLElement>('[data-now-executor]')!;
+
+    expect(within(executor).getByRole('img', { name: 'Claude Code · Opus 5.5' })).toBeTruthy();
+    expect(executor.querySelector('[data-now-executor-state="success"]')?.textContent).toMatch(
+      /^Working since /,
+    );
+    expect(within(executor).getByRole('link', { name: 'Open session' })).toBeTruthy();
+    // The executor replaces the quiet "started by" line: the agent is named once.
+    expect(screen.queryByText(/started by/)).toBeNull();
+  });
 });

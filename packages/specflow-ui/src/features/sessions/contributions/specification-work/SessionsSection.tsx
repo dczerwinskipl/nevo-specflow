@@ -13,6 +13,7 @@ import {
   type SessionRowAgent,
   type SessionRowReadiness,
 } from '../../shared/sessionRow';
+import { productIcons } from '../../../../shared/product-icons';
 
 export interface SessionsSectionProps {
   /** The Sessions to show, the recommended one first. */
@@ -99,7 +100,7 @@ export function SessionsSection({
           id="resume-heading"
           headingTag="h2"
           title={t('specification.sessionsHeading')}
-          icon="chat"
+          icon={productIcons.session.collection}
         />
         <EmptyState
           variant="inline"
@@ -120,7 +121,7 @@ export function SessionsSection({
         id="resume-heading"
         headingTag="h2"
         title={t('specification.sessionsHeading')}
-        icon="chat"
+        icon={productIcons.session.collection}
         actions={
           <Button variant="ghost" size="sm" onClick={onOpenSessionsView}>
             {t('specification.allSessionsLink')}

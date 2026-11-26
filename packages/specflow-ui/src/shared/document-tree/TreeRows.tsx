@@ -1,7 +1,7 @@
 import type { ReactNode, Ref } from 'react';
 import {
   Icon,
-  type IconName,
+  type IconGlyph,
   cn,
   treeAttentionGlyphClassName,
   treeAttentionStateLabelClassName,
@@ -19,6 +19,7 @@ import {
 import { useFlatLevel } from './TreeLevel';
 import { TreeRowTooltip } from './TreeRowTooltip';
 import type { TreeRowFocus } from './useRovingTree';
+import { productIcons } from '../product-icons';
 
 /** A trailing state the reader must always see (the name gives way to it, never the label). */
 export interface TreeRowState {
@@ -176,7 +177,7 @@ export function TreeFolderRow({
 export function TreeDocumentRow({
   name,
   wrap = false,
-  glyph = 'file',
+  glyph = productIcons.document.item,
   lead = false,
   state,
   details = [],
@@ -192,7 +193,7 @@ export function TreeDocumentRow({
 }: TreeRowSlots & {
   name: string;
   wrap?: boolean;
-  glyph?: IconName;
+  glyph?: IconGlyph;
   lead?: boolean;
   state?: TreeRowState;
   /** Tooltip lines (hover and keyboard focus) after the name. */

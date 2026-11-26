@@ -9,7 +9,8 @@ import type {
   DocumentTypeInfo,
   RequirementResult,
 } from '@nevo/specflow-contracts/documents';
-import { isIconName, type IconName } from '@nevo/ui';
+import type { IconGlyph } from '@nevo/ui';
+import { documentTypeIcon, productIcons } from '../../../shared/product-icons';
 import { message, type Message } from '../../../i18n/message';
 
 /*
@@ -29,20 +30,21 @@ export function typeTitle(catalogue: ArchetypeCatalogue | undefined, typeId: str
 /** What a tree row says besides its name: its type (tooltip, accessible name) or that its file is missing. */
 export type TrailingLabel = { kind: 'type'; text: string } | { kind: 'missing' };
 
-/** The glyph slot of a document row: the content format of its file. */
+/** The glyph slot of a document row: the content format of its file (text is a Document). */
 const formatGlyph = {
-  text: 'file',
+  text: productIcons.document.item,
   image: 'image',
   binary: 'file-binary',
-} as const satisfies Record<ContentKind, IconName>;
+} as const satisfies Record<ContentKind, IconGlyph>;
 
 /**
  * The leading glyph of a document row (one slot, never two icons): the icon its type declares, when
- * that names a registry glyph, replaces the content format (text, image, any other file). An
+ * names a document-type glyph of the product icon dictionary, replaces the content format (text,
+ * image, any other file). An
  * unknown or missing name never fails, it falls back to the format; an untyped file keeps it.
  */
-export function documentRowGlyph(document: { kind?: ContentKind }, typeIcon?: string): IconName {
-  return isIconName(typeIcon) ? typeIcon : formatGlyph[document.kind ?? 'text'];
+export function documentRowGlyph(document: { kind?: ContentKind }, typeIcon?: string): IconGlyph {
+  return documentTypeIcon(typeIcon) ?? formatGlyph[document.kind ?? 'text'];
 }
 
 /** The icon a document type declares in the catalogue (`documentTypes[].icon`), if any. */

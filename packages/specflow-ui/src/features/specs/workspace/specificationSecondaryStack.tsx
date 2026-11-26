@@ -17,6 +17,7 @@ import { SpecificationActivityHistory } from './activity/SpecificationActivityHi
 import { DocumentContent } from '../../documents';
 import { DocumentReadingColumns } from '../../../shared/document-reading/DocumentReadingColumns';
 import type { AttemptRef } from '../../tasks';
+import { productIcons } from '../../../shared/product-icons';
 
 export interface SpecificationSecondaryContextValue {
   readonly specId: string;
@@ -173,7 +174,7 @@ export function ActivityHistoryHeader() {
   return (
     <WorkspaceHeaderIdentity
       headingLevel={2}
-      icon="clock"
+      icon={productIcons.history}
       title={t('specification.activityHistory')}
       subtitle={t('specification.thisSpecification')}
     />

@@ -5,6 +5,7 @@ import { ContextNavigationRow } from './ContextNavigationRow';
 import { ContextNote, ContextSection, ContextSkeletonRows } from './ContextSectionFrame';
 import { resolveSection } from './sessionContextAvailability';
 import type { SessionContextViewModel } from './sessionContextTypes';
+import { productIcons } from '../../../../shared/product-icons';
 
 /**
  * "Work": the real entry into what the Session did. One row, "Work history", that opens the
@@ -48,7 +49,7 @@ export function ContextWorkSection({
           {onOpenDocumentation && <ContextDocumentationRow onOpen={onOpenDocumentation} />}
           {resolved.kind === 'ready' && onOpen && (
             <ContextNavigationRow
-              icon="clock"
+              icon={productIcons.history}
               label={t('sessions.context.workHistory.title')}
               secondary={t(
                 resolved.value.turnId === runningTurnId

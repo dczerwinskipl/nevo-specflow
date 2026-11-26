@@ -1,12 +1,10 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { FileText } from 'lucide-react';
 import {
   AppContent,
   Button,
   Collapsible,
-  Icon,
   MarkdownDocument,
   ScrollArea,
   Separator,
@@ -14,6 +12,7 @@ import {
   defineSecondaryStack,
 } from '@nevo/ui';
 import type { RequestOrigin, TextPreview } from '@nevo/specflow-contracts/sessions';
+import { NevoMark } from '../../../../brand';
 import { translateNow } from '../../../../i18n/message';
 import { useMarkdownLabels } from '../../../../i18n/useMarkdownLabels';
 import type { ManagedSessionsApi } from '../api';
@@ -320,7 +319,7 @@ export function StepBriefMessage({
             variant="body-sm"
             className="flex items-center gap-1.5 text-content-secondary"
           >
-            <Icon name="workflow" size="sm" aria-hidden="true" />
+            <NevoMark size="sm" className="size-icon-sm" />
             {t('managedSession.brief.generated')}
           </Typography>
           {origin.continuation ? (
@@ -347,7 +346,6 @@ export function StepBriefMessage({
             <Button
               size="sm"
               variant="ghost"
-              leadingIcon={FileText}
               // Readable on the request surface (the ghost tone is meant for neutral surfaces).
               className="text-content-primary"
               onClick={onOpen}

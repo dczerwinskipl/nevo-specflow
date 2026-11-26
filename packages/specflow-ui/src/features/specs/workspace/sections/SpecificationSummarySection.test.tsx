@@ -93,3 +93,23 @@ describe('Specification summary expand target', () => {
     expect(screen.getByRole('button', { name: 'Show description' })).toBeTruthy();
   });
 });
+
+describe('Specification page identity', () => {
+  beforeAll(async () => {
+    await appI18n.changeLanguage('en');
+  });
+  afterEach(cleanup);
+
+  it('says under the title that the page is a Specification, with its key when it has one', () => {
+    const { rerender } = render(
+      <SpecificationSummarySection title="Converge the APIs" specificationKey="nevo-2" />,
+    );
+    const kind = () => document.querySelector('[data-page-kind]')?.textContent;
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Converge the APIs' })).toBeTruthy();
+    expect(kind()).toBe('Specification · nevo-2');
+
+    rerender(<SpecificationSummarySection title="Converge the APIs" />);
+    expect(kind()).toBe('Specification');
+  });
+});

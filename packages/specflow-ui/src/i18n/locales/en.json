@@ -2248,7 +2248,8 @@
       "draftNotice": "needs approval before it can start",
       "onHold": "On hold",
       "cancelled": "Cancelled",
-      "loadFailed": "What can be done with this task could not be loaded."
+      "loadFailed": "What can be done with this task could not be loaded.",
+      "kind": "Task"
     },
     "lifecycle": {
       "approve": "Approve",

@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bot } from 'lucide-react';
 import { Button, InlineNote, Typography } from '@nevo/ui';
 import { writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { subscribeTaskAttention } from '../overview/attentionRequests';
@@ -33,6 +32,7 @@ import { nowActionPlan, personLabel } from './presentation';
 import { useWorkflowCommands } from './useWorkflowCommands';
 import { useViewer } from './useViewer';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
+import { productIcons } from '../../../shared/product-icons';
 
 type PostAction = NonNullable<FinishWorkflowResult['postActions']>[number];
 type FailedPostAction = Extract<PostAction, { status: 'failed' }>;
@@ -390,7 +390,7 @@ export function WorkflowNow({
     <Button
       key="hand-to-agent"
       variant="secondary"
-      leadingIcon={Bot}
+      leadingIcon={productIcons.agent}
       onClick={() => setDialog('hand')}
       disabled={busy}
     >
@@ -425,7 +425,7 @@ export function WorkflowNow({
           <Button
             key="run-with-agent"
             variant="secondary"
-            leadingIcon={Bot}
+            leadingIcon={productIcons.agent}
             onClick={() => setDialog('agent')}
             disabled={busy}
           >

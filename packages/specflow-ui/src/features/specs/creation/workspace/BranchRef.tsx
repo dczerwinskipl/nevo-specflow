@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { cn, Icon, Typography } from '@nevo/ui';
 import { branchNameParts, readableBranchName } from './model/createRequest';
+import { productIcons } from '../../../../shared/product-icons';
 
 /**
  * The one way a Git branch appears in Create (decision rows, notes, select items, the progress
@@ -31,7 +32,7 @@ export function BranchRef({
       className={cn('inline-flex min-w-0 max-w-full items-start gap-1 align-baseline', className)}
       title={pending ? readableBranchName(name) : undefined}
     >
-      <Icon name="branch" size="sm" className="mt-0.5 shrink-0 text-content-muted" />
+      <Icon name={productIcons.branch} size="sm" className="mt-0.5 shrink-0 text-content-muted" />
       <Typography
         as="span"
         variant="code-md"

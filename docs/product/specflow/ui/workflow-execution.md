@@ -174,7 +174,9 @@ opened by the header's history toggle.
 
 ## Full Task (`/specs/:specId/tasks/:taskId`)
 
-Back to the Specification, the title, `id · Task Type`, the preparation notice (draft, cancelled
+Back to the Tasks page; the header (Narrow) or the trail's last item (Wide) names the Task by its icon
+and key, the body by its title, then "[Task] Task · Task Type" (see
+[Page identity](interaction-model.md#page-identity-and-product-icons)), the preparation notice (draft, cancelled
 with its reason, or on hold with its reason when Now is not shown), the summary, then the sections **Workflow** (the Now block; omitted when
 cancelled), **Documents**, **Context** and **Depends on**. Task history is the Secondary.
 

@@ -48,6 +48,7 @@ import {
   type ContextNames,
 } from './contextPresentation';
 import { UseDefaultContextDialog } from './UseDefaultContextDialog';
+import { productIcons } from '../../../../shared/product-icons';
 
 export interface TaskContextSectionProps {
   readonly specId: string;
@@ -121,7 +122,7 @@ export function TaskContextSection(props: TaskContextSectionProps) {
     <SupportSection
       id="task-context-heading"
       title={t('taskAuthoring.section.context')}
-      icon="book-open"
+      icon={productIcons.context}
       taskId={props.taskId}
       count={count}
       summary={
@@ -336,16 +337,22 @@ function AddContextMenu({
         />
       </MenuTrigger>
       <MenuContent align="end">
-        <MenuItem leadingIcon="file" onSelect={() => onChoose('specification-document')}>
+        <MenuItem
+          leadingIcon={productIcons.document.item}
+          onSelect={() => onChoose('specification-document')}
+        >
           {t('taskAuthoring.context.addSpecificationDocument')}
         </MenuItem>
-        <MenuItem leadingIcon="book-open" onSelect={() => onChoose('project-document')}>
+        <MenuItem
+          leadingIcon={productIcons.documentation}
+          onSelect={() => onChoose('project-document')}
+        >
           {t('taskAuthoring.context.addProjectDocument')}
         </MenuItem>
         <MenuItem leadingIcon="folder" onSelect={() => onChoose('path')}>
           {t('taskAuthoring.context.addPath')}
         </MenuItem>
-        <MenuItem leadingIcon="info" onSelect={() => onChoose('instructions')}>
+        <MenuItem leadingIcon={productIcons.instructions} onSelect={() => onChoose('instructions')}>
           {t('taskAuthoring.context.addInstructions')}
         </MenuItem>
         {onUseDefault ? (

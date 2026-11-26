@@ -13,7 +13,7 @@ export type HandoffFeedbackTone = 'neutral' | 'attention' | 'info';
 
 const TONE_ICONS = {
   attention: { name: 'circle-alert', className: 'text-status-attention' },
-  info: { name: 'chat', className: 'text-content-muted' },
+  info: { name: 'info', className: 'text-content-muted' },
 } as const;
 
 /**

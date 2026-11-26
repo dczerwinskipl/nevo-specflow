@@ -15,6 +15,7 @@ import {
   type useSpecificationWorkflowTimeline,
 } from '../../../tasks';
 import { activityDays, composeActivityTimeline, type ActivityTimelineEntry } from './timeline';
+import { productIcons } from '../../../../shared/product-icons';
 
 const DATE_TIME = /^\d{4}-\d{2}-\d{2}T/u;
 
@@ -108,7 +109,7 @@ export function ActivityHistory({
       <FeatureUnavailable className="border-none" />
     ) : availability !== 'available' ? (
       <EmptyState
-        icon="clock"
+        icon={productIcons.history}
         title={t(
           availability === 'forbidden'
             ? 'specification.activityHistoryForbiddenTitle'
@@ -139,7 +140,7 @@ export function ActivityHistory({
             variant="title-sm"
             className="flex items-center gap-2 text-content-primary"
           >
-            <Icon name="clock" size="sm" className="text-content-muted" />
+            <Icon name={productIcons.history} size="sm" className="text-content-muted" />
             <span>{t('specification.activityHistory')}</span>
           </Typography>
           <Typography variant="body-sm" className="mt-0.5 text-content-muted">
@@ -172,7 +173,7 @@ export function ActivityHistory({
       {unavailable ??
         (entries.length === 0 ? (
           <EmptyState
-            icon="clock"
+            icon={productIcons.history}
             title={t('specification.activityHistoryEmptyTitle')}
             description={t('specification.activityHistoryEmptyDescription')}
             className="border-none"

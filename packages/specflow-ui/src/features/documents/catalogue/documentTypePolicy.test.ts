@@ -1,5 +1,6 @@
 import type { ArchetypeCatalogue } from '@nevo/specflow-contracts/documents';
 import { describe, expect, it } from 'vitest';
+import { documentTypeIcons, productIcons } from '../../../shared/product-icons';
 import { documentTreeFixture } from '../../../../test-support/documents/fixtures';
 import {
   closeRefusingIssues,
@@ -265,13 +266,13 @@ describe('the glyph of a document row', () => {
     ),
   };
 
-  it("is the type's registry icon, else the content format", () => {
+  it("is the type's dictionary glyph, else the content format", () => {
     expect(documentRowGlyph({ kind: 'text' }, declaredTypeIcon(withIcons, 'ux'))).toBe(
-      'panels-top-left',
+      documentTypeIcons['panels-top-left'],
     );
     // An unknown name and a type without an icon fall back to the format.
     expect(documentRowGlyph({ kind: 'text' }, declaredTypeIcon(withIcons, 'decisions'))).toBe(
-      'file',
+      productIcons.document.item,
     );
     expect(documentRowGlyph({ kind: 'image' }, declaredTypeIcon(withIcons, 'overview'))).toBe(
       'image',

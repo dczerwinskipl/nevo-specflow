@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { Bot, GitCommitHorizontal } from 'lucide-react';
 import {
   Alert,
   Button,
@@ -30,6 +29,7 @@ import {
 } from './AgentSession';
 import { NO_AGENT_REASONS, archetypeTitle, optionOfRefusal } from './agentOption';
 import { useAgentStart } from './useAgentStart';
+import { productIcons } from '../../../../shared/product-icons';
 
 const CODE = <span className="font-mono whitespace-nowrap text-content-primary" />;
 
@@ -292,7 +292,7 @@ export function AgentStartDialog({
             {otherRefusal ? <WorkflowRefusalAlert error={start.error} /> : null}
             {option ? (
               <>
-                <InlineNote tone="info" icon={GitCommitHorizontal}>
+                <InlineNote tone="info" icon={productIcons.commit}>
                   {branch ? (
                     <Trans
                       i18nKey="workflowExecution.agent.commit"
@@ -325,7 +325,7 @@ export function AgentStartDialog({
             {t('common.cancel')}
           </Button>
           <Button
-            leadingIcon={Bot}
+            leadingIcon={productIcons.agent}
             onClick={submit}
             disabled={!canStart}
             aria-busy={start.isPending}

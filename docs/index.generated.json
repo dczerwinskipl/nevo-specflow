@@ -6138,9 +6138,10 @@
       "read_when": [
         "designing a UI screen, its navigation, or its back behavior",
         "choosing between an inline surface, an inspector, a sheet, and a page",
-        "defining what state is preserved across navigation"
+        "defining what state is preserved across navigation",
+        "choosing an icon for a product concept, or naming a page in its header and trail"
       ],
-      "summary": "Responsive shell with independent navigation and workspace breakpoints, the product hierarchy and routes, the reachability of every surface, starting a Session and the navigator, Back/Close semantics, and when to use floating, Secondary, pushed-detail, or full-workspace surfaces.",
+      "summary": "Responsive shell with independent navigation and workspace breakpoints, the product hierarchy and routes, the reachability of every surface, starting a Session and the navigator, Back/Close semantics, page identity and the product icon dictionary, and when to use floating, Secondary, pushed-detail, or full-workspace surfaces.",
       "related": [
         "product.specflow.ui.personas",
         "product.specflow.ui.ai-session-ux",

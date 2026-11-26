@@ -12,6 +12,7 @@ import {
 import type { WorkspaceDocsSkippedDocument } from '@nevo/specflow-contracts/docs';
 import type { DocsFailure } from '../read-model';
 import { SkippedDocuments } from '../tree-pane/SkippedDocuments';
+import { productIcons } from '../../../shared/product-icons';
 
 /** No `docs.view`: the whole surface says so (no tree, no picker). */
 export function DocsForbidden() {
@@ -71,7 +72,7 @@ export function CorpusProblemView({
       return (
         <EmptyState
           variant="inline"
-          icon="book-open"
+          icon={productIcons.documentation}
           title={t('docs.state.notConfigured.title')}
           description={
             <span className="wrap-anywhere">
@@ -98,7 +99,7 @@ export function CorpusProblemView({
       return (
         <EmptyState
           variant="inline"
-          icon="book-open"
+          icon={productIcons.documentation}
           title={t('docs.state.empty.title')}
           description={t('docs.state.empty.description', { workspace: workspaceName })}
         />
@@ -130,7 +131,7 @@ export function CorpusProblemView({
       return (
         <EmptyState
           variant="inline"
-          icon="book-open"
+          icon={productIcons.documentation}
           title={t('docs.state.notServed.title')}
           description={t('docs.state.notServed.description')}
         />

@@ -4,6 +4,7 @@ import { collectionWide } from '../../../../shared/operational-list';
 import { SpecificationSituation } from '../../../tasks';
 import type { SpecRowModel } from '../presentation';
 import { formatSpecDate } from './specDate';
+import { productIcons } from '../../../../shared/product-icons';
 
 export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
   const { t, i18n } = useTranslation();
@@ -85,8 +86,8 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
               summary.reason === 'blocked'
                 ? 'triangle-alert'
                 : summary.reason === 'review'
-                  ? 'file-search'
-                  : 'chat'
+                  ? 'eye'
+                  : productIcons.session.item
             }
             size="sm"
             className="mr-1 inline-block align-text-bottom"

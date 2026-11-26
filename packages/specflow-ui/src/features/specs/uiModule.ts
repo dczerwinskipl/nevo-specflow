@@ -1,5 +1,6 @@
 import { contributeTo, type UiModule } from '../../app/ui-modules/contracts';
 import { specificationAttentionItems } from './extensions/specificationAttentionItems';
+import { productIcons } from '../../shared/product-icons';
 
 /** Specification owns only specification-level Attention; domain features own theirs. */
 export const specsUiModule: UiModule = {
@@ -10,7 +11,7 @@ export const specsUiModule: UiModule = {
       getItems: ({ data }) =>
         data.attentionItems
           .filter((item) => item.kind === 'specification')
-          .map((item) => ({ item, icon: 'file' })),
+          .map((item) => ({ item, icon: productIcons.specification.item })),
     }),
   ],
 };

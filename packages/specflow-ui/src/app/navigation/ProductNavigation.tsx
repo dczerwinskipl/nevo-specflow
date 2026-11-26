@@ -11,7 +11,7 @@ import {
 import { Link, useMatch, useRouterState } from '@tanstack/react-router';
 import { StandaloneLink } from './LocationLink';
 import { useTranslation } from 'react-i18next';
-import { BookOpen, FileText } from 'lucide-react';
+import { productIcons } from '../../shared/product-icons';
 import {
   isDocumentationPath,
   productNavigationItems,
@@ -127,7 +127,7 @@ export function ProductNavigation({
             <NavigationRow
               selectionTreatment="surface"
               label={t('navigation.specifications')}
-              icon={FileText}
+              icon={productIcons.specification.collection}
               active={!specId && location.pathname === '/'}
               renderLink={(children, className) => (
                 <Link
@@ -150,7 +150,7 @@ export function ProductNavigation({
             <NavigationRow
               selectionTreatment="surface"
               label={t('navigation.documentation')}
-              icon={BookOpen}
+              icon={productIcons.documentation}
               active={!specId && isDocumentationPath(location.pathname)}
               renderLink={(children, className) => (
                 <Link to="/docs" className={className}>

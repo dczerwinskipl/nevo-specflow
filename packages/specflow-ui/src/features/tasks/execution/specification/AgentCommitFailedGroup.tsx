@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { GitCommitHorizontal } from 'lucide-react';
 import { Button, Typography } from '@nevo/ui';
 import type { UncommittedAttempt } from '@nevo/specflow-contracts/documents';
 import { commitReason } from '../agent/AttemptCommitNote';
 import { useAgentAttemptCommands } from '../agent/useAgentAttemptCommands';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
 import { Group, MONO, UNCOMMITTED_PATHS_SHOWN } from './CloseGroup';
+import { productIcons } from '../../../../shared/product-icons';
 
 /** One attempt: what it was, why its commit failed, its files and Retry commit. */
 function AttemptEntry({
@@ -58,7 +58,7 @@ function AttemptEntry({
         <Button
           size="sm"
           variant="secondary"
-          leadingIcon={GitCommitHorizontal}
+          leadingIcon={productIcons.commit}
           aria-label={t('workflowExecution.close.agentCommit.retryLabel', {
             step: attempt.stepTitle,
           })}

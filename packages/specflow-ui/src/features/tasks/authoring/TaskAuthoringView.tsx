@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
-import { Alert, Button, InlineNote, Typography } from '@nevo/ui';
+import { Alert, Button, Icon, InlineNote, Typography } from '@nevo/ui';
 import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import type { SpecificationWorkspaceData } from '../../specs/read-model';
@@ -15,6 +15,7 @@ import { TaskDocumentsSection } from './documents/TaskDocumentsSection';
 import { RefusalAlert } from './RefusalAlert';
 import { TaskNow, type LifecyclePrimary } from '../execution/TaskNow';
 import type { AttemptRef } from '../execution/StartBlockerLines';
+import { productIcons } from '../../../shared/product-icons';
 
 export interface TaskAuthoringViewProps {
   readonly specId: string;
@@ -119,9 +120,20 @@ export function TaskAuthoringView({
         >
           {task.title}
         </Typography>
-        <Typography variant="body-sm" className="text-content-muted">
-          <span className="font-mono">{task.id}</span>
-          {` · ${typeTitle}`}
+        {/* What the page is: its type, by icon and name, and the Task type. Its key names the page in
+          the header and the trail (interaction-model.md "Page identity"). */}
+        <Typography
+          variant="body-sm"
+          className="flex min-w-0 items-center gap-1.5 text-content-muted"
+          data-page-kind=""
+        >
+          <Icon name={productIcons.task.item} size="sm" className="text-content-secondary" />
+          <span className="min-w-0">
+            <span className="font-medium text-content-secondary">
+              {t('taskAuthoring.page.kind')}
+            </span>
+            {` · ${typeTitle}`}
+          </span>
         </Typography>
         {/* The status with its own glyph and a neutral tone: a status alone is not attention. */}
         {resource.status === 'draft' ? (

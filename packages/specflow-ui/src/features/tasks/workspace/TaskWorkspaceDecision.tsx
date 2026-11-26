@@ -15,11 +15,7 @@ export function TaskWorkspaceDecision() {
 
   return (
     <WorkspaceSection aria-label={t('taskWorkspace.decision')}>
-      <WorkspaceSection.Header
-        title={t('taskWorkspace.decision')}
-        icon="workflow"
-        headingTag="h2"
-      />
+      <WorkspaceSection.Header title={t('taskWorkspace.decision')} headingTag="h2" />
       <SegmentedControl
         value={decision}
         onValueChange={(value) => {

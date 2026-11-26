@@ -23,6 +23,7 @@ import { TaskRow } from '../../list/TaskRow';
 import { taskRowViewOf } from '../../list/taskListModel';
 import { getGroupTone } from '../../list/presentation';
 import { emptyTasks } from '../../overview/tasksStepLine';
+import { productIcons } from '../../../../shared/product-icons';
 
 /** A plain click opens in the app; a modified click keeps the browser's own behaviour. */
 const plainClick = (event: MouseEvent) =>
@@ -77,7 +78,7 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
       id="tasks-summary-heading"
       headingTag="h2"
       title={t('specification.tasksHeading')}
-      icon="list-checks"
+      icon={productIcons.task.collection}
       actions={
         <>
           <Button variant="ghost" size="sm" onClick={() => actions.openTasks()}>

@@ -15,6 +15,7 @@ import { translateNow } from '../../../i18n/message';
 import { useTaskWorkspace } from './TaskWorkspaceState';
 import { TaskWorkspaceHistory } from './TaskWorkspaceHistory';
 import type { TaskWorkspaceData } from './taskWorkspaceModel';
+import { productIcons } from '../../../shared/product-icons';
 
 interface Pages {
   history: Record<never, never>;
@@ -41,7 +42,7 @@ function MaterialHeader({ data, params }: ScreenProps) {
       icon={
         material?.content.state === 'available' && material.content.kind === 'image'
           ? Image
-          : 'file'
+          : productIcons.document.item
       }
     />
   );
@@ -112,7 +113,11 @@ function HistoryHeader() {
   const { t } = useTranslation();
 
   return (
-    <WorkspaceHeaderIdentity title={t('taskWorkspace.history')} icon="clock" headingLevel={2} />
+    <WorkspaceHeaderIdentity
+      title={t('taskWorkspace.history')}
+      icon={productIcons.history}
+      headingLevel={2}
+    />
   );
 }
 

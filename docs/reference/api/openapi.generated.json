@@ -62554,7 +62554,8 @@
                           "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
                         },
                         "key": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Human key of the Specification from its manifest (for example nevo-2), as the Specifications list shows it; absent when the manifest has none."
                         },
                         "title": {
                           "type": "string"

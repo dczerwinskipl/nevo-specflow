@@ -39,6 +39,7 @@ import {
   useSpecificationExitActions,
   type AttemptRef,
 } from '../../tasks';
+import { productIcons } from '../../../shared/product-icons';
 
 function fullTaskHref(specId: string, taskId: string, collection: 'current' | 'archive'): string {
   const search = collection === 'archive' ? '?collection=archive' : '';
@@ -267,7 +268,7 @@ function SpecificationWorkspaceInner({
                     <RefreshStatus active={refreshing} label={t('specifications.refreshing')} />
                   </div>
                 }
-                icon="file"
+                icon={productIcons.overview}
                 labels={{ moreActions: t('common.moreActions') }}
                 actions={[
                   // Narrow: history opens as a contextual flow. Split: the declarative history
@@ -275,7 +276,7 @@ function SpecificationWorkspaceInner({
                   supportsSplit
                     ? {
                         id: 'history',
-                        icon: 'clock' as const,
+                        icon: productIcons.history,
                         presentation: 'icon' as const,
                         label: t('specification.activityHistory'),
                         pressed: historyPanel.visible,
@@ -284,7 +285,7 @@ function SpecificationWorkspaceInner({
                       }
                     : {
                         id: 'history',
-                        icon: 'clock' as const,
+                        icon: productIcons.history,
                         label: t('specification.activityHistory'),
                         onPress: handleOpenHistory,
                       },

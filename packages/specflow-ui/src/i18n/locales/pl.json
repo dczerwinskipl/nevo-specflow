@@ -2248,7 +2248,8 @@
       "draftNotice": "wymaga zatwierdzenia, zanim wystartuje",
       "onHold": "Wstrzymane",
       "cancelled": "Anulowane",
-      "loadFailed": "Nie udało się wczytać, co można zrobić z tym zadaniem."
+      "loadFailed": "Nie udało się wczytać, co można zrobić z tym zadaniem.",
+      "kind": "Zadanie"
     },
     "lifecycle": {
       "approve": "Zatwierdź",

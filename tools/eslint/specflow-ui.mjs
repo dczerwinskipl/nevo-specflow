@@ -1,6 +1,9 @@
 // SpecFlow UI rules: package direction, module ownership, localized copy.
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import reactHooks from 'eslint-plugin-react-hooks';
 import i18nCopy from './no-hardcoded-copy.mjs';
+import productIconRule from './no-direct-product-icon.mjs';
 import { restrict } from './imports.mjs';
 
 const specflowUiSharedPatterns = [
@@ -94,6 +97,36 @@ function boundaryBlocks() {
   return blocks;
 }
 
+const productIconsModule = 'src/shared/product-icons/productIcons.ts';
+const specflowUiPackage = new URL('../../packages/specflow-ui/', import.meta.url);
+
+/**
+ * The product icon dictionary (`src/shared/product-icons`) is the only production module that may
+ * import its glyphs. The rule gets every `lucide-react` export name of those glyphs, aliases
+ * included (`Home`, `House`, `HomeIcon`, `LucideHome` are one component), so a renamed import
+ * cannot slip past it.
+ */
+function productIconBlock() {
+  const { glyphs, retired, registryNames } = JSON.parse(
+    readFileSync(new URL('src/shared/product-icons/productGlyphs.json', specflowUiPackage), 'utf8'),
+  );
+  const lucide = createRequire(new URL('package.json', specflowUiPackage))('lucide-react');
+  const components = new Set([...glyphs, ...retired].map((name) => lucide[name]));
+  const names = Object.keys(lucide).filter((name) => components.has(lucide[name]));
+
+  return {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [productIconsModule, ...nonProductionUiSources, 'src/**/*.figma.tsx', 'src/mocks/**'],
+    plugins: { 'specflow-icons': productIconRule },
+    rules: {
+      'specflow-icons/no-direct-product-icon': [
+        'error',
+        { glyphs: names, registryNames, module: productIconsModule },
+      ],
+    },
+  };
+}
+
 /**
  * Package direction plus module ownership: a component lives in the module that owns the
  * capability and features talk to each other only through their public barrel
@@ -116,6 +149,7 @@ export const specflowUiBoundaries = [
     plugins: { 'specflow-i18n': i18nCopy },
     rules: { 'specflow-i18n/no-hardcoded-copy': 'error' },
   },
+  productIconBlock(),
   // `crypto.randomUUID` exists only in secure contexts; a Runtime opened over plain http on a LAN
   // or Tailscale host has none, and a command that throws before it is sent shows nothing.
   {

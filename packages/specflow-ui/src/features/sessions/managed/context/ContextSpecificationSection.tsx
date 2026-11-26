@@ -5,6 +5,7 @@ import { ContextKey, ContextNavigationRow } from './ContextNavigationRow';
 import { ContextNote, ContextSection, ContextSkeletonRows } from './ContextSectionFrame';
 import { isRequired, isSectionPresent, resolveSection } from './sessionContextAvailability';
 import type { ContextSpecification, SessionContextViewModel } from './sessionContextTypes';
+import { productIcons } from '../../../../shared/product-icons';
 
 /**
  * The Specification this Session is associated with: its identity row, and under it (same list)
@@ -52,7 +53,7 @@ export function ContextSpecificationSection({
       {resolved.kind === 'ready' && onOpenSpecification && (
         <InformationList>
           <ContextNavigationRow
-            icon="workflow"
+            icon={productIcons.specification.item}
             emphasis="identity"
             label={resolved.value.title}
             secondary={
@@ -67,7 +68,7 @@ export function ContextSpecificationSection({
           />
           {onOpenDocuments && (
             <ContextNavigationRow
-              icon="file"
+              icon={productIcons.document.collection}
               label={t('sessions.context.specification.documents')}
               onClick={() => onOpenDocuments(resolved.value)}
             />

@@ -1,11 +1,11 @@
 import type { DocumentAttemptCommit } from '@nevo/specflow-contracts/documents';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
-import { GitCommitHorizontal } from 'lucide-react';
 import { Button, InlineNote } from '@nevo/ui';
 import { useAppServices } from '../../../app/useAppServices';
 import { specificationActionsKey } from '../../tasks/read-model';
 import { documentTreeKeys } from '../read-model/queries';
+import { productIcons } from '../../../shared/product-icons';
 
 const CODE = <span className="font-mono whitespace-nowrap text-content-primary" />;
 
@@ -46,7 +46,7 @@ export function AttemptCommitDocumentNote({
   return (
     <InlineNote
       tone={failed ? 'attention' : 'info'}
-      icon={GitCommitHorizontal}
+      icon={productIcons.commit}
       role={failed ? 'alert' : 'status'}
       data-document-attempt-commit={failed ? 'failed' : 'pending'}
     >
@@ -65,7 +65,7 @@ export function AttemptCommitDocumentNote({
         <Button
           size="sm"
           variant="secondary"
-          leadingIcon={GitCommitHorizontal}
+          leadingIcon={productIcons.commit}
           onClick={() => retry.mutate()}
           disabled={retry.isPending}
           aria-busy={retry.isPending}

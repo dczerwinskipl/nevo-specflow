@@ -1,4 +1,4 @@
-import type { IconName } from '@nevo/ui';
+import type { IconGlyph } from '@nevo/ui';
 import type { TaskOverview, WorkspaceAttention } from '@nevo/specflow-contracts/specs/workspace';
 import type { DocumentContentState } from '@nevo/specflow-contracts/documents';
 import type { AgentStepOrigin } from '@nevo/specflow-contracts/sessions';
@@ -35,7 +35,7 @@ export interface DocumentItem {
 export interface SessionActivity {
   readonly label: string;
   readonly tone?: 'attention' | 'info' | 'neutral' | 'success';
-  readonly icon?: IconName;
+  readonly icon?: IconGlyph;
   readonly animate?: boolean;
 }
 

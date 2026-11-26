@@ -19,6 +19,7 @@ import { taskStatusSupporting } from '../../read-model';
 import { useTaskCommands } from '../useTaskAuthoring';
 import { AddDependencyDialog } from './AddDependencyDialog';
 import { namedCandidates, type DependencyTask } from './dependencyModel';
+import { productIcons } from '../../../../shared/product-icons';
 
 export interface TaskDependenciesSectionProps {
   readonly specId: string;
@@ -72,7 +73,7 @@ export function TaskDependenciesSection({
     <SupportSection
       id="task-dependencies-heading"
       title={t('taskAuthoring.section.dependsOn')}
-      icon="network"
+      icon={productIcons.dependency}
       taskId={taskId}
       count={dependsOn.length > 0 ? dependsOn.length : undefined}
       items={dependsOn.length}

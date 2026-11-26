@@ -45,7 +45,9 @@ grouping is [ADR 0023](../../../architecture/decisions/0023-neutral-workflow-coo
 
 ## Sections and order
 
-The summary (title and description) leads. Below it: **Now** (or the preparation block),
+The summary leads: the title, the line that says what the page is ("[Specification] Specification ·
+nevo-2", see [Page identity](interaction-model.md#page-identity-and-product-icons)) and the
+description. Below it: **Now** (or the preparation block),
 **Requires attention**, **Tasks** (work), then **Sessions**, **Documents** and other context (the
 repository section). **Tasks**, **Sessions** and **Documents** always keep their place: an empty
 one is its header and the design system's inline empty state (`EmptyState variant="inline"`).

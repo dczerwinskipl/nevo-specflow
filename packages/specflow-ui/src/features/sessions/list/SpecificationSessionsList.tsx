@@ -11,6 +11,7 @@ import { sessionRowFacts, sessionRowStatus, type SessionRowAgent } from '../shar
 import { sessionTitleOf } from '../shared/agentStepTitle';
 import type { SessionCollection } from './loadSessions';
 import type { SpecificationSessionListState } from './useSpecificationSessionList';
+import { productIcons } from '../../../shared/product-icons';
 
 /**
  * The heading the list belongs to: the nearest page title (`ViewPageTitle`, focusable with
@@ -63,7 +64,7 @@ export function SpecificationSessionsList({
   // The guarded handler of "Show more": one load at a time, whatever the button's state shows.
   const loading = useRef(false);
   const newSession = onNewSession ? (
-    <Button leadingIcon="chat-plus" onClick={onNewSession}>
+    <Button leadingIcon={productIcons.startConversation} onClick={onNewSession}>
       {t('sessions.list.newSession')}
     </Button>
   ) : null;

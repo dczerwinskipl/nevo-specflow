@@ -18,6 +18,7 @@ import {
   taskCommandKey,
   type TaskAttentionRequest,
 } from '../../overview/attentionRequests';
+import { productIcons } from '../../../../shared/product-icons';
 
 type ActionCode = NonNullable<AttentionItem['action']>;
 type Context = Pick<SpecificationWorkSectionContext, 'specId' | 'actions'>;
@@ -147,7 +148,8 @@ export function taskAttentionEntry(
 
   return {
     item,
-    icon: 'list-checks',
+    // The item's own type: a Task, or the Specification whose workflow step it is about.
+    icon: item.kind === 'task' ? productIcons.task.item : productIcons.specification.item,
     // The Task's key is left to the Tasks page; its title is the item's title already.
     facts:
       item.kind === 'task' && item.targetId

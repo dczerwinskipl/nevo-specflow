@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
-import type { IconName, StatusTone } from '@nevo/ui';
+import type { IconGlyph, StatusTone } from '@nevo/ui';
 
 export interface SemanticSupporting {
   readonly text: string;
   readonly tone?: StatusTone;
-  readonly icon?: IconName;
+  readonly icon?: IconGlyph;
   /** A `StatusIndicator` dot in the icon slot (a status whose mark is a dot); ignored with `icon`. */
   readonly indicator?: StatusTone;
   /** Without `icon` or `indicator`: keep the empty mark slot, so the text lines up with marked lines. */

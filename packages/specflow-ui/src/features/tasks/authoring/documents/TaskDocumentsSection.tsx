@@ -19,6 +19,7 @@ import { SectionAddButton } from '../SectionAddButton';
 import { OPEN_UP_TO, SupportSection } from '../SupportSection';
 import { useTaskActions, useTaskDocumentTree } from '../useTaskAuthoring';
 import { TaskDocumentDialog, type TaskDocumentDialogRequest } from './TaskDocumentDialog';
+import { productIcons } from '../../../../shared/product-icons';
 
 export interface TaskDocumentsSectionProps {
   readonly specId: string;
@@ -77,7 +78,7 @@ export function TaskDocumentsSection({
     <SupportSection
       id="task-documents-heading"
       title={t('taskAuthoring.section.documents')}
-      icon="file"
+      icon={productIcons.document.collection}
       taskId={taskId}
       count={tree.data ? documents.length : undefined}
       summary={summary}

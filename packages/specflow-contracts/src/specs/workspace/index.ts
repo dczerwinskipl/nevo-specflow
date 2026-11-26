@@ -233,8 +233,13 @@ export const SpecificationWorkspaceResponseSchema = Type.Object({
   recommendedSessionId: Type.Optional(SessionIdSchema),
   specification: Type.Object({
     id: IdSchema,
-    /** Optional human-facing Specification key (for example `UI-1234`). */
-    key: Type.Optional(Type.String()),
+    /** The human key Create gave the Specification (`nevo-2`); absent for one created without. */
+    key: Type.Optional(
+      Type.String({
+        description:
+          'Human key of the Specification from its manifest (for example nevo-2), as the Specifications list shows it; absent when the manifest has none.',
+      }),
+    ),
     title: Type.String(),
     summary: Type.String({
       description:

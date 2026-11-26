@@ -28,6 +28,7 @@ import { TaskAuthoringView } from '../authoring/TaskAuthoringView';
 import { useTaskActions, useTaskDocumentTree } from '../authoring/useTaskAuthoring';
 import { FullTaskView } from './FullTaskView';
 import type { AttemptRef } from '../execution/StartBlockerLines';
+import { productIcons } from '../../../shared/product-icons';
 
 export interface ProjectTaskWorkspaceProps {
   readonly specId: string;
@@ -129,7 +130,7 @@ function Workspace({
     {
       id: 'history',
       label: t('specification.taskFullHistoryHeading'),
-      icon: 'clock',
+      icon: productIcons.history,
       presentation: 'icon',
       direct: 'always',
       onPress: onOpenHistory,
@@ -151,10 +152,10 @@ function Workspace({
                   title={t('specification.viewTasks')}
                   view="task"
                   specId={specId}
-                  detailLabel={task.title}
+                  detailLabel={task.id}
                 />
               }
-              icon="list-checks"
+              icon={productIcons.task.item}
               labels={{ moreActions: t('common.moreActions') }}
               actions={[...historyAction, ...lifecycle.actions]}
             />

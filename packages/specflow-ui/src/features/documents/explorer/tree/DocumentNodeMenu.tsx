@@ -17,6 +17,7 @@ import {
 import { useMessage } from '../../../../i18n/message';
 import { menuReasonNote } from '../../catalogue/documentTypePolicy';
 import { folderActions, type EntryKind } from './documentTreePolicy';
+import { productIcons } from '../../../../shared/product-icons';
 
 /** What the row menu can ask for; the explorer decides how each is carried out. */
 export interface DocumentNodeActions {
@@ -176,7 +177,7 @@ export function DocumentNodeMenu({
           <>
             <MenuItem
               disabled={!tree.capabilities.createFile.available}
-              leadingIcon="file"
+              leadingIcon={productIcons.document.item}
               onSelect={() => actions.newDocument(path)}
             >
               {t('documents.tree.newDocument')}

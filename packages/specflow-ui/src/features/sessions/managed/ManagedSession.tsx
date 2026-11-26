@@ -16,6 +16,7 @@ import {
   AppContent,
   AppWorkspace,
   Button,
+  Icon,
   IconButton,
   Menu,
   MenuContent,
@@ -95,6 +96,7 @@ import {
   useWorkspaceChangesAfterTurn,
   type WorkspaceChangesSource,
 } from './conversation/useWorkspaceChangesAfterTurn';
+import { productIcons } from '../../../shared/product-icons';
 
 function browserStorage() {
   try {
@@ -1115,7 +1117,7 @@ function ManagedSessionConversation({
                                     aria-label={t('managedSession.attach.action')}
                                   >
                                     <MenuItem
-                                      leadingIcon="file"
+                                      leadingIcon="upload"
                                       onSelect={() => fileAttachmentInputRef.current?.click()}
                                     >
                                       {t('managedSession.attach.addFile')}
@@ -1234,6 +1236,16 @@ const explainedSendFailures = [
   'SESSION_RECOVERY_REQUIRED_SESSION',
   'mode-model-unsupported',
 ] as const;
+
+/** The Session's title led by the Session icon; the subtitle (its state) lines up under the icon. */
+function SessionHeaderTitle({ children }: { children: string }) {
+  return (
+    <span className="inline-flex max-w-full min-w-0 items-center gap-2 align-bottom">
+      <Icon name={productIcons.session.item} size="md" className="text-content-secondary" />
+      <span className="min-w-0 truncate">{children}</span>
+    </span>
+  );
+}
 
 function sendFailureKey(failure: string) {
   const known = (explainedSendFailures as readonly string[]).includes(failure)
@@ -1534,7 +1546,7 @@ export function ManagedSession({
     ? {
         id: 'context',
         label: t('sessions.context.title'),
-        icon: 'file',
+        icon: productIcons.context,
         // Directly tappable on narrow instead of buried in the generic "More actions" overflow
         // (full-session.md "Secondary tabs"'s `[Context]` pill); `'always'` wins the single
         // narrow direct slot regardless of this header's own measured width.
@@ -1629,10 +1641,14 @@ export function ManagedSession({
         <AppWorkspace.Primary
           header={
             <WorkspaceHeader
+              // The Session icon says what the page is (interaction-model.md "Page identity"); the
+              // agent is named once, by the transcript's speaker line.
               title={
-                namingPending
-                  ? t('sessionNaming.provisionalTitle')
-                  : (sessionTitle ?? t('managedSession.title'))
+                <SessionHeaderTitle>
+                  {namingPending
+                    ? t('sessionNaming.provisionalTitle')
+                    : (sessionTitle ?? t('managedSession.title'))}
+                </SessionHeaderTitle>
               }
               subtitle={headerSubtitle}
               status={

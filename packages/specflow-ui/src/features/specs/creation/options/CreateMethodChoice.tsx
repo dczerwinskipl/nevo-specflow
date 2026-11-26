@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { cn, choiceSurfaceClassName, Icon, Typography } from '@nevo/ui';
 import { FlowParentBack } from '../../../../app/navigation/ApplicationLocation';
+import { productIcons } from '../../../../shared/product-icons';
 
 /** First step of a new specification: write it with an agent or by hand. */
 export function CreateMethodChoice({ onChoose }: { onChoose: (method: 'ai' | 'manual') => void }) {
@@ -9,13 +10,13 @@ export function CreateMethodChoice({ onChoose }: { onChoose: (method: 'ai' | 'ma
     {
       id: 'ai' as const,
       title: t('create.withAI'),
-      icon: 'chat' as const,
+      icon: productIcons.startConversation,
       text: t('create.method.aiText'),
     },
     {
       id: 'manual' as const,
       title: t('create.manual'),
-      icon: 'file' as const,
+      icon: 'edit' as const,
       text: t('create.method.manualText'),
     },
   ];

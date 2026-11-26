@@ -12,7 +12,7 @@ const notImplemented = {
 /**
  * Workspace identity of a specification read from its Engine-verified canonical manifest.
  *
- * The Engine owns the manifest (title, task list, creation date) and its provenance; it does not yet
+ * The Engine owns the manifest (key, title, task list, creation date) and its provenance; it does not yet
  * own a verified projection of Git state, so Repository and Changes are `not_implemented` rather
  * than guessed. Tasks, documents, Sessions, activity and the `startSession` action come from owner
  * contributions. The description is the overview's first paragraph as plain text, read as a bounded
@@ -49,6 +49,8 @@ export function createEngineWorkspaceRepository(
         workspaceId: source.workspaceId,
         specification: {
           id: source.specId,
+          // The human key Create gave it (`nevo-2`): the Overview and the location name it.
+          ...(source.specification.key ? { key: source.specification.key } : {}),
           title: source.specification.title,
           summary: source.overviewPrefix ? summarizeOverview(source.overviewPrefix) : '',
           // The manifest lists no Tasks: the Tasks contribution (the Engine's Task resources)

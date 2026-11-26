@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
-import { GitCompare } from 'lucide-react';
 import { Alert, Button, Collapsible, Typography } from '@nevo/ui';
 import { outcomeCause } from '../outcomeReason';
 import { workStateTone } from '../workStatus';
 import type { TurnOutcomeItem } from './transcriptItems';
+import { productIcons } from '../../../../shared/product-icons';
 
 /**
  * How a Turn that did not simply complete ended (full-session.md "Turn outcome"): ONE event at the
@@ -47,7 +47,7 @@ export function TurnOutcomeEvent({
             <Button
               size="sm"
               variant="secondary"
-              leadingIcon={GitCompare}
+              leadingIcon={productIcons.changes}
               onClick={onReviewChanges}
             >
               {t('managedSession.turnOutcome.reviewChanges')}

@@ -6,6 +6,7 @@ import {
 } from '../specs';
 import { RepositorySection } from './contributions/specification-work/RepositorySection';
 import { message } from '../../i18n/message';
+import { productIcons } from '../../shared/product-icons';
 
 function SpecificationRepository({ data, actions }: SpecificationWorkSectionContext) {
   if (!data.repoContext) {
@@ -44,7 +45,7 @@ export const gitUiModule: UiModule = {
 
         return source.items.map((item) => ({
           item,
-          icon: 'branch',
+          icon: productIcons.repository,
           action: {
             label:
               item.actionCode === 'git'

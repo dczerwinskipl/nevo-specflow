@@ -1,16 +1,15 @@
 import {
   FilePen,
   FilePlus,
-  FileText,
   FlaskConical,
   FolderOpen,
   Globe,
   Search,
   SquareTerminal,
-  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import type { ToolOperation } from '@nevo/specflow-contracts/sessions';
+import { productIcons } from '../../../shared/product-icons';
 
 /**
  * One icon per tool operation kind (the Runtime's `operation`), the same in the Conversation's
@@ -22,11 +21,12 @@ const operationIcons: Record<ToolOperation, LucideIcon> = {
   write: FilePlus,
   command: SquareTerminal,
   test: FlaskConical,
-  read: FileText,
+  // The file the agent read: the Document glyph (a file, as in the document tree).
+  read: productIcons.document.item,
   search: Search,
   list: FolderOpen,
   web: Globe,
-  other: Wrench,
+  other: productIcons.toolAction,
 };
 
 export function workOperationIcon(operation: ToolOperation | undefined): LucideIcon {

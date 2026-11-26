@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { typeTitle } from '../catalogue/documentTypePolicy';
+import { declaredTypeIcon, documentRowGlyph, typeTitle } from '../catalogue/documentTypePolicy';
 import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { ItemTabs, RailTail, cn, type ItemTab, type ItemTabsLabels } from '@nevo/ui';
 import { OutlineButton } from '../outline/OutlineButton';
@@ -71,7 +71,8 @@ export function DocumentTabStrip({
             })
           : tab.path,
         // The rail names a file by its label and dirty dot, like the Session's tabs.
-        icon: rail ? undefined : 'file',
+        // The type's icon, as the tree row shows it; else the Document icon.
+        icon: rail ? undefined : documentRowGlyph({}, declaredTypeIcon(catalogue.data, tab.type)),
         dirty: tab.dirty,
         state: tab.state,
       })),

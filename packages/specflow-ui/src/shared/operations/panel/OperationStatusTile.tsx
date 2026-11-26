@@ -54,7 +54,7 @@ export function OperationStatusTile({
       )}
     >
       {tone === 'running' && !animated ? (
-        <Icon name="file" size={size === 'sm' ? 'sm' : 'md'} />
+        <Icon name="loader" size={size === 'sm' ? 'sm' : 'md'} />
       ) : tone === 'running' ? (
         <Spinner size={size === 'sm' ? 'sm' : 'md'} className={toneColor.running} />
       ) : (

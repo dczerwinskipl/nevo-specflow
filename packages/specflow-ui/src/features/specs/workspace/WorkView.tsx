@@ -109,6 +109,7 @@ export function WorkView({ specId, data }: WorkViewProps) {
     <div key="summary" className={cn('pb-3', twoColumns && 'col-span-2')}>
       <SpecificationSummarySection
         title={data.title}
+        {...(data.key ? { specificationKey: data.key } : {})}
         specId={id}
         intro={data.intro}
         overviewDocumentId={data.overviewDocumentId}

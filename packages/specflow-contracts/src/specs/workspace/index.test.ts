@@ -34,6 +34,22 @@ function workspace() {
   };
 }
 
+describe('Specification Workspace identity', () => {
+  it('carries the Specification key when it has one, and stays valid without it', () => {
+    const response = workspace();
+    const keyed = { ...response, specification: { ...response.specification, key: 'nevo-2' } };
+
+    expect(Value.Check(SpecificationWorkspaceResponseSchema, keyed)).toBe(true);
+    expect(Value.Check(SpecificationWorkspaceResponseSchema, response)).toBe(true);
+    expect(
+      Value.Check(SpecificationWorkspaceResponseSchema, {
+        ...response,
+        specification: { ...response.specification, key: 2 },
+      }),
+    ).toBe(false);
+  });
+});
+
 describe('Specification Workspace Attention contract', () => {
   it('requires a complete Attention array even when an available source has no items', () => {
     const response = workspace();

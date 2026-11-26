@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Collapsible, Icon, useWorkspaceCapabilities, type IconName } from '@nevo/ui';
+import { Collapsible, Icon, useWorkspaceCapabilities, type IconGlyph } from '@nevo/ui';
 import { WorkspaceSection } from '../../../shared/workspace-section';
 import { useSupportSectionChoice } from './supportSectionState';
 
@@ -19,7 +19,7 @@ export interface SupportSectionProps {
   readonly id: string;
   readonly title: string;
   /** The section icon of the Wide header. */
-  readonly icon: IconName;
+  readonly icon: IconGlyph;
   /** The Task whose section this is: the user's toggle is kept per Task for the visit. */
   readonly taskId: string;
   /** The header meta while open (a count, "2 entries · default"). */

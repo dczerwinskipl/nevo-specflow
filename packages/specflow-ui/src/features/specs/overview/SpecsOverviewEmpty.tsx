@@ -1,12 +1,13 @@
 import { ArchetypeAvailabilityHelp } from '../ArchetypeAvailabilityHelp';
-import { Button, EmptyState, type IconName } from '@nevo/ui';
+import { Button, EmptyState, type IconGlyph } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { SpecsCollection } from './model';
 import { useMessage, type Message } from '../../../i18n/message';
+import { productIcons } from '../../../shared/product-icons';
 
-const kindIcon: Record<'noResults' | 'emptyCurrent' | 'emptyArchive', IconName> = {
+const kindIcon: Record<'noResults' | 'emptyCurrent' | 'emptyArchive', IconGlyph> = {
   noResults: 'search',
-  emptyCurrent: 'file',
+  emptyCurrent: productIcons.specification.collection,
   emptyArchive: 'archive',
 };
 

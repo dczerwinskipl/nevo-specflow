@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { GitCommitHorizontal } from 'lucide-react';
-import { Collapsible, Icon, Typography, type IconName } from '@nevo/ui';
+import { Collapsible, Icon, Typography, type IconGlyph } from '@nevo/ui';
 import type { AgentAttemptChanges } from '@nevo/specflow-contracts/workflow';
 import { InlineAction } from '../InlineAction';
+import { productIcons } from '../../../../shared/product-icons';
 
 /** A Task list opens with this many titles; the rest wait behind "N more tasks". */
 const TASKS_SHOWN = 4;
@@ -100,7 +100,7 @@ function ChangeRow({
   kind,
   children,
 }: {
-  readonly icon: IconName;
+  readonly icon: IconGlyph;
   readonly label: string;
   readonly kind: string;
   readonly children: ReactNode;
@@ -187,7 +187,7 @@ export function AttemptChanges({
       {documents.length + files.length > 0 ? (
         <ChangeRow
           kind="files"
-          icon="file"
+          icon={productIcons.document.collection}
           label={t('workflowExecution.attemptHistory.changes.files', {
             count: documents.length + files.length,
           })}
@@ -211,7 +211,7 @@ export function AttemptChanges({
       {tasks.length > 0 ? (
         <ChangeRow
           kind="tasks"
-          icon="list-checks"
+          icon={productIcons.task.collection}
           label={t('workflowExecution.attemptHistory.changes.tasks', { count: tasks.length })}
         >
           <TaskList specId={specId} tasks={tasks} />
@@ -237,7 +237,7 @@ export function CommittedRow({ sha }: { readonly sha?: string | undefined }) {
       className="flex items-center gap-2 text-content-secondary"
       data-attempt-committed=""
     >
-      <GitCommitHorizontal aria-hidden="true" className="size-4 shrink-0 text-content-muted" />
+      <productIcons.commit aria-hidden="true" className="size-4 shrink-0 text-content-muted" />
       <span>
         {t('workflowExecution.attemptHistory.committed')}
         {sha ? (

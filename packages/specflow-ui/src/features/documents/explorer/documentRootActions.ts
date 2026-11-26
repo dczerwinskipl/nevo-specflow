@@ -2,6 +2,7 @@ import type { DocumentTree as Tree } from '@nevo/specflow-contracts/documents';
 import type { TFunction } from 'i18next';
 import type { RefObject } from 'react';
 import type { WorkspaceHeaderAction } from '@nevo/ui';
+import { productIcons } from '../../../shared/product-icons';
 
 /** What the workspace header menu (and the tabs) can ask the explorer to do. */
 export interface DocumentTreeController {
@@ -31,7 +32,7 @@ export function documentRootActions(
     {
       id: 'documents-new-file',
       label: t('documents.tree.newDocument'),
-      icon: 'file',
+      icon: productIcons.document.item,
       disabled: !capabilities?.createFile.available || busy,
       onPress: () => controller.current?.newDocument(),
     },

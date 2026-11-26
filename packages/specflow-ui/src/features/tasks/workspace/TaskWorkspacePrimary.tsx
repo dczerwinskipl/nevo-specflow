@@ -8,6 +8,7 @@ import { TaskWorkspaceSessions } from './TaskWorkspaceSessions';
 import { TaskWorkspaceDecision } from './TaskWorkspaceDecision';
 import { useTaskWorkspace, useWorkspaceScroll } from './TaskWorkspaceState';
 import { DocumentDescription } from '../../documents';
+import { productIcons } from '../../../shared/product-icons';
 
 export function TaskWorkspacePrimary({
   onMaterial,
@@ -84,7 +85,7 @@ export function TaskWorkspacePrimary({
           <Button
             variant="ghost"
             size="sm"
-            leadingIcon="file"
+            leadingIcon={productIcons.instructions}
             trailingIcon={instruction ? ChevronDown : ChevronRight}
             aria-expanded={instruction}
             aria-controls={instructionId}
@@ -107,7 +108,6 @@ export function TaskWorkspacePrimary({
         <Button
           size="sm"
           variant="primary"
-          leadingIcon="workflow"
           className="justify-self-start"
           onClick={() => setMessage(t('taskWorkspace.startDemo'))}
         >
@@ -153,7 +153,7 @@ export function TaskWorkspacePrimary({
         <Button
           variant="secondary"
           size="sm"
-          leadingIcon="clock"
+          leadingIcon={productIcons.history}
           className="justify-self-start"
           onClick={onHistory}
         >

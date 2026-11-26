@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
-import { GitCommitHorizontal } from 'lucide-react';
 import { Button, InlineNote } from '@nevo/ui';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
 import { POLL_MS } from './usePolling';
+import { productIcons } from '../../../../shared/product-icons';
 
 const CODE = <span className="font-mono whitespace-nowrap text-content-primary" />;
 const STRONG = <span className="font-medium text-content-primary" />;
@@ -42,7 +42,7 @@ function RetryButton({
     <Button
       size="sm"
       variant="secondary"
-      leadingIcon={GitCommitHorizontal}
+      leadingIcon={productIcons.commit}
       onClick={onRetry}
       disabled={retrying}
       aria-busy={retrying}
@@ -126,7 +126,7 @@ function Committed({
       : 'workflowExecution.attemptCommit.committed';
 
   return (
-    <InlineNote tone="info" icon={GitCommitHorizontal} data-now-attempt-commit="committed">
+    <InlineNote tone="info" icon={productIcons.commit} data-now-attempt-commit="committed">
       <Trans
         i18nKey={key}
         values={{
@@ -158,7 +158,7 @@ function Pending({
 
   return (
     <div className="grid gap-2" data-now-attempt-commit="pending">
-      <InlineNote tone="info" icon={GitCommitHorizontal} role="status">
+      <InlineNote tone="info" icon={productIcons.commit} role="status">
         {t('workflowExecution.attemptCommit.pending', { step: commit.stepTitle })}
         {commit.waits === 'workflow' ? (
           <> {t('workflowExecution.attemptCommit.blocksWorkflow')}</>

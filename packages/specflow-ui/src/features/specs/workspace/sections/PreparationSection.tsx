@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { startSessionOffered } from '../../../sessions';
 import type { StartSessionAction } from '../../read-model/model';
 import { useWorkspaceRuntime } from '../WorkspaceContext';
+import { productIcons } from '../../../../shared/product-icons';
 
 export interface PreparationSectionProps {
   /** `actions.startSession` of the workspace read: it decides the button or the explanation. */
@@ -34,7 +35,7 @@ export function PreparationSection({ startSession }: PreparationSectionProps) {
     >
       <div className="flex items-center gap-2 text-status-info">
         <span className="flex size-4 shrink-0 items-center justify-center">
-          <Icon name="chat" size="sm" />
+          <Icon name={productIcons.startConversation} size="sm" />
         </span>
         <Typography
           as="h2"
@@ -56,7 +57,7 @@ export function PreparationSection({ startSession }: PreparationSectionProps) {
       {/* Without a start only the narrow history link remains, so the row is narrow-only too. */}
       <div className={cn('mt-4 flex flex-wrap items-center gap-4', !offered && 'lg:hidden')}>
         {offered ? (
-          <Button leadingIcon="chat" onClick={runtime.openNewSession}>
+          <Button leadingIcon={productIcons.startConversation} onClick={runtime.openNewSession}>
             {t('specification.startSession')}
           </Button>
         ) : null}

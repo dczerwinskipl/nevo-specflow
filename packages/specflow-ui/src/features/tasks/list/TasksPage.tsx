@@ -24,6 +24,7 @@ import { getGroupTone } from './presentation';
 import { TaskGroupHeader } from './TaskGroupHeader';
 import { TaskRow } from './TaskRow';
 import type { TaskListView } from './taskListModel';
+import { productIcons } from '../../../shared/product-icons';
 
 export type TaskListState =
   | { readonly status: 'loading' }
@@ -204,7 +205,7 @@ export function TasksPage({
           id="tasks-heading"
           headingTag="h2"
           title={t('specification.tasksHeading')}
-          icon="list-checks"
+          icon={productIcons.task.collection}
           count={count}
           actions={newTask}
         />

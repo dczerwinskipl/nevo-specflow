@@ -6,6 +6,7 @@ import { WorkspaceSection } from '../../../shared/workspace-section';
 
 import { useTaskWorkspace } from './TaskWorkspaceState';
 import { SessionProviderIcon } from '../../sessions';
+import { productIcons } from '../../../shared/product-icons';
 
 export function TaskWorkspaceSessions() {
   const { t } = useTranslation();
@@ -25,7 +26,7 @@ export function TaskWorkspaceSessions() {
     <WorkspaceSection aria-label={t('taskWorkspace.sessions')}>
       <WorkspaceSection.Header
         title={t('taskWorkspace.sessions')}
-        icon="chat"
+        icon={productIcons.session.collection}
         count={sessions.length}
         headingTag="h2"
       />

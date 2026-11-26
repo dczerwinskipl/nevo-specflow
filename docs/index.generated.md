@@ -234,6 +234,7 @@ Regenerate with `nevo-specflow docs check --write`. Human-authored navigation li
 
 | ID | Title | Status | Summary |
 |---|---|---|---|
+| `ideas.agent-access-policy` | [Agent access policy separate from the provider mode](ideas/specflow-runtime/agent-access-policy.md) | draft | Proposed second axis next to the provider mode. An admin-assigned access policy ("Full access" or "Workspace only") that the user cannot change, enforced with the provider's native sandbox and deny rules where possible. |
 | `ideas.audits.2026-11-22-sessions-workflow` | [Sessions and workflow follow-ups — issue 184](ideas/audits/2026-11-22-sessions-workflow.md) | draft | Current-main verification of the Sessions and workflow observations from audit 168. |
 | `ideas.semantic-docs.reader-followups` | [Documentation reader pending verification and search follow-ups](ideas/semantic-docs/reader-followups.md) | draft | Unfinished device verification, relevance cutoff default, light theme and embedding endpoint concurrency considerations. |
 | `ideas.specflow-engine.reusable-workflow.ux-contract` | [Manual Specification and Task workflow execution — UX contract (superseded)](ideas/specflow-engine/reusable-workflow-manual-execution/ux-contract.md) | superseded | Superseded working UX contract of the manual execution mock. The accepted behaviour is the manual workflow execution product document and the Specification Overview document. |

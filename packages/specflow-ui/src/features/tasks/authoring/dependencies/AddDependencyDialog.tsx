@@ -2,7 +2,6 @@ import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
-  CheckboxField,
   Dialog,
   DialogBody,
   DialogContent,
@@ -12,10 +11,12 @@ import {
   DialogTitle,
   Typography,
 } from '@nevo/ui';
+import { ItemPicker, type PickerItem } from '../picker/ItemPicker';
 import type { DependencyCandidate } from './dependencyModel';
 
 export interface AddDependencyDialogProps {
-  readonly taskId: string;
+  /** The Task the dependencies are added to, by its title. */
+  readonly taskTitle: string;
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly candidates: readonly DependencyCandidate[];
@@ -27,8 +28,9 @@ export interface AddDependencyDialogProps {
 }
 
 /**
- * The dependency checklist: existing dependencies checked and disabled, a cycle disabled with
- * its reason. Nevo UI has no multi-select Combobox, so this is a checkbox list (UX contract).
+ * Add dependencies: the shared picker ({@link ItemPicker}) over the Engine's candidates, each Task
+ * by its title; the ones that cannot be added (already a dependency, a cycle, cancelled, broken)
+ * under the collapsed "Unavailable tasks" with their reason. The confirm names the count.
  */
 export function AddDependencyDialog(props: AddDependencyDialogProps) {
   const { t } = useTranslation();
@@ -43,7 +45,7 @@ export function AddDependencyDialog(props: AddDependencyDialogProps) {
 }
 
 function Checklist({
-  taskId,
+  taskTitle,
   onOpenChange,
   candidates,
   pending,
@@ -52,13 +54,26 @@ function Checklist({
 }: AddDependencyDialogProps) {
   const { t } = useTranslation();
   const [chosen, setChosen] = useState<readonly string[]>([]);
+  const items: PickerItem[] = candidates.map((candidate) => ({
+    id: candidate.task.id,
+    title: candidate.task.title,
+    searchText: candidate.task.id,
+    ...(candidate.unavailable === undefined
+      ? candidate.task.statusLabel
+        ? { description: candidate.task.statusLabel }
+        : {}
+      : {
+          unavailable: t(`taskAuthoring.dependencies.unavailable.${candidate.unavailable}`),
+          added: candidate.unavailable === 'dependency',
+        }),
+  }));
 
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{t('taskAuthoring.dependencies.dialogTitle', { id: taskId })}</DialogTitle>
+        <DialogTitle>{t('taskAuthoring.dependencies.dialogTitle')}</DialogTitle>
         <DialogDescription>
-          {t('taskAuthoring.dependencies.dialogDescription', { id: taskId })}
+          {t('taskAuthoring.dependencies.dialogDescription', { title: taskTitle })}
         </DialogDescription>
       </DialogHeader>
       <DialogBody className="grid gap-4">
@@ -68,36 +83,21 @@ function Checklist({
             {t('taskAuthoring.dependencies.noCandidates')}
           </Typography>
         ) : (
-          <fieldset className="grid gap-3">
-            <legend className="sr-only">{t('taskAuthoring.dependencies.legend')}</legend>
-            {candidates.map((candidate) => (
-              <CheckboxField
-                key={candidate.task.id}
-                label={`${candidate.task.id} · ${candidate.task.title}`}
-                description={
-                  candidate.unavailable === undefined
-                    ? candidate.task.statusLabel
-                    : candidate.unavailable === 'dependency'
-                      ? t('taskAuthoring.dependencies.existing')
-                      : t(`taskAuthoring.dependencies.unavailable.${candidate.unavailable}`, {
-                          other: candidate.task.id,
-                          id: taskId,
-                        })
-                }
-                checked={
-                  candidate.unavailable === 'dependency' || chosen.includes(candidate.task.id)
-                }
-                disabled={candidate.unavailable !== undefined}
-                onCheckedChange={(checked) =>
-                  setChosen((current) =>
-                    checked === true
-                      ? [...current, candidate.task.id]
-                      : current.filter((id) => id !== candidate.task.id),
-                  )
-                }
-              />
-            ))}
-          </fieldset>
+          <ItemPicker
+            items={items}
+            picked={chosen}
+            onToggle={(id, checked) =>
+              setChosen((current) =>
+                checked ? [...current, id] : current.filter((other) => other !== id),
+              )
+            }
+            labels={{
+              available: t('taskAuthoring.picker.availableTasks'),
+              unavailable: t('taskAuthoring.picker.unavailableTasks'),
+              noneAvailable: t('taskAuthoring.dependencies.noneAvailable'),
+              search: t('taskAuthoring.picker.searchTasks'),
+            }}
+          />
         )}
       </DialogBody>
       <DialogFooter>
@@ -105,7 +105,9 @@ function Checklist({
           {t('common.cancel')}
         </Button>
         <Button disabled={chosen.length === 0 || pending} onClick={() => onAdd(chosen)}>
-          {t('taskAuthoring.dependencies.confirm')}
+          {chosen.length === 0
+            ? t('taskAuthoring.dependencies.confirmNone')
+            : t('taskAuthoring.dependencies.confirm', { count: chosen.length })}
         </Button>
       </DialogFooter>
     </>

@@ -1,9 +1,10 @@
 import { useDeferredValue, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { CheckboxField, Field, InlineNote, TextInput, Typography } from '@nevo/ui';
+import { InlineNote, Typography } from '@nevo/ui';
 import { useAppServices } from '../../../../app/useAppServices';
 import { taskAuthoringKeys } from '../queries';
+import { ItemPicker } from '../picker/ItemPicker';
 
 /** Searches the project documentation (`/api/docs/search`) and lets the person tick documents. */
 export function ProjectDocumentPicker({
@@ -29,48 +30,41 @@ export function ProjectDocumentPicker({
   const results = search.data?.results ?? [];
 
   return (
-    <div className="grid gap-3">
-      <Field>
-        <Field.Label>{t('taskAuthoring.context.searchLabel')}</Field.Label>
-        <TextInput type="search" value={term} onChange={(event) => setTerm(event.target.value)} />
-      </Field>
-      {search.isFetching ? (
-        <Typography as="p" role="status" variant="body-sm" className="text-content-muted">
-          {t('taskAuthoring.context.searching')}
-        </Typography>
-      ) : search.isError ? (
-        <InlineNote tone="attention" role="alert">
-          {t('taskAuthoring.context.searchFailed')}
-        </InlineNote>
-      ) : search.isSuccess && results.length === 0 ? (
-        <Typography as="p" variant="body-sm" className="text-content-secondary">
-          {t('taskAuthoring.context.noResults')}
-        </Typography>
-      ) : null}
-      {results.length > 0 ? (
-        <fieldset className="grid gap-3">
-          <legend className="sr-only">{t('taskAuthoring.context.results')}</legend>
-          {results.map((result) => {
-            const inContext = added(result.id);
-
-            return (
-              <CheckboxField
-                key={result.id}
-                label={result.title}
-                description={[
-                  result.id,
-                  inContext ? t('taskAuthoring.context.alreadyInContext') : undefined,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-                checked={inContext || picked.includes(result.id)}
-                disabled={inContext}
-                onCheckedChange={(checked) => onToggle(result.id, checked === true)}
-              />
-            );
-          })}
-        </fieldset>
-      ) : null}
-    </div>
+    // The shared picker; the search is the server's, so the picker shows the results as given.
+    <ItemPicker
+      items={results.map((result) => ({
+        id: result.id,
+        title: result.title,
+        description: result.id,
+        ...(added(result.id)
+          ? { unavailable: t('taskAuthoring.context.alreadyInContext'), added: true }
+          : {}),
+      }))}
+      picked={picked}
+      onToggle={onToggle}
+      query={term}
+      onQueryChange={setTerm}
+      status={
+        search.isFetching ? (
+          <Typography as="p" role="status" variant="body-sm" className="text-content-muted">
+            {t('taskAuthoring.context.searching')}
+          </Typography>
+        ) : search.isError ? (
+          <InlineNote tone="attention" role="alert">
+            {t('taskAuthoring.context.searchFailed')}
+          </InlineNote>
+        ) : search.isSuccess && results.length === 0 ? (
+          <Typography as="p" variant="body-sm" className="text-content-secondary">
+            {t('taskAuthoring.context.noResults')}
+          </Typography>
+        ) : null
+      }
+      labels={{
+        available: t('taskAuthoring.context.results'),
+        unavailable: t('taskAuthoring.picker.unavailableDocuments'),
+        noneAvailable: t('taskAuthoring.context.noneAvailable'),
+        search: t('taskAuthoring.context.searchLabel'),
+      }}
+    />
   );
 }

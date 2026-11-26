@@ -13,6 +13,7 @@ import {
   type HistoryItem,
 } from './AgentAttemptHistory';
 import { useWorkflowHistory } from './useWorkflowHistory';
+import type { AttemptRef } from '../StartBlockerLines';
 
 /** The attempts by the day they started, newest first (the history's own order). */
 function byDay(
@@ -47,11 +48,13 @@ function AttemptEntry({
   items,
   specId,
   openDocument,
+  feedbackOpen,
 }: {
   readonly item: AgentHistoryItem;
   readonly items: readonly HistoryItem[];
   readonly specId: string;
   readonly openDocument?: ((path: string) => boolean) | undefined;
+  readonly feedbackOpen: boolean;
 }) {
   const { t } = useTranslation();
   const viewer = useViewer();
@@ -87,6 +90,7 @@ function AttemptEntry({
             items={items}
             subject={{ specId }}
             feedback={feedbackOf(item)}
+            feedbackOpen={feedbackOpen}
             showOutcome={false}
             {...(openDocument ? { openDocument } : {})}
           />
@@ -101,14 +105,17 @@ function AttemptEntry({
  * grouped by day, for the Specification's Activity history (workflow-execution.md, "Activity
  * history"): each entry is marked by how it ended, titled by its step, with its outcome, time and
  * attempt, the agent with Open session, what it changed and its commit; the full feedback is behind
- * View feedback. What was achieved, not every event recorded. Nothing is shown while the Specification has no agent attempt
+ * View feedback (open for `feedback`, the attempt the reader came from Open full feedback for). What was achieved, not every event recorded. Nothing is shown while the Specification has no agent attempt
  * or its history cannot be read.
  */
 export function SpecificationAgentAttempts({
   specId,
   onOpenDoc,
+  feedback,
 }: {
   readonly specId: string;
+  /** The attempt whose feedback the reader opened from the Now block. */
+  readonly feedback?: AttemptRef | undefined;
   /** Opens a registered document of the Specification by its id. */
   readonly onOpenDoc?: (docId: string) => void;
 }) {
@@ -168,6 +175,7 @@ export function SpecificationAgentAttempts({
                 items={items}
                 specId={specId}
                 openDocument={openDocument}
+                feedbackOpen={item.step === feedback?.step && item.attempt === feedback.attempt}
               />
             ))}
           </Timeline>

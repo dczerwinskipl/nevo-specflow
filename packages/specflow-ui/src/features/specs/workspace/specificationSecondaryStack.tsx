@@ -16,7 +16,7 @@ import type { ActivityEvent, SpecificationWorkspaceData } from '../read-model/mo
 import { ActivityHistory } from './ActivityHistory';
 import { DocumentContent } from '../../documents';
 import { DocumentReadingColumns } from '../../../shared/document-reading/DocumentReadingColumns';
-import { SpecificationAgentAttempts } from '../../tasks';
+import { SpecificationAgentAttempts, type AttemptRef } from '../../tasks';
 
 export interface SpecificationSecondaryContextValue {
   readonly specId: string;
@@ -132,12 +132,16 @@ export interface HistorySecondaryData {
   readonly openTask: (taskId: string) => void;
   readonly openSession?: (sessionId: string) => void;
   readonly openDoc?: (docId: string) => void;
+  /** The attempt whose feedback the reader opened ("Open full feedback"). */
+  readonly feedback?: AttemptRef | undefined;
 }
 
 export function useHistoryData({
   specId,
+  feedback,
 }: {
   specId: string;
+  feedback?: AttemptRef;
 }): SecondaryData<HistorySecondaryData> {
   const context = useContext(SpecificationSecondaryDataContext);
   if (!context) {
@@ -154,6 +158,7 @@ export function useHistoryData({
       openTask: context.openFullTask,
       openSession: context.openSession,
       openDoc: context.openDoc,
+      feedback,
     },
   };
 }
@@ -183,6 +188,7 @@ export function ActivityHistoryScreen({
       <AppWorkspaceBody padding="none" scroll="area">
         <SpecificationAgentAttempts
           specId={data.specId}
+          feedback={data.feedback}
           {...(data.openDoc ? { onOpenDoc: data.openDoc } : {})}
         />
         <ActivityHistory
@@ -202,7 +208,7 @@ export function ActivityHistoryScreen({
 }
 
 export const historyStack = defineSecondaryStack<
-  { specId: string },
+  { specId: string; feedback?: AttemptRef },
   HistorySecondaryData,
   HistoryPages
 >({

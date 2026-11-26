@@ -55,7 +55,7 @@ function fill() {
   fireEvent.change(screen.getByRole('textbox', { name: 'Title' }), {
     target: { value: 'Rate-limit session refresh' },
   });
-  fireEvent.click(screen.getByRole('checkbox', { name: 't-02 · Token exchange' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Token exchange' }));
 }
 
 describe('NewTaskDialog', () => {

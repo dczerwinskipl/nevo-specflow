@@ -54,11 +54,28 @@ export function actorLabel(
     return personLabel(t, actor.details.actorId, viewer);
   }
 
-  const model = modelTitle
-    ? modelTitle(actor.details.provider, actor.details.model)
-    : actor.details.model;
+  return agentDisplayName({
+    provider: actor.details.provider,
+    model: modelTitle
+      ? modelTitle(actor.details.provider, actor.details.model)
+      : actor.details.model,
+  });
+}
 
-  return [providerFallbackName(actor.details.provider), model].filter(Boolean).join(' · ');
+/**
+ * An agent as every screen names it, "Claude · Opus 5.5": the provider's title (else its id made
+ * readable, `claude` is "Claude"), then the model's presentation title (else its id). The one
+ * formatter of the Now block, the work history and the Run with agent dialog.
+ */
+export function agentDisplayName(agent: {
+  readonly provider: string | undefined;
+  readonly providerTitle?: string | undefined;
+  readonly model?: string | undefined;
+}): string {
+  const provider =
+    agent.providerTitle ?? (agent.provider ? providerFallbackName(agent.provider) : undefined);
+
+  return [provider, agent.model].filter(Boolean).join(' · ');
 }
 
 /** `needs-changes` -> `Needs changes`: the fallback for an id that has no label. */

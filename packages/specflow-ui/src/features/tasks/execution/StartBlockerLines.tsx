@@ -8,12 +8,30 @@ type Position = WorkflowActionProjection['position'];
 export type StartBlocker = Extract<Position, { kind: 'blocked' }>['blockers'][number];
 
 /** Where the page lets the reader fix a blocker (each a section heading of the page). */
+/** One attempt of a step, as the workflow history names it. */
+export interface AttemptRef {
+  readonly step: string;
+  readonly attempt: number;
+}
+
+/**
+ * Where a hand-off's feedback came from: the attempt that left it (and whether an agent ran it), or
+ * `undefined` for a return, which names no attempt.
+ */
+export type FeedbackSource = (AttemptRef & { readonly byAgent: boolean }) | undefined;
+
 export interface NowLinks {
   readonly tasks?: () => void;
   readonly context?: () => void;
   readonly dependencies?: () => void;
   /** Opens the subject's workflow history: the agent's attempts ("See the attempt"). */
   readonly attempt?: () => void;
+  /**
+   * Opens the detail view holding a hand-off's whole feedback (the workflow history, at the attempt
+   * that left it, its feedback open). Undefined, or a source it returns undefined for: no detail
+   * view holds it.
+   */
+  readonly feedback?: (source: FeedbackSource) => (() => void) | undefined;
   /** Opens a document by its checkout-relative path (the agent's kept work); false: not found here. */
   readonly document?: (path: string) => boolean;
 }

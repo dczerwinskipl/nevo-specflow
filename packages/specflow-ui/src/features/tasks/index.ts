@@ -7,6 +7,7 @@ export {
 } from './execution/specification/SpecificationWorkflow';
 export { SpecificationAgentAttempts } from './execution/agent/SpecificationAgentAttempts';
 export { SpecificationNow } from './execution/specification/SpecificationNow';
+export type { AttemptRef } from './execution/StartBlockerLines';
 export {
   SpecificationSituation,
   type SituationAttention,

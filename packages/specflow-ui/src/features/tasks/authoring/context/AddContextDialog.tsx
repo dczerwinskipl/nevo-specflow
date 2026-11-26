@@ -20,6 +20,7 @@ import {
 } from '@nevo/ui';
 import { referenceKey, type TaskContextEntry } from './contextModel';
 import { ProjectDocumentPicker } from './ProjectDocumentPicker';
+import { ItemPicker } from '../picker/ItemPicker';
 
 /** The kinds the add menu offers (Task documents are added as documents of the Task). */
 export type AddContextKind =
@@ -182,30 +183,26 @@ function AddContextForm({
               )}
             </Field>
           ) : kind === 'specification-document' ? (
-            <fieldset className="grid gap-3">
-              <legend className="mb-3 text-label-sm text-content-primary">
-                {t('taskAuthoring.context.specificationLegend', { spec: specTitle })}
-              </legend>
-              {specificationDocuments.map((document) => {
-                const inContext = added.has(`specification-document:${document.id}`);
-
-                return (
-                  <CheckboxField
-                    key={document.id}
-                    label={document.title}
-                    description={[
-                      document.filename,
-                      inContext ? t('taskAuthoring.context.alreadyInContext') : undefined,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                    checked={inContext || picked.includes(document.id)}
-                    disabled={inContext}
-                    onCheckedChange={(checked) => togglePicked(document.id, checked === true)}
-                  />
-                );
-              })}
-            </fieldset>
+            <ItemPicker
+              items={specificationDocuments.map((document) => ({
+                id: document.id,
+                title: document.title,
+                ...(document.filename
+                  ? { description: document.filename, searchText: document.filename }
+                  : {}),
+                ...(added.has(`specification-document:${document.id}`)
+                  ? { unavailable: t('taskAuthoring.context.alreadyInContext'), added: true }
+                  : {}),
+              }))}
+              picked={picked}
+              onToggle={togglePicked}
+              labels={{
+                available: t('taskAuthoring.context.specificationLegend', { spec: specTitle }),
+                unavailable: t('taskAuthoring.picker.unavailableDocuments'),
+                noneAvailable: t('taskAuthoring.context.noneAvailable'),
+                search: t('taskAuthoring.picker.searchDocuments'),
+              }}
+            />
           ) : (
             <ProjectDocumentPicker
               picked={picked}
@@ -248,7 +245,9 @@ function AddContextForm({
           {t('common.cancel')}
         </Button>
         <Button type="submit" form={formId} disabled={pending}>
-          {t('taskAuthoring.context.confirm')}
+          {named || picked.length === 0
+            ? t('taskAuthoring.context.confirm')
+            : t('taskAuthoring.context.confirmCount', { count: picked.length })}
         </Button>
       </DialogFooter>
     </>

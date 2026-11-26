@@ -15,7 +15,7 @@ import type { WorkflowSubjectRef } from '../api';
 import {
   formatWhen,
   humanizeId,
-  providerFallbackName,
+  agentDisplayName,
   transitionLabel,
   type ModelTitle,
 } from '../presentation';
@@ -284,12 +284,10 @@ function ContinueRefused({
 /** Name of the agent behind a position's actor, as the quote and the finished line say it. */
 function agentName(actor: WorkflowActor | undefined, modelTitle: ModelTitle): string {
   return actor?.class === 'agent'
-    ? [
-        providerFallbackName(actor.details.provider),
-        modelTitle(actor.details.provider, actor.details.model),
-      ]
-        .filter(Boolean)
-        .join(' · ')
+    ? agentDisplayName({
+        provider: actor.details.provider,
+        model: modelTitle(actor.details.provider, actor.details.model),
+      })
     : '';
 }
 

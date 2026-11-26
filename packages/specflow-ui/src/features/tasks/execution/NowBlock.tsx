@@ -404,6 +404,15 @@ export function NowBlock({
             {...lastHandoff}
             {...(handoffCommit ? { commit: handoffCommit } : {})}
             {...(links.attempt ? { onOpenDetails: links.attempt } : {})}
+            onOpenFeedback={links.feedback?.(
+              handoff?.kind === 'transition'
+                ? {
+                    step: handoff.from.step,
+                    attempt: handoff.from.attempt,
+                    byAgent: handoff.from.actor?.class === 'agent',
+                  }
+                : undefined,
+            )}
           />
         ) : null}
         {note}

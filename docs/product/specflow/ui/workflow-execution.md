@@ -110,9 +110,13 @@ In reading order:
    committed · 05f9d80", from the history read, when an agent's attempt committed). A hand-off that
    finished as expected keeps its feedback behind "Show feedback". A hand-off the next attempt must
    act on (a `fail` result such as a review that requested changes, or a return) is marked in the
-   attention tone and shows its feedback open, in an attention note; long feedback opens with its
-   first paragraph and "Show the full feedback" (owner, 2026-11-25: Now says what happens now, the
-   hand-off is the context). The Now of a terminal run shows no hand-off.
+   attention tone and shows its feedback open. Open, the feedback is a short preview of a few lines,
+   rendered by the shared Markdown renderer (as messages and documentation), and **Open full
+   feedback** opens the work history at the attempt that left it, its feedback open (owner,
+   2026-11-26: two levels, never arbitrarily long text in Overview). Feedback no history holds (a
+   person's or a return's on the Specification, the agent's result waiting for confirmation) is
+   shown whole in a bounded box that scrolls. "Hide feedback" closes it. The Now of a terminal run
+   shows no hand-off.
 7. **The main action**, with at most one button-styled secondary, for the Specification and the Task
    alike (one rule, `nowActionPlan`). Finish step is the main action while some result can be taken.
    When every result waits for an unmet gate whose document exists, opening it is the main action
@@ -235,8 +239,17 @@ cancelled), **Documents**, **Context** and **Depends on**. Task history is the S
   attention label only. An entry marked "Created earlier in
   the process" (a process artifact) is **Awaited** while missing: neutral, no warning. Marking the Task's own document as a required
   artifact is refused and explained in the dialog: what the Task produces is an exit gate, not context.
-- **Depends on.** Rows with the dependency's state; the add checklist disables existing dependencies
-  and cycles with their reason. After the first start dependencies are fixed (a note, no add action).
+- **Depends on.** Rows with the dependency's state. **Add dependencies** (owner, 2026-11-26) names
+  each Task by its title, never its id: **Available tasks · N** first; the Tasks that cannot be
+  added (already a dependency, shown checked; a cycle, "Depends on this task already; adding it
+  would create a cycle"; cancelled; broken) in a collapsed **Unavailable tasks · N** group, each with
+  its reason. With no Task to add the available group says "No task can be added now." A list longer
+  than a Select's (8) has a search that filters both groups. The confirm names the count ("Add 2
+  dependencies"). After the first start dependencies are fixed (a note, no add action).
+- **One picker.** Add dependencies, New task's Depends on, and Add context's Specification and
+  project documents use the same picker (the available items, then the collapsed unavailable ones
+  with their reason, a search over a long list); Add context's confirm names the count too ("Add 2
+  documents to context").
 - **Edit details** changes Title and Summary; the Task Type is read-only with the remove-and-recreate
   hint. A revision conflict shows "Not saved: T-02 changed since you opened it" with **Copy my
   changes** and **Load the latest version**, edits kept; section edits that meet a newer revision show
@@ -573,7 +586,7 @@ The attempt is finished and committed before the owner decides.
 
 - "Waiting for your confirmation · the agent finished <time> · <Session>"; under the step's purpose
   the agent's result in the Last hand-off component, labelled "The agent's result" (its result,
-  "<provider> · <model> · <time>", what its commit holds, its feedback open in an info note: the
+  "<provider> · <model> · <time>", what its commit holds, its feedback open in a bounded box (info tone): the
   owner decides on it), then an info note with what Confirm applies ("Confirming approves the 5 draft tasks
   (t-01 to t-05) and moves to <next>.", **See Tasks**; "records the agent's decisions on N tasks"
   when it proposes decisions on Tasks; "completes the workflow" or "ends the workflow as abandoned"
@@ -655,7 +668,8 @@ The attempt is finished and committed before the owner decides.
   tasks"); then its commit as one row, "Committed · cac3c46". A failed commit shows the Now block's
   note with **Retry commit**; work an attempt that ended without its own result left in the
   checkout reads "Kept in the checkout, not committed". **View feedback** shows the feedback its
-  result or return left, when there is any. SpecFlow's own records (execution state, Task resource
+  result or return left, when there is any, whole, in the same feedback component as Now's hand-off
+  (Markdown; the Task history's entries too). SpecFlow's own records (execution state, Task resource
   files, the manifest) are never listed. In the Task history the attempt sits inside the ordinary
   entry (step, result line) and says how it ended when the entry's result does not ("Taken over by
   <person>", "Returned to <step>", "Abandoned", "The agent is working on it"; "The agent stopped

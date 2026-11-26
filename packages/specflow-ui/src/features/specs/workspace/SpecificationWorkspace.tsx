@@ -38,6 +38,7 @@ import {
   SpecificationAgentAttempts,
   SpecificationWorkflowProvider,
   useSpecificationExitActions,
+  type AttemptRef,
 } from '../../tasks';
 
 function fullTaskHref(specId: string, taskId: string, collection: 'current' | 'archive'): string {
@@ -142,6 +143,13 @@ function SpecificationWorkspaceInner({
     recordOpen(secondaryNavigation.open(historyStack, { specId }), false);
   }, [secondaryNavigation, specId, recordOpen]);
 
+  const handleOpenFeedback = useCallback(
+    (feedback: AttemptRef) => {
+      recordOpen(secondaryNavigation.open(historyStack, { specId, feedback }), false);
+    },
+    [secondaryNavigation, specId, recordOpen],
+  );
+
   const handleOpenFullTask = useCallback(
     (taskId: string, section?: TaskSection) => {
       void secondaryNavigation.close();
@@ -208,6 +216,7 @@ function SpecificationWorkspaceInner({
       openRepository: () => onOpenRepository?.(),
       openChanges: (source) => onOpenChanges?.(source),
       openHistory: handleOpenHistory,
+      openFeedback: handleOpenFeedback,
       openNewSession: () => onNewSession?.(),
       refresh: () => {
         if (!refreshing) {
@@ -227,6 +236,7 @@ function SpecificationWorkspaceInner({
       onOpenChanges,
       handleOpenDoc,
       handleOpenHistory,
+      handleOpenFeedback,
       onOpenTasks,
       secondaryNavigation,
       onRefresh,

@@ -6,7 +6,7 @@ import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contra
 import { useTaskDocumentOperations } from '../authoring/documents/useTaskDocumentOperations';
 import { RefusalAlert } from '../authoring/RefusalAlert';
 import type { GateAction } from './GateList';
-import { goToHeading } from './InlineAction';
+import { goToHeading } from './goToHeading';
 import { DisclosureToggle } from '../../../shared/actions';
 import { documentGateFix, stepGoal } from './presentation';
 import { WorkflowNow } from './WorkflowNow';

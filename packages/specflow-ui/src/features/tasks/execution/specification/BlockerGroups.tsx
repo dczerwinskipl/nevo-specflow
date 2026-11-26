@@ -5,7 +5,7 @@ import type { CloseRefusalBlocker } from '@nevo/specflow-contracts/specs';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { SemanticSupportingLine } from '../../../../shared/operational-list';
 import { taskStatusSupporting } from '../../read-model/statusPresentation';
-import { InlineAction } from '../InlineAction';
+import { TextAction } from '../../../../shared/actions';
 
 export const ITEMS_SHOWN = 5;
 
@@ -225,9 +225,9 @@ export function BlockerGroups({
                     <li key={id} className="grid min-w-0 gap-0.5 text-body-sm" data-task-id={id}>
                       {/* As on a Task row: the title, then the id on its own secondary line. */}
                       <span className="min-w-0 [overflow-wrap:anywhere]">
-                        <InlineAction className="font-normal" onClick={() => onOpenTask(id)}>
+                        <TextAction className="font-normal" onClick={() => onOpenTask(id)}>
                           {task?.title ?? id}
-                        </InlineAction>
+                        </TextAction>
                       </span>
                       {task?.title ? (
                         <span
@@ -255,16 +255,16 @@ export function BlockerGroups({
                 })}
                 {more > 0 && onSeeTasks ? (
                   <li className="text-body-sm">
-                    <InlineAction onClick={onSeeTasks}>
+                    <TextAction onClick={onSeeTasks}>
                       {t('workflowExecution.exit.more', { count: more })}
-                    </InlineAction>
+                    </TextAction>
                   </li>
                 ) : null}
               </ul>
             ) : null}
             {action ? (
               <div className="text-body-sm">
-                <InlineAction onClick={action.onSelect}>{action.label}</InlineAction>
+                <TextAction onClick={action.onSelect}>{action.label}</TextAction>
               </div>
             ) : null}
           </section>

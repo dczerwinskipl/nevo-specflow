@@ -8,7 +8,7 @@ import { useRuntimeMode } from '../../../../app/useRuntimeMode';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
 import { NewTaskDialog } from '../../authoring/NewTaskDialog';
 import { useSpecificationActions } from '../../read-model';
-import { goToHeading } from '../InlineAction';
+import { goToHeading } from '../goToHeading';
 import { AbandonSpecificationDialog } from './AbandonSpecificationDialog';
 import type { BlockerTask } from './BlockerGroups';
 import { CloseSpecificationDialog } from './CloseSpecificationDialog';

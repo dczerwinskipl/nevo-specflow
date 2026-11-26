@@ -125,7 +125,8 @@ export function SpecificationNow({
       {terminalText}
     </Typography>
   ) : purpose ? (
-    <Typography as="p" variant="body-md" className="text-content-primary" data-now-purpose="">
+    // The step's purpose is progress commentary (interaction-model.md "Visual conventions").
+    <Typography as="p" variant="body-md" className="text-content-secondary" data-now-purpose="">
       {purpose}
     </Typography>
   ) : undefined;

@@ -2,8 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon, MarkdownDocument, ScrollArea, cn } from '@nevo/ui';
 import { useMarkdownLabels } from '../../../../i18n/useMarkdownLabels';
-import { InlineAction } from '../InlineAction';
-import { DisclosureToggle } from '../../../../shared/actions';
+import { DisclosureToggle, TextAction } from '../../../../shared/actions';
 
 /**
  * How the feedback is marked: `neutral` (a step that finished as expected), `attention` (what the
@@ -146,9 +145,9 @@ export function HandoffFeedback({
                   {document}
                 </div>
                 {cut ? (
-                  <InlineAction onClick={onOpenFull}>
+                  <TextAction onClick={onOpenFull}>
                     {t('workflowExecution.feedback.openFull')}
-                  </InlineAction>
+                  </TextAction>
                 ) : null}
               </>
             ) : mode === 'summary' ? (

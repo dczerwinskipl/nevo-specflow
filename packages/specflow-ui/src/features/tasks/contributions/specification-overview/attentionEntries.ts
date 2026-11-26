@@ -11,7 +11,7 @@ import {
   attentionReason,
   attentionStuckTitle,
 } from '../../overview/attentionWording';
-import { goToHeading } from '../../execution/InlineAction';
+import { goToHeading } from '../../execution/goToHeading';
 import { SPECIFICATION_NOW_HEADING } from '../../execution/specification/SpecificationWorkflow';
 import {
   requestTaskAttention,

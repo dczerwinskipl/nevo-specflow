@@ -84,6 +84,7 @@ export const buildWorkflow = {
 export type TaskWorkflowScenario =
   | 'first-start'
   | 'on-hold'
+  | 'dependencies'
   | 'review'
   | 'rework'
   | 'implement-gate'
@@ -227,6 +228,20 @@ function taskFixture(
       },
       task: lifecycle(false),
       taskAuthoring,
+    };
+  }
+
+  if (scenario === 'dependencies') {
+    // Approved, never started, held by two dependencies that are still open.
+    const held = taskFixture('on-hold', options);
+
+    return {
+      ...held,
+      position: {
+        ...(held.position as Extract<FixtureProjection['position'], { kind: 'blocked' }>),
+        blockers: [{ kind: 'dependencies', waitingFor: ['t-01', 't-02'], unsatisfiable: [] }],
+      },
+      task: lifecycle(false),
     };
   }
 
@@ -569,7 +584,11 @@ function reviewByAgent(): WorkflowActionProjection {
 /** The Task resource facts that match a projection scenario. */
 export function taskResourceFor(scenario: TaskWorkflowScenario): TaskResourceFacts {
   const held = scenario === 'on-hold';
-  const started = scenario !== 'first-start' && scenario !== 'ready-agent' && !held;
+  const started =
+    scenario !== 'first-start' &&
+    scenario !== 'ready-agent' &&
+    scenario !== 'dependencies' &&
+    !held;
   const spike = scenario === 'spike-gate' || scenario === 'spike-gate-met';
   const position: TaskResourceFacts['position'] = started
     ? {

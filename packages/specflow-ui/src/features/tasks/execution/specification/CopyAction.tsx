@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@nevo/ui';
 import { copyText } from '../../../../shared/clipboard/copyText';
-import { InlineAction } from '../InlineAction';
+import { TextAction } from '../../../../shared/actions';
 
 /**
  * An inline "Copy …" action of the Close dialog: it copies `text` and says whether it did (the
@@ -27,7 +27,7 @@ export function CopyAction({
 
   return (
     <span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-2">
-      <InlineAction
+      <TextAction
         disabled={disabled}
         className={cn(
           disabled &&
@@ -36,7 +36,7 @@ export function CopyAction({
         onClick={() => void copyText(text).then((copied) => setStatus({ text, copied }))}
       >
         {label}
-      </InlineAction>
+      </TextAction>
       <span role="status" className="text-body-sm text-content-muted">
         {disabled
           ? disabledReason

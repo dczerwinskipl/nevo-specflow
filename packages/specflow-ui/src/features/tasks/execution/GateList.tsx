@@ -3,7 +3,7 @@ import { Icon } from '@nevo/ui';
 import type { GateStatus } from '@nevo/specflow-contracts/workflow';
 import { useMessage } from '../../../i18n/message';
 import { gateLine } from '../../documents';
-import { InlineAction } from './InlineAction';
+import { TextAction } from '../../../shared/actions';
 
 /** The action that resolves an unmet gate, when the page offers one (Create findings document). */
 export interface GateAction {
@@ -91,9 +91,9 @@ export function GateList({
               {action ? (
                 <>
                   {' '}
-                  <InlineAction className="ml-1" onClick={action.onSelect}>
+                  <TextAction className="ml-1" onClick={action.onSelect}>
                     {action.label}
-                  </InlineAction>
+                  </TextAction>
                 </>
               ) : null}
             </span>

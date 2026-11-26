@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { InlineNote, Typography } from '@nevo/ui';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { GateList } from './GateList';
-import { InlineAction } from './InlineAction';
+import { TextAction } from '../../../shared/actions';
 
 type Position = WorkflowActionProjection['position'];
 export type StartBlocker = Extract<Position, { kind: 'blocked' }>['blockers'][number];
@@ -55,9 +55,9 @@ export function StartBlockerLines({
     go ? (
       <>
         {' '}
-        <InlineAction className="ml-1" onClick={go}>
+        <TextAction className="ml-1" onClick={go}>
           {label}
-        </InlineAction>
+        </TextAction>
       </>
     ) : null;
 

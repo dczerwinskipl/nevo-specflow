@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { InlineAction } from '../InlineAction';
+import { TextAction } from '../../../../shared/actions';
 
 /** The Task a checkout-relative document path belongs to: its `tasks/<task-id>/` folder. */
 const TASK_FOLDER = /(?:^|\/)tasks\/([^/]+)\//;
@@ -63,7 +63,7 @@ export function KeptDocuments({
               <Fragment key={path}>
                 {index > 0 ? ', ' : null}
                 {openDocument ? (
-                  <InlineAction onClick={() => openDocument(path)}>{name}</InlineAction>
+                  <TextAction onClick={() => openDocument(path)}>{name}</TextAction>
                 ) : (
                   name
                 )}

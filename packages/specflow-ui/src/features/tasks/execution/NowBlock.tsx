@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { AccentBlock, Icon, InlineNote, Typography, cn } from '@nevo/ui';
 import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { GateList, type GateAction } from './GateList';
-import { InlineAction } from './InlineAction';
+import { TextAction } from '../../../shared/actions';
 import { closableInFinishDialog } from './FinishTasksOpen';
 import {
   actorLabel,
@@ -266,9 +266,9 @@ export function NowBlock({
             {links.tasks ? (
               <>
                 {' '}
-                <InlineAction className="ml-1" onClick={links.tasks}>
+                <TextAction className="ml-1" onClick={links.tasks}>
                   {t('workflowExecution.now.seeTasks')}
-                </InlineAction>
+                </TextAction>
               </>
             ) : null}
           </InlineNote>
@@ -476,9 +476,9 @@ export function NowBlock({
             {links.tasks ? (
               <>
                 {' '}
-                <InlineAction className="ml-1" onClick={links.tasks}>
+                <TextAction className="ml-1" onClick={links.tasks}>
                   {t('workflowExecution.now.seeTasks')}
-                </InlineAction>
+                </TextAction>
               </>
             ) : null}
           </InlineNote>

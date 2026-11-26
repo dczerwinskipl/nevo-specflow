@@ -15,7 +15,7 @@ import {
 } from '@nevo/ui';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { focusInitial } from '../focusInitial';
-import { InlineAction } from '../InlineAction';
+import { TextAction } from '../../../../shared/actions';
 import type { NowLinks } from '../StartBlockerLines';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
 
@@ -63,9 +63,9 @@ export function ConfirmApplies({
       {links.tasks && (drafts.length > 0 || decisions.length > 0) ? (
         <>
           {' '}
-          <InlineAction className="ml-1" onClick={links.tasks}>
+          <TextAction className="ml-1" onClick={links.tasks}>
             {t('workflowExecution.now.seeTasks')}
-          </InlineAction>
+          </TextAction>
         </>
       ) : null}
     </InlineNote>

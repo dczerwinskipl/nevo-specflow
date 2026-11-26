@@ -12,7 +12,7 @@ import { useAgentTitles } from './modelTitles';
 import type { NowLinks } from '../StartBlockerLines';
 import { WorkflowRefusalAlert } from '../WorkflowRefusalAlert';
 import { workflowRefusalOf } from '../refusal';
-import { InlineAction } from '../InlineAction';
+import { TextAction } from '../../../../shared/actions';
 import { KeptDocuments } from './KeptDocuments';
 import { AgentBlocker, Paths } from './AgentBlocker';
 import { SessionLink } from './AgentSession';
@@ -378,7 +378,10 @@ export function useAgentAttemptNow({
             sessionId={sessionId}
           />
         ) : (
-          text
+          // No Session to name: the quiet position line, as for a person's attempt.
+          <Typography as="p" variant="body-sm" className="text-content-muted">
+            {text}
+          </Typography>
         ),
       note: (
         <div className="grid gap-3">
@@ -779,9 +782,9 @@ export function useAgentAttemptNow({
             {links.attempt ? (
               <>
                 {' '}
-                <InlineAction onClick={links.attempt}>
+                <TextAction onClick={links.attempt}>
                   {t('workflowExecution.agentAttempt.seeAttempt')}
-                </InlineAction>
+                </TextAction>
               </>
             ) : null}
           </Typography>

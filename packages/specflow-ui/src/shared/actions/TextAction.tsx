@@ -1,9 +1,11 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
-import { Icon, cn } from '@nevo/ui';
+import { Icon, cn, hitAreaBlockClassName } from '@nevo/ui';
 
-/** The one look of a text action (interaction-model.md "Visual conventions", Actions). */
-export const textActionClassName =
-  'cursor-pointer rounded-control-inline text-left font-medium text-content-link underline-offset-2 hover:text-content-link-hover hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed';
+/**
+ * The one look of a text action (interaction-model.md "Visual conventions", Actions). Its hit area
+ * reaches the target size on the block axis (24px, 44px on coarse pointers), as the DS `Link` does.
+ */
+export const textActionClassName = `${hitAreaBlockClassName} cursor-pointer rounded-control-inline text-left font-medium text-content-link underline-offset-2 hover:text-content-link-hover hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring disabled:cursor-not-allowed`;
 
 export interface TextActionProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /**

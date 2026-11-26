@@ -7,7 +7,7 @@ import { InlineNote, Typography } from '@nevo/ui';
 import type { UncommittedHoldDetails } from '@nevo/specflow-contracts/documents';
 import type { RepositoryBlocker } from '@nevo/specflow-contracts/specs';
 import { useWorkspaces } from '../../../workspaces/read-model';
-import { InlineAction } from '../InlineAction';
+import { TextAction } from '../../../../shared/actions';
 import { CopyAction } from './CopyAction';
 import { IntegrationBranchChoice } from './IntegrationBranchChoice';
 
@@ -161,9 +161,9 @@ export function UncommittedOwners({
               ? {
                   headingContent: (
                     <>
-                      <InlineAction onClick={() => onOpenSpecification(owner.specId)}>
+                      <TextAction onClick={() => onOpenSpecification(owner.specId)}>
                         {ownerName(owner)}
-                      </InlineAction>
+                      </TextAction>
                       {t('workflowExecution.exit.groupCount', { count: owner.count })}
                     </>
                   ),

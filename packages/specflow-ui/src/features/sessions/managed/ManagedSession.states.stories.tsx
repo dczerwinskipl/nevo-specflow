@@ -67,7 +67,7 @@ import {
  * Context Secondary must leave behind a visible, clickable way to reopen it — not only on narrow
  * layouts. Context is the one tab of the Secondary rail there, with no close of its own and no
  * panel close beside it (secondary-navigation.md, "Root tabs and local navigation"): the
- * Primary header's persistent "Panel boczny" toggle (aria-pressed mirrors the panel) hides and
+ * Primary header's persistent "Kontekst" toggle (aria-pressed mirrors the panel) hides and
  * shows the WHOLE side panel — Context and any opened tab — and showing it again restores both.
  * Verified in every state story below that uses the Context mock view model, at 1440px.
  */
@@ -80,7 +80,7 @@ async function verifyContextReopens(canvasElement: HTMLElement) {
   await waitFor(() => expect(contextTab()).toBeVisible());
   await expect(canvas.queryByRole('button', { name: 'Zamknij panel dodatkowy' })).toBeNull();
   await expect(canvas.queryByRole('button', { name: 'Zamknij Kontekst' })).toBeNull();
-  const toggle = await canvas.findByRole('button', { name: 'Panel boczny' });
+  const toggle = await canvas.findByRole('button', { name: 'Kontekst' });
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await userEvent.click(toggle);
   await waitFor(() => expect(contextTab()).not.toBeInTheDocument());
@@ -500,21 +500,19 @@ async function verifyWorkBlocks(canvasElement: HTMLElement) {
     await expect(block.querySelectorAll('button, a, [tabindex]')).toHaveLength(1);
     const button = block.querySelector('button')!;
     await expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth + 1);
-    // The icon, the text and the chevron share one centre line, in every state.
+    // A light row: the icon and the first line (with its chevron) share one centre line, in every
+    // state; a failure or live line goes under it.
     const centre = (rect: DOMRect) => rect.top + rect.height / 2;
     const icon = centre(button.firstElementChild!.getBoundingClientRect());
-    const text = block.querySelector('[data-work-block-text]')!.getBoundingClientRect();
-    await expect(Math.abs(centre(text) - icon)).toBeLessThanOrEqual(1);
-    await expect(
-      Math.abs(centre(button.lastElementChild!.getBoundingClientRect()) - icon),
-    ).toBeLessThanOrEqual(1);
+    const firstLine = block.querySelector('[data-work-block-text] > *')!.getBoundingClientRect();
+    await expect(Math.abs(centre(firstLine) - icon)).toBeLessThanOrEqual(1);
+    await expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(24);
   }
 
   await expect(canvas.getAllByText('Tura przerwana')).toHaveLength(1);
   await expect(canvas.queryByText('Przerwano')).not.toBeInTheDocument();
   await expect(canvas.getByText('Tura zakończona niepowodzeniem')).toBeVisible();
   await expect(canvas.getByText('Nie powiodło się: 1 uruchomienie testów')).toBeVisible();
-  await expect(canvas.getByText('4 działania narzędzia')).toBeVisible();
   await expect(canvas.getByText(/i więcej$/)).toBeVisible();
   await expect(canvas.getByText('Myśli…')).toBeVisible();
   // The live line is the only spinner in the conversation; the header defers to it.

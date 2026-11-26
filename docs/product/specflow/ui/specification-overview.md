@@ -306,8 +306,9 @@ Runtime stops), and its documents, Sessions and history are the demo data
 - **Description** — the first paragraph of the overview document's **Goal** section (else its
   first paragraph) as plain text (at most 320 graphemes),
   rendered as delivered, never parsed as Markdown again; empty when there is no readable overview.
-  **Show more** (expanding the overview document) appears only when the description was cut (it
-  ends with `…`) or there is none; a whole description has no Show more. Without a description,
+  It is held to three lines; **Show more** (the shared disclosure, chevron down) expands the
+  overview document when the description was cut (it ends with `…`) or there is none, else the
+  description beyond its three lines; a description that fits has no Show more. Without a description,
   **Show description** is offered only when the overview holds more than its initial content (a
   template's empty headings are no description).
 - **Now, Requires attention and Tasks** — the Engine's workflow projection and one execution read

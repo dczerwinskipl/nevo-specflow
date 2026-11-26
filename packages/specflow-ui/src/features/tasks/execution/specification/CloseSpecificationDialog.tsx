@@ -20,7 +20,7 @@ import type { CloseMerge } from '@nevo/specflow-contracts/specs';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { documentStateLabel } from '../../../documents';
-import { InlineAction } from '../InlineAction';
+import { TextAction } from '../../../../shared/actions';
 import {
   specsOverviewKeys,
   type DocumentItem,
@@ -285,9 +285,9 @@ function CloseContent({
               {onAbandonInstead && blockers.length > 0 ? (
                 <Typography as="p" variant="body-sm" className="text-content-secondary">
                   {t('workflowExecution.close.abandonPrompt')}{' '}
-                  <InlineAction onClick={onAbandonInstead}>
+                  <TextAction onClick={onAbandonInstead}>
                     {t('workflowExecution.close.abandonInstead')}
-                  </InlineAction>
+                  </TextAction>
                 </Typography>
               ) : null}
             </>
@@ -652,9 +652,9 @@ function CloseFacts({
             ))}
             {notDelivered > ITEMS_SHOWN ? (
               <li>
-                <InlineAction onClick={onSeeTasks}>
+                <TextAction onClick={onSeeTasks}>
                   {t('workflowExecution.exit.more', { count: notDelivered - ITEMS_SHOWN })}
-                </InlineAction>
+                </TextAction>
               </li>
             ) : null}
           </ul>

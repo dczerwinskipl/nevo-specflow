@@ -14,6 +14,7 @@ const meta = {
       options: [
         'first-start',
         'on-hold',
+        'dependencies',
         'implement-gate',
         'review-agent',
         'start-drift',
@@ -51,6 +52,23 @@ export const TaskReviewByAgent: Story = {
 };
 /** Not started and on hold with a reason: neutral status, the first step's Goal and Resume. */
 export const TaskOnHold: Story = { tags: ['capture'], args: { scenario: 'on-hold' } };
+/**
+ * Approved but held by two open dependencies: the actionable readiness leads ("Waiting for
+ * dependencies"), the lifecycle position is the quiet line, and the count closes the state with
+ * View dependencies (interaction-model.md "Visual conventions", one shared Now).
+ */
+export const TaskWaitingForDependencies: Story = {
+  args: { scenario: 'dependencies' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const now = await canvas.findByRole('region', { name: 'Now' }, { timeout: 10000 });
+    await expect(await within(now).findByText('Waiting for dependencies')).toBeVisible();
+    await expect(within(now).getByText('Not started · First step · Design')).toBeVisible();
+    await expect(within(now).getByText('2 dependencies remaining')).toBeVisible();
+    await expect(within(now).getByRole('button', { name: 'View dependencies' })).toBeVisible();
+    await expect(within(now).queryByText(/Waiting for 2 dependencies/)).toBeNull();
+  },
+};
 /** Rework after a review asked for changes: the hand-off, Finish step, and Return in ⋯. */
 export const TaskRework: Story = { tags: ['capture'] };
 /**

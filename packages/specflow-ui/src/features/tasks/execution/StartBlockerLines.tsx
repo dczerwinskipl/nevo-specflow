@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { InlineNote, Typography } from '@nevo/ui';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { GateList } from './GateList';
-import { InlineAction } from './InlineAction';
+import { TextAction } from '../../../shared/actions';
 
 type Position = WorkflowActionProjection['position'];
 export type StartBlocker = Extract<Position, { kind: 'blocked' }>['blockers'][number];
@@ -43,18 +43,21 @@ export interface NowLinks {
 export function StartBlockerLines({
   blockers,
   links,
+  omitWaitingDependencies = false,
 }: {
   readonly blockers: readonly StartBlocker[];
   readonly links: NowLinks;
+  /** The Now block already leads with "Waiting for dependencies" and says how many remain. */
+  readonly omitWaitingDependencies?: boolean;
 }) {
   const { t } = useTranslation();
   const see = (label: string, go: (() => void) | undefined) =>
     go ? (
       <>
         {' '}
-        <InlineAction className="ml-1" onClick={go}>
+        <TextAction className="ml-1" onClick={go}>
           {label}
-        </InlineAction>
+        </TextAction>
       </>
     ) : null;
 
@@ -66,7 +69,7 @@ export function StartBlockerLines({
       case 'dependencies':
         return (
           <div key={key} className="grid gap-1">
-            {blocker.waitingFor.length > 0 ? (
+            {blocker.waitingFor.length > 0 && !omitWaitingDependencies ? (
               <InlineNote tone="attention" icon="clock">
                 <span className="font-medium text-content-primary">
                   {t('workflowExecution.blocker.dependencies', {

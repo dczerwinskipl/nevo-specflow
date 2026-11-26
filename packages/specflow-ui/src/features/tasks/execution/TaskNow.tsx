@@ -6,7 +6,8 @@ import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contra
 import { useTaskDocumentOperations } from '../authoring/documents/useTaskDocumentOperations';
 import { RefusalAlert } from '../authoring/RefusalAlert';
 import type { GateAction } from './GateList';
-import { goToHeading, InlineAction } from './InlineAction';
+import { goToHeading } from './goToHeading';
+import { DisclosureToggle } from '../../../shared/actions';
 import { documentGateFix, stepGoal } from './presentation';
 import { WorkflowNow } from './WorkflowNow';
 import type { AttemptRef, FeedbackSource } from './StartBlockerLines';
@@ -62,13 +63,9 @@ function TaskGoal({ goal }: { goal: { readonly text: string; readonly more?: str
         {expanded && goal.more ? goal.more : goal.text}
       </Typography>
       {fromInstructions ? (
-        <InlineAction
-          className="w-fit text-body-sm"
-          aria-expanded={expanded}
-          onClick={() => setExpanded((open) => !open)}
-        >
+        <DisclosureToggle expanded={expanded} onClick={() => setExpanded((open) => !open)}>
           {expanded ? t('workflowExecution.now.showLess') : t('workflowExecution.now.showMore')}
-        </InlineAction>
+        </DisclosureToggle>
       ) : null}
     </div>
   );

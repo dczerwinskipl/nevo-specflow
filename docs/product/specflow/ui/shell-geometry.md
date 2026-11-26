@@ -83,6 +83,14 @@ These findings came from the audit and stay open. None of them is part of the ge
   session. This needs an information-model decision. The navigator could show places with counts
   and state rather than full object lists, and "2 active" could split into waiting for you and
   working.
+- **Compact title on scroll (open owner decision, review 2026-11-26).** Proposal: one shared
+  `AppWorkspace` mechanism, not one per screen, that observes the body's page title
+  (`data-page-title`) and, once it has scrolled away, shows a compact form of it in the
+  application header (the header's identity line, never a new row). It conflicts with "Identity
+  adds no band or bar" ([Page identity](interaction-model.md#page-identity-and-product-icons)) and
+  with the floating ☰/⋯ of a stacked layout (#208), which keep no header while scrolled, so it
+  needs the owner's decision before any work. The floating controls still cover about one line of
+  content while scrolling on a phone (Overview, Task, transcript); that is part of the same decision.
 - **Attention does not roll up** from a Task to the Specification (a Task row carries its Requires
   attention overlay; the Specifications list row does not).
 - **The Specification switcher shows no state:** no attention or progress per item, and no New

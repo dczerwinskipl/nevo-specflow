@@ -1,5 +1,6 @@
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { Button, Typography } from '@nevo/ui';
+import { Typography } from '@nevo/ui';
+import { DisclosureToggle } from '../../../shared/actions';
 import { useTranslation } from 'react-i18next';
 
 export function descriptionScrollOwner(node: HTMLElement): HTMLElement {
@@ -18,7 +19,11 @@ export function descriptionScrollOwner(node: HTMLElement): HTMLElement {
   return document.scrollingElement as HTMLElement;
 }
 
-/** The full document mounts lazily; its query/authorization stays with Documents. */
+/**
+ * A description held to three lines (interaction-model.md "Visual conventions"), with the shared
+ * disclosure to the rest: the full document when there is one (it mounts lazily; its
+ * query/authorization stays with Documents), else the whole description.
+ */
 export function DocumentDescription({
   intro,
   hasMore = false,
@@ -41,6 +46,22 @@ export function DocumentDescription({
   const [localExpanded, setExpanded] = useState(false);
   const expanded = controlledExpanded ?? localExpanded;
   const control = useRef<HTMLButtonElement>(null);
+  const introRef = useRef<HTMLElement>(null);
+  // The intro runs past its three lines: the rest is reachable even without a document.
+  const [overflowing, setOverflowing] = useState(false);
+  useLayoutEffect(() => {
+    const node = introRef.current;
+    if (!node) {
+      return;
+    }
+
+    const measure = () => setOverflowing(node.scrollHeight > node.clientHeight + 1);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(node);
+    measure();
+
+    return () => observer?.disconnect();
+  }, [intro]);
   const saved = useRef<{ owner: HTMLElement; top: number } | null>(null);
   const restore = useRef(false);
   useLayoutEffect(() => {
@@ -75,44 +96,45 @@ export function DocumentDescription({
     return null;
   }
 
+  const withDocument = hasMore && renderDocument !== undefined;
+  // Expanding shows the document when there is one, else the description without its clamp.
+  const showsToggle = withDocument || overflowing || (expanded && !withDocument);
+  const label = expanded
+    ? (labels?.collapse ?? t('taskDetails.showLess'))
+    : intro
+      ? (labels?.expand ?? t('taskDetails.showMore'))
+      : t('taskDetails.showDescription');
+
   return (
-    <div className="mt-2 grid min-w-0 justify-items-start gap-2 [overflow-wrap:anywhere]">
-      {!expanded && intro ? (
-        <Typography variant="body-md" className="text-content-secondary">
+    <div className="mt-2 grid min-w-0 justify-items-start gap-1 [overflow-wrap:anywhere]">
+      {intro && !(expanded && withDocument) ? (
+        <Typography
+          ref={introRef}
+          variant="body-md"
+          className={expanded ? 'text-content-secondary' : 'line-clamp-3 text-content-secondary'}
+        >
           {intro}
         </Typography>
       ) : null}
-      {hasMore && renderDocument ? (
-        <Button
+      {showsToggle ? (
+        <DisclosureToggle
           ref={control}
-          variant="ghost"
-          size="sm"
-          className="-ml-2 w-fit"
-          aria-expanded={expanded}
-          aria-controls={id}
+          expanded={expanded}
+          aria-controls={withDocument ? id : undefined}
           onClick={toggle}
         >
-          {expanded
-            ? (labels?.collapse ?? t('taskDetails.showLess'))
-            : intro
-              ? (labels?.expand ?? t('taskDetails.showMore'))
-              : t('taskDetails.showDescription')}
-        </Button>
+          {label}
+        </DisclosureToggle>
       ) : null}
-      <div id={id} className="w-full min-w-0" hidden={!expanded}>
-        {expanded ? renderDocument?.() : null}
-      </div>
-      {expanded ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 w-fit"
-          aria-expanded
-          aria-controls={id}
-          onClick={toggle}
-        >
+      {withDocument ? (
+        <div id={id} className="w-full min-w-0" hidden={!expanded}>
+          {expanded ? renderDocument?.() : null}
+        </div>
+      ) : null}
+      {expanded && withDocument ? (
+        <DisclosureToggle expanded aria-controls={id} onClick={toggle}>
           {labels?.collapse ?? t('taskDetails.showLess')}
-        </Button>
+        </DisclosureToggle>
       ) : null}
     </div>
   );

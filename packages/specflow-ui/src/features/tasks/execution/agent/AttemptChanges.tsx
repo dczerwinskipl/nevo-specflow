@@ -3,7 +3,7 @@ import { Link, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Collapsible, Icon, Typography, type IconGlyph } from '@nevo/ui';
 import type { AgentAttemptChanges } from '@nevo/specflow-contracts/workflow';
-import { InlineAction } from '../InlineAction';
+import { TextAction } from '../../../../shared/actions';
 import { productIcons } from '../../../../shared/product-icons';
 
 /** A Task list opens with this many titles; the rest wait behind "N more tasks". */
@@ -44,12 +44,12 @@ function PathLine({
   return (
     <li className="flex min-h-6 min-w-0 items-center gap-2" title={path}>
       {onOpen ? (
-        <InlineAction
+        <TextAction
           className="inline-flex min-h-6 max-w-full shrink-0 items-center [overflow-wrap:anywhere]"
           onClick={onOpen}
         >
           {name}
-        </InlineAction>
+        </TextAction>
       ) : (
         <span className="max-w-full shrink-0 text-content-primary [overflow-wrap:anywhere]">
           {name}
@@ -160,9 +160,9 @@ function TaskList({
       ))}
       {more > 0 ? (
         <li>
-          <InlineAction className="inline-flex min-h-6 items-center" onClick={() => setAll(true)}>
+          <TextAction className="inline-flex min-h-6 items-center" onClick={() => setAll(true)}>
             {t('workflowExecution.attemptHistory.changes.moreTasks', { count: more })}
-          </InlineAction>
+          </TextAction>
         </li>
       ) : null}
     </ul>

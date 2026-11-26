@@ -937,6 +937,16 @@ export const WorkflowHistorySchema = Type.Object(
           outcome: Type.Optional(AttemptOutcomeSchema),
           /** The workflow's label of the transition the attempt took ("Breakdown approved"). */
           transitionLabel: Type.Optional(Type.String()),
+          /** The owner's decision on a result held for confirmation (absent while it waits). */
+          confirmation: Type.Optional(
+            Type.Object({
+              state: literals(['confirmed', 'rejected'] as const),
+              at: Type.String(),
+              actor: WorkflowActorSchema,
+              /** The feedback of a Reject. */
+              feedback: Type.Optional(Type.String()),
+            }),
+          ),
           agent: Type.Optional(AgentAttemptHistorySchema),
         }),
         Type.Object({

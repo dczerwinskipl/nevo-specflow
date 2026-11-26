@@ -290,4 +290,9 @@ how it ended, the proposal and return request, its step events (`started` or `ha
 `commit-failed`, `taken-over`, `abandoned`, `awaiting-confirmation`, `confirmed`, `rejected`) and
 the work it left (`readAgentAttemptWork`: uncommitted SpecFlow files only it wrote and those mixed
 with another author, its Task drafts, its declared paths, the last dirty set, and the commit state).
+An attempt whose result was held for confirmation carries the owner's decision once made
+(`confirmation`: `confirmed` or `rejected`, when, by whom, a Reject's feedback), read from the run
+record. What a committed attempt changed comes from the paths its commit recorded; a journal written
+before commits recorded them falls back to the last dirty set only when it holds exactly as many
+paths as the commit counted (`committedPathsOf`); the read never asks Git.
 Partial work is never rolled back by the product.

@@ -311,16 +311,23 @@ Runtime stops), and its documents, Sessions and history are the demo data
 - **Now, Requires attention and Tasks** — the Engine's workflow projection and one execution read
   presented in the Runtime's dashboard grouping; an execution the Engine cannot read makes the
   Tasks summary say the Tasks are unavailable.
-- **Activity history — partial.** It holds exactly two event kinds: **Specification created** (from
-  the manifest's creation date) and **Session started** (one per associated, non-archived Session the
-  caller may view, bounded by the workspace Sessions section's 100 rows), at most 50 events. A
-  date-only event shows as a calendar date without time-zone conversion; other events show a
-  relative time. Above those events the history lists **Agent attempts**: the agent's attempts at
-  the Specification's own steps, newest first and grouped by day, each marked by how it ended, with
-  the agent with **Open session**, what it changed as collapsed rows (changed files, Tasks), its
-  commit (with **Retry commit** when it failed) and **View feedback** (see
-  [Run with agent](workflow-execution.md#take-over-and-the-attempts-history)); the section is absent
-  while there is no agent attempt. Task attempts of an agent are in each Task's history, not here.
+- **Activity history** is one chronological timeline, newest first and grouped by day (**Today**,
+  **Yesterday**, then the date), the same beside Overview and on the phone's stacked screen. It shows
+  what was achieved, not everything the system recorded. One place in the UI merges two reads:
+  - the Specification's **workflow history**: the agent's attempts at its own steps, the owner's own
+    attempts (Start, Finish, the attempt after a take over, Hand to agent), the owner's **Confirm** or
+    **Reject** of a result held for confirmation (its own entry at the time it was decided, with who
+    decided) and a return while no attempt ran. A wait step's attempt is the workflow's lifecycle
+    and is not listed. See
+    [Run with agent](workflow-execution.md#take-over-and-the-attempts-history) for an entry's lines;
+  - the workspace **activity** events: **Specification created** (the manifest's creation date, at
+    the start of its day) and **Session started** for a Session no attempt represents (a chat
+    Session outside the workflow), at its time. The Session of an attempt is reached through the
+    attempt's **Open session** and has no "Session started" entry of its own; the event stays in the
+    data (at most 50 events, bounded by the workspace Sessions section's 100 rows).
+    An event shows its time of day (a date-only event only its day heading). The owner's commits
+    outside an attempt (the commit SpecFlow makes after an owner's Finish or Confirm) are not recorded
+    in any read model yet and are not listed. Task attempts of an agent are in each Task's history.
 - **Documents** and **Sessions** come from the Engine's document registry and the Session
   association registry, independently of Tasks.
 - Repository and Changes are not implemented in project mode and are hidden.
@@ -361,7 +368,8 @@ Activity history is the Overview's Secondary on split-capable layouts, not part 
 - It is open by default only when the history has entries; an empty, unavailable, forbidden or
   not-provided history never reserves the Secondary and is shown on demand only. The "Specification
   created" event alone does not count as a reason to open it; a Session (later Task or document)
-  event does.
+  event does. An empty history says "No history for this specification"; one with only
+  "Specification created" lists that entry under its day.
 - The Primary header toggle **Activity history** (clock icon, `aria-pressed`) shows and hides it;
   the open Secondary also has its own Close. Now's **Workflow history** opens it as well. While a
   Task or document preview covers the history, the toggle brings the history forward (after the

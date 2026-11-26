@@ -10,12 +10,7 @@ import { TestServicesRouterContext } from '../../../../../test-support/app/TestS
 import { stubLayoutApis } from '../../../../../test-support/app/stubLayoutApis';
 import type { WorkflowExecutionApi } from '../api';
 import { AgentAttemptHistory, agentAttemptOf } from './AgentAttemptHistory';
-import { SpecificationAgentAttempts } from './SpecificationAgentAttempts';
-import {
-  finishedAttemptHistory,
-  specificationAttemptsHistory,
-  takenOverAttemptHistory,
-} from './agentAttempt.stories-support';
+import { finishedAttemptHistory, takenOverAttemptHistory } from './agentAttempt.stories-support';
 
 afterEach(cleanup);
 
@@ -161,61 +156,6 @@ describe('the agent attempt in the history', () => {
         { step: 'implement', attempt: 2 },
       ),
     );
-  });
-
-  it('lists the agent attempts of a Specification and nothing when it has none', async () => {
-    stubLayoutApis();
-    const render2 = (history: WorkflowHistory) => {
-      const defaults = createSpecFlowAppServices();
-      const services = createSpecFlowAppServices({
-        workflowExecutionApi: {
-          ...defaults.workflowExecutionApi,
-          history: () => Promise.resolve(history),
-        },
-      });
-
-      return render(
-        <QueryClientProvider client={createSpecFlowQueryClient()}>
-          <TestServicesRouterContext services={services}>
-            <LocalizationProvider instance={createSpecFlowI18n('en')}>
-              <SpecificationAgentAttempts specId="sso" />
-            </LocalizationProvider>
-          </TestServicesRouterContext>
-        </QueryClientProvider>,
-      );
-    };
-
-    const withAgent = render2(specificationAttemptsHistory() as never);
-    expect(await screen.findByRole('heading', { name: 'Agent attempts' })).toBeTruthy();
-    // One entry per agent attempt, titled by its step, with how it ended in the shared vocabulary.
-    expect(
-      Array.from(document.querySelectorAll('[data-attempt-outcome]')).map((n) => n.textContent),
-    ).toEqual([
-      'Waiting for your confirmation',
-      'Changes requested',
-      'Completed',
-      expect.stringMatching(/^Taken over by /),
-      'Finished, but not committed',
-      'Returned to Requirements',
-    ]);
-    expect(screen.getByText('Today')).toBeTruthy();
-    expect(screen.getByText('Yesterday')).toBeTruthy();
-    // The Tasks by title, the first four, then the rest on request.
-    fireEvent.click(screen.getByRole('button', { name: '12 tasks' }));
-    expect(screen.getByText('End-to-end acceptance and roadmap coverage')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '8 more tasks' }));
-    expect(screen.getByText('Transcript brief part')).toBeTruthy();
-    // The feedback only on View feedback.
-    expect(screen.queryByText(/Install and init stay separate Tasks/)).toBeNull();
-    fireEvent.click(screen.getAllByRole('button', { name: 'View feedback' })[0]!);
-    expect(screen.getByText(/Install and init stay separate Tasks/)).toBeTruthy();
-    withAgent.unmount();
-
-    const empty = render2({
-      subject: { kind: 'specification', specId: 'sso' },
-      items: [],
-    } as never);
-    await waitFor(() => expect(empty.container.textContent).toBe(''));
   });
 
   it('finds the agent attempt by step and attempt, and no other', () => {

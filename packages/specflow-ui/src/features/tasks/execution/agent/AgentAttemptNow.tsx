@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import type { TFunction } from 'i18next';
 import { useRouter } from '@tanstack/react-router';
 import { Trans, useTranslation } from 'react-i18next';
 import { CircleStop } from 'lucide-react';
@@ -13,9 +14,9 @@ import { useSpecificationWorkspace } from '../../../specs/read-model';
 import { SessionProviderIcon } from '../../../sessions';
 import type { WorkflowSubjectRef } from '../api';
 import {
+  actorLabel,
   formatWhen,
   humanizeId,
-  providerFallbackName,
   transitionLabel,
   type ModelTitle,
 } from '../presentation';
@@ -281,16 +282,9 @@ function ContinueRefused({
   );
 }
 
-/** Name of the agent behind a position's actor, as the quote and the finished line say it. */
-function agentName(actor: WorkflowActor | undefined, modelTitle: ModelTitle): string {
-  return actor?.class === 'agent'
-    ? [
-        providerFallbackName(actor.details.provider),
-        modelTitle(actor.details.provider, actor.details.model),
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : '';
+/** Name of the agent behind a position's actor ({@link actorLabel}, as the history names it). */
+function agentName(t: TFunction, actor: WorkflowActor | undefined, modelTitle: ModelTitle): string {
+  return actor?.class === 'agent' ? actorLabel(t, actor, {}, modelTitle) : '';
 }
 
 /**
@@ -411,7 +405,7 @@ export function useAgentAttemptNow({
           <LastHandoff
             heading={t('workflowExecution.confirmation.resultHeading')}
             outcome={result}
-            meta={[agentName(attempt.actor, modelTitle), finished].filter(Boolean).join(' · ')}
+            meta={[agentName(t, attempt.actor, modelTitle), finished].filter(Boolean).join(' · ')}
             {...(proposal.feedback ? { feedback: proposal.feedback } : {})}
             {...(committedLine ? { commit: committedLine } : {})}
             tone="waiting"

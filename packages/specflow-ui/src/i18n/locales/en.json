@@ -3166,7 +3166,6 @@
       }
     },
     "attemptHistory": {
-      "title": "Agent attempts",
       "truncated": "Older attempts are not shown.",
       "stopped": "The agent stopped without a result at {{at}}.",
       "outcome": {
@@ -3222,15 +3221,7 @@
         "today": "Today",
         "yesterday": "Yesterday"
       },
-      "openSession": "Open session",
-      "duration": {
-        "underMinute": "under a minute",
-        "minutes_one": "{{count}} min",
-        "minutes_other": "{{count}} min",
-        "minutes_few": "{{count}} min",
-        "minutes_many": "{{count}} min",
-        "hours": "{{hours}} h {{minutes}} min"
-      }
+      "openSession": "Open session"
     }
   },
   "taskOverview": {

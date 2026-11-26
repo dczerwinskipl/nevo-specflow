@@ -32,6 +32,7 @@ import { retryAgentAttemptCommit } from '../finalize/post-actions';
 import { memoryAgentDependencies } from '../memory.test-support';
 import { proposeAgentFinish } from '../proposal/propose';
 import { startAgentAttempt } from '../start';
+import { readWorkflowHistory } from '../history/workflow';
 import { confirmAgentResult, rejectAgentResult } from './confirmation';
 
 let catalogue: ExecutionCatalogue;
@@ -242,6 +243,13 @@ describe('an agent result that waits for the owner (D17)', () => {
     );
     expect(fixture.events).not.toContain('owner-post-action-in-lock');
     expect(fixture.journal.settled.get(ATTEMPT_ID)?.confirmation?.state).toBe('confirmed');
+    // The history says who confirmed it and when: the owner's action, beside the agent's attempt.
+    const history = await readWorkflowHistory(fixture.workflow, specification);
+    expect(
+      history.items.find((item) => item.kind === 'attempt' && item.step === 'breakdown-review'),
+    ).toMatchObject({
+      confirmation: { state: 'confirmed', at: expect.any(String) as unknown, actor: owner },
+    });
 
     // The same request again changes nothing and runs the owner's commit again (an interrupted
     // one completes); another request is refused, saying how to finish the commit.
@@ -554,6 +562,12 @@ describe('an agent result that waits for the owner (D17)', () => {
       postActions: [{ kind: 'attempt-commit', state: 'done' }],
     });
     expect(fixture.journal.journals.size).toBe(0);
+    const history = await readWorkflowHistory(fixture.workflow, specification);
+    expect(
+      history.items.find((item) => item.kind === 'attempt' && item.step === 'breakdown-review'),
+    ).toMatchObject({
+      confirmation: { state: 'rejected', actor: owner, feedback: 'Split the screen Task.' },
+    });
 
     // The next attempt reads the owner's feedback first.
     const inspection = await inspectExecution(fixture.workflow, SPEC);

@@ -484,7 +484,8 @@ export function confirmationAttemptHistory(commit: ConfirmationCommit) {
 }
 
 /** The folder of the Specification whose Activity history the stories show. */
-const ENTRY = 'specs/active/agent-workflow-entry-points';
+const ENTRY_FOLDER = 'specs/active/agent-workflow-entry-points';
+const ENTRY = ENTRY_FOLDER;
 
 /** A local time `daysAgo` days before today, so the history groups it under Today or Yesterday. */
 function localAt(daysAgo: number, hours: number, minutes: number): string {
@@ -538,9 +539,14 @@ interface SpecAttempt {
     readonly state?: readonly string[];
   };
   readonly extra?: Record<string, unknown>;
+  readonly sessionId?: string;
+  readonly model?: string;
+  /** The Specification folder the attempt's paths lie in. */
+  readonly directory?: string;
 }
 
 function specAttempt(a: SpecAttempt) {
+  const ENTRY = a.directory ?? ENTRY_FOLDER;
   const documents = (a.changes.documents ?? []).map((name) => `${ENTRY}/${name}`);
   const files = a.changes.files ?? [];
   const state = (a.changes.state ?? ['.execution/specification.yaml']).map(
@@ -555,14 +561,21 @@ function specAttempt(a: SpecAttempt) {
     attempt: a.attempt,
     startedAt: a.startedAt,
     ...(a.endedAt ? { endedAt: a.endedAt } : {}),
-    actor: { ...agentActor, details: { ...agentActor.details, model: 'Opus 5.5' } },
+    actor: {
+      ...agentActor,
+      details: {
+        ...agentActor.details,
+        model: a.model ?? 'Opus 5.5',
+        sessionId: a.sessionId ?? PLAN_SESSION_ID,
+      },
+    },
     ...(a.outcome ? { outcome: a.outcome } : {}),
     ...(a.transitionLabel ? { transitionLabel: a.transitionLabel } : {}),
     agent: {
       attemptId: `${a.step}-${String(a.attempt)}`,
       provider: 'claude',
-      model: 'Opus 5.5',
-      sessionId: PLAN_SESSION_ID,
+      model: a.model ?? 'Opus 5.5',
+      sessionId: a.sessionId ?? PLAN_SESSION_ID,
       turns: 1,
       ended: a.ended,
       events: a.events ?? [
@@ -654,6 +667,8 @@ export function specificationAttemptsHistory() {
       endedAt: localAt(0, 0, 36),
       outcome: { kind: 'transition', transition: 'completed', artifacts: [] },
       ended: 'finished',
+      // The owner took the step over, then handed it back to the agent.
+      extra: { handedOverFrom: { attempt: 2 } },
       commit: {
         state: 'committed',
         runs: 1,
@@ -757,4 +772,189 @@ export function specificationAttemptsHistory() {
   ];
 
   return { subject: { kind: 'specification' as const, specId: 'sso' }, items };
+}
+
+/** The folder of the dogfood Specification nevo-2 the mirrored history lies in. */
+const NEVO_2 = 'specs/active/converge-demo-and-project-http-apis';
+
+/** The owner of the mirrored dogfood history. */
+export const NEVO_2_OWNER = 'dominikczerwinski';
+
+/** The Sessions of nevo-2's agent attempts (requirements and the Specification share one). */
+export const NEVO_2_SESSIONS = [
+  { id: 'n2-review-2', title: 'Review the breakdown · attempt 2', at: localAt(1, 17, 4) },
+  { id: 'n2-break-2', title: 'Break the solution down · attempt 2', at: localAt(1, 13, 39) },
+  { id: 'n2-review-1', title: 'Review the breakdown · attempt 1', at: localAt(1, 13, 32) },
+  { id: 'n2-break-1', title: 'Break the solution down · attempt 1', at: localAt(1, 13, 15) },
+  { id: 'n2-design', title: 'Design the solution · attempt 1', at: localAt(1, 12, 41) },
+  { id: 'n2-gather', title: 'Gather requirements · attempt 1', at: localAt(1, 12, 26) },
+] as const;
+
+const nevo2Owner = {
+  class: 'human' as const,
+  details: { actorId: `user:${NEVO_2_OWNER}`, trust: 'authenticated' as const },
+};
+
+const sha = (prefix: string) => prefix + '0'.repeat(40 - prefix.length);
+
+/**
+ * nevo-2's Activity history as the live dogfood Runtime records it (2026-11-25, here yesterday):
+ * seven agent attempts, the owner's take over and Finish of Design the solution, the owner's
+ * Confirm of the second review, then the wait for the Tasks (not listed). Each committed attempt
+ * lists what its commit held, grouped as the Engine groups it.
+ */
+export function nevo2AttemptsHistory() {
+  const transition = (id: string, feedback: string, result?: string) => ({
+    kind: 'transition',
+    transition: id,
+    ...(result ? { result } : {}),
+    feedback,
+    artifacts: [],
+  });
+  const n2 = (a: Omit<SpecAttempt, 'directory'>) => specAttempt({ ...a, directory: NEVO_2 });
+  const items = [
+    {
+      kind: 'attempt' as const,
+      sequence: 9,
+      step: 'implementation',
+      stepTitle: 'Waiting for Tasks',
+      attempt: 1,
+      startedAt: localAt(1, 17, 9),
+    },
+    {
+      ...n2({
+        sequence: 8,
+        step: 'breakdown-review',
+        stepTitle: 'Review the breakdown',
+        attempt: 2,
+        startedAt: localAt(1, 17, 3),
+        endedAt: localAt(1, 17, 9),
+        outcome: transition(
+          'approved',
+          'Approved. Attempt 2 resolves all four blocking points and (a)-(d) from attempt 1.',
+          'pass',
+        ),
+        transitionLabel: 'Breakdown approved',
+        ended: 'finished',
+        sessionId: 'n2-review-2',
+        commit: { state: 'committed', runs: 1, sha: sha('3ca401a'), documents: 2, files: 0 },
+        changes: { documents: ['architecture.md', 'decisions.md'] },
+      }),
+      confirmation: { state: 'confirmed', at: localAt(1, 17, 9), actor: nevo2Owner },
+    },
+    n2({
+      sequence: 7,
+      step: 'breakdown',
+      stepTitle: 'Break the solution down',
+      attempt: 2,
+      startedAt: localAt(1, 13, 39),
+      endedAt: localAt(1, 17, 3),
+      outcome: transition('proposed', 'Attempt 2 addresses every point of the review.'),
+      transitionLabel: 'Breakdown proposed',
+      ended: 'finished',
+      sessionId: 'n2-break-2',
+      commit: { state: 'committed', runs: 1, sha: sha('0cae210'), documents: 0, files: 0 },
+      changes: { tasks: BREAKDOWN_TASKS.slice(0, 11) },
+    }),
+    n2({
+      sequence: 6,
+      step: 'breakdown-review',
+      stepTitle: 'Review the breakdown',
+      attempt: 1,
+      startedAt: localAt(1, 13, 32),
+      endedAt: localAt(1, 13, 38),
+      outcome: transition(
+        'changes-requested',
+        'The order, scope and design references are mostly right. Four problems block approval.',
+        'fail',
+      ),
+      transitionLabel: 'Changes requested',
+      ended: 'finished',
+      sessionId: 'n2-review-1',
+      commit: { state: 'committed', runs: 1, sha: sha('77864dc'), documents: 0, files: 0 },
+      changes: {},
+    }),
+    n2({
+      sequence: 5,
+      step: 'breakdown',
+      stepTitle: 'Break the solution down',
+      attempt: 1,
+      startedAt: localAt(1, 13, 15),
+      endedAt: localAt(1, 13, 31),
+      outcome: transition('proposed', "11 Tasks in the design's delivery order."),
+      transitionLabel: 'Breakdown proposed',
+      ended: 'finished',
+      sessionId: 'n2-break-1',
+      commit: { state: 'committed', runs: 1, sha: sha('95b0cdb'), documents: 3, files: 0 },
+      changes: { documents: ['architecture.md', 'backend.md', 'decisions.md'] },
+    }),
+    {
+      kind: 'attempt' as const,
+      sequence: 4,
+      step: 'solution',
+      stepTitle: 'Design the solution',
+      attempt: 2,
+      startedAt: localAt(1, 13, 12),
+      endedAt: localAt(1, 13, 13),
+      actor: nevo2Owner,
+      outcome: transition(
+        'designed',
+        'Owner took over after the agent process was stopped three times by SpecFlow. architecture.md and decisions.md (D4-D11) are complete and accepted.',
+      ),
+      transitionLabel: 'Solution designed',
+    },
+    n2({
+      sequence: 3,
+      step: 'solution',
+      stepTitle: 'Design the solution',
+      attempt: 1,
+      startedAt: localAt(1, 12, 41),
+      endedAt: localAt(1, 13, 12),
+      outcome: { kind: 'taken-over' },
+      ended: 'taken-over',
+      sessionId: 'n2-design',
+      extra: { takenOverBy: { attempt: 2 } },
+      events: [
+        { kind: 'started', at: localAt(1, 12, 41) },
+        { kind: 'turn-ended', at: localAt(1, 13, 12) },
+        { kind: 'taken-over', at: localAt(1, 13, 12) },
+      ],
+      commit: { state: 'none' },
+      changes: { documents: ['architecture.md', 'decisions.md'] },
+    }),
+    n2({
+      sequence: 2,
+      step: 'specification',
+      stepTitle: 'Write the Specification',
+      attempt: 1,
+      startedAt: localAt(1, 12, 35),
+      endedAt: localAt(1, 12, 40),
+      outcome: transition('written', 'Added backend.md (route parity map) and behaviour.md.'),
+      transitionLabel: 'Specification written',
+      ended: 'finished',
+      sessionId: 'n2-gather',
+      model: 'claude-opus-5-5',
+      commit: { state: 'committed', runs: 1, sha: sha('cac3c46'), documents: 4, files: 0 },
+      changes: {
+        documents: ['backend.md', 'behaviour.md', 'decisions.md', 'overview.md'],
+        state: ['.execution/specification.yaml', 'specification.yaml'],
+      },
+    }),
+    n2({
+      sequence: 1,
+      step: 'requirements',
+      stepTitle: 'Gather requirements',
+      attempt: 1,
+      startedAt: localAt(1, 12, 26),
+      endedAt: localAt(1, 12, 33),
+      outcome: transition('agreed', 'Owner confirmed: full scope A-E in this Specification.'),
+      transitionLabel: 'Requirements agreed',
+      ended: 'finished',
+      sessionId: 'n2-gather',
+      commit: { state: 'committed', runs: 1, sha: sha('6d63397'), documents: 2, files: 0 },
+      changes: { documents: ['decisions.md', 'overview.md'] },
+    }),
+  ];
+
+  return { subject: { kind: 'specification' as const, specId: 'nevo-2' }, items };
 }

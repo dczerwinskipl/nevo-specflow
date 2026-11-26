@@ -139,9 +139,9 @@ describe('Specification Overview Activity history', () => {
 
     expect(historyPanel()).toBeNull();
     fireEvent.click(historyToggle());
-    // On demand it shows the localized event and its calendar date, without a time-zone shift.
+    // On demand it shows the localized event under its calendar day, without a time-zone shift.
     expect(screen.getByText('Specification created')).not.toBeNull();
-    expect(screen.getByText('Nov 8, 2026')).not.toBeNull();
+    expect(screen.getByText(/^Nov 8(, 2026)?$/)).not.toBeNull();
     unmount();
 
     const started = {

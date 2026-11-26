@@ -412,14 +412,15 @@ export const ConfirmationCommitFailed: Story = {
   },
 };
 
-/** Opens the Specification's Activity history and returns its Agent attempts section. */
+/** Opens the Specification's Activity history and returns it once its workflow entries are read. */
 async function openSpecificationHistory(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
+  const history = () => canvas.queryByRole('complementary', { name: 'Activity history' });
   // Beside Overview on a wide screen the history is open already; a narrow one opens its screen.
   await canvas.findByRole('region', { name: 'Now' }, wait);
-  if (!canvas.queryByRole('region', { name: 'Agent attempts' })) {
+  if (!history()) {
     const opened = await canvas
-      .findByRole('region', { name: 'Agent attempts' }, { timeout: 3000 })
+      .findByRole('complementary', { name: 'Activity history' }, { timeout: 3000 })
       .catch(() => undefined);
     const direct = canvas.queryByRole('button', { name: 'Activity history' });
     if (opened) {
@@ -435,42 +436,81 @@ async function openSpecificationHistory(canvasElement: HTMLElement) {
     }
   }
 
-  return within(await canvas.findByRole('region', { name: 'Agent attempts' }, wait));
+  const aside = await canvas.findByRole('complementary', { name: 'Activity history' }, wait);
+  await waitFor(() => expect(aside.querySelector('[data-attempt-entry]')).not.toBeNull(), wait);
+
+  return within(aside);
+}
+
+/** The Activity history beside Overview or on its stacked screen. */
+function historyOf(canvasElement: HTMLElement): HTMLElement {
+  return within(canvasElement).getByRole('complementary', { name: 'Activity history' });
+}
+
+/** Each timeline entry by its title, with its outcome line when it has one, in order. */
+function timelineOf(aside: HTMLElement): string[] {
+  return Array.from(aside.querySelectorAll<HTMLElement>('li'))
+    .filter((entry) => !entry.parentElement?.closest('li'))
+    .map((entry) => {
+      const heading = entry.querySelector('[role="heading"]');
+      const outcome = entry.querySelector('[data-attempt-outcome]')?.textContent;
+      const title = heading?.textContent ?? entry.textContent ?? '';
+
+      return outcome ? `${title} · ${outcome}` : title;
+    });
+}
+
+/** Neither the agent's name nor Open session wraps: one line each. */
+async function expectActorLinesOnOneLine(aside: HTMLElement) {
+  for (const line of Array.from(aside.querySelectorAll<HTMLElement>('[data-attempt-actor]'))) {
+    const name = line.querySelector<HTMLElement>('span.truncate')!;
+    await expect(name.textContent).toMatch(/^Claude · /);
+    await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
+    await expect(line.getBoundingClientRect().height).toBeLessThan(32);
+  }
 }
 
 /*
- * The Specification's Activity history: its agent's attempts grouped by day, each marked by how it
- * ended (waiting for confirmation, changes requested, completed, taken over, commit failed,
- * returned), titled by its step, with its outcome, time and attempt, the agent, compact change rows
- * (changed files, Tasks by title: collapsed) and its commit; Open session on the agent's line and
- * View feedback name the detail. Lifecycle events and SpecFlow's own records are not shown.
+ * The Specification's Activity history: one chronological timeline grouped by day, its agent's
+ * attempts marked by how they ended, the owner's own attempt (handed back to the agent), a chat
+ * Session outside the workflow with its "Session started", and "Specification created". The
+ * Session an attempt already represents has no "Session started" of its own.
  */
 export const SpecificationActivityHistory: Story = {
   args: { scenario: 'history-specification' },
   play: async ({ canvasElement }) => {
-    const attempts = await openSpecificationHistory(canvasElement);
-    await expect(attempts.getByText('Today')).toBeVisible();
-    await expect(attempts.getByText('Yesterday')).toBeVisible();
+    const history = await openSpecificationHistory(canvasElement);
+    await expect(history.getByText('Today')).toBeVisible();
+    await expect(history.getByText('Yesterday')).toBeVisible();
     for (const outcome of [
       'Waiting for your confirmation',
       'Changes requested',
       'Completed',
       /^Taken over by /,
+      'Handed to the agent',
       'Finished, but not committed',
       'Returned to Requirements',
     ]) {
-      await expect(attempts.getByText(outcome)).toBeVisible();
+      await expect(history.getByText(outcome)).toBeVisible();
     }
 
+    await expect(history.getByText('Questions about the install matrix')).toBeVisible();
+    await expect(history.getAllByText('Session started')).toHaveLength(1);
+    await expect(history.getByText('Specification created')).toBeVisible();
+    // No "Agent attempts" section of its own: one list.
+    await expect(history.queryByText('Agent attempts')).toBeNull();
+
     // The change rows are collapsed; SpecFlow's own records are never one of them.
-    await expect(attempts.getByRole('button', { name: '12 tasks' })).toHaveAttribute(
+    await expect(history.getByRole('button', { name: '12 tasks' })).toHaveAttribute(
       'aria-expanded',
       'false',
     );
-    await expect(attempts.queryByText('specification.yaml')).toBeNull();
-    await expect(attempts.getAllByText('05f9d80')[0]).toBeVisible();
-    await expect(attempts.getAllByRole('link', { name: 'Open session' })[0]).toBeVisible();
-    await expect(attempts.getByText(/^Result not accepted/)).toBeVisible();
+    await expect(history.queryByText('specification.yaml')).toBeNull();
+    await expect(history.getAllByText('05f9d80')[0]).toBeVisible();
+    await expect(history.getAllByRole('link', { name: 'Open session' })[0]).toBeVisible();
+    await expect(history.getByText(/^Result not accepted/)).toBeVisible();
+    // The elapsed range only, never a duration.
+    await expect(history.queryByText(/ min ·|\d h \d+ min/)).toBeNull();
   },
 };
 
@@ -478,20 +518,55 @@ export const SpecificationActivityHistory: Story = {
 export const SpecificationActivityHistoryExpanded: Story = {
   args: { scenario: 'history-specification' },
   play: async ({ canvasElement }) => {
-    const attempts = await openSpecificationHistory(canvasElement);
-    await userEvent.click(attempts.getByRole('button', { name: '12 tasks' }));
+    const history = await openSpecificationHistory(canvasElement);
+    await userEvent.click(history.getByRole('button', { name: '12 tasks' }));
     await expect(
-      attempts.getByRole('link', { name: 'End-to-end acceptance and roadmap coverage' }),
+      history.getByRole('link', { name: 'End-to-end acceptance and roadmap coverage' }),
     ).toBeVisible();
-    await expect(attempts.getByRole('button', { name: '8 more tasks' })).toBeVisible();
-    await userEvent.click(attempts.getByRole('button', { name: '8 changed files' }));
+    await expect(history.getByRole('button', { name: '8 more tasks' })).toBeVisible();
+    await userEvent.click(history.getByRole('button', { name: '8 changed files' }));
     // A file by its name and folder, never the repeated Specification prefix.
-    await expect(attempts.getByText('install-matrix.md')).toBeVisible();
-    await expect(attempts.getByText('notes')).toBeVisible();
-    await userEvent.click(attempts.getAllByRole('button', { name: '3 changed files' })[0]!);
-    await expect(attempts.getAllByText('overview.md')[0]).toBeVisible();
-    await userEvent.click(attempts.getAllByRole('button', { name: 'View feedback' })[0]!);
-    await expect(attempts.getByText(/Install and init stay separate Tasks/)).toBeVisible();
+    await expect(history.getByText('install-matrix.md')).toBeVisible();
+    await expect(history.getByText('notes')).toBeVisible();
+    await userEvent.click(history.getAllByRole('button', { name: '3 changed files' })[0]!);
+    await expect(history.getAllByText('overview.md')[0]).toBeVisible();
+    await userEvent.click(history.getAllByRole('button', { name: 'View feedback' })[0]!);
+    await expect(history.getByText(/Install and init stay separate Tasks/)).toBeVisible();
+  },
+};
+
+/**
+ * nevo-2's history as the dogfood Runtime records it: seven agent attempts, the owner's Finish after
+ * the take over and their Confirm of the second review, newest first in one list ending with
+ * "Specification created"; no "Session started" rows (every Session is an attempt's). Every
+ * committed attempt names what it changed; the agent reads "Claude · Opus 5.5" on one line, at
+ * 375 px and beside Overview.
+ */
+export const Nevo2ActivityHistory: Story = {
+  args: { scenario: 'history-nevo-2' },
+  play: async ({ canvasElement }) => {
+    for (const [width, height] of [
+      [1440, 900],
+      [375, 812],
+    ] as const) {
+      await settleViewport(width, height);
+      const history = await openSpecificationHistory(canvasElement);
+      await expect(timelineOf(historyOf(canvasElement))).toEqual([
+        'Review the breakdown · Result confirmed',
+        'Review the breakdown · Breakdown approved',
+        'Break the solution down · Breakdown proposed',
+        'Review the breakdown · Changes requested',
+        'Break the solution down · Breakdown proposed',
+        'Design the solution · Solution designed',
+        expect.stringMatching(/^Design the solution · Taken over by /),
+        'Write the Specification · Specification written',
+        'Gather requirements · Requirements agreed',
+        'Specification created',
+      ]);
+      await expect(history.queryByText('Session started')).toBeNull();
+      await expect(history.getAllByRole('button', { name: /changed files?$/ })).toHaveLength(5);
+      await expectActorLinesOnOneLine(historyOf(canvasElement));
+    }
   },
 };
 

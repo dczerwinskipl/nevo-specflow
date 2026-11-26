@@ -13,10 +13,9 @@ import { useTranslation } from 'react-i18next';
 import { appI18n } from '../../../i18n';
 import type { ActivityEvent, SpecificationWorkspaceData } from '../read-model/model';
 
-import { ActivityHistory } from './ActivityHistory';
+import { SpecificationActivityHistory } from './activity/SpecificationActivityHistory';
 import { DocumentContent } from '../../documents';
 import { DocumentReadingColumns } from '../../../shared/document-reading/DocumentReadingColumns';
-import { SpecificationAgentAttempts } from '../../tasks';
 
 export interface SpecificationSecondaryContextValue {
   readonly specId: string;
@@ -181,12 +180,8 @@ export function ActivityHistoryScreen({
   return (
     <AppContent className="w-content-standard max-w-full">
       <AppWorkspaceBody padding="none" scroll="area">
-        <SpecificationAgentAttempts
+        <SpecificationActivityHistory
           specId={data.specId}
-          {...(data.openDoc ? { onOpenDoc: data.openDoc } : {})}
-        />
-        <ActivityHistory
-          showHeading={false}
           events={data.events}
           availability={data.availability}
           onRetry={data.retry}
@@ -194,7 +189,7 @@ export function ActivityHistoryScreen({
             data.openTask(taskId);
           }}
           onOpenSession={data.openSession}
-          onOpenDoc={data.openDoc}
+          {...(data.openDoc ? { onOpenDoc: data.openDoc } : {})}
         />
       </AppWorkspaceBody>
     </AppContent>

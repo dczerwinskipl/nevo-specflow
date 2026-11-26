@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import type { SessionSnapshot } from '@nevo/specflow-contracts/sessions';
 import { ManagedSession } from './ManagedSession';
 import { fixtureSessionId } from './managedSession.stories-support';
 import { genericSpecLevelContext } from './context/sessionContextFixtures';
@@ -80,6 +81,38 @@ export const NormalRunDesktop: Story = {
   args: { api: transcriptApi(normalRunSnapshot()) },
   globals: WIDE_VIEWPORT,
   play: normalPlay,
+};
+
+const LONG_TITLE =
+  'Reconcile the demo and project HTTP routes, their TypeBox schemas and error mapping with backend.md';
+
+/** A Session the owner gave a long title: the same transcript, the title cut in its header. */
+function longTitleSnapshot(): SessionSnapshot {
+  const base = normalRunSnapshot();
+
+  return { ...base, session: { ...base.session, title: LONG_TITLE } };
+}
+
+/** A long title stays one line in the header; nothing widens the page. */
+const longTitlePlay: Story['play'] = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const title = await canvas.findByText(LONG_TITLE);
+  // One line, cut with an ellipsis where it does not fit.
+  await expect(title.getBoundingClientRect().height).toBeLessThanOrEqual(32);
+  await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+};
+
+export const LongTitleMobile: Story = {
+  tags: ['contract'],
+  args: { api: transcriptApi(longTitleSnapshot()) },
+  globals: NARROW_VIEWPORT,
+  play: longTitlePlay,
+};
+export const LongTitleDesktop: Story = {
+  tags: ['contract'],
+  args: { api: transcriptApi(longTitleSnapshot()) },
+  globals: WIDE_VIEWPORT,
+  play: longTitlePlay,
 };
 
 /** Long Commentary reads in its stages, each followed by its own tool row. */

@@ -91,17 +91,30 @@ export function firstStepIntentDirectory(engine: SpecFlowEngine): string {
 export function createFirstStep(options: {
   readonly starter: FirstStepStarter;
   readonly store?: FirstStepIntentStore;
-  /** The Runtime's store directory when no store is injected. */
-  readonly directory?: string;
+  /** The Runtime's store directory when no store is injected (read on first use). */
+  readonly directory?: () => string;
   readonly now?: () => Date;
 }): CreateFirstStep {
   const now = options.now ?? (() => new Date());
-  const store =
-    options.store ??
-    (options.directory ? createFileFirstStepIntentStore(options.directory) : undefined);
-  if (!store) {
-    throw new Error('A first-step intent store or directory is required.');
-  }
+  const directory = options.directory;
+  let fileStore: FirstStepIntentStore | undefined;
+  const fileStoreOf = (): FirstStepIntentStore => {
+    if (!directory) {
+      throw new Error('A first-step intent store or directory is required.');
+    }
+
+    fileStore ??= createFileFirstStepIntentStore(directory());
+
+    return fileStore;
+  };
+
+  // Resolved lazily: composing the Runtime never touches the Engine.
+  const store: FirstStepIntentStore = options.store ?? {
+    read: (operationId) => fileStoreOf().read(operationId),
+    write: (intent) => fileStoreOf().write(intent),
+    list: () => fileStoreOf().list(),
+    remove: (operationId) => fileStoreOf().remove(operationId),
+  };
 
   // Before the Runtime started: what the startup step may act on (a newer intent belongs to a
   // request in flight, whose own Create settles it).
@@ -114,7 +127,7 @@ export function createFirstStep(options: {
     intent: StoredFirstStepIntent,
     specId: string,
   ): Promise<CreateFirstStepResult> {
-    const current = (await store!.read(intent.operationId)) ?? intent;
+    const current = (await store.read(intent.operationId)) ?? intent;
     if (current.result) {
       return current.result;
     }
@@ -147,7 +160,7 @@ export function createFirstStep(options: {
       };
     }
 
-    await store!.write({ ...current, result });
+    await store.write({ ...current, result });
 
     return result;
   }

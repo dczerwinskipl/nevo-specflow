@@ -90,7 +90,7 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
   const firstStep =
     options.dependencies?.firstStep ??
     (engine && starter
-      ? createFirstStep({ starter, directory: firstStepIntentDirectory(engine) })
+      ? createFirstStep({ starter, directory: () => firstStepIntentDirectory(engine) })
       : undefined);
 
   return {

@@ -172,4 +172,10 @@ export const LongTitles: Story = {
       task('c', 'Use the project documents client in both modes', 'broken'),
     ],
   },
+  play: async () => {
+    const picker = await within(document.body).findByRole('dialog');
+    // An unbroken title wraps: no row is wider than the picker that holds it.
+    const list = picker.querySelector<HTMLElement>('[data-item-picker]')!;
+    await expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth);
+  },
 };

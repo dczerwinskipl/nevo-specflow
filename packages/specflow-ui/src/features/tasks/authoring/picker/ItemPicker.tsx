@@ -94,7 +94,8 @@ export function ItemPicker({
   const nothingToShow = shown.length === 0;
 
   return (
-    <div className="grid min-w-0 gap-4" data-item-picker="">
+    // Titles are free text: an unbroken one wraps instead of widening every row past the dialog.
+    <div className="grid min-w-0 gap-4 [overflow-wrap:anywhere]" data-item-picker="">
       {searchable ? (
         <div className="grid gap-2">
           <InputGroup>

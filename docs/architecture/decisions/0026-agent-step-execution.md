@@ -427,15 +427,26 @@ allowed every one, including the two outside the worktree. In `acceptEdits` the 
 four times and in `manual` five (the product CLI calls, `rm`, `curl`, and in `manual` the
 here-document).
 
-What Auto does not change: the product actions a Turn may take are the broker's and the capability's
-(D11, scope), judged server-side whatever the mode or the command line; Claude's `--restricted`
-keeps its file tools inside the working directories; setting sources stay off, so no owner or
-project permission is merged. A shell command Auto allows can reach outside the worktree, as in
-Claude Code: that is the provider's judgement the owner chose with the mode, and the attribution
-checks (D14) still judge what changed in the checkout. Every call, decided by the provider or by
-the owner, is recorded in the Turn's Work history: a call with a permission entry was decided by
-the owner, one with an allowlist note by the host, and any other call by the provider's mode (the
-protocol says no more than that).
+**What Auto delegates to Claude.** In `auto`, every shell command Claude's classifier allows runs
+without SpecFlow seeing it first, with the owner's account permissions, as in Claude Code. That
+includes commands outside the worktree (measured: `rm -rf` of a folder outside it, `curl`) and
+product CLI calls SpecFlow would not approve: the CLI recognises an agent Turn only from its
+environment (`NEVO_AGENT_BROKER`, `NEVO_AGENT_CAPABILITY`), so a command that drops those variables
+(`env -u NEVO_AGENT_CAPABILITY nevo-specflow …`) or retargets the CLI (`--project-root …`) runs as
+the owner's local CLI, without the broker's scope check. Auto therefore does not keep a Turn inside
+its scope; the classifier's judgement is what the owner chose with the mode. (Mitigation is an open
+owner question.)
+
+**What SpecFlow still guarantees, in every mode:** a product CLI write that carries the Turn's
+capability goes through the broker and its server-side scope (D11); a shell command that reaches
+the host (Claude asked) is approved automatically only by the allowlist above, inside the worktree
+and with the verified CLI identity, else by the owner; Claude's `--restricted` keeps its file tools
+inside the working directories; setting sources stay off, so no owner or project permission is
+merged; the attribution checks (D14) judge what changed in the checkout at finish. Every tool call
+appears in the Turn's Work history, and a call the owner answered carries its permission entry.
+Which calls Claude's mode decided, and which the allowlist approved, is **not recorded per call**:
+the allowlist note is a separate commentary item without the tool call's id, so no client may
+present it as the decision of a particular row.
 
 ### Access is the configured authentication mode (D21 superseded)
 

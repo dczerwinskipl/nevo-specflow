@@ -99,6 +99,9 @@
   --spacing-floating-window-expanded: 25rem;
 
   --color-progress-fill: var(--color-action-primary);
+  /* The empty part of a progress track (continuous track, pending segments): a step above
+     surface-control so the track reads as a whole bar on the workspace surface. */
+  --color-progress-track: rgba(255, 255, 255, 0.08);
   /* Shared control geometry: inline 24px, compact 32px, default 36px. */
   --spacing-control-height-inline: 1.5rem;
   --spacing-control-height-compact: 2rem;

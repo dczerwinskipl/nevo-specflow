@@ -186,6 +186,16 @@ function PositionGeometryFixture() {
           position={{ state: 'not-started' }}
         />
       </div>
+      <div className="w-[20rem]" data-case="fill">
+        <Progress
+          aria-label="Step 6 of 7: Waiting for Tasks"
+          variant="segmented"
+          size="compact"
+          width="fill"
+          total={7}
+          position={{ state: 'current', step: 6 }}
+        />
+      </div>
       <span data-probe="info" className="bg-status-info" />
     </div>
   );
@@ -265,6 +275,18 @@ export const PositionGeometryContract: Story = {
 
     if (narrow.widths[1]! <= narrow.widths[0]!) {
       throw new Error('The current segment stays the widest while shrinking.');
+    }
+
+    const fill = positionGeometryOf(canvasElement, 'fill');
+    if (Math.abs(fill.track.getBoundingClientRect().width - 320) > 0.5) {
+      throw new Error('A fill track spans its container.');
+    }
+
+    // 320 px less six 2 px gaps, in eight shares: 39 px a step, 78 px the current one.
+    if (Math.abs(fill.widths[5]! - 2 * fill.widths[0]!) > 0.5 || fill.widths[0]! < 38.5) {
+      throw new Error(
+        `A fill track keeps the current step twice as wide; got ${fill.widths.join(', ')}.`,
+      );
     }
 
     const notStarted = positionGeometryOf(canvasElement, 'not-started');

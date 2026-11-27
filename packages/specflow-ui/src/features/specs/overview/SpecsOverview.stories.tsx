@@ -473,16 +473,19 @@ export const CurrentContract: Story = {
     canvas.getByText('Agent input required');
     // Each row says where its workflow stands, in the Overview's own words.
     await expect(situationOf(canvasElement, 'admission')).toBe(
-      'Agent input required | Waiting for Tasks | Step 6 of 7 · Waiting for 4 of 9 tasks',
+      'Agent input required | Waiting for Tasks | Step 6 of 7 | Waiting for 4 of 9 tasks',
     );
-    await expect(situationOf(canvasElement, 'packaging')).toBe(
-      'Waiting for Tasks | Step 6 of 7 · 2 ready to start',
-    );
+    await expect(situationOf(canvasElement, 'packaging')).toBe('Waiting for Tasks | Step 6 of 7');
+    // Tasks that can start are the row's Task progress, as in the Overview's Now.
+    await expect(
+      canvasElement.querySelector('[data-spec-id="packaging"] [data-task-progress-side]')
+        ?.textContent,
+    ).toBe('2 ready to start');
     await expect(situationOf(canvasElement, 'providers')).toMatch(
-      /^Break the solution down \| Step 4 of 7 · Attempt 1 · agent working since /,
+      /^Break the solution down \| Step 4 of 7 \| Attempt 1 · agent working since /,
     );
     await expect(situationOf(canvasElement, 'localization')).toBe(
-      'Not started | First step · Gather requirements',
+      'Not started | 7 steps | First step · Gather requirements',
     );
     await expect(situationOf(canvasElement, 'delivery')).toBe('Completed');
     if (canvasElement.textContent?.includes('In preparation')) {
@@ -573,9 +576,11 @@ export const CurrentContract: Story = {
 
 /**
  * In the wide Focused frame (1920 px: the frame is at its 90rem maximum) the list spans the frame but
- * does not spread its columns: Situation starts within the bounded title track (40rem) plus one
- * column gap, and Progress directly after the Situation track. The search field is no wider than the
- * title track.
+ * does not spread its columns: every track stops at its maximum (title 32rem, Workflow 22rem, Tasks
+ * 18rem), so Workflow starts after the title track plus one column gap and Tasks directly after
+ * Workflow. At an ordinary 1280 px the title gives room to the two bars: it is narrower than its
+ * maximum while Workflow and Tasks are wider than their minimum. The search field is no wider than
+ * the archive's title track.
  */
 export const WideFrameKeepsColumnsTogether: Story = {
   tags: ['contract', '!autodocs'],
@@ -597,15 +602,26 @@ export const WideFrameKeepsColumnsTogether: Story = {
 
       const header = canvasElement.querySelector<HTMLElement>('[data-spec-columns]')!;
       const gap = parseFloat(getComputedStyle(header).columnGap);
-      const [title, situation, progress] = [...header.children].map((column) =>
-        column.getBoundingClientRect(),
-      );
-      if (!title || !situation || !progress) {
-        throw new Error('The current list has title, situation and progress columns.');
-      }
+      const columnsOf = () => {
+        const [title, workflow, tasks] = [...header.children].map((column) =>
+          column.getBoundingClientRect(),
+        );
+        if (!title || !workflow || !tasks) {
+          throw new Error('The current list has Specification, Workflow and Tasks columns.');
+        }
 
-      await expect(situation.left).toBeLessThanOrEqual(title.left + 40 * rem + gap + 0.5);
-      await expect(progress.left).toBeLessThanOrEqual(situation.left + 15 * rem + gap + 0.5);
+        return { title, workflow, tasks };
+      };
+
+      const wide = columnsOf();
+      await expect(wide.workflow.left).toBeLessThanOrEqual(wide.title.left + 32 * rem + gap + 0.5);
+      await expect(wide.tasks.left).toBeLessThanOrEqual(wide.workflow.left + 22 * rem + gap + 0.5);
+
+      await settleViewport(1280, 900);
+      const ordinary = columnsOf();
+      await expect(ordinary.workflow.left - ordinary.title.left - gap).toBeLessThan(32 * rem);
+      await expect(ordinary.tasks.left - ordinary.workflow.left - gap).toBeGreaterThan(15 * rem);
+      await expect(ordinary.tasks.width).toBeGreaterThan(11 * rem);
 
       // The archive shows the search field: no wider than the title track.
       await userEvent.click(canvas.getByRole('radio', { name: 'Archive' }));
@@ -698,13 +714,16 @@ export const NotStartedAndEnded: Story = {
  * One row per place a workflow run can be, each in its section: the row names the current step and
  * who or what it waits for, as the Specification's Overview says it (never the manifest status).
  */
-/** A row's situation, one part per line: a signal that is not the workflow's, the title, the line. */
+/**
+ * A row's workflow, one part per line: a signal that is not the workflow's, the title, the position
+ * on the track's label line, the line under the track.
+ */
 function situationOf(canvasElement: HTMLElement, specId: string): string {
   const row = `[data-spec-id="${specId}"]`;
 
   return [
     ...canvasElement.querySelectorAll(
-      `${row} [data-spec-reason] > span:not([data-step-progress]), ${row} [data-step-progress-title], ${row} [data-step-progress-detail]`,
+      `${row} [data-spec-reason] > span:not([data-step-progress]), ${row} [data-step-progress-title], ${row} [data-step-progress-count], ${row} [data-step-progress-detail]`,
     ),
   ]
     .map((part) => part.textContent)
@@ -824,17 +843,21 @@ export const WorkflowPhases: Story = {
     await expect(
       canvasElement.querySelector('[data-spec-id="done"] [data-spec-progress]')?.textContent,
     ).toBe('4 of 4 tasks done');
+    // The waiting step's Tasks that can start stand with its Task progress, not its workflow.
+    await expect(
+      canvasElement.querySelector('[data-spec-id="waiting"] [data-spec-progress]')?.textContent,
+    ).toBe('0 of 12 tasks done5 ready to start');
     for (const [specId, situation] of [
-      ['stuck', 'Resolve 2 blocking tasks | Step 6 of 7 · 1 more item requires attention'],
+      ['stuck', 'Resolve 2 blocking tasks | Step 6 of 7 | 1 more item requires attention'],
       ['confirm', 'Start Review the breakdown | Step 5 of 7'],
-      ['waiting', 'Waiting for Tasks | Step 6 of 7 · 5 ready to start'],
-      ['running', 'Waiting for Tasks | Step 6 of 7 · Waiting for 3 of 4 tasks'],
-      ['remaining', 'Waiting for Tasks | Step 6 of 7 · Waiting for 2 of 4 tasks'],
-      ['agent', /^Break the solution down \| Step 4 of 7 · Attempt 1 · agent working since /],
-      ['owner', /^Design the solution \| Step 3 of 7 · In progress since .+ · started by /],
-      ['changes', 'Break the solution down | Step 4 of 7 · Changes requested'],
-      ['next', 'Review the breakdown | Step 5 of 7 · Ready to start'],
-      ['new', 'Not started | First step · Gather requirements'],
+      ['waiting', 'Waiting for Tasks | Step 6 of 7'],
+      ['running', 'Waiting for Tasks | Step 6 of 7 | Waiting for 3 of 4 tasks'],
+      ['remaining', 'Waiting for Tasks | Step 6 of 7 | Waiting for 2 of 4 tasks'],
+      ['agent', /^Break the solution down \| Step 4 of 7 \| Attempt 1 · agent working since /],
+      ['owner', /^Design the solution \| Step 3 of 7 \| In progress since .+ · started by /],
+      ['changes', 'Break the solution down | Step 4 of 7 | Changes requested'],
+      ['next', 'Review the breakdown | Step 5 of 7 | Ready to start'],
+      ['new', 'Not started | 7 steps | First step · Gather requirements'],
       ['done', 'Completed'],
       ['unreadable', 'Could not read this Specification | Its workflow files are not valid.'],
       ['dropped', /^Abandoned \| \S/],
@@ -1242,10 +1265,10 @@ export const ProgressStates: Story = {
     const children = row.querySelector('[data-spec-title]')?.parentElement?.parentElement?.children;
     if (
       !children ||
-      !children[1]?.hasAttribute('data-spec-progress') ||
-      !children[2]?.hasAttribute('data-spec-summary')
+      !children[1]?.hasAttribute('data-spec-summary') ||
+      !children[2]?.hasAttribute('data-spec-progress')
     ) {
-      throw new Error('Logical mobile order must be identity, progress, situation.');
+      throw new Error('Logical mobile order must be identity, workflow, Tasks (as the Now).');
     }
 
     if (!canvasElement.querySelector('[data-spec-id="progress-1"] [data-spec-summary]')) {

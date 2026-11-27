@@ -38,8 +38,7 @@ function Collection({
   readonly width: number;
   readonly header?: boolean;
 }) {
-  const labels =
-    tracks === 'task' ? ['Task', 'Status'] : ['Specification', 'Situation', 'Progress'];
+  const labels = tracks === 'task' ? ['Task', 'Status'] : ['Specification', 'Workflow', 'Tasks'];
 
   return (
     <div style={{ width }} className={cn(collectionContainer, 'grid min-w-0 gap-5')}>

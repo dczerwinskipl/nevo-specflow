@@ -60,14 +60,18 @@ dashboard configuration). The Overview renders what the reads deliver.
 
 - **Now** — the Specification workflow's position, in this order: the step title; the **step
   track** (the design system's `Progress` position mode): the step's title and its position
-  ("Step 2 of 7", the projection's `outline`) on one line, the track under it; the full position
+  ("Step 2 of 7", the projection's `outline`) on its label line, the track across the full width
+  under it, as the Specifications list draws it; both Now bars and their label lines stop at the
+  list's Workflow column maximum (22rem), so a wide Overview or Task page never stretches them
+  (owner review, 2026-11-27, the same in a Task's Now); the full position
   ("Step 2 of 7 · next: Design the solution") is the count's tooltip. Then one quiet line "In
   progress since 11:18 · started by you" ("Attempt 2 · …" only from a second attempt on, never
   "Attempt 1"); then the step's purpose. The track and the number show the step's position in the
   workflow definition, not progress (a workflow may loop or branch, and after a return the current
   segment moves back). The track is one image named "Step 2 of 7: Write the specification"; its
   visible count is not read twice. Before the first start the track outlines the first segment and
-  the count reads "7 steps"; a completed workflow fills every segment ("All 7 steps done"); an
+  the count reads "7 steps", with "First step · Gather requirements" in words under it (as in the
+  list, never only in the tooltip); a completed workflow fills every segment ("All 7 steps done"); an
   abandoned one has no track (the outline no longer says where it stopped). For a `wait` step the
   Task progress follows, once: "1 of 6 tasks done" with "5 ready to start · 1 cancelled · 1 on hold"
   on the same line (zero parts omitted; the ready count is the Runtime's Ready to start group) and

@@ -6,7 +6,7 @@ import {
 } from '../../../../shared/operational-list';
 import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
-import { TaskProgress } from '../../../tasks';
+import { TaskProgress, readyToStartOf } from '../../../tasks';
 import {
   rowMetadata,
   rowProgress,
@@ -188,17 +188,15 @@ function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
   const { t } = useTranslation();
   const details = item.progress;
   const progress = rowProgress(details);
+  const ready = readyToStartOf(
+    item.summary.kind === 'workflow' ? item.summary.workflow : item.workflow,
+  );
 
   return (
     <Typography
       as="div"
       variant="body-sm"
-      className={cn(
-        'flex min-w-0 items-center gap-2 text-content-secondary',
-        collectionWide.column3,
-        collectionWide.flexColumn,
-        collectionWide.itemsStart,
-      )}
+      className={cn('min-w-0 text-content-secondary', collectionWide.column3)}
       data-spec-progress
     >
       {item.hideProgress ? null : progress === 'unknown' ? (
@@ -211,10 +209,11 @@ function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
           {t('specifications.noTasks')}
         </span>
       ) : details ? (
-        // The Overview's Task progress, compact: one continuous bar, never a second step track.
+        // The Now's Task progress, compact: the count and the Tasks that can start, the bar under it.
         <TaskProgress
           variant="compact"
           progress={details}
+          {...(ready ? { ready } : {})}
           label={t('specifications.progressLabel', { title: item.title })}
         />
       ) : null}
@@ -222,10 +221,13 @@ function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
   );
 }
 
+/**
+ * Narrow rows read as the Now: the workflow first, then its Tasks. In columns the cells take their
+ * own tracks (Workflow, Tasks).
+ */
 function CurrentSpecRowContent({ item }: { item: CurrentSpecRowModel }) {
   return (
     <>
-      <SpecProgress item={item} />
       <Typography
         as="div"
         variant="body-sm"
@@ -234,6 +236,7 @@ function CurrentSpecRowContent({ item }: { item: CurrentSpecRowModel }) {
       >
         <SpecRowSummary item={item} />
       </Typography>
+      <SpecProgress item={item} />
     </>
   );
 }

@@ -185,7 +185,8 @@ function RoutedIdentity({
                 {t('navigation.specifications')}
               </LocationLink>
             ) : (
-              title
+              // The list itself: named with its collection icon, as the Narrow header names it.
+              <LocationItem icon={icon}>{title}</LocationItem>
             )}
           </BreadcrumbItem>,
           ...(specId

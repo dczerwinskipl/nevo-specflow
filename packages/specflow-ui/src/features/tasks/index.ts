@@ -13,6 +13,7 @@ export { SpecificationNow } from './execution/specification/SpecificationNow';
 export type { AttemptRef } from './execution/StartBlockerLines';
 export {
   SpecificationSituation,
+  readyToStartOf,
   type SituationAttention,
 } from './execution/progress/SpecificationSituation';
 export { TaskProgress } from './execution/progress/TaskProgress';

@@ -88,18 +88,19 @@ no trailing arrow and no row actions menu.
   two tags plus `+N`, and the pull request(s). One pull request is an explicit nested link (`PR
 #27`), the only allowed nested target; several are a non-interactive count (`3 PRs`) that never
   guesses a representative PR.
-- **Situation**: where the workflow run stands, with the Overview's Now components in their
-  compact list form (`StepProgress`, `TaskProgress`, the hand-off wording of `LastHandoff`) and its
-  words, one source for both screens:
-  - at a step: the **step title**; under it the DS segmented **step track** (compact); under that
-    one line, the track's "Step N of M" and who or what the step waits for, as Now says it: the
-    running attempt ("Attempt 1 · agent working since 11:18", "In progress since 11:18 · started
-    by you"), between attempts **Ready to start**, or the hand-off the next attempt must act on
-    (**Changes requested**, **Returned to this step**), and for a wait step its Tasks: "N ready to
-    start", else "Waiting for N of M tasks";
-  - **Not started**, with the not-started track and "First step · <title>" when the archetype's
-    workflow resolves;
-  - **Completed** (success check icon), with its Task progress in the Progress column ("12 of 12
+- **Workflow**: where the workflow run stands, with the Overview's Now components in their
+  compact list form (`StepProgress`, the hand-off wording of `LastHandoff`) and its words, one
+  source for both screens. The compact form has the Now's grammar in body text (owner review,
+  2026-11-27): the step title with its position ("Step 6 of 7") on the track's own label line, the
+  DS segmented **step track** (compact) across the full width of the cell under it, then one line:
+  - at a step: who or what the step waits for, as Now says it: the running attempt ("Attempt 1 ·
+    agent working since 11:18", "In progress since 11:18 · started by you"), between attempts
+    **Ready to start**, the hand-off the next attempt must act on (**Changes requested**,
+    **Returned to this step**), and for a wait step with no Task to start "Waiting for N of M
+    tasks" (the Tasks that can start are the row's Task progress, below);
+  - **Not started**, with "7 steps" on the label line, the not-started track and "First step ·
+    <title>" under it when the archetype's workflow resolves;
+  - **Completed** (success check icon), with its Task progress in the Tasks column ("12 of 12
     tasks done"); **Abandoned** (muted archive icon) with when it was abandoned, and no track and no
     Task progress.
 
@@ -107,30 +108,38 @@ no trailing arrow and no row actions menu.
   lists first (the same record, `attention.first`): its intervention ("Resolve 2 blocking tasks"),
   else its action in the Overview's words ("Start Review the breakdown"; on a Task with the Task's
   title, "Resume · API"), else its reason; warning icon, attention tone. The step track stays under
-  it, and its line says how many more items there are ("Step 5 of 7 · 1 more item requires
-  attention"). An attention signal that is not the workflow's (a Session, demo only) keeps its
-  passive icon (review: document inspection; blocked: warning; input, decision or unknown reason:
-  conversation) with the step block as its one concurrent qualifier; without a workflow position a
-  Session count ("1 session active") is that qualifier. Summary prose is never a link.
+  it, and its line says how many more items there are ("1 more item requires attention"). An
+  attention signal that is not the workflow's (a Session, demo only) keeps its passive icon
+  (review: document inspection; blocked: warning; input, decision or unknown reason: conversation)
+  with the step block as its one concurrent qualifier; without a workflow position a Session count
+  ("1 session active") is that qualifier. Summary prose is never a link.
 
   A Specification whose workflow cannot be read says so in its row, **Could not read this
   Specification**, with why (`unreadable.reason`: its files are not valid, could not be read, the
   project was busy, or something unexpected the Runtime logged); the other rows are unaffected.
 
-- **Progress**: the Overview's Task progress, compact (`TaskProgress`): the continuous bar (success
-  fill) with "N of M tasks done", **No tasks yet** (muted) when the Specification has no Tasks, an
-  explicit unknown/invalid text, and nothing for an abandoned run. Never a second segmented track:
-  segments are the workflow's steps.
+- **Tasks**: the Overview's Task progress, compact (`TaskProgress`), in the same grammar as the
+  workflow: "N of M tasks done" with what else matters about the Tasks on the right of the same
+  label line ("3 ready to start · 1 on hold", the Now's side text), the continuous bar (success
+  fill) across the full width under it; **No tasks yet** (muted) when the Specification has no
+  Tasks, an explicit unknown/invalid text, and nothing for an abandoned run. Never a second
+  segmented track: segments are the workflow's steps.
+
+Both bars have the compact height and the same alignment, and their empty part is the
+`progress-track` token of the DS `Progress`, shared with the Overview's Now. **Narrow rows read as
+the Now**: identity (title, muted key), then the workflow, then the Tasks.
 
 The row never lists Task ids, several concurrent signals, raw workflow labels, provider, model,
 branch or owner details.
 
 **Columns.** From a 48rem collection width the rows share column tracks with a column header:
-Current `Specification | Situation | Progress` (`minmax(0,40rem) 15rem 8.25rem`), flat
-`Specification | Updated [| Progress]`, Archive `Specification | Milestone | Pull request`. The
-title track is bounded, so situation and progress stay next to the name on any width; the row
-surface, hover and focus span the whole list while the rest of an ultra-wide row stays empty.
-Text blocks above the rows (search field, notices) keep the title-track width
+Current `Specification | Workflow | Tasks` (`minmax(18rem,32rem) minmax(15rem,22rem)
+minmax(11rem,18rem)`), flat `Specification | Updated [| Tasks]` (`minmax(0,40rem) 8rem [12rem]`),
+Archive `Specification | Milestone | Pull request`. The current tracks grow together from their
+minimum toward their maximum, so at an ordinary width the title gives room to the two full-width
+bars instead of pushing them to the edge, and on a wide frame every track stops at its maximum and
+the rest of the row stays empty while its surface, hover and focus span the whole list. Text blocks
+above the rows (search field, notices) keep the 40rem title-track width
 ([App Shell geometry](shell-geometry.md)). Below 48rem each row stacks in the same order and the
 Updated date moves into a line under the title.
 
@@ -179,7 +188,10 @@ another field. Archive has no sections and no disclosure.
 
 ## Header and actions
 
-The header shows **Specifications** with a refresh indicator. Actions: **New specification**
+The application header names the screen once, at every width, with the Specifications collection
+icon and **Specifications** (the Narrow identity, and on Wide and Compact the trail's current item),
+with a refresh indicator. The body repeats no visible title: its `h1` is kept for assistive
+technology and focus only (owner review, 2026-11-27). Actions: **New specification**
 (primary) when creation is available ([Specification creation](../specification-creation.md)) and
 **Refresh**, which re-reads only the displayed collection and keeps the current rows while it runs.
 An empty Current collection offers New specification in its empty state instead of the header. A
@@ -190,8 +202,8 @@ state). The Background operations panel sits above the list when the host provid
 
 Wide and Compact keep the same hierarchy in one Primary surface; navigation may be persistent or a
 Drawer. Narrow keeps the same sections, summary and order with stacked rows; the whole row stays the
-target and no critical state is hidden behind hover. On Narrow the header already names the screen,
-so the page title under it is kept for assistive technology and focus only and is not shown again.
+target and no critical state is hidden behind hover. Header and icon are the same on every layout
+(see Header and actions).
 
 ## States
 

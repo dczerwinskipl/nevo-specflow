@@ -168,9 +168,26 @@ describe('Progress', () => {
       expect(html.match(/data-progress-segment="after"/g)).toHaveLength(4);
       // 20 px segments, a 40 px current one, shrinking to fit 16rem and never below 4 px.
       expect(html).toContain('max-w-[min(100%,16rem)]');
-      expect(html).toMatch(/w-10 bg-status-info/);
+      expect(html).toMatch(/bg-status-info w-10/);
       expect(html).toContain('min-w-1');
       expect(html).toContain('h-progress-track');
+    });
+
+    it('spreads the segments over the container with width="fill", the current one twice as wide', () => {
+      const html = renderToStaticMarkup(
+        <Progress
+          aria-label="Step 6 of 7: Waiting for Tasks"
+          variant="segmented"
+          width="fill"
+          total={7}
+          position={{ state: 'current', step: 6 }}
+        />,
+      );
+      expect(html).toContain('flex w-full gap-0.5');
+      expect(html).not.toContain('w-fit');
+      expect(html).toMatch(/bg-status-info flex-\[2_1_0%\]/);
+      expect(html.match(/flex-\[1_1_0%\]/g)).toHaveLength(6);
+      expect(html).not.toMatch(/ w-5| w-10/);
     });
 
     it('uses the compact height on request', () => {

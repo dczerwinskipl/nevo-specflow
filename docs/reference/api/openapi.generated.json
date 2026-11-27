@@ -67358,6 +67358,12 @@
                                       "enum": [
                                         "source_unavailable"
                                       ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_busy"
+                                      ]
                                     }
                                   ]
                                 }
@@ -67495,6 +67501,12 @@
                                       "type": "string",
                                       "enum": [
                                         "source_unavailable"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_busy"
                                       ]
                                     }
                                   ]
@@ -68098,6 +68110,12 @@
                                       "enum": [
                                         "source_unavailable"
                                       ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_busy"
+                                      ]
                                     }
                                   ]
                                 }
@@ -68253,6 +68271,12 @@
                                       "type": "string",
                                       "enum": [
                                         "source_unavailable"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_busy"
                                       ]
                                     }
                                   ]
@@ -68740,6 +68764,12 @@
                                       "enum": [
                                         "source_unavailable"
                                       ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_busy"
+                                      ]
                                     }
                                   ]
                                 }
@@ -68831,6 +68861,12 @@
                                       "type": "string",
                                       "enum": [
                                         "source_unavailable"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_busy"
                                       ]
                                     }
                                   ]

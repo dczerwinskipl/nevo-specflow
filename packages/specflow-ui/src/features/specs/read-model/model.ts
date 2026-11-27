@@ -109,7 +109,10 @@ export interface TaskProgressData {
 /** A missing domain read is not an empty Attention list. */
 export type FeatureAttentionSource =
   | { readonly state: 'available'; readonly items: readonly AttentionItem[] }
-  | { readonly state: 'unavailable'; readonly reason: 'source_unavailable' | 'not_implemented' }
+  | {
+      readonly state: 'unavailable';
+      readonly reason: 'source_unavailable' | 'source_busy' | 'not_implemented';
+    }
   | { readonly state: 'forbidden' };
 
 export interface FeatureAttentionData {
@@ -197,7 +200,7 @@ export interface SpecificationWorkspaceData {
   readonly sectionAvailability?: Partial<Record<SpecificationSectionId, SpecificationSectionState>>;
   /** Why an unavailable section is unavailable: `not_implemented` is permanent for this Runtime. */
   readonly sectionUnavailableReason?: Partial<
-    Record<SpecificationSectionId, 'not_implemented' | 'source_unavailable'>
+    Record<SpecificationSectionId, 'not_implemented' | 'source_unavailable' | 'source_busy'>
   >;
   readonly id: string;
   /** The registered workspace the Specification is bound to (its documentation is read there). */

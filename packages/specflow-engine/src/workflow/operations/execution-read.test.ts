@@ -501,9 +501,9 @@ describe('readSpecificationListings', () => {
       'corrupt',
       'manifest',
       'denied',
-      'busy',
       'defect',
       SPEC,
+      'busy',
     ]);
     const reasons = Object.fromEntries(
       [...listings].map(([specId, read]) => [specId, read.kind === 'read' ? 'read' : read.reason]),
@@ -519,6 +519,32 @@ describe('readSpecificationListings', () => {
     // The caller gets the error itself, to log what it did not expect.
     expect(listings.get('defect')).toMatchObject({ error: failing.get('defect') });
     expect(listingFailureOf(new Error('no code'))).toBe('unexpected');
+  });
+
+  it('waits for a busy control lock once per list read: the rest answer busy at once', async () => {
+    const { dependencies } = scenario();
+    const reads: string[] = [];
+    const store = {
+      ...dependencies.store,
+      read: (specId: string) => {
+        reads.push(specId);
+
+        return specId === 'busy'
+          ? Promise.reject(new ProjectControlLockError('CONTROL_LOCK_BUSY', 'Busy.'))
+          : dependencies.store.read(specId);
+      },
+    };
+
+    const listings = await readSpecificationListings({ ...dependencies, store }, [
+      SPEC,
+      'busy',
+      'after-1',
+      'after-2',
+    ]);
+    expect(reads).toEqual([SPEC, 'busy']);
+    expect(listings.get(SPEC)?.kind).toBe('read');
+    expect(listings.get('after-1')).toMatchObject({ kind: 'unreadable', reason: 'busy' });
+    expect(listings.get('after-2')).toMatchObject({ kind: 'unreadable', reason: 'busy' });
   });
 });
 

@@ -10,7 +10,10 @@ import type { WorkspaceActivityInput, WorkspaceSessionStart } from './activity';
  */
 export type SourceSection<T> =
   | { readonly state: 'available'; readonly data: T }
-  | { readonly state: 'unavailable'; readonly reason: 'not_implemented' | 'source_unavailable' };
+  | {
+      readonly state: 'unavailable';
+      readonly reason: 'not_implemented' | 'source_unavailable' | 'source_busy';
+    };
 
 export interface WorkspaceTaskRecord {
   readonly id: string;

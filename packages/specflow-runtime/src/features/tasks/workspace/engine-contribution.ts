@@ -46,7 +46,10 @@ export type WorkspaceTasksSection =
         readonly overview: TaskOverview;
       };
     }
-  | { readonly state: 'unavailable'; readonly reason: 'not_implemented' | 'source_unavailable' };
+  | {
+      readonly state: 'unavailable';
+      readonly reason: 'not_implemented' | 'source_unavailable' | 'source_busy';
+    };
 
 /** The `tasks` contribution: the section and the preparation state the Tasks imply. */
 export interface WorkspaceTasksContribution {
@@ -178,10 +181,15 @@ const unavailable: WorkspaceTasksContribution = {
   section: { state: 'unavailable', reason: 'source_unavailable' },
 };
 
+/** Another writer holds the project control lock longer than the read waits: a retry soon can succeed. */
+const busy: WorkspaceTasksContribution = {
+  section: { state: 'unavailable', reason: 'source_busy' },
+};
+
 /**
  * The `tasks` contribution (a project Runtime's Engine, or the demo's in memory): one Engine
- * reading of every Task. An execution the Engine cannot read now (also a busy lock) degrades only
- * this section (`source_unavailable`).
+ * reading of every Task. An execution the Engine cannot read now degrades only this section:
+ * `source_busy` while another writer holds the control lock, else `source_unavailable`.
  */
 export function createEngineWorkspaceTasks(
   source: TaskEngine,
@@ -193,7 +201,7 @@ export function createEngineWorkspaceTasks(
       return basis ? workspaceTasksOf(basis) : unavailable;
     } catch (error) {
       if (error instanceof TaskSourceUnavailableError) {
-        return unavailable;
+        return error.retryable ? busy : unavailable;
       }
 
       throw error;

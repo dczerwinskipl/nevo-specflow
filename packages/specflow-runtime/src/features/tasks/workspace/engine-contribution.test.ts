@@ -1,10 +1,16 @@
-import type { AttentionItem, SpecificationListing } from '@nevo/specflow-engine';
+import {
+  ProjectControlLockError,
+  type AttentionItem,
+  type SpecificationListing,
+} from '@nevo/specflow-engine';
 import { CurrentSpecWorkflowSchema } from '@nevo/specflow-contracts/specs/overview';
 import { WorkspaceAttentionSchema } from '@nevo/specflow-contracts/specs/workspace';
 import { Value } from 'typebox/value';
 import { describe, expect, it } from 'vitest';
 
+import type { TaskEngine } from '../engine/sources';
 import {
+  createEngineWorkspaceTasks,
   overviewExecutionOf,
   overviewWorkflowOf,
   workspaceAttentionOf,
@@ -166,5 +172,31 @@ describe('overviewExecutionOf', () => {
     });
     expect(Object.keys(facts.firstAttention?.taskTitles ?? {}).sort()).toEqual(['api', 'screen']);
     expect(Value.Check(WorkspaceAttentionSchema, facts.firstAttention?.first)).toBe(true);
+  });
+});
+
+describe('createEngineWorkspaceTasks', () => {
+  const engineFailing = (error: Error): TaskEngine => ({
+    openWorkflow: () => Promise.reject(error),
+    specification: () =>
+      Promise.resolve({ projectId: 'project-1', workspaceId: 'workspace-1', title: 'Spec' }),
+    mainDocument: () => Promise.resolve({ state: 'available', data: null }),
+  });
+
+  it('says busy, with certainty, while another writer holds the control lock', async () => {
+    const read = createEngineWorkspaceTasks(
+      engineFailing(new ProjectControlLockError('CONTROL_LOCK_BUSY', 'Busy.')),
+    );
+    expect((await read('spec-1')).section).toEqual({ state: 'unavailable', reason: 'source_busy' });
+  });
+
+  it('says unavailable for any other source failure', async () => {
+    const read = createEngineWorkspaceTasks(
+      engineFailing(Object.assign(new Error('EACCES'), { code: 'EACCES' })),
+    );
+    expect((await read('spec-1')).section).toEqual({
+      state: 'unavailable',
+      reason: 'source_unavailable',
+    });
   });
 });

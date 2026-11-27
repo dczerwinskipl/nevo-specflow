@@ -34,7 +34,7 @@ export interface ActivityHistoryProps {
   /** Availability of the activity source. Unavailable/forbidden is not an empty history. */
   readonly availability?: 'available' | 'unavailable' | 'forbidden';
   /** `not_implemented` is permanent for this Runtime: a calm state, never a failure. */
-  readonly unavailableReason?: 'not_implemented' | 'source_unavailable';
+  readonly unavailableReason?: 'not_implemented' | 'source_unavailable' | 'source_busy';
   /** Re-reads the activity source; offered only for an unavailable source. */
   readonly onRetry?: () => void;
   readonly onOpenTask?: (taskId: string) => void;

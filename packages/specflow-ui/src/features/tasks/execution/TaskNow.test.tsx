@@ -131,7 +131,12 @@ describe('the Task Now block', () => {
     const handoff = now().querySelector<HTMLElement>('[data-now-handoff]')!;
     // One look at every width: the same Last hand-off as the Specification's Now.
     expect(within(handoff).getByRole('heading', { name: 'Last hand-off' })).toBeTruthy();
-    expect(handoff.textContent).toMatch(/^Last hand-off.+Review · /);
+    // The result, then the step, who and when on their own lines.
+    expect(
+      Array.from(handoff.querySelectorAll('[data-now-handoff-lines] > span')).map(
+        (line) => line.textContent,
+      )[0],
+    ).toBe('Review');
     // A second attempt is named; the only result leads to Review.
     expect(now().textContent).toContain('Attempt 2 · in progress since');
     expect(within(now()).getByText('Then: Review')).toBeTruthy();

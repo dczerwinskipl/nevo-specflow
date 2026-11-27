@@ -1,5 +1,5 @@
 import { ApiError, type ErrorCodeTable } from '../../../../api';
-import type { CreateFailure } from './createFailure';
+import type { CreateFailure, UncertainCause } from './createFailure';
 
 /**
  * The Runtime Create error codes with the meaning the product gives them. A code not listed
@@ -117,7 +117,7 @@ export function toCreateFailure(error: ApiError, sent: SentCreate = {}): CreateF
     error.kind !== 'unauthenticated' &&
     error.kind !== 'forbidden'
   ) {
-    return { kind: 'uncertain' };
+    return uncertain(error);
   }
 
   switch (error.kind) {
@@ -148,11 +148,23 @@ export function toCreateFailure(error: ApiError, sent: SentCreate = {}): CreateF
     case 'unauthenticated':
       return { kind: 'unauthenticated' };
     case 'network':
-      return error.outcome === 'not-applied' ? { kind: 'offline' } : { kind: 'uncertain' };
+      return error.outcome === 'not-applied' ? { kind: 'offline' } : uncertain(error);
     default:
       // Whatever may have reached the server and was not declared harmless stays uncertain.
-      return error.outcome === 'unknown' ? { kind: 'uncertain' } : { kind: 'failed' };
+      return error.outcome === 'unknown' ? uncertain(error) : { kind: 'failed' };
   }
+}
+
+/** An unconfirmed result, with why when the error says it (the page names it in one line). */
+function uncertain(error: ApiError): CreateFailure {
+  const cause: UncertainCause | undefined =
+    error.code === 'CONTROL_LOCK_BUSY'
+      ? 'busy'
+      : error.kind === 'timeout' || error.kind === 'network'
+        ? 'no-answer'
+        : undefined;
+
+  return cause ? { kind: 'uncertain', cause } : { kind: 'uncertain' };
 }
 
 /**

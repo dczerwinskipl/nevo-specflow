@@ -20,12 +20,9 @@ export const commonErrorCodes: ErrorCodeTable = {
   forbidden: { kind: 'forbidden', outcome: 'not-applied' },
   rate_limited: { kind: 'rate-limited', outcome: 'not-applied', retryable: true },
   service_unavailable: { kind: 'unavailable', retryable: true },
-  // No adapter in this Runtime serves the read: permanent, not an incident.
-  specification_source_unavailable: {
-    kind: 'unavailable',
-    retryable: false,
-    reason: 'not-in-runtime',
-  },
+  // The Runtime could not read its source now (a busy control lock, with `Retry-After`, or a file
+  // it cannot read): transient, never "not supported".
+  specification_source_unavailable: { kind: 'unavailable', retryable: true },
   specification_not_found: { kind: 'not-found', outcome: 'not-applied' },
   specification_task_not_found: { kind: 'not-found', outcome: 'not-applied' },
   task_snapshot_expired: { kind: 'conflict', outcome: 'not-applied' },

@@ -43,6 +43,20 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
     );
   }
 
+  if (summary.kind === 'unreadable' && summary.reason === 'busy') {
+    // Busy is transient (another writer, a recovery after a stop), not a broken Specification: a
+    // quiet marker, not the danger line of files that cannot be read.
+    return (
+      <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]" data-spec-reason>
+        <span className="font-medium text-content-secondary" data-spec-unreadable="busy">
+          <Icon name="clock" size="sm" className="mr-1 inline-block align-text-bottom" />
+          {t('specifications.unreadable.busyTitle')}
+        </span>
+        <span className="text-content-secondary">{t('specifications.unreadable.reason.busy')}</span>
+      </span>
+    );
+  }
+
   if (summary.kind === 'unreadable') {
     return (
       <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]" data-spec-reason>

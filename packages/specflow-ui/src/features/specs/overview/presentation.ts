@@ -216,8 +216,8 @@ export function rowMetadata(item: SpecRowModel): readonly RowMetadataFact[] {
  * Which facts the Runtime really provides for the current list. A project Runtime may know the
  * specifications but not their work status or progress; the list then must not draw groups and
  * columns of "unavailable". Decided from the whole collection (never from a search result, so
- * typing does not change the layout): status exists when any specification has a real section,
- * progress when any has a progress. The archive always has its own milestone and pull-request
+ * typing does not change the layout): status exists when any specification has a real section or
+ * a reason it could not be read, progress when any has a progress. The archive always has its own milestone and pull-request
  * columns, and an empty collection keeps the full layout (nothing to flatten).
  */
 export interface OverviewCapabilities {
@@ -231,7 +231,11 @@ export function overviewCapabilities(projection: SpecsOverview): OverviewCapabil
   }
 
   return {
-    status: projection.items.some((item) => item.classification.section !== 'unknown'),
+    // A row whose workflow the Runtime could not read (busy, recovering) still has a status: it is
+    // "unavailable" with its reason, never a list without states.
+    status: projection.items.some(
+      (item) => item.classification.section !== 'unknown' || item.unreadable !== undefined,
+    ),
     progress: projection.items.some((item) => item.progress !== null),
   };
 }

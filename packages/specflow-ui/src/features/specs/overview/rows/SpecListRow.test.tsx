@@ -225,4 +225,17 @@ describe('SpecListRow situation', () => {
       }),
     ).toBe('Could not read this Specification | Its workflow files could not be read.');
   });
+
+  it('marks a busy workflow read as a transient "state unavailable · busy", not a broken one', () => {
+    expect(
+      situation({
+        workflow: null,
+        classification: { section: 'unknown' },
+        unreadable: { reason: 'busy' },
+      }),
+    ).toBe(
+      'State unavailable · busy | SpecFlow is busy or recovering from a stop. Try again in a moment.',
+    );
+    expect(document.querySelector('[data-spec-unreadable="busy"]')).not.toBeNull();
+  });
 });

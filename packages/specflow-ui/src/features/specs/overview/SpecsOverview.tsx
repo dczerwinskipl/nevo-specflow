@@ -148,6 +148,7 @@ export function SpecsOverview({
                 <SpecsOverviewNotice
                   hasRows={Boolean(projection)}
                   busy={busy}
+                  {...(state.errorCause ? { cause: state.errorCause } : {})}
                   onRetry={onRefresh}
                 />
               ) : null}

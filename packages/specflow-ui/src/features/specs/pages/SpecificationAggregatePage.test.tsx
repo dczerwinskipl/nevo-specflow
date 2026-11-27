@@ -17,7 +17,7 @@ describe('Specification aggregate resource boundary', () => {
   });
 
   it.each([
-    { status: 401, title: 'Specyfikacja jest niedostępna' },
+    { status: 401, title: 'Coś poszło nie tak' },
     { status: 403, title: 'Brak dostępu' },
     { status: 404, title: 'Nie znaleziono specyfikacji' },
   ])('blocks retained Workspace data after HTTP $status', ({ status, title }) => {
@@ -147,7 +147,7 @@ describe('Specification aggregate resource boundary', () => {
     );
   }
 
-  it('shows "not available in this Runtime" without retry when the Runtime has no source (503)', () => {
+  it('says a source the Runtime could not read (503) is transient, with Retry, never "not on this server"', () => {
     const specId = 'no-source';
     const client = createSpecFlowQueryClient();
     const key = specificationKeys.detail(specId);
@@ -163,9 +163,9 @@ describe('Specification aggregate resource boundary', () => {
       errorUpdateCount: 1,
     });
     const html = renderPage(client, specId);
-    expect(html).toContain('Niedostępne na tym serwerze');
-    expect(html).not.toContain('Spróbuj ponownie');
-    expect(html).not.toContain('Specyfikacja jest niedostępna');
+    expect(html).toContain('Nie można tego teraz odczytać');
+    expect(html).toContain('Spróbuj ponownie');
+    expect(html).not.toContain('Niedostępne na tym serwerze');
   });
 
   it('shows "not available in this Runtime" for a section the Runtime does not implement', () => {

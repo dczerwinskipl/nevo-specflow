@@ -46,6 +46,8 @@ type Server =
   | 'failed-branch'
   | 'refuses-branch'
   | 'lost'
+  | 'busy'
+  | 'vanished'
   | 'refuses-protected'
   | 'refuses-blocked'
   | 'refuses-path'
@@ -191,6 +193,8 @@ function inspect(server: Server): Promise<CreateOperationInspection> {
     case 'failed-branch':
       return Promise.resolve({ ...accepted, status: 'failed', code: 'BRANCH_ALREADY_EXISTS' });
     case 'unknown':
+    case 'busy':
+    case 'vanished':
     case 'refuses-branch':
     case 'refuses-protected':
     case 'refuses-blocked':
@@ -329,7 +333,16 @@ function Fixture({
                         )
                       : server === 'unknown'
                         ? Promise.reject(apiError({ kind: 'network' }))
-                        : Promise.resolve(accepted),
+                        : server === 'busy'
+                          ? Promise.reject(
+                              apiError({
+                                kind: 'unavailable',
+                                outcome: 'unknown',
+                                status: 503,
+                                code: 'CONTROL_LOCK_BUSY',
+                              }),
+                            )
+                          : Promise.resolve(accepted),
           inspectOperation: () => inspect(server),
           operationEventsUrl: createOperationEventsUrl,
         },
@@ -671,6 +684,41 @@ export const UnknownOutcome: Story = {
   },
 };
 
+/**
+ * The Runtime was busy (a held or stale project control lock, dogfood 4): the page says why the
+ * result is not confirmed, in one line, and offers the check of the same operation.
+ */
+export const UnknownOutcomeBusy: Story = {
+  args: { request: newWorkspace, server: 'busy' },
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByText(
+        'SpecFlow był zajęty albo wznawiał pracę po zatrzymaniu i nie potwierdził wyniku.',
+        visibleText,
+      ),
+    ).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: 'Sprawdź wynik' })).toBeEnabled();
+  },
+};
+
+/**
+ * The Runtime accepted the operation and then lost it (it stopped before starting it): Retry sends
+ * the same request again under the same id; it cannot create a second specification.
+ */
+export const UnknownOutcomeLost: Story = {
+  args: { request: newWorkspace, server: 'vanished' },
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByText(
+        'SpecFlow nie ma śladu tej operacji: mógł się zatrzymać, zanim ją rozpoczął.',
+        visibleText,
+      ),
+    ).toBeVisible();
+    await expect(await canvas.findByRole('button', { name: 'Spróbuj ponownie' })).toBeEnabled();
+    await expect(canvas.queryByRole('button', { name: 'Sprawdź wynik' })).toBeNull();
+  },
+};
+
 /** A link to an operation the server does not know: calm, nothing is created, a way back to Create. */
 export const OperationNotFound: Story = {
   args: { server: 'unknown' },
@@ -681,6 +729,8 @@ export const OperationNotFound: Story = {
     await expect(canvas.getByText('Ta operacja nie istnieje')).toBeInTheDocument();
     await expect(canvas.getByRole('button', { name: 'Wróć do tworzenia' })).toBeInTheDocument();
     await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
+    // Nothing here can be sent again, so no text (hidden or not) asks for a retry.
+    await expect(canvas.queryByText(/Ponów tę samą operację|ponownie tę samą operację/)).toBeNull();
   },
 };
 

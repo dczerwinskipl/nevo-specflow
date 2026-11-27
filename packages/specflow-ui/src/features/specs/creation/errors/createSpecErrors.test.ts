@@ -153,8 +153,20 @@ describe('Create error codes', () => {
       retryable: true,
     });
     expect(toCreateFailure(notSent)).toEqual({ kind: 'offline' });
-    expect(toCreateFailure(lost)).toEqual({ kind: 'uncertain' });
-    expect(toCreateFailure(timeout)).toEqual({ kind: 'uncertain' });
+    expect(toCreateFailure(lost)).toEqual({ kind: 'uncertain', cause: 'no-answer' });
+    expect(toCreateFailure(timeout)).toEqual({ kind: 'uncertain', cause: 'no-answer' });
+  });
+
+  it('says a busy Runtime (stale or held control lock) left the result unconfirmed', () => {
+    const busy = new ApiError({
+      kind: 'unavailable',
+      operation: 'specs.create',
+      outcome: 'unknown',
+      retryable: true,
+      status: 503,
+      code: 'CONTROL_LOCK_BUSY',
+    });
+    expect(toCreateFailure(busy)).toEqual({ kind: 'uncertain', cause: 'busy' });
   });
 });
 

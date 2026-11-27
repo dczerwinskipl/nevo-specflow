@@ -8,6 +8,7 @@ import { useAppServices } from '../../../../app/useAppServices';
 import { useMessage } from '../../../../i18n/message';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
 import type { RequestAttempt } from '../../../../shared/operations/retainedRequest';
+import { agentDisplayName } from '../../../../shared/agents/agentDisplayName';
 import { projectCreationKeys } from '../api/api.project';
 import { documentCatalogueKeys } from '../../../documents/read-model';
 import { CreateFooter } from './CreateFooter';
@@ -312,9 +313,14 @@ export function CreateProjectForm({
       (candidate) => candidate.providerId === agent.providerId,
     );
     const model = provider?.models.find((candidate) => candidate.modelId === agent.modelId);
-    const label = [provider?.title ?? agent.providerId, model?.title ?? agent.modelId]
-      .filter(Boolean)
-      .join(' · ');
+    // The shared formatter, with the effort the picker shows ("Claude Code · Opus 5.5 · high").
+    const label = agentDisplayName({
+      provider: agent.providerId,
+      providerTitle: provider?.title,
+      model: agent.modelId || undefined,
+      modelTitle: model?.title,
+      effort: agent.effort,
+    });
 
     return {
       ...agent,

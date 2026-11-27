@@ -209,11 +209,14 @@ export function CreateOperationPage({
     }
   }, [announce, statusText]);
 
+  // A lost operation (the Runtime has no record of it) is sent again under the same id: Retry.
   const checkLabel = state.checking
     ? t('create.submit.checking')
     : failure?.kind === 'recovery-required'
       ? t('create.submit.checkOperation')
-      : t('create.submit.checkResult');
+      : failure?.kind === 'uncertain' && failure.cause === 'lost'
+        ? t('common.retry')
+        : t('create.submit.checkResult');
 
   return (
     <CreateShell title={created ? t('create.page.heading.completed') : t('create.page.location')}>
@@ -379,7 +382,9 @@ export function CreateOperationPage({
                 <Button onClick={() => backToForm()}>{t('create.page.backToForm')}</Button>
               ))}
             {view === 'not-found' && (
-              <Button variant="secondary" onClick={() => onBackToForm()}>
+              // No request of it is kept here, so nothing can be sent again: back to Create, with
+              // the draft this browser kept for it when there is one.
+              <Button onClick={() => onBackToForm(ownDraft ? operationId : undefined)}>
                 {t('create.page.backToCreate')}
               </Button>
             )}

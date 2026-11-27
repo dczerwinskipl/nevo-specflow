@@ -14,6 +14,7 @@ import {
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useSpecificationWorkspace } from '../read-model/useSpecificationWorkspace';
+import { unreadableCauseOf, unreadableCopy } from '../../../shared/unreadable/unreadable';
 import type { SpecificationSectionId, SpecificationWorkspaceData } from '../read-model/model';
 import {
   ApplicationLocationIdentity,
@@ -67,10 +68,10 @@ export function SpecificationAggregatePage({
     title: t('specification.resourceAccessDeniedTitle'),
     message: t('specification.resourceAccessDeniedDescription'),
   };
-  const unavailableCopy = {
-    title: t('specification.unavailableTitle'),
-    message: t('specification.unavailableDescription', { id: specId }),
-  };
+  // Why the read failed, in plain words; a section the Runtime could not read is `source`.
+  const failedCopy = unreadableCopy(unreadableCauseOf(query.error));
+  const unavailableCopy = { title: t(failedCopy.title), message: t(failedCopy.description) };
+  const sourceCopy = unreadableCopy('source');
   const notFoundCopy = {
     title: t('specification.notFoundTitle'),
     message: t('specification.notFoundDescription', { id: specId }),
@@ -85,7 +86,9 @@ export function SpecificationAggregatePage({
   // Keep the last successful projection for transient failures, but identify it
   // as stale and let the user retry. Auth and not-found errors remain blocking.
   const showingStaleData = query.isError && Boolean(query.data) && !mustShowError && !ownSource;
-  const sectionCopy = sectionDenied ? deniedCopy : unavailableCopy;
+  const sectionCopy = sectionDenied
+    ? deniedCopy
+    : { title: t(sourceCopy.title), message: t(sourceCopy.description) };
   const sectionNotInRuntime =
     availability === 'unavailable' &&
     section !== undefined &&
@@ -122,8 +125,6 @@ export function SpecificationAggregatePage({
                     fetching={query.fetchStatus !== 'paused' && Boolean(specId)}
                   />
                 )
-              ) : mustShowError && query.isNotInRuntime ? (
-                <FeatureUnavailable />
               ) : mustShowError ? (
                 <Alert role="alert" tone="attention" title={errorCopy.title}>
                   <Typography variant="body-sm">{errorCopy.message}</Typography>
@@ -147,7 +148,12 @@ export function SpecificationAggregatePage({
                     <FeatureUnavailable />
                   ) : availability && availability !== 'available' ? (
                     <Alert role="status" tone="attention" title={sectionCopy.title}>
-                      {sectionCopy.message}
+                      <Typography variant="body-sm">{sectionCopy.message}</Typography>
+                      {sectionDenied ? null : (
+                        <Button variant="secondary" size="sm" onClick={() => void query.refetch()}>
+                          {t('common.retry')}
+                        </Button>
+                      )}
                     </Alert>
                   ) : query.data ? (
                     children(query.data)

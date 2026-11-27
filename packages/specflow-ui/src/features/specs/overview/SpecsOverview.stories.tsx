@@ -963,6 +963,49 @@ export const FlatListPolish: Story = {
   tags: ['contract'],
   args: { state: flatState, locale: 'pl' },
 };
+/**
+ * The Runtime could not read any workflow because SpecFlow was busy or recovering from a stop (a
+ * held control lock, dogfood 4): the rows keep their place under "Status unavailable", each with
+ * the explicit "state unavailable · busy" marker, never a flat list without states.
+ */
+const busyState: SpecsOverviewState = {
+  ...loaded,
+  projection: {
+    ...createSpecsFixture(),
+    sections: ['requires-attention', 'in-progress', 'not-started', 'ended', 'unknown'],
+    items: [
+      noStatus('nevo-2', 'Converge demo and project HTTP APIs', {
+        key: undefined,
+        tags: [],
+        pullRequests: [],
+        unreadable: { reason: 'busy' },
+      }),
+      noStatus('nevo-1', 'Agent workflow entry points and portable skill', {
+        key: undefined,
+        tags: [],
+        pullRequests: [],
+        unreadable: { reason: 'busy' },
+      }),
+    ],
+  },
+};
+export const WorkflowBusy: Story = {
+  tags: ['contract'],
+  args: { state: busyState },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('heading', { name: 'Status unavailable' });
+    await expect(canvasElement.querySelector('[data-spec-layout="grouped"]')).not.toBeNull();
+    await expect(canvas.getAllByText('State unavailable · busy')).toHaveLength(2);
+  },
+};
+export const WorkflowBusyMobilePolish: Story = {
+  tags: ['contract'],
+  args: { state: busyState, locale: 'pl' },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findAllByText('Stan niedostępny · zajęty')).toHaveLength(2);
+  },
+};
 /** Real status data: grouped by status, with the situation and progress columns. */
 export const GroupedByStatus: Story = {
   tags: ['contract'],

@@ -85,7 +85,9 @@ describe('SpecsOverview states', () => {
       error: true,
     });
     const alert = screen.getByRole('alert');
-    expect(within(alert).getByText('Specifications are unavailable')).toBeTruthy();
+    expect(within(alert).getByText("Couldn't load specifications")).toBeTruthy();
+    // Never "not available from this Runtime": a failed read is said as what it is.
+    expect(within(alert).queryByText(/not available|not supported/i)).toBeNull();
     fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
     expect(onRefresh).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('No current specifications')).toBeNull();

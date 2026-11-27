@@ -15,7 +15,8 @@ import type { WorkflowExecutionApi } from './api';
 import { SPEC, dominik, taskWorkflowProjection, withExits } from './projections.stories-support';
 import { NowBlock } from './NowBlock';
 import { WorkflowNow } from './WorkflowNow';
-import type { FeedbackSource, NowLinks } from './StartBlockerLines';
+import type { NowLinks } from './StartBlockerLines';
+import type { FeedbackRef } from './feedback/feedbackRef';
 
 afterEach(() => {
   cleanup();
@@ -139,49 +140,52 @@ describe('the Specification Now block', () => {
     'Two findings need changes: the detached HEAD case and the skill hold.\n\n' +
     '1. CONFLICT, detached HEAD: the edge case says install writes and notes it did not commit.';
 
-  it('says a review requested changes: a preview of its feedback and Open full feedback', () => {
-    // jsdom lays nothing out: the feedback is taller than the preview's few lines.
-    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(400);
-    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(96);
-    const openFull = vi.fn();
-    const sources: FeedbackSource[] = [];
+  it('says a review requested changes and opens its feedback in the Feedback view', () => {
+    const refs: FeedbackRef[] = [];
     renderNow(
       <OverviewNow
         projection={changesRequested(findings)}
-        links={{
-          feedback: (source) => {
-            sources.push(source);
-
-            return openFull;
-          },
-        }}
+        links={{ feedback: (ref) => refs.push(ref) }}
       />,
     );
 
     const handoff = document.querySelector<HTMLElement>('[data-now-handoff]')!;
+    expect(handoff.dataset.handoffTone).toBe('blocking');
     expect(within(handoff).getByText('Changes requested')).toBeTruthy();
-    // Open and in the attention tone: the next attempt acts on it. A preview, never the whole text.
-    const panel = handoff.querySelector<HTMLElement>('[data-feedback-mode="preview"]')!;
-    expect(panel.dataset.feedbackTone).toBe('attention');
-    expect(within(panel).getByText(/Two findings need changes/)).toBeTruthy();
-    expect(handoff.querySelector('[data-feedback-preview]')?.className).toContain('max-h-');
-    fireEvent.click(within(handoff).getByRole('button', { name: 'Open full feedback' }));
-    expect(openFull).toHaveBeenCalledOnce();
-    expect(sources.at(-1)).toEqual({ step: 'review', attempt: 1 });
-    // Rendered as Markdown: the numbered finding is a list item.
-    expect(panel.querySelector('ol li')?.textContent).toMatch(/CONFLICT, detached HEAD/);
+    // No preview in place: one way to the whole feedback.
+    expect(within(handoff).queryByText(/Two findings need changes/)).toBeNull();
+    expect(
+      within(handoff).queryByRole('button', { name: /Show feedback|Open full feedback/ }),
+    ).toBeNull();
+    fireEvent.click(within(handoff).getByRole('button', { name: 'View feedback' }));
+    expect(refs).toEqual([{ step: 'review', attempt: 1 }]);
   });
 
-  it('keeps feedback no detail view holds whole, in a bounded box', () => {
-    renderNow(<OverviewNow projection={changesRequested(findings)} />);
+  it('names a return by when it happened, and has no View feedback without feedback', () => {
+    const refs: FeedbackRef[] = [];
+    const { unmount } = renderNow(
+      <OverviewNow
+        projection={{
+          ...breakdown(2),
+          handoff: { kind: 'return', at: '2026-11-14T10:00:00Z', feedback: findings },
+        }}
+        links={{ feedback: (ref) => refs.push(ref) }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'View feedback' }));
+    expect(refs).toEqual([{ returnedAt: '2026-11-14T10:00:00Z' }]);
+    unmount();
 
-    const handoff = document.querySelector<HTMLElement>('[data-now-handoff]')!;
-    expect(within(handoff).queryByRole('button', { name: 'Open full feedback' })).toBeNull();
-    const box = within(handoff).getByRole('group', { name: 'Feedback' });
-    expect(within(box).getByText(/CONFLICT, detached HEAD/)).toBeTruthy();
+    renderNow(
+      <OverviewNow
+        projection={{ ...breakdown(2), handoff: { kind: 'return', at: '2026-11-14T10:00:00Z' } }}
+        links={{ feedback: (ref) => refs.push(ref) }}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'View feedback' })).toBeNull();
   });
 
-  it('says the last hand-off, its feedback collapsed when there is nothing to act on', () => {
+  it('says the last hand-off line by line: the step, who and when', () => {
     renderNow(
       <OverviewNow
         projection={{
@@ -196,15 +200,16 @@ describe('the Specification Now block', () => {
             artifacts: [],
           },
         }}
+        links={{ feedback: () => undefined }}
       />,
     );
 
     const handoff = document.querySelector<HTMLElement>('[data-now-handoff]')!;
     expect(handoff.dataset.handoffTone).toBe('done');
     expect(within(handoff).getByText('Solution designed')).toBeTruthy();
+    expect(within(handoff).getByText('Design the solution')).toBeTruthy();
     expect(within(handoff).queryByText('Covers every acceptance criterion.')).toBeNull();
-    fireEvent.click(within(handoff).getByRole('button', { name: 'Show feedback' }));
-    expect(within(handoff).getByText('Covers every acceptance criterion.')).toBeTruthy();
+    expect(within(handoff).getByRole('button', { name: 'View feedback' })).toBeTruthy();
   });
 
   it('is a card that becomes a flush band below a 40rem page (a container query)', () => {

@@ -31,7 +31,9 @@ import {
   ScrollText,
   Server,
   Telescope,
+  UserCheck,
   UserPen,
+  UserX,
   Workflow,
   Wrench,
   type LucideIcon,
@@ -99,6 +101,10 @@ export const productIcons = {
   artifacts: Package,
   /** Where a Session runs. */
   environment: Container,
+  /** The owner confirmed an agent's result ("Confirmed by you"). */
+  ownerConfirmed: UserCheck,
+  /** The owner rejected an agent's result ("Rejected by you"). */
+  ownerRejected: UserX,
 } as const satisfies Record<string, LucideIcon | ProductItemIcons>;
 
 /**

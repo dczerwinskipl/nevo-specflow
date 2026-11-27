@@ -15,15 +15,18 @@ type Handoff = NonNullable<WorkflowActionProjection['handoff']>;
 /** What the Now's Last hand-off row says about a hand-off. */
 export interface HandoffView {
   readonly outcome: string;
-  readonly meta?: string;
-  readonly feedback?: string;
+  /** The step, who took it and when, one line each. */
+  readonly lines: readonly string[];
+  /** Whether the hand-off left feedback (View feedback opens it). */
+  readonly hasFeedback: boolean;
   readonly tone: HandoffTone;
 }
 
 /**
- * A hand-off as the Last hand-off row reads it: the result taken ("Breakdown approved"), the step,
- * who took it and when ("Review the breakdown · Claude · Opus 5.5 · Today, 1:12 AM"). A review that requested changes (`fail`) and a
- * return are what the next attempt must act on (`blocking`); any other result is `done`.
+ * A hand-off as the Last hand-off row reads it: the result taken ("Breakdown approved"), then the
+ * step, who took it and when, one line each ("Review the breakdown", "Claude Code · Opus 5.5",
+ * "Today, 1:12 AM"). A review that requested changes (`fail`) and a return are what the next attempt
+ * must act on (`blocking`); any other result is `done`.
  */
 export function handoffView(
   t: TFunction,
@@ -31,36 +34,34 @@ export function handoffView(
   context: { readonly locale: string; readonly viewer?: Viewer; readonly titles?: AgentTitles },
 ): HandoffView {
   const when = (at: string) => formatWhen(t, at, context.locale);
-  const feedback = handoff.feedback?.trim() ? { feedback: handoff.feedback } : {};
+  const hasFeedback = Boolean(handoff.feedback?.trim());
   if (handoff.kind === 'return') {
     return {
       outcome: t('workflowExecution.now.returned'),
-      meta: when(handoff.at),
+      lines: [when(handoff.at)],
       tone: 'blocking',
-      ...feedback,
+      hasFeedback,
     };
   }
 
   // The step that handed over leads: "Changes requested" is read with the review that said it.
-  const meta = [
+  const lines = [
     handoff.from.title || undefined,
     handoff.from.actor
       ? actorLabel(t, handoff.from.actor, context.viewer, context.titles)
       : undefined,
     handoff.from.at ? when(handoff.from.at) : undefined,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  ].filter((line): line is string => Boolean(line));
 
   return {
     outcome: transitionLabel({ ...handoff, id: handoff.transition }),
-    ...(meta ? { meta } : {}),
+    lines,
     tone: handoff.result === 'fail' ? 'blocking' : 'done',
-    ...feedback,
+    hasFeedback,
   };
 }
 
-/** A committed attempt as one line: "4 documents committed · 05f9d80". Undefined otherwise. */
+/** A committed attempt as one line: "4 documents · 05f9d80" (beside the commit icon). Undefined otherwise. */
 export function commitLine(
   t: TFunction,
   commit: AttemptCommitView | undefined,
@@ -79,9 +80,7 @@ export function commitLine(
   ].filter(Boolean);
   const what =
     counts.length > 0
-      ? t('workflowExecution.now.handoffCommitted', {
-          what: counts.join(t('workflowExecution.attemptCommit.and')),
-        })
+      ? counts.join(t('workflowExecution.attemptCommit.and'))
       : t('workflowExecution.now.handoffCommittedAll');
 
   return [what, commit.sha?.slice(0, 7)].filter(Boolean).join(' · ');

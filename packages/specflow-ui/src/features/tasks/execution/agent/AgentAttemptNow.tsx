@@ -385,20 +385,22 @@ export function useAgentAttemptNow({
         ),
       note: (
         <div className="grid gap-3">
-          {/* The agent's result is the hand-off waiting for the owner: open, in the info tone. */}
+          {/* The agent's result is the hand-off waiting for the owner, in the info tone. */}
           <LastHandoff
             heading={t('workflowExecution.confirmation.resultHeading')}
             outcome={result}
-            meta={[
+            lines={[
               attempt.actor.class === 'agent' ? actorLabel(t, attempt.actor, {}, titles) : '',
               finished,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-            {...(proposal.feedback ? { feedback: proposal.feedback } : {})}
+            ].filter(Boolean)}
+            {...(proposal.feedback?.trim() && links.feedback
+              ? {
+                  onOpenFeedback: () =>
+                    links.feedback?.({ step: position.step.id, attempt: attempt.number }),
+                }
+              : {})}
             {...(committedLine ? { commit: committedLine } : {})}
             tone="waiting"
-            {...(links.attempt ? { onOpenDetails: links.attempt } : {})}
           />
           <ConfirmApplies confirmation={position} links={links} />
           {heldElsewhere ? heldNote : null}

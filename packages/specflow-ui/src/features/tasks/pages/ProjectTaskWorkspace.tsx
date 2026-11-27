@@ -27,7 +27,7 @@ import { useTaskLifecycle } from '../authoring/lifecycle/useTaskLifecycle';
 import { TaskAuthoringView } from '../authoring/TaskAuthoringView';
 import { useTaskActions, useTaskDocumentTree } from '../authoring/useTaskAuthoring';
 import { FullTaskView } from './FullTaskView';
-import type { AttemptRef } from '../execution/StartBlockerLines';
+import type { FeedbackRef } from '../execution/feedback/feedbackRef';
 import { productIcons } from '../../../shared/product-icons';
 
 export interface ProjectTaskWorkspaceProps {
@@ -42,8 +42,8 @@ export interface ProjectTaskWorkspaceProps {
   readonly reload: () => Promise<FullTaskData | undefined>;
   /** Narrow: opens the Task history as a pushed page (the header's history toggle). */
   readonly onOpenHistory: () => void;
-  /** Opens the Task history at an attempt, its feedback open ("Open full feedback"). */
-  readonly onOpenFeedback: (attempt: AttemptRef) => void;
+  /** Opens a hand-off's feedback in the shared Feedback view ("View feedback"). */
+  readonly onOpenFeedback: (ref: FeedbackRef) => void;
 }
 
 function versionOf(task: FullTaskData | undefined): TaskDetailsVersion | undefined {

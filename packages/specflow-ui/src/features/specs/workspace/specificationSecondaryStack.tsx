@@ -4,6 +4,7 @@ import {
   AppContent,
   AppWorkspaceBody,
   defineSecondaryStack,
+  useSecondaryStack,
   WorkspaceHeaderIdentity,
   type SecondaryData,
   type SecondaryScreenProps,
@@ -16,7 +17,7 @@ import type { ActivityEvent, SpecificationWorkspaceData } from '../read-model/mo
 import { SpecificationActivityHistory } from './activity/SpecificationActivityHistory';
 import { DocumentContent } from '../../documents';
 import { DocumentReadingColumns } from '../../../shared/document-reading/DocumentReadingColumns';
-import type { AttemptRef } from '../../tasks';
+import { feedbackStack } from '../../tasks';
 import { productIcons } from '../../../shared/product-icons';
 
 export interface SpecificationSecondaryContextValue {
@@ -133,16 +134,12 @@ export interface HistorySecondaryData {
   readonly openTask: (taskId: string) => void;
   readonly openSession?: (sessionId: string) => void;
   readonly openDoc?: (docId: string) => void;
-  /** The attempt whose feedback the reader opened ("Open full feedback"). */
-  readonly feedback?: AttemptRef | undefined;
 }
 
 export function useHistoryData({
   specId,
-  feedback,
 }: {
   specId: string;
-  feedback?: AttemptRef;
 }): SecondaryData<HistorySecondaryData> {
   const context = useContext(SpecificationSecondaryDataContext);
   if (!context) {
@@ -159,7 +156,6 @@ export function useHistoryData({
       openTask: context.openFullTask,
       openSession: context.openSession,
       openDoc: context.openDoc,
-      feedback,
     },
   };
 }
@@ -184,12 +180,15 @@ export function ActivityHistoryHeader() {
 export function ActivityHistoryScreen({
   data,
 }: SecondaryScreenProps<HistorySecondaryData, HistoryPages['history']>) {
+  const stack = useSecondaryStack<HistoryPages>();
+
   return (
     <AppContent className="w-content-standard max-w-full">
       <AppWorkspaceBody padding="none" scroll="area">
         <SpecificationActivityHistory
           specId={data.specId}
-          feedback={data.feedback}
+          // A feedback opened from the history is pushed: Back returns to the history.
+          onOpenFeedback={(ref) => void stack.navTo(feedbackStack, { specId: data.specId, ref })}
           events={data.events}
           availability={data.availability}
           onRetry={data.retry}
@@ -205,7 +204,7 @@ export function ActivityHistoryScreen({
 }
 
 export const historyStack = defineSecondaryStack<
-  { specId: string; feedback?: AttemptRef },
+  { specId: string },
   HistorySecondaryData,
   HistoryPages
 >({

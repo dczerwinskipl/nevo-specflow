@@ -14,7 +14,7 @@ import type { DependencyTask } from './dependencies/dependencyModel';
 import { TaskDocumentsSection } from './documents/TaskDocumentsSection';
 import { RefusalAlert } from './RefusalAlert';
 import { TaskNow, type LifecyclePrimary } from '../execution/TaskNow';
-import type { AttemptRef } from '../execution/StartBlockerLines';
+import type { FeedbackRef } from '../execution/feedback/feedbackRef';
 import { CopyableIdentifier } from '../../../shared/clipboard/CopyableIdentifier';
 import { productIcons } from '../../../shared/product-icons';
 
@@ -39,7 +39,7 @@ export interface TaskAuthoringViewProps {
   /** Opens the Task history (also offered in Now's ⋯ menu). */
   readonly onOpenHistory?: () => void;
   /** Opens the Task history at an attempt, its feedback open. */
-  readonly onOpenFeedback?: (attempt: AttemptRef) => void;
+  readonly onOpenFeedback?: (ref: FeedbackRef) => void;
   readonly onReload: () => void;
 }
 

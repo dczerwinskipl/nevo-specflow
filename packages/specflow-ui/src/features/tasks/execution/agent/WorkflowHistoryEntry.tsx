@@ -9,7 +9,6 @@ import {
   AgentAttemptMeta,
   attemptOutcome,
   attemptTimeLine,
-  HistoryFeedback,
   outcomeTextClass,
   type AgentHistoryItem,
   type AttemptOutcomeView,
@@ -17,19 +16,11 @@ import {
 } from './AgentAttemptHistory';
 import { useAgentTitles } from './modelTitles';
 import type { WorkflowTimelineEntry } from './workflowTimeline';
-import type { AttemptRef } from '../StartBlockerLines';
-
-/** The feedback an attempt's result or return left, if any. */
-function feedbackOf(item: Extract<HistoryItem, { kind: 'attempt' }>): string | undefined {
-  const outcome = item.outcome;
-
-  return outcome?.kind === 'transition' || outcome?.kind === 'returned'
-    ? outcome.feedback
-    : undefined;
-}
+import { DecisionLine, FeedbackLink } from '../feedback/FeedbackParts';
+import { hasFeedback, type FeedbackRef } from '../feedback/feedbackRef';
 
 /** A step by its title, as the history titles its entries. */
-function stepTitleOf(items: readonly HistoryItem[], step: string): string {
+export function stepTitleOf(items: readonly HistoryItem[], step: string): string {
   const found = items.find((item) => item.kind === 'attempt' && item.step === step);
 
   return found?.kind === 'attempt' && found.stepTitle ? found.stepTitle : humanizeId(step);
@@ -45,7 +36,7 @@ function timeOfDay(at: string, locale: string): string {
 }
 
 /** How an attempt without an agent's detail ended, with the marks of the agent attempts. */
-function plainOutcome(
+export function plainOutcome(
   t: TFunction,
   item: Extract<WorkflowTimelineEntry, { kind: 'attempt' }>['item'],
   items: readonly HistoryItem[],
@@ -62,6 +53,15 @@ function plainOutcome(
 
   switch (outcome.kind) {
     case 'transition': {
+      if (item.confirmation?.state === 'rejected') {
+        return {
+          label: t('workflowExecution.attemptHistory.outcome.rejected'),
+          icon: 'circle-alert',
+          tone: 'attention',
+          toned: true,
+        };
+      }
+
       const label = transitionLabel({
         id: outcome.transition,
         ...(item.transitionLabel !== undefined ? { label: item.transitionLabel } : {}),
@@ -165,33 +165,31 @@ function MetaLine({ children }: { readonly children: string }) {
  * One workflow entry of a Specification's Activity history (workflow-execution.md, "Activity
  * history"), in the grammar of the agent attempts: marked by how it ended, titled by its step, the
  * outcome line, then when, who and which attempt. An agent attempt adds its agent with Open session,
- * what it changed and its commit; the owner's own attempt, their Confirm or Reject and their return
- * say who acted in the time line, as the Task history does. Feedback is behind View feedback, open
- * for the attempt the reader came from "Open full feedback" for (`feedback`).
+ * what it changed and its commit; the owner's own attempt and their return say who acted in the time
+ * line, as the Task history does. The owner's Confirm or Reject of a result is a line of the attempt
+ * it decided ("Confirmed by you · 5:09 PM"), never an entry of its own. View feedback opens the
+ * shared Feedback view (`onOpenFeedback`); the history never expands feedback in place.
  */
 export function WorkflowHistoryEntry({
   entry,
   items,
   specId,
   openDocument,
-  feedback,
+  onOpenFeedback,
 }: {
   readonly entry: WorkflowTimelineEntry;
   /** The whole history: an attempt that took another over names who did. */
   readonly items: readonly HistoryItem[];
   readonly specId: string;
   readonly openDocument?: ((path: string) => boolean) | undefined;
-  /** The attempt whose feedback the reader opened from the Now block. */
-  readonly feedback?: AttemptRef | undefined;
+  /** Opens a feedback in the shared Feedback view; absent: no View feedback. */
+  readonly onOpenFeedback?: ((ref: FeedbackRef) => void) | undefined;
 }) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
   const titles = useAgentTitles(specId);
-  // The attempt's result left the feedback: its own entry opens it, never its later Confirm.
-  const feedbackOpen =
-    (entry.kind === 'agent-attempt' || entry.kind === 'attempt') &&
-    entry.item.step === feedback?.step &&
-    entry.item.attempt === feedback.attempt;
+  const openAttempt = (item: { readonly step: string; readonly attempt: number }) =>
+    onOpenFeedback ? () => onOpenFeedback({ step: item.step, attempt: item.attempt }) : undefined;
 
   switch (entry.kind) {
     case 'agent-attempt': {
@@ -212,9 +210,9 @@ export function WorkflowHistoryEntry({
             item={item}
             items={items}
             subject={{ specId }}
-            feedback={feedbackOf(item)}
-            feedbackOpen={feedbackOpen}
+            onOpenFeedback={hasFeedback(item) ? openAttempt(item) : undefined}
             showOutcome={false}
+            groupedByDay
             {...(openDocument ? { openDocument } : {})}
           />
         </Entry>
@@ -244,43 +242,10 @@ export function WorkflowHistoryEntry({
               actorLabel(t, item.actor, viewer, titles),
             )}
           </MetaLine>
-          <HistoryFeedback
-            feedback={feedbackOf(item)}
-            attention={outcome.tone === 'attention'}
-            open={feedbackOpen}
-          />
-        </Entry>
-      );
-    }
-
-    case 'confirmation': {
-      const { item, confirmation } = entry;
-      const rejected = confirmation.state === 'rejected';
-      const outcome: AttemptOutcomeView = rejected
-        ? {
-            label: t('workflowExecution.attemptHistory.outcome.rejected'),
-            icon: 'circle-alert',
-            tone: 'attention',
-            toned: true,
-          }
-        : {
-            label: t('workflowExecution.attemptHistory.event.confirmed'),
-            icon: 'circle-check',
-            tone: 'success',
-            toned: true,
-          };
-
-      return (
-        <Entry icon={outcome.icon} tone={outcome.tone} title={item.stepTitle || item.step}>
-          <OutcomeLine outcome={outcome} />
-          <MetaLine>
-            {[
-              timeOfDay(confirmation.at, i18n.language),
-              actorLabel(t, confirmation.actor, viewer, titles),
-              t('taskDetails.attempt', { count: item.attempt }),
-            ].join(' · ')}
-          </MetaLine>
-          <HistoryFeedback feedback={confirmation.feedback} attention={rejected} />
+          {item.confirmation ? <DecisionLine confirmation={item.confirmation} /> : null}
+          {hasFeedback(item) && onOpenFeedback ? (
+            <FeedbackLink onOpen={openAttempt(item)!} />
+          ) : null}
         </Entry>
       );
     }
@@ -297,7 +262,9 @@ export function WorkflowHistoryEntry({
           })}
         >
           <MetaLine>{timeOfDay(item.at, i18n.language)}</MetaLine>
-          <HistoryFeedback feedback={item.feedback} />
+          {item.feedback?.trim() && onOpenFeedback ? (
+            <FeedbackLink onOpen={() => onOpenFeedback({ returnedAt: item.at })} />
+          ) : null}
         </Entry>
       );
     }

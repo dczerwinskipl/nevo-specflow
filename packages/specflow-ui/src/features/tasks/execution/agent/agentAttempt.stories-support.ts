@@ -179,6 +179,9 @@ function taskAttempt(c: Exclude<AttemptCase, 'confirmation'>): WorkflowActionPro
   };
 }
 
+const CONFIRMATION_FEEDBACK =
+  'Five tasks cover the token exchange, the cookie, refresh, the sign-in screen and the audit log. t-05 depends on t-02 and t-04. The audit log has no acceptance criteria in behaviour.md yet; I wrote them into its task.md.';
+
 /** The Specification's Breakdown: the agent's result waits for the owner's Confirm or Reject. */
 function specificationConfirmation(): WorkflowActionProjection {
   const base = specificationWorkflowProjection('waiting');
@@ -216,8 +219,7 @@ function specificationConfirmation(): WorkflowActionProjection {
           targetTitle: 'Waiting for tasks',
           feedback: 'optional',
         },
-        feedback:
-          'Five tasks cover the token exchange, the cookie, refresh, the sign-in screen and the audit log. t-05 depends on t-02 and t-04. The audit log has no acceptance criteria in behaviour.md yet; I wrote them into its task.md.',
+        feedback: CONFIRMATION_FEEDBACK,
         artifacts: [],
       },
       confirms: { approvesDrafts: ['t-01', 't-02', 't-03', 't-04', 't-05'] },
@@ -449,7 +451,16 @@ export function confirmationAttemptHistory(commit: ConfirmationCommit) {
         stepTitle: 'Breakdown',
         attempt: 1,
         startedAt: '2026-11-12T13:20:00Z',
+        endedAt: '2026-11-12T14:05:00Z',
         actor: agentActor,
+        // The result waiting for the owner, as the run records it (the Feedback view reads it).
+        outcome: {
+          kind: 'transition' as const,
+          transition: 'tasks-approved',
+          feedback: CONFIRMATION_FEEDBACK,
+          artifacts: [],
+        },
+        transitionLabel: 'Tasks approved',
         agent: {
           attemptId: ATTEMPT_ID,
           provider: 'claude',

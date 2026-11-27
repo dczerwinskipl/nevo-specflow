@@ -22,19 +22,16 @@ import { TaskHistoryHeader, TaskResourceHeader } from '../detail/history/TaskRef
 import { taskDocumentStack } from '../../documents';
 import { ProjectTaskWorkspace } from './ProjectTaskWorkspace';
 import { TaskViewStateProvider } from '../detail/TaskViewState';
-import type { AttemptRef } from '../execution/StartBlockerLines';
+import { feedbackStack } from '../execution/feedback/feedbackStack';
 
 interface TaskContextData {
   task: FullTaskData;
   specId: string;
   historyResource?: TaskHistoryResourceParams;
-  /** The attempt whose feedback the reader opened ("Open full feedback"). */
-  feedback?: AttemptRef;
 }
 interface RootParams {
   taskId: string;
   historyResource?: TaskHistoryResourceParams;
-  feedback?: AttemptRef;
 }
 const Context = createContext<TaskContextData | null>(null);
 interface Pages {
@@ -47,7 +44,7 @@ function useTaskContext(params: RootParams): SecondaryData<TaskContextData> {
   return data
     ? {
         status: 'ready',
-        data: { ...data, historyResource: params.historyResource, feedback: params.feedback },
+        data: { ...data, historyResource: params.historyResource },
       }
     : { status: 'loading' };
 }
@@ -95,8 +92,11 @@ function HistoryScreen({ data }: SecondaryScreenProps<TaskContextData, Record<ne
           specId={data.specId}
           taskId={data.task.id}
           snapshot={data.task.snapshot}
-          feedback={data.feedback}
           onOpenDocument={openDocument}
+          // A feedback opened from the history is pushed: Back returns to the history.
+          onOpenFeedback={(ref) =>
+            void nav.navTo(feedbackStack, { specId: data.specId, taskId: data.task.id, ref })
+          }
           onOpenResource={(params) => {
             void nav.navTo('historyResource', params);
           }}
@@ -160,8 +160,8 @@ function FullTaskWithHistory(props: Parameters<typeof FullTaskWorkspace>[0]) {
       {...props}
       resource={props.task.resource}
       onOpenHistory={() => void navigation.open(historyStack, { taskId: props.task.id })}
-      onOpenFeedback={(feedback) =>
-        void navigation.open(historyStack, { taskId: props.task.id, feedback })
+      onOpenFeedback={(ref) =>
+        void navigation.open(feedbackStack, { specId: props.specId, taskId: props.task.id, ref })
       }
     />
   );

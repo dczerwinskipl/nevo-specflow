@@ -6,7 +6,7 @@ import type { CloseMerge, RepositoryBlocker } from '@nevo/specflow-contracts/spe
 import type { UncommittedAttempt } from '@nevo/specflow-contracts/documents';
 import type { WorkspaceList } from '@nevo/specflow-contracts/workspaces';
 import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';
-import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
+import type { WorkflowActionProjection, WorkflowHistory } from '@nevo/specflow-contracts/workflow';
 import { ApiError } from '../../../api';
 import { createFixtureSpecsOverviewApi } from '../../../../test-support/specs/overview/api';
 import { createAuthStore } from '../../../auth/store';
@@ -537,6 +537,50 @@ function agentCaseOf(scenario: WorkflowStoryScenario): AgentCase | undefined {
   return scenario.startsWith('agent-') ? (scenario.slice('agent-'.length) as AgentCase) : undefined;
 }
 
+/**
+ * The workflow history as far as a subject's Last hand-off reads it: the attempt (or return) that
+ * made it, with its feedback.
+ */
+function handoffHistory(projection: WorkflowActionProjection): WorkflowHistory {
+  const handoff = projection.handoff;
+  const subject = projection.subject;
+  const items: WorkflowHistory['items'] =
+    handoff?.kind === 'transition'
+      ? [
+          {
+            kind: 'attempt',
+            sequence: 1,
+            step: handoff.from.step,
+            stepTitle: handoff.from.title,
+            attempt: handoff.from.attempt,
+            startedAt: handoff.from.at ?? '2026-11-13T11:00:00Z',
+            ...(handoff.from.at ? { endedAt: handoff.from.at } : {}),
+            ...(handoff.from.actor ? { actor: handoff.from.actor } : {}),
+            outcome: {
+              kind: 'transition',
+              transition: handoff.transition,
+              ...(handoff.result ? { result: handoff.result } : {}),
+              ...(handoff.feedback ? { feedback: handoff.feedback } : {}),
+              artifacts: handoff.artifacts,
+            },
+            ...(handoff.label ? { transitionLabel: handoff.label } : {}),
+          },
+        ]
+      : handoff?.kind === 'return'
+        ? [
+            {
+              kind: 'return',
+              sequence: 1,
+              at: handoff.at,
+              to: 'implement',
+              ...(handoff.feedback ? { feedback: handoff.feedback } : {}),
+            },
+          ]
+        : [];
+
+  return { subject, items };
+}
+
 /** The projection reads no Git: a dirty checkout shows only in the check and the refused start. */
 const projectedAgent = (agentCase: AgentCase) =>
   agentOptions[agentCase === 'dirty' ? 'fresh' : agentCase];
@@ -624,9 +668,9 @@ function services(scenario: WorkflowStoryScenario, confirmationCommit?: Confirma
     retryAttemptCommit: never,
     confirmResult: never,
     takeOverAgentExecution: never,
-    history: () =>
-      scenario === 'attempt-confirmation' && confirmationCommit
-        ? Promise.resolve(confirmationAttemptHistory(confirmationCommit) as never)
+    history: (subject) =>
+      scenario === 'attempt-confirmation'
+        ? Promise.resolve(confirmationAttemptHistory(confirmationCommit ?? 'committed') as never)
         : scenario === 'history-taken-over'
           ? Promise.resolve(takenOverAttemptHistory() as never)
           : scenario === 'history-specification'
@@ -643,7 +687,14 @@ function services(scenario: WorkflowStoryScenario, confirmationCommit?: Confirma
                           : { state: 'failed', code: 'COMMIT_BLOCKED' },
                     ) as never,
                   )
-                : never(),
+                : // Any other subject: the attempt behind its Last hand-off, so View feedback opens it.
+                  Promise.resolve(
+                    handoffHistory(
+                      subject.taskId
+                        ? taskProjection()
+                        : specificationWorkflowProjection(specificationScenario(scenario)),
+                    ),
+                  ),
     rejectResult: never,
     closePreview: () => closePreviewOf(scenario),
     // An agent Session still works in the worktree of the blocked Specification.

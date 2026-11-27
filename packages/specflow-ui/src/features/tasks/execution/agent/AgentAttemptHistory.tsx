@@ -21,7 +21,7 @@ import { AttemptChanges, CommittedRow } from './AttemptChanges';
 import { SessionProviderIcon } from '../../../sessions';
 import { committedFacts } from './useAttemptCommit';
 import { useAgentAttemptCommands } from './useAgentAttemptCommands';
-import { HandoffFeedback } from '../progress/HandoffFeedback';
+import { DecisionLine, FeedbackLink } from '../feedback/FeedbackParts';
 
 export type HistoryItem = WorkflowHistory['items'][number];
 export type AgentHistoryItem = Extract<HistoryItem, { kind: 'attempt' }> & {
@@ -173,7 +173,7 @@ export function attemptOutcome(
       break;
   }
 
-  if (kinds.has('rejected')) {
+  if (kinds.has('rejected') || item.confirmation?.state === 'rejected') {
     return {
       label: t('workflowExecution.attemptHistory.outcome.rejected'),
       icon: 'circle-alert',
@@ -338,37 +338,6 @@ export function AgentIdentityLine({
   );
 }
 
-/**
- * View feedback on a history entry: the feedback a result, a return or a Reject left, in the
- * shared hand-off feedback ({@link HandoffFeedback}, whole, in the Markdown renderer), in the tone
- * of the entry's mark. `open` when the reader came for it ("Open full feedback").
- */
-export function HistoryFeedback({
-  feedback,
-  attention = false,
-  open = false,
-}: {
-  readonly feedback: string | undefined;
-  readonly attention?: boolean;
-  readonly open?: boolean;
-}) {
-  const { t } = useTranslation();
-  if (!feedback?.trim()) {
-    return null;
-  }
-
-  return (
-    <HandoffFeedback
-      feedback={feedback}
-      mode="detail"
-      tone={attention ? 'attention' : 'neutral'}
-      initiallyOpen={open}
-      scrollIntoView={open}
-      showLabel={t('workflowExecution.feedback.view')}
-    />
-  );
-}
-
 /** The step events that are worth saying in the history: the exceptions, not the lifecycle. */
 const EXCEPTIONAL_EVENTS = new Set(['proposal-refused']);
 
@@ -432,30 +401,31 @@ function OwnerNotes({ item }: { readonly item: AgentHistoryItem }) {
  * What the agent achieved in one attempt, for the workflow history of a Task or a Specification
  * (workflow-execution.md, "Activity history"): how it ended when the entry's own lines do not say
  * it (`showOutcome`), the exceptions worth knowing, who worked on it with Open session, what it
- * changed as collapsed rows, its commit as one row (a failed commit shows the Now block's note with
- * Retry commit) and View feedback when its result left feedback. History shows what was achieved,
- * not every event recorded.
+ * changed as collapsed rows, the owner's Confirm or Reject of its result ("Confirmed by you · 5:09
+ * PM"), its commit as one row (a failed commit shows the Now block's note with Retry commit) and
+ * View feedback, which opens the shared Feedback view, when its result left feedback. History shows
+ * what was achieved, not every event recorded.
  */
 export function AgentAttemptHistory({
   item,
   items,
   subject,
   openDocument,
-  feedback,
-  feedbackOpen = false,
+  onOpenFeedback,
   showOutcome = true,
+  groupedByDay = false,
 }: {
   readonly item: AgentHistoryItem;
   /** The whole history: the attempt that took this one over names who did. */
   readonly items: readonly HistoryItem[];
   readonly subject: WorkflowSubjectRef;
   readonly openDocument?: (path: string) => boolean;
-  /** The feedback the attempt's result left, behind View feedback. */
-  readonly feedback?: string | undefined;
-  /** The reader came for this attempt's feedback ("Open full feedback"): open and in view. */
-  readonly feedbackOpen?: boolean;
+  /** Opens the attempt's feedback in the Feedback view; absent: no View feedback. */
+  readonly onOpenFeedback?: (() => void) | undefined;
   /** Whether to say how the attempt ended (the Specification's entry says it in its own line). */
   readonly showOutcome?: boolean;
+  /** The history groups its entries by day: the owner's decision says its time of day only. */
+  readonly groupedByDay?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
@@ -496,6 +466,9 @@ export function AgentAttemptHistory({
       <ExceptionalEvents item={item} />
       <OwnerNotes item={item} />
       <AgentIdentityLine item={item} specId={subject.specId} />
+      {item.confirmation ? (
+        <DecisionLine confirmation={item.confirmation} withDay={!groupedByDay} />
+      ) : null}
       {changes ? (
         <AttemptChanges changes={changes} specId={subject.specId} openDocument={openDocument} />
       ) : null}
@@ -513,11 +486,7 @@ export function AgentAttemptHistory({
           {t('workflowExecution.attemptHistory.notCommitted')}
         </Typography>
       ) : null}
-      <HistoryFeedback
-        feedback={feedback}
-        attention={outcome.tone === 'attention'}
-        open={feedbackOpen}
-      />
+      {onOpenFeedback ? <FeedbackLink onOpen={onOpenFeedback} /> : null}
     </div>
   );
 }

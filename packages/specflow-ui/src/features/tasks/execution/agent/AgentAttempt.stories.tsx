@@ -45,6 +45,45 @@ export const Running: Story = {
   },
 };
 
+/** The Feedback view once it is open in the Secondary. */
+async function feedbackView() {
+  return waitFor(() => {
+    const view = document.body.querySelector<HTMLElement>('[data-feedback-view]');
+    if (!view) {
+      throw new Error('the Feedback view is not open yet');
+    }
+
+    return view;
+  }, wait);
+}
+
+/**
+ * The Task page: Now's View feedback opens the same Feedback view as the Overview, read from the
+ * Task's own workflow history, at its reading width (never a sliver while the history loads).
+ */
+export const TaskFeedback: Story = {
+  args: { scenario: 'attempt-working' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await userEvent.click(await within(now).findByRole('button', { name: 'View feedback' }, wait));
+    const view = await feedbackView();
+    await expect(within(view).getByRole('heading', { name: 'Review' })).toBeVisible();
+    await expect(view.querySelector('[data-feedback-markdown]')?.textContent).toBeTruthy();
+    await expect(view.getBoundingClientRect().width).toBeGreaterThan(300);
+  },
+};
+
+/** The result waiting for the owner: View feedback opens the attempt's Feedback view. */
+export const ConfirmationFeedback: Story = {
+  args: { scenario: 'attempt-confirmation' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await userEvent.click(await within(now).findByRole('button', { name: 'View feedback' }, wait));
+    const view = await feedbackView();
+    await expect(within(view).getByText(/Five tasks cover the token exchange/)).toBeVisible();
+  },
+};
+
 /** Stopping: the step stays locked until the process is proven ended; nothing says "stopped" yet. */
 /**
  * The agent's Turn waits for the owner's answer to a question in its Session: the note says so and
@@ -276,7 +315,7 @@ export const FinishedCommitted: Story = {
     const now = await findNow(canvasElement);
     // One line of the Last hand-off: what was committed and the commit's short id.
     await expect(
-      await within(now).findByText('2 documents and 3 files committed · 3f9a1c7', {}, wait),
+      await within(now).findByText('2 documents and 3 files · 3f9a1c7', {}, wait),
     ).toBeVisible();
   },
 };
@@ -366,9 +405,7 @@ export const ConfirmationCommitted: Story = {
   play: async ({ canvasElement }) => {
     const now = await findNow(canvasElement);
     // The agent's result names what its commit holds and the commit's short id, on one line.
-    await expect(
-      await within(now).findByText('7 documents committed · 3f9c2a1', {}, wait),
-    ).toBeVisible();
+    await expect(await within(now).findByText('7 documents · 3f9c2a1', {}, wait)).toBeVisible();
     await expect(within(now).getByRole('button', { name: 'Confirm' })).toBeEnabled();
   },
 };
@@ -539,14 +576,23 @@ export const SpecificationActivityHistoryExpanded: Story = {
     await expect(history.getByText('notes')).toBeVisible();
     await userEvent.click(history.getAllByRole('button', { name: '3 changed files' })[0]!);
     await expect(history.getAllByText('overview.md')[0]).toBeVisible();
+    // View feedback opens the one Feedback view; the timeline never expands it in place.
     await userEvent.click(history.getAllByRole('button', { name: 'View feedback' })[0]!);
-    await expect(history.getByText(/Install and init stay separate Tasks/)).toBeVisible();
+    const feedback = await waitFor(() => {
+      const view = document.body.querySelector<HTMLElement>('[data-feedback-view]');
+      if (!view) {
+        throw new Error('the Feedback view is not open yet');
+      }
+
+      return view;
+    }, wait);
+    await expect(within(feedback).getByText(/Install and init stay separate Tasks/)).toBeVisible();
   },
 };
 
 /**
  * nevo-2's history as the dogfood Runtime records it: seven agent attempts, the owner's Finish after
- * the take over and their Confirm of the second review, newest first in one list ending with
+ * the take over and their Confirm of the second review (a line of that review's entry), newest first in one list ending with
  * "Specification created"; no "Session started" rows (every Session is an attempt's). Every
  * committed attempt names what it changed; the agent reads "Claude Code · Opus 5.5" on one line (the model alone beside the mark where it does not fit), at
  * 375 px and beside Overview.
@@ -561,7 +607,6 @@ export const Nevo2ActivityHistory: Story = {
       await settleViewport(width, height);
       const history = await openSpecificationHistory(canvasElement);
       await expect(timelineOf(historyOf(canvasElement))).toEqual([
-        'Review the breakdown · Result confirmed',
         'Review the breakdown · Breakdown approved',
         'Break the solution down · Breakdown proposed',
         'Review the breakdown · Changes requested',
@@ -573,6 +618,8 @@ export const Nevo2ActivityHistory: Story = {
         'Specification created',
       ]);
       await expect(history.queryByText('Session started')).toBeNull();
+      // The owner's Confirm is a line of the review it decided, not an entry of its own.
+      await expect(history.getByText(/^Confirmed by dominikczerwinski · /)).toBeVisible();
       await expect(history.getAllByRole('button', { name: /changed files?$/ })).toHaveLength(5);
       await expectActorLinesOnOneLine(historyOf(canvasElement));
     }

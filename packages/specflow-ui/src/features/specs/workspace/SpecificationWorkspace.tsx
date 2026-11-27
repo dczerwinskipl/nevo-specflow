@@ -37,7 +37,8 @@ import { EnsureSpecificationState } from '../SpecificationStateProvider';
 import {
   SpecificationWorkflowProvider,
   useSpecificationExitActions,
-  type AttemptRef,
+  feedbackStack,
+  type FeedbackRef,
 } from '../../tasks';
 import { productIcons } from '../../../shared/product-icons';
 
@@ -144,8 +145,9 @@ function SpecificationWorkspaceInner({
   }, [secondaryNavigation, specId, recordOpen]);
 
   const handleOpenFeedback = useCallback(
-    (feedback: AttemptRef) => {
-      recordOpen(secondaryNavigation.open(historyStack, { specId, feedback }), false);
+    (ref: FeedbackRef) => {
+      // The one Feedback view: Back (or Close) returns to where the reader came from.
+      recordOpen(secondaryNavigation.open(feedbackStack, { specId, ref }), false);
     },
     [secondaryNavigation, specId, recordOpen],
   );
@@ -354,6 +356,7 @@ function SpecificationWorkspaceInner({
                   onOpenTask={(taskId) => handleOpenFullTask(taskId)}
                   onOpenSession={onOpenSession}
                   onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
+                  onOpenFeedback={handleOpenFeedback}
                 />
               </AppWorkspaceBody>
             </AppContent>

@@ -31,9 +31,23 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 const wait = { timeout: 5000 };
 
+/** The shared Feedback view, once it is open (a Secondary screen). */
+async function feedbackView() {
+  return waitFor(() => {
+    const view = document.body.querySelector<HTMLElement>('[data-feedback-view]');
+    if (!view) {
+      throw new Error('the Feedback view is not open yet');
+    }
+
+    return view;
+  }, wait);
+}
+
 /**
- * Waiting for tasks: Now with the step and Task progress, the Last hand-off (an approved breakdown,
- * its feedback collapsed, what it committed), Requires attention, the Tasks summary, Sessions.
+ * Waiting for tasks: Now with the step and Task progress, the Last hand-off (an approved breakdown:
+ * the step, the agent and when one line each, what it committed, View feedback), Requires
+ * attention, the Tasks summary, Sessions. View feedback opens the one Feedback view directly: no
+ * preview, no second step through the Activity history.
  */
 export const Default: Story = {
   play: async ({ canvasElement }) => {
@@ -44,34 +58,20 @@ export const Default: Story = {
     );
     const block = handoff.closest<HTMLElement>('[data-now-handoff]')!;
     await expect(within(block).getByText('Breakdown approved')).toBeVisible();
-    await expect(
-      await within(block).findByText('4 documents committed · 05f9d80', {}, wait),
-    ).toBeVisible();
+    await expect(await within(block).findByText('4 documents · 05f9d80', {}, wait)).toBeVisible();
     await expect(within(block).queryByText(/No gaps or conflicts/)).toBeNull();
-    // Show feedback: a preview of a few lines, the whole of it in the Activity history.
-    await userEvent.click(within(block).getByRole('button', { name: 'Show feedback' }));
-    await expect(within(block).getByText(/No gaps or conflicts/)).toBeVisible();
-    await userEvent.click(within(block).getByRole('button', { name: 'Open full feedback' }));
-    // The history opens at the attempt that left it, its feedback open.
-    const entry = await waitFor(() => {
-      const found = document.body.querySelector<HTMLElement>(
-        '[data-attempt-entry]:has([data-feedback-mode="detail"])',
-      );
-      if (!found) {
-        throw new Error('the attempt with its feedback open is not shown yet');
-      }
-
-      return found;
-    }, wait);
-    await expect(within(entry).getByText(/Coverage: every acceptance criterion/)).toBeVisible();
+    await userEvent.click(within(block).getByRole('button', { name: 'View feedback' }));
+    const view = await feedbackView();
+    await expect(within(view).getByRole('heading', { name: 'Review the breakdown' })).toBeVisible();
+    await expect(within(view).getByText('Breakdown approved')).toBeVisible();
+    await expect(within(view).getByText(/^Attempt 1 · /)).toBeVisible();
+    await expect(within(view).getByText(/Logout clears both the access/)).toBeVisible();
   },
 };
 
-const capture = (args: Story['args']): Story => ({ tags: ['capture'], args });
-
 /**
- * The review requested changes: the breakdown is ready to start again and the Last hand-off leads
- * with the review's feedback, open and in the attention tone.
+ * The review requested changes: the breakdown is ready to start again and the Last hand-off is
+ * marked in the attention tone; its feedback is one View feedback away, never previewed.
  */
 export const ChangesRequested: Story = {
   args: { scenario: 'changes-requested' },
@@ -83,10 +83,16 @@ export const ChangesRequested: Story = {
     );
     const block = handoff.closest<HTMLElement>('[data-now-handoff]')!;
     await expect(within(block).getByText('Changes requested')).toBeVisible();
-    await expect(within(block).getByText(/misses the token refresh path/)).toBeVisible();
     await expect(block.dataset.handoffTone).toBe('blocking');
+    await expect(within(block).queryByText(/misses the token refresh path/)).toBeNull();
+    await userEvent.click(within(block).getByRole('button', { name: 'View feedback' }));
+    await expect(
+      within(await feedbackView()).getByText(/misses the token refresh path/),
+    ).toBeVisible();
   },
 };
+
+const capture = (args: Story['args']): Story => ({ tags: ['capture'], args });
 
 export const Blocked = capture({ scenario: 'blocked' });
 export const Stuck = capture({ scenario: 'stuck' });

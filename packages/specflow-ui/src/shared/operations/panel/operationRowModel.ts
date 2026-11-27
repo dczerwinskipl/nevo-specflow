@@ -74,15 +74,34 @@ export function presentOperation(
   if (item.status === 'recovery-required') {
     const minutes = minutesSince(item.updatedAt, now);
     const interrupted = item.code === OPERATION_INTERRUPTED_CODE && minutes !== undefined;
+    // Only an operator goes on: the line says why; the opened result names the exact command.
+    const detail =
+      item.code === 'CREATE_GIT_UNSETTLED'
+        ? message('operations.row.gitUnsettled')
+        : item.code === 'CONTROL_LOCK_RECOVERY_REQUIRED' || item.code === 'CONTROL_LOCK_CORRUPT'
+          ? message('operations.row.lockRecovery')
+          : interrupted
+            ? message('operations.row.interrupted', { minutes })
+            : undefined;
 
     return {
       tone,
       status,
       name,
       action: message('operations.row.checkResult'),
-      ...(interrupted ? { detail: message('operations.row.interrupted', { minutes }) } : {}),
+      ...(detail ? { detail } : {}),
     };
   }
 
-  return { tone, status, name };
+  // A Create the Runtime did not continue after a stop says why, never just "Failed".
+  const failedDetail =
+    item.status === 'failed'
+      ? item.code === 'CREATE_INTERRUPTED'
+        ? message('operations.row.createInterrupted')
+        : item.code === 'CREATE_RESUME_FORBIDDEN'
+          ? message('operations.row.resumeForbidden')
+          : undefined
+      : undefined;
+
+  return { tone, status, name, ...(failedDetail ? { detail: failedDetail } : {}) };
 }

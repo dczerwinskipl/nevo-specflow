@@ -24,7 +24,7 @@ import { taskRowViewOf } from '../../list/taskListModel';
 import { getGroupTone } from '../../list/presentation';
 import { emptyTasks } from '../../overview/tasksStepLine';
 import { productIcons } from '../../../../shared/product-icons';
-import { unreadableCopy } from '../../../../shared/unreadable/unreadable';
+import { unreadableCauseOfSection, unreadableCopy } from '../../../../shared/unreadable/unreadable';
 
 /** A plain click opens in the app; a modified click keeps the browser's own behaviour. */
 const plainClick = (event: MouseEvent) =>
@@ -80,9 +80,8 @@ export function TasksSummarySection({ data, actions }: SpecificationWorkSectionC
       <Alert tone="attention" role="status" title={t('specification.tasksUnreadableTitle')}>
         <p>
           {t(
-            unreadableCopy(
-              data.sectionUnavailableReason?.tasks === 'source_busy' ? 'busy' : 'source',
-            ).description,
+            unreadableCopy(unreadableCauseOfSection(data.sectionUnavailableReason?.tasks))
+              .description,
           )}
         </p>
         <Button

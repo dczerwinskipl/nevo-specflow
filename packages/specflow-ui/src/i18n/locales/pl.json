@@ -309,7 +309,8 @@
         "invalid": "Jej pliki przepływu pracy są nieprawidłowe.",
         "filesystem": "Nie udało się odczytać jej plików przepływu pracy.",
         "busy": "SpecFlow jest zajęty albo wznawia pracę po zatrzymaniu. Odśwież listę za chwilę. Jeśli to się powtarza, uruchom SpecFlow ponownie.",
-        "unexpected": "Wystąpił nieoczekiwany błąd; szczegóły są w logu Runtime."
+        "unexpected": "Wystąpił nieoczekiwany błąd; szczegóły są w logu Runtime.",
+        "recovery": "Blokada projektu wymaga odzyskania. Zatrzymaj wszystkie procesy SpecFlow tego projektu, a potem uruchom nevo-specflow specs documents recover --confirmed-stopped."
       }
     }
   },
@@ -495,7 +496,11 @@
       "step": "Krok {{current}} z {{total}}: {{title}}",
       "interrupted": "Brak aktywności od {{minutes}} min. Sprawdź wynik",
       "started": "Rozpoczęto {{time}}",
-      "updated": "Zaktualizowano {{time}}"
+      "updated": "Zaktualizowano {{time}}",
+      "gitUnsettled": "Zatrzymane w trakcie pracy Gita. Otwórz, aby zobaczyć polecenie odzyskania",
+      "lockRecovery": "Blokada projektu wymaga odzyskania. Otwórz, aby zobaczyć polecenie",
+      "createInterrupted": "Zatrzymane razem z Runtime. Nic nie zostało utworzone",
+      "resumeForbidden": "Nie wznowiono: nie możesz już tu tworzyć"
     },
     "announce": {
       "completed": "{{name}}: zakończono",
@@ -1741,6 +1746,10 @@
     "failed": {
       "title": "Coś poszło nie tak",
       "description": "SpecFlow nie mógł tego odczytać z powodu nieoczekiwanego błędu. Spróbuj ponownie; jeśli to się powtarza, szczegóły są w logu Runtime."
+    },
+    "recovery": {
+      "title": "SpecFlow wymaga odzyskania",
+      "description": "Proces SpecFlow, którego zatrzymania SpecFlow nie może potwierdzić, nadal trzyma blokadę projektu, więc nie można tego odczytać. Zatrzymaj wszystkie procesy SpecFlow tego projektu, a potem uruchom w projekcie nevo-specflow specs documents recover --confirmed-stopped."
     }
   },
   "routeError": {
@@ -2538,7 +2547,8 @@
       "documentPathConflict": "Dokument o tej nazwie już istnieje.",
       "documentPathInvalid": "Ta nazwa pliku jest niedozwolona.",
       "documentRevisionConflict": "Dokument zmienił się od otwarcia. Odśwież i spróbuj ponownie.",
-      "documentProtected": "task.md jest głównym dokumentem zadania: nie można zmienić jego nazwy ani go usunąć."
+      "documentProtected": "task.md jest głównym dokumentem zadania: nie można zmienić jego nazwy ani go usunąć.",
+      "lockRecovery": "Proces SpecFlow, którego zatrzymania SpecFlow nie może potwierdzić, nadal trzyma blokadę projektu. Zatrzymaj wszystkie procesy SpecFlow tego projektu, a potem uruchom nevo-specflow specs documents recover --confirmed-stopped."
     },
     "picker": {
       "availableTasks": "Dostępne zadania",
@@ -3096,7 +3106,8 @@
       "tasksOpen": "Specyfikacja nie może się zakończyć, dopóki zadania są otwarte: {{tasks}}. Najpierw je ukończ lub anuluj.",
       "confirmationChanged": "To, co zastosowałoby potwierdzenie, zmieniło się od otwarcia tego widoku. Przeczytaj podsumowanie jeszcze raz i potwierdź.",
       "attemptCommitRequired": "Praca agenta w tej specyfikacji nie jest jeszcze zatwierdzona, więc w jej przepływie nic nie może się zmienić. Ponów jej commit (powyżej), a potem spróbuj ponownie.",
-      "agentUnavailable": "Agent nie może teraz kontynuować. Odśwież stronę, aby zobaczyć dlaczego."
+      "agentUnavailable": "Agent nie może teraz kontynuować. Odśwież stronę, aby zobaczyć dlaczego.",
+      "lockRecovery": "Proces SpecFlow, którego zatrzymania SpecFlow nie może potwierdzić, nadal trzyma blokadę projektu. Zatrzymaj wszystkie procesy SpecFlow tego projektu, a potem uruchom nevo-specflow specs documents recover --confirmed-stopped."
     },
     "time": {
       "today": "Dziś {{time}}",

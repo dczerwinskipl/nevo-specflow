@@ -182,13 +182,14 @@ export const CurrentSpecOverviewItemSchema = Type.Object(
             Type.Literal('invalid'),
             Type.Literal('filesystem'),
             Type.Literal('busy'),
+            Type.Literal('recovery'),
             Type.Literal('unexpected'),
           ]),
         },
         {
           additionalProperties: false,
           description:
-            "Why the Specification's workflow could not be read (workflow is then null): invalid (its files hold no valid state), filesystem (a file could not be read), busy (another writer held the project longer than a read waits) or unexpected.",
+            "Why the Specification's workflow could not be read (workflow is then null): invalid (its files hold no valid state), filesystem (a file could not be read), busy (another writer held the project longer than a read waits), recovery (the project lock is held by a process nothing proves stopped, or is corrupt: only an operator's recovery helps) or unexpected.",
         },
       ),
     ),

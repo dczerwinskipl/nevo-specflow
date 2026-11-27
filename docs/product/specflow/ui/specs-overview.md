@@ -71,8 +71,11 @@ progress. It never shows a "Status unavailable" group with empty columns. The de
 from the whole collection (`overviewCapabilities`), never from a search result, so typing does not
 change the layout. A row the Runtime could not read (`unreadable`) is a status, not missing data:
 it stays under **Status unavailable** with its reason, and a `busy` read (SpecFlow busy or
-recovering from a stop) is the quiet marker **State unavailable · busy** with "Try again in a
-moment", not the danger line of files that cannot be read. An empty collection shows only the empty state, without column headers.
+recovering from a stop) is the quiet marker **State unavailable · busy** with "Refresh the list in a
+moment. If it keeps happening, restart SpecFlow.", not the danger line of files that cannot be read. A `recovery` read (the project lock
+is held by a process nothing proves stopped) keeps the danger line and names the exact command
+(`nevo-specflow specs documents recover --confirmed-stopped`, after stopping every SpecFlow
+process of the project). An empty collection shows only the empty state, without column headers.
 
 ## Row anatomy and information budget
 

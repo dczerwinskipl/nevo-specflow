@@ -48,7 +48,7 @@ export type WorkspaceTasksSection =
     }
   | {
       readonly state: 'unavailable';
-      readonly reason: 'not_implemented' | 'source_unavailable' | 'source_busy';
+      readonly reason: 'not_implemented' | 'source_unavailable' | 'source_busy' | 'source_recovery';
     };
 
 /** The `tasks` contribution: the section and the preparation state the Tasks imply. */
@@ -186,6 +186,11 @@ const busy: WorkspaceTasksContribution = {
   section: { state: 'unavailable', reason: 'source_busy' },
 };
 
+/** The lock is held by a process nothing proves stopped (or is corrupt): only recovery helps. */
+const recovery: WorkspaceTasksContribution = {
+  section: { state: 'unavailable', reason: 'source_recovery' },
+};
+
 /**
  * The `tasks` contribution (a project Runtime's Engine, or the demo's in memory): one Engine
  * reading of every Task. An execution the Engine cannot read now degrades only this section:
@@ -201,7 +206,7 @@ export function createEngineWorkspaceTasks(
       return basis ? workspaceTasksOf(basis) : unavailable;
     } catch (error) {
       if (error instanceof TaskSourceUnavailableError) {
-        return error.retryable ? busy : unavailable;
+        return error.retryable ? busy : error.recovery ? recovery : unavailable;
       }
 
       throw error;

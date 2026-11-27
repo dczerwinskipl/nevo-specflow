@@ -111,7 +111,7 @@ export type FeatureAttentionSource =
   | { readonly state: 'available'; readonly items: readonly AttentionItem[] }
   | {
       readonly state: 'unavailable';
-      readonly reason: 'source_unavailable' | 'source_busy' | 'not_implemented';
+      readonly reason: 'source_unavailable' | 'source_busy' | 'source_recovery' | 'not_implemented';
     }
   | { readonly state: 'forbidden' };
 
@@ -200,11 +200,15 @@ export interface SpecificationWorkspaceData {
   readonly sectionAvailability?: Partial<Record<SpecificationSectionId, SpecificationSectionState>>;
   /**
    * Why an unavailable section is unavailable: `not_implemented` is permanent for this Runtime,
-   * `source_busy` is a held control lock (busy or recovering from a stop), `source_unavailable` any
+   * `source_busy` is a held control lock (busy or recovering from a stop), `source_recovery` a lock
+   * only an operator's recovery releases, `source_unavailable` any
    * other read failure.
    */
   readonly sectionUnavailableReason?: Partial<
-    Record<SpecificationSectionId, 'not_implemented' | 'source_unavailable' | 'source_busy'>
+    Record<
+      SpecificationSectionId,
+      'not_implemented' | 'source_unavailable' | 'source_busy' | 'source_recovery'
+    >
   >;
   readonly id: string;
   /** The registered workspace the Specification is bound to (its documentation is read there). */

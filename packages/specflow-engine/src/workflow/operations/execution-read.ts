@@ -257,7 +257,8 @@ export interface SpecificationListing extends Pick<ExecutionReading, 'progress' 
  * - `busy`: the project control lock stayed held by another writer longer than a read waits;
  * - `unexpected`: anything else, a defect: the caller logs it with the Specification.
  */
-export type SpecificationListingFailure = 'invalid' | 'filesystem' | 'busy' | 'unexpected';
+export type SpecificationListingFailure =
+  'invalid' | 'filesystem' | 'busy' | 'recovery' | 'unexpected';
 
 /** The list read of one Specification: its listing, or why it could not be read and the error. */
 export type SpecificationListingRead =
@@ -286,7 +287,11 @@ export function listingFailureOf(error: unknown): SpecificationListingFailure {
   }
 
   if (error instanceof ProjectControlLockError) {
-    return error.code === 'CONTROL_LOCK_BUSY' ? 'busy' : 'unexpected';
+    return error.code === 'CONTROL_LOCK_BUSY'
+      ? 'busy'
+      : error.code === 'CONTROL_LOCK_RECOVERY_REQUIRED' || error.code === 'CONTROL_LOCK_CORRUPT'
+        ? 'recovery'
+        : 'unexpected';
   }
 
   const code = error instanceof Error ? (error as { readonly code?: unknown }).code : undefined;

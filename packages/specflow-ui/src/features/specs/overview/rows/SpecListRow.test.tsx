@@ -226,6 +226,16 @@ describe('SpecListRow situation', () => {
     ).toBe('Could not read this Specification | Its workflow files could not be read.');
   });
 
+  it('names the recovery command when the project lock needs a recovery', () => {
+    expect(
+      situation({
+        workflow: null,
+        classification: { section: 'unknown' },
+        unreadable: { reason: 'recovery' },
+      }),
+    ).toContain('nevo-specflow specs documents recover --confirmed-stopped');
+  });
+
   it('marks a busy workflow read as a transient "state unavailable · busy", not a broken one', () => {
     expect(
       situation({

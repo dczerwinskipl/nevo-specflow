@@ -309,7 +309,8 @@
         "invalid": "Its workflow files are not valid.",
         "filesystem": "Its workflow files could not be read.",
         "busy": "SpecFlow is busy or recovering from a stop. Refresh the list in a moment. If it keeps happening, restart SpecFlow.",
-        "unexpected": "Something unexpected went wrong; the Runtime log has the details."
+        "unexpected": "Something unexpected went wrong; the Runtime log has the details.",
+        "recovery": "The project lock needs a recovery. Stop every SpecFlow process of this project, then run nevo-specflow specs documents recover --confirmed-stopped."
       }
     }
   },
@@ -495,7 +496,11 @@
       "step": "Step {{current}} of {{total}}: {{title}}",
       "interrupted": "No activity for {{minutes}} min. Check the result",
       "started": "Started {{time}}",
-      "updated": "Updated {{time}}"
+      "updated": "Updated {{time}}",
+      "gitUnsettled": "Stopped while Git was working. Open it for the recovery command",
+      "lockRecovery": "The project lock needs a recovery. Open it for the command",
+      "createInterrupted": "Stopped with the Runtime. Nothing was created",
+      "resumeForbidden": "Not continued: you may no longer create here"
     },
     "announce": {
       "completed": "{{name}} is done",
@@ -1741,6 +1746,10 @@
     "failed": {
       "title": "Something went wrong",
       "description": "SpecFlow could not read this because of an unexpected error. Try again; if it keeps happening, the Runtime log has the details."
+    },
+    "recovery": {
+      "title": "SpecFlow needs a recovery",
+      "description": "A SpecFlow process that SpecFlow cannot prove stopped still holds the project lock, so this cannot be read. Stop every SpecFlow process of this project, then run nevo-specflow specs documents recover --confirmed-stopped in the project."
     }
   },
   "routeError": {
@@ -2538,7 +2547,8 @@
       "documentPathConflict": "A document with this name exists already.",
       "documentPathInvalid": "This file name is not allowed.",
       "documentRevisionConflict": "The document changed since you opened it. Reload and try again.",
-      "documentProtected": "task.md is the task's main document: it cannot be renamed or deleted."
+      "documentProtected": "task.md is the task's main document: it cannot be renamed or deleted.",
+      "lockRecovery": "A SpecFlow process that SpecFlow cannot prove stopped still holds the project lock. Stop every SpecFlow process of this project, then run nevo-specflow specs documents recover --confirmed-stopped."
     },
     "picker": {
       "availableTasks": "Available tasks",
@@ -3096,7 +3106,8 @@
       "tasksOpen": "The specification cannot complete while tasks are open: {{tasks}}. Finish or cancel them first.",
       "confirmationChanged": "What Confirm would apply changed since you opened this. Read the summary again, then confirm.",
       "attemptCommitRequired": "The agent’s work in this specification is not committed yet, so nothing in its workflow can change. Retry its commit (shown above), then try again.",
-      "agentUnavailable": "The agent cannot continue now. Refresh the page to see why."
+      "agentUnavailable": "The agent cannot continue now. Refresh the page to see why.",
+      "lockRecovery": "A SpecFlow process that SpecFlow cannot prove stopped still holds the project lock. Stop every SpecFlow process of this project, then run nevo-specflow specs documents recover --confirmed-stopped."
     },
     "time": {
       "today": "Today {{time}}",

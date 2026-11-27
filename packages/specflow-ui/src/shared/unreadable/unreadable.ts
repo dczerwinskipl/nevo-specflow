@@ -8,10 +8,12 @@ import type { MessageKey } from '../../i18n/message';
  *   with `Retry-After`), e.g. while SpecFlow recovers from a stop;
  * - `source`: the Runtime could not read its source (`specification_source_unavailable` without
  *   `Retry-After`, a section's `source_unavailable`): busy, recovering or a file it cannot read;
+ * - `recovery`: the project lock is held by a process nothing proves stopped (or is corrupt):
+ *   only an operator's recovery helps, and the copy names the command;
  * - `unreachable`: no answer from the Runtime (offline, timeout);
  * - `failed`: anything else (an unexpected server error or answer).
  */
-export type UnreadableCause = 'busy' | 'source' | 'unreachable' | 'failed';
+export type UnreadableCause = 'busy' | 'recovery' | 'source' | 'unreachable' | 'failed';
 
 /** The cause of a failed read, from the classified error of its request. */
 export function unreadableCauseOf(error: unknown): UnreadableCause {
@@ -27,10 +29,17 @@ export function unreadableCauseOf(error: unknown): UnreadableCause {
     case 'unavailable':
       return failure.code === 'CONTROL_LOCK_BUSY' || failure.retryAfterMs !== undefined
         ? 'busy'
-        : 'source';
+        : failure.code === 'CONTROL_LOCK_RECOVERY_REQUIRED'
+          ? 'recovery'
+          : 'source';
     default:
       return 'failed';
   }
+}
+
+/** The cause of a section the Runtime could not read, from its `reason`. */
+export function unreadableCauseOfSection(reason: string | undefined): UnreadableCause {
+  return reason === 'source_busy' ? 'busy' : reason === 'source_recovery' ? 'recovery' : 'source';
 }
 
 /** The plain-language reason and what to do next, one line each. */

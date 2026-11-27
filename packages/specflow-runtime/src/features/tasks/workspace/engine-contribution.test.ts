@@ -190,6 +190,16 @@ describe('createEngineWorkspaceTasks', () => {
     expect((await read('spec-1')).section).toEqual({ state: 'unavailable', reason: 'source_busy' });
   });
 
+  it('says only a recovery helps while a process nothing proves stopped holds the lock', async () => {
+    const read = createEngineWorkspaceTasks(
+      engineFailing(new ProjectControlLockError('CONTROL_LOCK_RECOVERY_REQUIRED', 'Held.')),
+    );
+    expect((await read('spec-1')).section).toEqual({
+      state: 'unavailable',
+      reason: 'source_recovery',
+    });
+  });
+
   it('says unavailable for any other source failure', async () => {
     const read = createEngineWorkspaceTasks(
       engineFailing(Object.assign(new Error('EACCES'), { code: 'EACCES' })),

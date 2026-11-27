@@ -27,12 +27,15 @@ export const ReadSectionSchema = <T extends ReturnType<typeof Type.Object>>(data
       state: Type.Literal('unavailable'),
       /**
        * `source_busy`: the source is held by another writer (the project control lock) longer than
-       * a read waits; a retry soon can succeed. `source_unavailable`: it cannot be read now.
+       * a read waits; a retry soon can succeed. `source_recovery`: the lock is held by a process
+       * nothing proves stopped (or is corrupt); only an operator's recovery helps.
+       * `source_unavailable`: it cannot be read now.
        */
       reason: Type.Union([
         Type.Literal('not_implemented'),
         Type.Literal('source_unavailable'),
         Type.Literal('source_busy'),
+        Type.Literal('source_recovery'),
       ]),
     }),
     Type.Object({ state: Type.Literal('forbidden') }),
@@ -282,6 +285,8 @@ export const SpecificationReadErrorSchema = Type.Object(
       Type.Literal('specification_task_not_found'),
       Type.Literal('specification_source_unavailable'),
     ]),
+    /** Why the source is unavailable, when only an operator's recovery helps. */
+    code: Type.Optional(Type.Literal('CONTROL_LOCK_RECOVERY_REQUIRED')),
   },
   { $id: 'SpecificationReadError' },
 );

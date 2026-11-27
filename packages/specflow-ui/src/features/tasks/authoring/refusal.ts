@@ -78,6 +78,10 @@ export function refusalMessageKey(refusal: TaskRefusal) {
     case 'WORKFLOW_SPECIFICATION_BUSY':
     case 'CONTROL_LOCK_BUSY':
       return 'taskAuthoring.refusal.busy';
+    // A stopped Runtime's lock nothing proves released: only an operator's recovery helps.
+    case 'CONTROL_LOCK_RECOVERY_REQUIRED':
+    case 'CONTROL_LOCK_CORRUPT':
+      return 'taskAuthoring.refusal.lockRecovery';
     case 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED':
       return 'workflowExecution.refusal.attemptCommitRequired';
     case 'WORKFLOW_SPECIFICATION_ENDED':

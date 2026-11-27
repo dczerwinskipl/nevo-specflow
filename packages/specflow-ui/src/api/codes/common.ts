@@ -23,6 +23,8 @@ export const commonErrorCodes: ErrorCodeTable = {
   // The Runtime could not read its source now (a busy control lock, with `Retry-After`, or a file
   // it cannot read): transient, never "not supported".
   specification_source_unavailable: { kind: 'unavailable', retryable: true },
+  // The project lock is held by a process nothing proves stopped: only an operator's recovery helps.
+  CONTROL_LOCK_RECOVERY_REQUIRED: { kind: 'unavailable', retryable: false },
   specification_not_found: { kind: 'not-found', outcome: 'not-applied' },
   specification_task_not_found: { kind: 'not-found', outcome: 'not-applied' },
   task_snapshot_expired: { kind: 'conflict', outcome: 'not-applied' },

@@ -12,7 +12,7 @@ export type SourceSection<T> =
   | { readonly state: 'available'; readonly data: T }
   | {
       readonly state: 'unavailable';
-      readonly reason: 'not_implemented' | 'source_unavailable' | 'source_busy';
+      readonly reason: 'not_implemented' | 'source_unavailable' | 'source_busy' | 'source_recovery';
     };
 
 export interface WorkspaceTaskRecord {

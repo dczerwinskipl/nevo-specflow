@@ -4148,6 +4148,12 @@
                 ]
               }
             ]
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "CONTROL_LOCK_RECOVERY_REQUIRED"
+            ]
           }
         }
       },
@@ -4189,6 +4195,12 @@
                   "specification_source_unavailable"
                 ]
               }
+            ]
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "CONTROL_LOCK_RECOVERY_REQUIRED"
             ]
           }
         }
@@ -31488,6 +31500,12 @@
                                       {
                                         "type": "string",
                                         "enum": [
+                                          "recovery"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
                                           "unexpected"
                                         ]
                                       }
@@ -31495,7 +31513,7 @@
                                   }
                                 },
                                 "additionalProperties": false,
-                                "description": "Why the Specification's workflow could not be read (workflow is then null): invalid (its files hold no valid state), filesystem (a file could not be read), busy (another writer held the project longer than a read waits) or unexpected."
+                                "description": "Why the Specification's workflow could not be read (workflow is then null): invalid (its files hold no valid state), filesystem (a file could not be read), busy (another writer held the project longer than a read waits), recovery (the project lock is held by a process nothing proves stopped, or is corrupt: only an operator's recovery helps) or unexpected."
                               },
                               "signals": {
                                 "anyOf": [
@@ -67376,6 +67394,12 @@
                                       "enum": [
                                         "source_busy"
                                       ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_recovery"
+                                      ]
                                     }
                                   ]
                                 }
@@ -67519,6 +67543,12 @@
                                       "type": "string",
                                       "enum": [
                                         "source_busy"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_recovery"
                                       ]
                                     }
                                   ]
@@ -68128,6 +68158,12 @@
                                       "enum": [
                                         "source_busy"
                                       ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_recovery"
+                                      ]
                                     }
                                   ]
                                 }
@@ -68289,6 +68325,12 @@
                                       "type": "string",
                                       "enum": [
                                         "source_busy"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_recovery"
                                       ]
                                     }
                                   ]
@@ -68782,6 +68824,12 @@
                                       "enum": [
                                         "source_busy"
                                       ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_recovery"
+                                      ]
                                     }
                                   ]
                                 }
@@ -68879,6 +68927,12 @@
                                       "type": "string",
                                       "enum": [
                                         "source_busy"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_recovery"
                                       ]
                                     }
                                   ]

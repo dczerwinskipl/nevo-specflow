@@ -27,20 +27,29 @@ async function unlessUnavailable<T>(read: () => Promise<ReadOutcome<T>>): Promis
     return await read();
   } catch (error) {
     if (error instanceof TaskSourceUnavailableError) {
-      return { kind: 'unavailable', retryable: error.retryable };
+      return { kind: 'unavailable', retryable: error.retryable, recovery: error.recovery };
     }
 
     throw error;
   }
 }
 
-/** 503 `specification_source_unavailable`; `Retry-After` only when the lock was busy. */
-function unavailableReply<R extends FastifyReply>(reply: R, retryable: boolean): R {
-  if (retryable) {
+/**
+ * 503 `specification_source_unavailable`; `Retry-After` only when the lock was busy, the
+ * `CONTROL_LOCK_RECOVERY_REQUIRED` code when only an operator's recovery helps.
+ */
+function unavailableReply<R extends FastifyReply>(
+  reply: R,
+  outcome: { readonly retryable?: boolean; readonly recovery?: boolean } | undefined,
+): R {
+  if (outcome?.retryable) {
     reply.header('Retry-After', '1');
   }
 
-  (reply as FastifyReply).code(503).send({ error: 'specification_source_unavailable' });
+  (reply as FastifyReply).code(503).send({
+    error: 'specification_source_unavailable',
+    ...(outcome?.recovery ? { code: 'CONTROL_LOCK_RECOVERY_REQUIRED' as const } : {}),
+  });
 
   return reply;
 }
@@ -94,7 +103,7 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
         return reply.code(404).send({ error: 'specification_task_not_found' });
       }
 
-      return unavailableReply(reply, result.kind === 'unavailable' && result.retryable === true);
+      return unavailableReply(reply, result.kind === 'unavailable' ? result : undefined);
     },
   );
   app.withTypeProvider<TypeBoxTypeProvider>().get(
@@ -134,7 +143,7 @@ export const taskReadEndpoint: FastifyPluginCallback<{ dependencies: TaskReadDep
         return reply.code(404).send({ error: 'specification_task_not_found' });
       }
 
-      return unavailableReply(reply, result.kind === 'unavailable' && result.retryable === true);
+      return unavailableReply(reply, result.kind === 'unavailable' ? result : undefined);
     },
   );
 

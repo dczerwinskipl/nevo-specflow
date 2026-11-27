@@ -519,6 +519,10 @@ describe('readSpecificationListings', () => {
     // The caller gets the error itself, to log what it did not expect.
     expect(listings.get('defect')).toMatchObject({ error: failing.get('defect') });
     expect(listingFailureOf(new Error('no code'))).toBe('unexpected');
+    // A lock nothing proves released (a stopped Runtime's) needs an operator's recovery.
+    for (const code of ['CONTROL_LOCK_RECOVERY_REQUIRED', 'CONTROL_LOCK_CORRUPT'] as const) {
+      expect(listingFailureOf(new ProjectControlLockError(code, 'Held.'))).toBe('recovery');
+    }
   });
 
   it('waits for a busy control lock once per list read: the rest answer busy at once', async () => {

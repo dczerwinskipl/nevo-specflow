@@ -14,7 +14,11 @@ import {
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useSpecificationWorkspace } from '../read-model/useSpecificationWorkspace';
-import { unreadableCauseOf, unreadableCopy } from '../../../shared/unreadable/unreadable';
+import {
+  unreadableCauseOf,
+  unreadableCauseOfSection,
+  unreadableCopy,
+} from '../../../shared/unreadable/unreadable';
 import type { SpecificationSectionId, SpecificationWorkspaceData } from '../read-model/model';
 import {
   ApplicationLocationIdentity,
@@ -72,9 +76,7 @@ export function SpecificationAggregatePage({
   const failedCopy = unreadableCopy(unreadableCauseOf(query.error));
   const unavailableCopy = { title: t(failedCopy.title), message: t(failedCopy.description) };
   const sourceCopy = unreadableCopy(
-    section && query.data?.sectionUnavailableReason?.[section] === 'source_busy'
-      ? 'busy'
-      : 'source',
+    unreadableCauseOfSection(section && query.data?.sectionUnavailableReason?.[section]),
   );
   const notFoundCopy = {
     title: t('specification.notFoundTitle'),

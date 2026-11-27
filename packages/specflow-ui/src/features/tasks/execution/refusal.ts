@@ -136,6 +136,10 @@ export function workflowRefusalKey(refusal: WorkflowRefusal) {
     case 'WORKFLOW_SPECIFICATION_BUSY':
     case 'CONTROL_LOCK_BUSY':
       return 'workflowExecution.refusal.busy';
+    // A stopped Runtime's lock nothing proves released: only an operator's recovery helps.
+    case 'CONTROL_LOCK_RECOVERY_REQUIRED':
+    case 'CONTROL_LOCK_CORRUPT':
+      return 'workflowExecution.refusal.lockRecovery';
     default:
       return 'workflowExecution.refusal.generic';
   }

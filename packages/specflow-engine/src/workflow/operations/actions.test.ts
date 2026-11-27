@@ -12,6 +12,8 @@ import {
   claude,
   memoryDependencies,
   owner,
+  RESTRICTED_ARCHETYPE,
+  restrictTaskTypes,
   runToBreakdown,
   seedDefinitionFiles,
   seedExecutionCatalogue,
@@ -509,7 +511,7 @@ describe('Task positions', () => {
     [
       'the type is not allowed by the live policy any more',
       (dependencies: Dependencies) => {
-        dependencies.references.archetypeId = 'architecture';
+        dependencies.references.archetypeId = RESTRICTED_ARCHETYPE;
 
         return dependencies;
       },
@@ -524,7 +526,7 @@ describe('Task positions', () => {
       'definition-missing',
     ],
   ])('refuses a first start when %s', async (_name, change, kind) => {
-    const dependencies = memoryDependencies(catalogue);
+    const dependencies = memoryDependencies(restrictTaskTypes(catalogue));
     await create(dependencies, 'api', { type: 'ui-implementation' });
     await decide(dependencies, 'api', 'ready');
     const projection = await project(change(dependencies), task('api'));

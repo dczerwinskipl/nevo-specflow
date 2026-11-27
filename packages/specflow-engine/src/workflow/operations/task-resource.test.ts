@@ -10,6 +10,8 @@ import {
   claude,
   memoryDependencies,
   owner,
+  RESTRICTED_ARCHETYPE,
+  restrictTaskTypes,
   seedExecutionCatalogue,
   SPEC,
   specificationWithTasks,
@@ -156,7 +158,7 @@ describe('a Task without a Specification run', () => {
     [
       'a type the live archetype no longer allows',
       (dependencies: Dependencies) => {
-        dependencies.references.archetypeId = 'architecture';
+        dependencies.references.archetypeId = RESTRICTED_ARCHETYPE;
       },
       'WORKFLOW_TASK_TYPE_NOT_ALLOWED',
     ],
@@ -189,7 +191,7 @@ describe('a Task without a Specification run', () => {
       'WORKFLOW_TASK_CONTEXT_UNRESOLVED',
     ],
   ])('refuses the first start for %s', async (_name, change, code) => {
-    const dependencies = memoryDependencies(catalogue);
+    const dependencies = memoryDependencies(restrictTaskTypes(catalogue));
     await create(dependencies, 'screen', {
       type: 'ui-implementation',
       context: [
@@ -206,9 +208,9 @@ describe('a Task without a Specification run', () => {
   });
 
   it('takes the policy from the Specification run once it started, not the live archetype', async () => {
-    const dependencies = memoryDependencies(catalogue);
+    const dependencies = memoryDependencies(restrictTaskTypes(catalogue));
     await specificationWithTasks(dependencies);
-    dependencies.references.archetypeId = 'architecture';
+    dependencies.references.archetypeId = RESTRICTED_ARCHETYPE;
 
     await expect(create(dependencies, 'web', { type: 'ui-implementation' })).resolves.toMatchObject(
       { task: { type: 'ui-implementation' } },
@@ -323,8 +325,8 @@ describe('creating and editing Tasks', () => {
   });
 
   it('refuses a type the live archetype does not allow', async () => {
-    const dependencies = memoryDependencies(catalogue);
-    dependencies.references.archetypeId = 'architecture';
+    const dependencies = memoryDependencies(restrictTaskTypes(catalogue));
+    dependencies.references.archetypeId = RESTRICTED_ARCHETYPE;
 
     await refused(
       dependencies,

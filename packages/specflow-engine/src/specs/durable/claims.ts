@@ -132,7 +132,9 @@ export interface AgentWriteActor {
   readonly details: {
     readonly archetype?: string;
     readonly provider: string;
+    readonly providerTitle?: string;
     readonly model?: string;
+    readonly modelTitle?: string;
     readonly sessionId?: string;
   };
 }

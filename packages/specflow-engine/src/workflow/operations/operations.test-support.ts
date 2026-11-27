@@ -23,6 +23,28 @@ export async function seedExecutionCatalogue(): Promise<ExecutionCatalogue> {
   );
 }
 
+/**
+ * The archetype {@link restrictTaskTypes} restricts, and the one task type it still allows. No
+ * shipped Specification archetype restricts its task types, so a test of the task-type policy
+ * restricts one itself instead of depending on what a shipped archetype allows.
+ */
+export const RESTRICTED_ARCHETYPE = 'architecture';
+const RESTRICTED_ARCHETYPE_TASK_TYPE = 'implementation';
+
+/** The catalogue with {@link RESTRICTED_ARCHETYPE} allowing only `implementation` Tasks. */
+export function restrictTaskTypes(catalogue: ExecutionCatalogue): ExecutionCatalogue {
+  return {
+    ...catalogue,
+    specificationExecution: (archetypeId) => {
+      const execution = catalogue.specificationExecution(archetypeId);
+
+      return execution && archetypeId === RESTRICTED_ARCHETYPE
+        ? { ...execution, taskTypes: [RESTRICTED_ARCHETYPE_TASK_TYPE] }
+        : execution;
+    },
+  };
+}
+
 /** Every shipped seed file by its path relative to the definitions folder, to copy and edit. */
 export async function seedDefinitionFiles(): Promise<Record<string, string>> {
   const directory = await locateSeedDirectory();

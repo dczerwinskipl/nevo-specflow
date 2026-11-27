@@ -166,6 +166,9 @@ function isValidIdentity(
 
 const SHORT = (value: unknown): boolean =>
   typeof value === 'string' && value.length > 0 && value.length <= 256;
+/** A provider or model title, as the workflow's attempt records hold it: 1 to 200 characters. */
+const TITLE = (value: unknown): boolean =>
+  typeof value === 'string' && value.length > 0 && Array.from(value).length <= 200;
 
 /** The agent of an owned write: its execution id and, when recorded, the agent actor. */
 export function isDocumentChangeAgent(value: unknown): boolean {
@@ -192,12 +195,15 @@ export function isDocumentChangeAgent(value: unknown): boolean {
     isRecord(details) &&
     exactKeys(
       details,
-      ['archetype', 'provider', 'model', 'sessionId'],
-      ['archetype', 'model', 'sessionId'],
+      ['archetype', 'provider', 'providerTitle', 'model', 'modelTitle', 'sessionId'],
+      ['archetype', 'providerTitle', 'model', 'modelTitle', 'sessionId'],
     ) &&
     SHORT(details.provider) &&
     ['archetype', 'model', 'sessionId'].every(
       (key) => details[key] === undefined || SHORT(details[key]),
+    ) &&
+    ['providerTitle', 'modelTitle'].every(
+      (key) => details[key] === undefined || TITLE(details[key]),
     )
   );
 }

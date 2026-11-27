@@ -49,7 +49,20 @@ export {
   type WorkspaceUnavailableReason,
 } from './specs/workspaces/inspection';
 
-export { ProjectControlLockError, type ProjectControlLockErrorCode } from './project/control-lock';
+export {
+  CONTROL_LOCK_RECOVERY_COMMAND,
+  ProjectControlLockError,
+  releaseAbandonedProjectControlLock,
+  type AbandonedLockRelease,
+  type ProjectControlLockErrorCode,
+} from './project/control-lock';
+export {
+  isExecutorIdentity,
+  ownExecutorIdentity,
+  proveExecutorState,
+  setProcessStartTimeSource,
+  type ExecutorIdentity,
+} from './specs/durable/executor-identity';
 
 export { readRegistrySnapshot, type SpecFlowEngine } from './application';
 export { openSpecFlowEngine } from './engine';

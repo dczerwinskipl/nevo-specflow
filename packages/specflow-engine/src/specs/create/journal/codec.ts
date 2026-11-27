@@ -8,6 +8,7 @@ import type { ResolvedProjectHome } from '../../../project/home/home';
 import { DOCUMENT_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
 import { OPERATION_ID_PATTERN } from '../../durable';
+import { isExecutorIdentity } from '../../durable/executor-identity';
 
 import { TEXT_CONTENT_MAX_BYTES, validateDocumentPath } from '../../documents';
 import { isExplicitSpecificationSlug } from '../../model';
@@ -91,7 +92,8 @@ function isValidJournalIdentity(
       (typeof value.startedAt === 'string' && !Number.isNaN(Date.parse(value.startedAt)))) &&
     (value.goal === undefined || typeof value.goal === 'string') &&
     isCreateStage(value.stage) &&
-    (value.reason === undefined || typeof value.reason === 'string')
+    (value.reason === undefined || typeof value.reason === 'string') &&
+    (value.executor === undefined || isExecutorIdentity(value.executor))
   );
 }
 

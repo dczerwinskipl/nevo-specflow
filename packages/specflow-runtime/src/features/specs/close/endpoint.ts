@@ -304,6 +304,7 @@ function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
     case 'PROJECT_HOME_INVALID':
     case 'PROJECT_HOME_MISMATCH':
     case 'CONTROL_LOCK_BUSY':
+    case 'CONTROL_LOCK_RECOVERY_REQUIRED':
     case 'CONTROL_LOCK_CORRUPT':
     case 'CONTROL_LOCK_OWNERSHIP_LOST':
     case 'CONTROL_LOCK_INVALID_HOME':

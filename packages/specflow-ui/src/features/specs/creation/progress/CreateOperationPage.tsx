@@ -374,12 +374,24 @@ export function CreateOperationPage({
             )}
             {view === 'refused' &&
               (retainable ? (
-                <Button onClick={() => void actions.retry()}>{t('create.page.tryAgain')}</Button>
+                <>
+                  <Button onClick={() => void actions.retry()}>{t('create.page.tryAgain')}</Button>
+                  {failure?.kind === 'interrupted' && (
+                    // Nothing was created: the owner may also change the settings first.
+                    <Button variant="secondary" onClick={() => backToForm()}>
+                      {t('create.page.backToForm')}
+                    </Button>
+                  )}
+                </>
               ) : (
                 <Button onClick={() => backToForm()}>{t('create.page.backToForm')}</Button>
               ))}
             {view === 'not-found' && (
-              <Button variant="secondary" onClick={() => onBackToForm()}>
+              // The draft this browser kept for the operation, if any: the owner's input is never dropped.
+              <Button
+                variant="secondary"
+                onClick={() => onBackToForm(ownDraft ? operationId : undefined)}
+              >
                 {t('create.page.backToCreate')}
               </Button>
             )}

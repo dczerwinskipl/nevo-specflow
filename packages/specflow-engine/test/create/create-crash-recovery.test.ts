@@ -10,7 +10,7 @@ import {
   createSpecificationForTesting as createSpecification,
   inspectCreateSpecification,
   inspectProjectControlLock,
-  projectControlLockPath,
+  releaseAbandonedProjectControlLock,
   workspaceRegistryPath,
   updateWorkspaceRegistry,
   addWorkspace,
@@ -78,7 +78,7 @@ function request(engine: SpecFlowEngine, title: string, linked = false): CreateS
   };
 }
 
-type Mode = 'crash' | 'resume' | 'atomic-write';
+type Mode = 'crash' | 'resume' | 'retry' | 'atomic-write';
 interface Worker {
   readonly signal: string;
   readonly process: IndependentVitestWorker;
@@ -143,9 +143,9 @@ async function killAtCheckpoint(
 async function replay(
   root: string,
   input: CreateSpecificationInput,
-  options: { expectError?: string; gitSettled?: boolean } = {},
+  options: { expectError?: string; gitSettled?: boolean; mode?: 'resume' | 'retry' } = {},
 ): Promise<string> {
-  const child = worker(root, input, 'resume', options);
+  const child = worker(root, input, options.mode ?? 'resume', options);
   const outcome = await child.done;
   expect(outcome.code, outcome.output).toBe(0);
 
@@ -283,20 +283,123 @@ describe('E2.T04 — actual process termination and fresh-process recovery', () 
     const dir = join(engine.context.project.stateRoot, CREATE_JOURNAL_RELATIVE_DIR);
     const temps = (await readdir(dir)).filter((name) => name.endsWith('.tmp'));
     expect(temps).toHaveLength(1);
-    // A dead PID does not authorize automatic lock stealing.
-    await expect(
-      withProjectControlLock(engine.context, () => Promise.resolve(), { waitMs: 0 }),
-    ).rejects.toMatchObject({ code: 'CONTROL_LOCK_BUSY' });
-    // Explicit operator recovery in this test ONLY: process is known dead, so
-    // inspect/preserve the staged journal, release its verified orphan lock,
-    // then move the abandoned .tmp out of the authoritative journal directory.
-    await rm(projectControlLockPath(engine.context));
+    // The killed holder's PID is gone: the next waiter releases its lock on that evidence alone
+    // (ADR 0027), without an operator. The staged journal temp stays where it is.
+    await withProjectControlLock(engine.context, () => Promise.resolve(), { waitMs: 0 });
+    expect((await inspectProjectControlLock(engine.context)).status).toBe('free');
     // The staged temp is never a journal: it neither wedges Create nor is deleted while young.
-    const output = JSON.parse(await replay(root, input)) as { specId: string };
+    const output = JSON.parse(await replay(root, input, { mode: 'retry' })) as { specId: string };
     expect(output.specId).toMatch(/^[0-9a-f-]{36}$/u);
     expect((await engine.readRegistry()).specBindings).toHaveLength(1);
     expect((await readdir(dir)).filter((name) => name.endsWith('.tmp'))).toEqual(temps);
   }, 120000);
+
+  it('a live lock holder is never released; once SIGKILLed, its lock is released at startup', async () => {
+    const { root, engine } = await project();
+    const input = request(engine, 'Lock holder');
+    const child = worker(root, input, 'atomic-write');
+    try {
+      await awaitProcessMarker(child.signal, child.process, 45000, 30);
+      const checkpoint = await readProcessCheckpoint(child.signal, 'staged');
+      // The holder runs: neither the startup step nor a waiter takes its lock.
+      expect(await releaseAbandonedProjectControlLock(engine.context)).toEqual({
+        status: 'kept',
+        reason: 'holder-alive',
+      });
+      await expect(
+        withProjectControlLock(engine.context, () => Promise.resolve(), { waitMs: 50 }),
+      ).rejects.toMatchObject({ code: 'CONTROL_LOCK_BUSY' });
+      const outcome = await terminateCheckpointPid(checkpoint.pid, child.process);
+      expect(outcome.code, outcome.log).not.toBe(0);
+    } finally {
+      await reapVitestWorker(child.process);
+    }
+
+    // What the Runtime does at startup: the holder's PID is gone, so the lock is released.
+    expect(await releaseAbandonedProjectControlLock(engine.context)).toMatchObject({
+      status: 'released',
+    });
+    expect((await inspectProjectControlLock(engine.context)).status).toBe('free');
+  }, 120000);
+
+  it.each(['reservation', 'manifest-opened', 'file', 'manifest', 'registry'])(
+    'R07: SIGKILL at %s, then a plain retry (a restarted Runtime) resumes it without an operator',
+    async (stage) => {
+      const { root, engine } = await project();
+      const input = request(engine, 'Retried after ' + stage);
+      expect(await killAtCheckpoint(root, input, stage)).toBe(stage);
+      const saved = (await inspectCreateSpecification(engine, input.operationId))!;
+      expect(saved.executor?.pid).toBeGreaterThan(0);
+      const output = JSON.parse(await replay(root, input, { mode: 'retry' })) as {
+        specId: string;
+      };
+      expect(output.specId).toBe(saved.specId);
+      expect((await engine.readRegistry()).specBindings).toHaveLength(1);
+      expect((await inspectCreateSpecification(engine, input.operationId))?.stage).toBe(
+        'completed',
+      );
+      expect((await inspectProjectControlLock(engine.context)).status).toBe('free');
+    },
+    120000,
+  );
+
+  it('R08: SIGKILL at the commit of a Git Create, then a plain retry commits it once', async () => {
+    const { root, engine } = await project(true);
+    git(root, 'checkout', '-q', '-b', 'develop');
+    const parent = git(root, 'rev-parse', 'HEAD');
+    const input = request(engine, 'Retried after commit');
+    expect(await killAtCheckpoint(root, input, 'commit')).toBe('commit');
+    const saved = (await inspectCreateSpecification(engine, input.operationId))!;
+    const output = JSON.parse(await replay(root, input, { mode: 'retry' })) as { specId: string };
+    expect(output.specId).toBe(saved.specId);
+    expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
+  }, 150000);
+
+  it('R09: SIGKILL while Git creates the worktree: a plain retry answers at once, an operator resumes', async () => {
+    const { root, engine } = await project(true);
+    const input = request(engine, 'Retried after git', true);
+    expect(await killAtCheckpoint(root, input, 'git')).toBe('git');
+    const started = Date.now();
+    expect(await replay(root, input, { mode: 'retry', expectError: 'CREATE_GIT_UNSETTLED' })).toBe(
+      'expected:CREATE_GIT_UNSETTLED',
+    );
+    // It does not follow a journal nothing will advance (the reader would wait 90 s).
+    expect(Date.now() - started).toBeLessThan(60000);
+    expect((await inspectCreateSpecification(engine, input.operationId))?.stage).toBe(
+      'git-initiated',
+    );
+  }, 150000);
+
+  it('R10: a Git lock left in the checkout of a commit-writing Create fences the retry until it goes', async () => {
+    const { root, engine } = await project(true);
+    git(root, 'checkout', '-q', '-b', 'develop');
+    const parent = git(root, 'rev-parse', 'HEAD');
+    const input = request(engine, 'Commit lock held');
+    // Killed right after its Git commit, before the journal recorded it: still `commit-writing`.
+    expect(await killAtCheckpoint(root, input, 'commit')).toBe('commit');
+    expect((await inspectCreateSpecification(engine, input.operationId))?.stage).toBe(
+      'commit-writing',
+    );
+    // As if the killed Runtime's `git commit` still ran: its index lock is held.
+    const lock = join(root, '.git', 'index.lock');
+    await writeFile(lock, '');
+    const started = Date.now();
+    expect(await replay(root, input, { mode: 'retry', expectError: 'CREATE_GIT_UNSETTLED' })).toBe(
+      'expected:CREATE_GIT_UNSETTLED',
+    );
+    // It waited for the Git, bounded, then failed closed instead of committing alongside it.
+    expect(Date.now() - started).toBeGreaterThanOrEqual(9000);
+    expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
+
+    // The Git finishes while a retry waits: the retry goes on, and commits nothing twice.
+    const waiting = replay(root, input, { mode: 'retry' });
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await rm(lock);
+    const output = JSON.parse(await waiting) as { specId: string };
+    expect(output.specId).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
+    expect((await inspectCreateSpecification(engine, input.operationId))?.stage).toBe('completed');
+  }, 180000);
 
   it('unavailable unrelated bound Spec blocks create intentionally until global slug ownership is provable', async () => {
     const { root, engine } = await project();

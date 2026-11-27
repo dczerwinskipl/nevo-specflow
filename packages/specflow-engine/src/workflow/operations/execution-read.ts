@@ -329,14 +329,24 @@ export async function readSpecificationListings(
   specIds: readonly string[],
 ): Promise<ReadonlyMap<string, SpecificationListingRead>> {
   const listings = new Map<string, SpecificationListingRead>();
+  // One bounded wait per list read: once the control lock stayed busy for one Specification, the
+  // rest answer busy at once instead of each waiting the whole lock budget again.
+  let busy: SpecificationListingRead | undefined;
   for (const specId of specIds) {
+    if (busy) {
+      listings.set(specId, busy);
+      continue;
+    }
+
     try {
       listings.set(specId, {
         kind: 'read',
         listing: await readSpecificationListing(outer, specId),
       });
     } catch (error) {
-      listings.set(specId, { kind: 'unreadable', reason: listingFailureOf(error), error });
+      const read = { kind: 'unreadable', reason: listingFailureOf(error), error } as const;
+      listings.set(specId, read);
+      busy = read.reason === 'busy' ? read : undefined;
     }
   }
 

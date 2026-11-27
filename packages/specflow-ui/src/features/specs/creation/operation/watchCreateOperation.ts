@@ -7,7 +7,8 @@ import { createOperationHardLimitMs, type ProjectCreationApi } from '../api/api.
 export type OperationReading =
   | { kind: 'completed'; created: CreatedSpec }
   | { kind: 'in-progress' }
-  | { kind: 'recovery-required' }
+  /** `code`: why only an operator can go on, when the Runtime names it. */
+  | { kind: 'recovery-required'; code?: string }
   /** The Runtime observed the run fail after reserving it; `code` is its stable Create code. */
   | { kind: 'failed'; code: string }
   /** 404: the Engine has no record, so nothing was started under this operation id. */
@@ -20,7 +21,7 @@ export type CreateWatchResult =
   | { kind: 'completed'; created: CreatedSpec }
   /** The server declared the request refused before doing anything (definite failure). */
   | { kind: 'failed'; error: unknown }
-  | { kind: 'recovery-required' }
+  | { kind: 'recovery-required'; code?: string }
   /** The inspection reported the operation failed after it was accepted (stable code only). */
   | { kind: 'operation-failed'; code: string }
   | { kind: 'not-started' }
@@ -134,6 +135,12 @@ export async function readOperation(
 
     if (inspection.status === 'failed') {
       return { kind: 'failed', code: inspection.code };
+    }
+
+    if (inspection.status === 'recovery-required') {
+      return inspection.code === undefined
+        ? { kind: 'recovery-required' }
+        : { kind: 'recovery-required', code: inspection.code };
     }
 
     return { kind: inspection.status };

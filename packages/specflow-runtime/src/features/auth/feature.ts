@@ -21,6 +21,11 @@ import { capabilityDiscoveryEndpoint } from './authorization/capability-discover
 import type { RuntimeAuthorizationConfig } from './authorization/configuration/model';
 import { createRuntimeAuthorization } from './authorization/create-authorization';
 import { registerAuthorizationRequestContext } from './authorization/request-context';
+import {
+  TRUSTED_LOCAL_SUBJECT,
+  createRequestAuthorization,
+  type RequestAuthorization,
+} from './authorization/request-authorization';
 import type { SpecFlowRoleId } from './authorization/roles';
 
 export interface AuthFeatureDependencies {
@@ -43,6 +48,12 @@ export interface CreateAuthFeatureOptions {
 
 export interface AuthFeature {
   register<RawServer extends RawServerBase>(app: FastifyInstance<RawServer>): void | Promise<void>;
+  /**
+   * The authorization of a principal stored with background work (`readContext().subject` of the
+   * request that started it), resolved against the current policy: work resumed without a request
+   * (a Create rerun at startup) is checked again. Undefined for a subject it cannot read.
+   */
+  authorizePrincipal(principal: string): RequestAuthorization | undefined;
 }
 
 export function createAuthFeature(options: CreateAuthFeatureOptions): AuthFeature {
@@ -67,6 +78,24 @@ export function createAuthFeature(options: CreateAuthFeatureOptions): AuthFeatur
     dependencies?.passwordAccountThrottle ?? new InMemoryPasswordAccountThrottle();
 
   return {
+    authorizePrincipal(principal) {
+      if (principal === TRUSTED_LOCAL_SUBJECT) {
+        return createRequestAuthorization({ mode: 'disabled' }, authorization);
+      }
+
+      try {
+        const subject = JSON.parse(principal) as { kind?: unknown; id?: unknown };
+
+        return subject.kind === 'user' && typeof subject.id === 'string'
+          ? createRequestAuthorization(
+              { mode: 'subject', subject: { kind: 'user', id: subject.id } },
+              authorization,
+            )
+          : undefined;
+      } catch {
+        return undefined;
+      }
+    },
     register(app) {
       registerAuthorizationRequestContext(app, {
         authentication: options.authentication,

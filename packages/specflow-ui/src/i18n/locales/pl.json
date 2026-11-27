@@ -641,7 +641,10 @@
         "title": "Tworzenie wymaga dokończenia",
         "body": "Nevo rozpoczęło przygotowanie środowiska pracy, ale nie potwierdziło wyniku. Nie twórz specyfikacji ponownie — mogłoby to zdublować gałąź i katalog. Formularz jest zablokowany do czasu sprawdzenia.",
         "inProgress": "Operacja jest nadal w toku.",
-        "pending": "Operacja nadal wymaga dokończenia."
+        "pending": "Operacja nadal wymaga dokończenia.",
+        "git": "Runtime zatrzymał się, gdy Git pracował nad tą specyfikacją. Upewnij się, że żaden jej proces Git już nie działa (i usuń pozostały plik .git/index.lock), a potem dokończ ją z wiersza poleceń.",
+        "lock": "Blokadę projektu trzyma proces SpecFlow, o którym SpecFlow nie może stwierdzić, że się zatrzymał. Zatrzymaj wszystkie procesy SpecFlow tego projektu, a potem zwolnij blokadę z wiersza poleceń.",
+        "nextStep": "Następny krok:"
       },
       "branchExistsAutomatic": {
         "title": "Nevo nie zdołało wybrać wolnej nazwy gałęzi",
@@ -720,7 +723,11 @@
         "title": "Archetypy zmieniły się w trakcie wypełniania formularza",
         "body": "Specyfikacja nie została utworzona. Wpisane dane zostały zachowane: odśwież archetypy i sprawdź swój wybór."
       },
-      "refreshArchetypes": "Odśwież archetypy"
+      "refreshArchetypes": "Odśwież archetypy",
+      "interrupted": {
+        "title": "Tworzenie zatrzymało się razem z Runtime",
+        "body": "Runtime zatrzymał się, zanim ta specyfikacja powstała, i jej nie dokończył. Nic nie zostało utworzone. Spróbuj ponownie z tymi samymi ustawieniami albo wróć do formularza."
+      }
     },
     "workspace": {
       "heading": "Miejsce pracy",

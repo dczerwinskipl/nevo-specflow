@@ -13237,6 +13237,12 @@
               {
                 "type": "string",
                 "enum": [
+                  "CONTROL_LOCK_RECOVERY_REQUIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
                   "CONTROL_LOCK_CORRUPT"
                 ]
               },
@@ -13494,6 +13500,12 @@
                 "type": "string",
                 "enum": [
                   "CONTROL_LOCK_BUSY"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "CONTROL_LOCK_RECOVERY_REQUIRED"
                 ]
               },
               {
@@ -67358,6 +67370,12 @@
                                       "enum": [
                                         "source_unavailable"
                                       ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_busy"
+                                      ]
                                     }
                                   ]
                                 }
@@ -67495,6 +67513,12 @@
                                       "type": "string",
                                       "enum": [
                                         "source_unavailable"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_busy"
                                       ]
                                     }
                                   ]
@@ -68098,6 +68122,12 @@
                                       "enum": [
                                         "source_unavailable"
                                       ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_busy"
+                                      ]
                                     }
                                   ]
                                 }
@@ -68253,6 +68283,12 @@
                                       "type": "string",
                                       "enum": [
                                         "source_unavailable"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_busy"
                                       ]
                                     }
                                   ]
@@ -68740,6 +68776,12 @@
                                       "enum": [
                                         "source_unavailable"
                                       ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_busy"
+                                      ]
                                     }
                                   ]
                                 }
@@ -68831,6 +68873,12 @@
                                       "type": "string",
                                       "enum": [
                                         "source_unavailable"
+                                      ]
+                                    },
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "source_busy"
                                       ]
                                     }
                                   ]

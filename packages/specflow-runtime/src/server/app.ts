@@ -10,7 +10,12 @@ import Fastify, {
   type RawServerBase,
 } from 'fastify';
 
-import { authCookieNames, createAuthFeature, type AuthFeatureDependencies } from '../features/auth';
+import {
+  authCookieNames,
+  createAuthFeature,
+  type AuthFeatureDependencies,
+  type RequestAuthorization,
+} from '../features/auth';
 import type { RuntimeConfig } from '../config/types';
 import {
   checkoutSessions,
@@ -351,10 +356,15 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       };
   // Create's "then run the first step with this agent" is started by agent step execution.
   const firstStepStarter = dependencies.specs?.firstStepStarter ?? agentExecution?.firstStepStarter;
+  // Bound once the auth feature exists (it is composed after the product features it authorizes).
+  const principals: {
+    authorize?: (principal: string) => RequestAuthorization | undefined;
+  } = {};
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
       dependencies: {
+        authorizePrincipal: (principal) => principals.authorize?.(principal),
         // Close asks whether an agent can work in a checkout it removes: this Runtime's own Turns
         // while it owns the Session store, else the store's owner record.
         engine:
@@ -474,6 +484,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     ...(dependencies.auth ? { dependencies: dependencies.auth } : {}),
   });
 
+  principals.authorize = (principal) => authFeature.authorizePrincipal(principal);
   await authFeature.register(app);
 
   app.withTypeProvider<TypeBoxTypeProvider>().get(

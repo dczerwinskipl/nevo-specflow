@@ -25,7 +25,15 @@ export const ReadSectionSchema = <T extends ReturnType<typeof Type.Object>>(data
     Type.Object({ state: Type.Literal('available'), data }),
     Type.Object({
       state: Type.Literal('unavailable'),
-      reason: Type.Union([Type.Literal('not_implemented'), Type.Literal('source_unavailable')]),
+      /**
+       * `source_busy`: the source is held by another writer (the project control lock) longer than
+       * a read waits; a retry soon can succeed. `source_unavailable`: it cannot be read now.
+       */
+      reason: Type.Union([
+        Type.Literal('not_implemented'),
+        Type.Literal('source_unavailable'),
+        Type.Literal('source_busy'),
+      ]),
     }),
     Type.Object({ state: Type.Literal('forbidden') }),
   ]);

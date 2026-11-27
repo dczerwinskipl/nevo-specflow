@@ -876,6 +876,7 @@ describe('workflow refusals', () => {
         'WORKFLOW_UNAVAILABLE',
         'WORKFLOW_COMMIT_REFUSED',
         'CONTROL_LOCK_BUSY',
+        'CONTROL_LOCK_RECOVERY_REQUIRED',
         'CONTROL_LOCK_CORRUPT',
         'CONTROL_LOCK_OWNERSHIP_LOST',
         'CONTROL_LOCK_INVALID_HOME',

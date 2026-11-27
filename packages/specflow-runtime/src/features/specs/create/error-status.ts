@@ -74,6 +74,7 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
       return 422;
 
     case 'CREATE_RECOVERY_REQUIRED':
+    case 'CREATE_GIT_UNSETTLED':
     case 'CREATE_JOURNAL_CORRUPT':
     case 'CREATE_JOURNAL_UNSUPPORTED':
     case 'PROJECT_HOME_NOT_FOUND':
@@ -81,6 +82,7 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
     case 'PROJECT_HOME_INVALID':
     case 'PROJECT_HOME_MISMATCH':
     case 'CONTROL_LOCK_BUSY':
+    case 'CONTROL_LOCK_RECOVERY_REQUIRED':
     case 'CONTROL_LOCK_CORRUPT':
     case 'CONTROL_LOCK_OWNERSHIP_LOST':
     case 'CONTROL_LOCK_INVALID_HOME':

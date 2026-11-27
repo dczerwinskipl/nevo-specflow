@@ -3075,6 +3075,33 @@
       ]
     },
     {
+      "id": "adr.0027-locks-released-only-on-positive-evidence",
+      "type": "adr",
+      "title": "A lock is released only on positive evidence that its owner is gone",
+      "status": "current",
+      "file": "docs/architecture/decisions/0027-locks-released-only-on-positive-evidence.md",
+      "read_when": [],
+      "summary": "The Project Home control lock, and the unfinished journal of a Create, are released or taken over without an operator exactly when the recorded owner is provably gone: its PID is not running, or a different process now has that PID (another start or creation time, another boot). A live owner is never overridden; an owner that cannot be judged fails closed and is left to the operator command. The Runtime applies the rule at startup and every waiter applies it while it waits; a Create the Runtime accepted is recorded before the Engine reserves anything and is resumed or settled at the next start.",
+      "related": [
+        "adr.0016-engine-owned-document-commits",
+        "architecture.runtime.document-write-and-commit-queue",
+        "architecture.ai.provider-process-ownership",
+        "engineering.shared.specification-create-recovery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli"
+      ],
+      "tags": [
+        "control-lock",
+        "crash-recovery",
+        "create",
+        "executor-identity",
+        "native-stop"
+      ]
+    },
+    {
       "id": "design-system.implementation.library-packaging",
       "type": "engineering",
       "title": "UI library packaging boundary",

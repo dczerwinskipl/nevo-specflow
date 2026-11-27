@@ -649,6 +649,36 @@ describe('CreateOperationPage', () => {
       expect(onOpen).toHaveBeenCalledWith(created);
     });
 
+    it('offers Try again and Back to form for a Create the Runtime stopped before it existed', async () => {
+      store();
+      const post = vi.fn().mockResolvedValue(accepted);
+      renderPage({
+        post,
+        get: vi
+          .fn()
+          .mockResolvedValue({ ...accepted, status: 'failed', code: 'CREATE_INTERRUPTED' }),
+      });
+      expect(await screen.findByText('Creation stopped with the Runtime')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Back to form' })).toBeTruthy();
+    });
+
+    it('names the cause and the exact command when Git of the stopped Create may still run', async () => {
+      renderPage({
+        get: vi.fn().mockResolvedValue({
+          ...accepted,
+          status: 'recovery-required',
+          code: 'CREATE_GIT_UNSETTLED',
+        }),
+      });
+      expect(await screen.findByText(/while Git was working on this specification/)).toBeTruthy();
+      expect(
+        screen.getByText(
+          `nevo-specflow specs recover ${operationId} --confirmed-stopped --confirmed-git-stopped`,
+        ),
+      ).toBeTruthy();
+    });
+
     it('shows a failure the server reports', async () => {
       renderPage({
         get: vi
@@ -671,6 +701,22 @@ describe('CreateOperationPage', () => {
       expect(onBackToForm).toHaveBeenCalledOnce();
       expect(post).not.toHaveBeenCalled();
       expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('keeps the draft this browser holds for an operation the server does not know', async () => {
+      storage().saveDraft({
+        operationId,
+        title: 'Payment limits',
+        goal: 'Goal',
+        choice: initialWorkspaceChoice,
+      });
+      const { onBackToForm } = renderPage({
+        get: vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND')),
+      });
+      expect(await heading('Operation not found', false)).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Back to Create' }));
+      expect(onBackToForm).toHaveBeenCalledWith(operationId);
+      expect(storage().loadDraft(operationId)).toMatchObject({ title: 'Payment limits' });
     });
   });
 

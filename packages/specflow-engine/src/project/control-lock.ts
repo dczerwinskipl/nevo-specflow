@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { channel } from 'node:diagnostics_channel';
-import { lstat, mkdir, open, realpath } from 'node:fs/promises';
+import { link, lstat, mkdir, open, realpath, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { performance } from 'node:perf_hooks';
@@ -45,6 +45,12 @@ export function holdsProjectControlLock(context: ResolvedProjectHome): boolean {
 
 export type ProjectControlLockErrorCode =
   | 'CONTROL_LOCK_BUSY'
+  /**
+   * The lock stayed held by an owner nothing proves gone or alive (another host or platform, a lock
+   * of an older build that records only a PID, a live PID whose start time cannot be compared): only
+   * an operator can clear it (`nevo-specflow specs documents recover --confirmed-stopped`).
+   */
+  | 'CONTROL_LOCK_RECOVERY_REQUIRED'
   | 'CONTROL_LOCK_CORRUPT'
   | 'CONTROL_LOCK_OWNERSHIP_LOST'
   | 'CONTROL_LOCK_INVALID_HOME';
@@ -164,6 +170,10 @@ export interface AbandonedLockOptions {
   readonly own?: ExecutorIdentity;
 }
 
+/** The operator's next step for a lock the Engine cannot judge (also in the UI). */
+export const CONTROL_LOCK_RECOVERY_COMMAND =
+  'nevo-specflow specs documents recover --confirmed-stopped';
+
 /**
  * Releases the control lock ONLY on positive evidence that its holder is gone (ADR 0027: a lock is
  * released only on positive evidence that its owner is gone). The evidence is the dead proof of the
@@ -176,10 +186,14 @@ export interface AbandonedLockOptions {
  * - it names this very process and thread, which does not hold it (a section of this process that
  *   failed after creating the file).
  *
- * A lock written before the owner was recorded has only a PID: an absent PID is the evidence. A
- * live holder is never released, and neither is one that cannot be judged (another host or
- * platform, a live PID without a comparable start time, unreadable metadata): fail closed. The file
- * is read again just before the removal and must be byte-identical to the one judged.
+ * A lock written before the owner was recorded has only a PID, and a PID absent from this host's
+ * process table proves nothing about a holder on another platform over the same files (WSL, a
+ * container): it is `holder-unknown`. A live holder is never released, and neither is one that cannot
+ * be judged: fail closed.
+ *
+ * The removal is serialised: it runs under the exclusive breaker file (`withLockBreaker`), and only
+ * if the lock is still byte-identical to the one judged. Two waiters that judged the same dead lock
+ * therefore remove it once: the second sees the first's new lock (or none) and leaves it alone.
  */
 export async function releaseAbandonedProjectControlLock(
   context: ResolvedProjectHome,
@@ -211,18 +225,29 @@ export async function releaseAbandonedProjectControlLock(
   }
 
   const table = options.table ?? nodeProcessTable;
-  const verdict = await judgeOwner(inspected, options.own ?? (await ownExecutorIdentity()), table);
+  const own = options.own ?? (await ownExecutorIdentity());
+  const verdict = await judgeOwner(inspected, own, table);
   if (verdict !== 'gone') {
     return { status: 'kept', reason: verdict };
   }
 
-  // The record must still be the one judged: a holder that released it and another that took it is left alone.
-  const after = await readFileWindowsSafe(path).catch(() => undefined);
-  if (after !== before || heldHere.has(path)) {
+  const removed = await withLockBreaker(context, own, table, async () => {
+    // The record must still be the one judged: a holder that released it and another that took it
+    // is left alone. Every remover is serialised here, so nothing replaces the lock between the
+    // comparison and the removal except a new exclusive create, which needs the path free.
+    const after = await readFileWindowsSafe(path).catch(() => undefined);
+    if (after !== before || heldHere.has(path)) {
+      return false;
+    }
+
+    await unlinkWindowsSafe(path);
+
+    return true;
+  });
+  if (!removed) {
     return { status: 'kept', reason: 'changed' };
   }
 
-  await unlinkWindowsSafe(path);
   if (releaseChannel.hasSubscribers) {
     try {
       releaseChannel.publish({ projectId: context.project.projectId, pid: inspected.pid });
@@ -240,14 +265,8 @@ async function judgeOwner(
   table: ProcessTable,
 ): Promise<'gone' | 'holder-alive' | 'holder-unknown'> {
   if (!held.owner) {
-    // Written before the owner was recorded: only an absent PID (never this process's own) is evidence.
-    if (held.pid === own.pid) {
-      return 'holder-unknown';
-    }
-
-    const probed = table.probe?.(held.pid) ?? 'unknown';
-
-    return probed === 'dead' ? 'gone' : probed === 'alive' ? 'holder-alive' : 'holder-unknown';
+    // Written before the owner was recorded: nothing says it came from this host and platform.
+    return 'holder-unknown';
   }
 
   switch (await proveExecutorState(held.owner, own, table)) {
@@ -260,6 +279,99 @@ async function judgeOwner(
       return 'holder-alive';
     default:
       return 'holder-unknown';
+  }
+}
+
+const BREAKER_SUFFIX = '.breaker';
+
+interface BreakerRecord {
+  readonly version: 1;
+  readonly token: string;
+  readonly owner: ExecutorIdentity;
+  readonly createdAt: string;
+}
+
+/**
+ * Runs `remove` while holding the breaker of the control lock: an exclusive file next to it that
+ * only removers of an abandoned lock take, for the few microseconds of one compare-and-remove. It is
+ * published whole (written to a staged file, then hard-linked into place, which fails when it
+ * exists), so it never exists without its owner. A breaker held by another remover answers `false`
+ * (the caller retries later). A breaker whose owner is provably gone (killed inside that section) is
+ * removed under the same byte comparison and the call answers `false`; one that cannot be judged
+ * stays, and so does the lock, for the operator.
+ */
+async function withLockBreaker(
+  context: ResolvedProjectHome,
+  own: ExecutorIdentity,
+  table: ProcessTable,
+  remove: () => Promise<boolean>,
+): Promise<boolean> {
+  const path = projectControlLockPath(context) + BREAKER_SUFFIX;
+  const token = randomUUID();
+  const record: BreakerRecord = {
+    version: 1,
+    token,
+    owner: own,
+    createdAt: new Date().toISOString(),
+  };
+  const staged = join(context.project.stateRoot, 'engine', `.breaker-${token}.tmp`);
+  await writeFile(staged, JSON.stringify(record) + '\n', { flag: 'wx', mode: 0o600 });
+  try {
+    try {
+      await link(staged, path);
+    } catch (error) {
+      if (isNodeError(error, 'EEXIST')) {
+        await clearAbandonedBreaker(path, own, table);
+
+        return false;
+      }
+
+      throw error;
+    }
+  } finally {
+    await unlinkWindowsSafe(staged).catch(() => undefined);
+  }
+
+  try {
+    return await remove();
+  } finally {
+    const current = await readFileWindowsSafe(path).catch(() => undefined);
+    if (current !== undefined && parseBreaker(current)?.token === token) {
+      await unlinkWindowsSafe(path);
+    }
+  }
+}
+
+async function clearAbandonedBreaker(
+  path: string,
+  own: ExecutorIdentity,
+  table: ProcessTable,
+): Promise<void> {
+  const before = await readFileWindowsSafe(path).catch(() => undefined);
+  const breaker = before === undefined ? undefined : parseBreaker(before);
+  // Another thread of this process, a live remover or an owner nothing judges: left alone.
+  if (!breaker || (await proveExecutorState(breaker.owner, own, table)) !== 'dead') {
+    return;
+  }
+
+  const after = await readFileWindowsSafe(path).catch(() => undefined);
+  if (after === before) {
+    await unlinkWindowsSafe(path).catch(() => undefined);
+  }
+}
+
+function parseBreaker(source: string): BreakerRecord | undefined {
+  try {
+    const value = JSON.parse(source) as Partial<BreakerRecord>;
+
+    return value.version === 1 &&
+      typeof value.token === 'string' &&
+      typeof value.createdAt === 'string' &&
+      isExecutorIdentity(value.owner)
+      ? (value as BreakerRecord)
+      : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -337,6 +449,7 @@ async function attemptProjectControlLock<T>(
   let acquiredAt = 0;
   let file;
   let ownerCheckedAt: number | undefined;
+  let lastVerdict: AbandonedLockRelease | undefined;
   while (true) {
     try {
       file = await open(path, 'wx', 0o600);
@@ -369,16 +482,29 @@ async function attemptProjectControlLock<T>(
         if (released?.status === 'released' || released?.status === 'free') {
           continue;
         }
+
+        lastVerdict = released;
       }
 
       if (Date.now() >= deadline) {
         const inspected = await inspectProjectControlLock(context);
+        if (inspected.status === 'corrupt') {
+          throw new ProjectControlLockError(
+            'CONTROL_LOCK_CORRUPT',
+            `The project control lock has no readable owner. Stop every SpecFlow process of this project, then run \`${CONTROL_LOCK_RECOVERY_COMMAND}\`.`,
+          );
+        }
+
+        if (lastVerdict?.status === 'kept' && lastVerdict.reason === 'holder-unknown') {
+          throw new ProjectControlLockError(
+            'CONTROL_LOCK_RECOVERY_REQUIRED',
+            `The project control lock is held by a process SpecFlow cannot prove stopped. Stop every SpecFlow process of this project, then run \`${CONTROL_LOCK_RECOVERY_COMMAND}\`.`,
+          );
+        }
 
         throw new ProjectControlLockError(
-          inspected.status === 'corrupt' ? 'CONTROL_LOCK_CORRUPT' : 'CONTROL_LOCK_BUSY',
-          inspected.status === 'corrupt'
-            ? 'Control lock needs explicit recovery. No automatic lock deletion is safe.'
-            : 'Another process owns the project control lock; retry after it settles.',
+          'CONTROL_LOCK_BUSY',
+          'Another process owns the project control lock; retry after it settles.',
         );
       }
 

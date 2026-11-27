@@ -9,6 +9,9 @@ import type { OperationProgressRegistry } from '../../operations';
 /** Journal failure codes that mean "an operator must repair this", not "the request failed". */
 const RECOVERY_CODES: ReadonlySet<string> = new Set([
   'CREATE_RECOVERY_REQUIRED',
+  'CREATE_GIT_UNSETTLED',
+  'CONTROL_LOCK_RECOVERY_REQUIRED',
+  'CONTROL_LOCK_CORRUPT',
   'CREATE_JOURNAL_CORRUPT',
   'CREATE_JOURNAL_UNSUPPORTED',
   'REGISTRY_RECOVERY_REQUIRED',

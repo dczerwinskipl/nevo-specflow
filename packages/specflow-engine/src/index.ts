@@ -50,12 +50,19 @@ export {
 } from './specs/workspaces/inspection';
 
 export {
+  CONTROL_LOCK_RECOVERY_COMMAND,
   ProjectControlLockError,
   releaseAbandonedProjectControlLock,
   type AbandonedLockRelease,
   type ProjectControlLockErrorCode,
 } from './project/control-lock';
-export { setProcessStartTimeSource } from './specs/durable/executor-identity';
+export {
+  isExecutorIdentity,
+  ownExecutorIdentity,
+  proveExecutorState,
+  setProcessStartTimeSource,
+  type ExecutorIdentity,
+} from './specs/durable/executor-identity';
 
 export { readRegistrySnapshot, type SpecFlowEngine } from './application';
 export { openSpecFlowEngine } from './engine';

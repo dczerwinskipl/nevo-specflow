@@ -641,7 +641,10 @@
         "title": "Creation needs to be completed",
         "body": "Nevo started preparing the workspace but did not confirm the result. Do not create the specification again — it could duplicate the branch and folder. The form is locked until the check is done.",
         "inProgress": "The operation is still in progress.",
-        "pending": "The operation still needs to be completed."
+        "pending": "The operation still needs to be completed.",
+        "git": "The Runtime stopped while Git was working on this specification. Make sure no Git process of it still runs (and remove a leftover .git/index.lock), then finish it from the command line.",
+        "lock": "A SpecFlow process that SpecFlow cannot prove stopped still holds the project lock. Stop every SpecFlow process of this project, then clear the lock from the command line.",
+        "nextStep": "Next step:"
       },
       "branchExistsAutomatic": {
         "title": "Nevo could not choose a free branch name",
@@ -720,7 +723,11 @@
         "title": "The archetypes changed while you were filling the form",
         "body": "The specification was not created. Your entries are kept: refresh the archetypes and check your choice."
       },
-      "refreshArchetypes": "Refresh archetypes"
+      "refreshArchetypes": "Refresh archetypes",
+      "interrupted": {
+        "title": "Creation stopped with the Runtime",
+        "body": "The Runtime stopped before this specification was created and did not continue it. Nothing was created. Try again with the same settings, or go back to the form."
+      }
     },
     "workspace": {
       "heading": "Workspace",

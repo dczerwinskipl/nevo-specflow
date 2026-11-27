@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { ownExecutorIdentity, type ExecutorIdentity } from '@nevo/specflow-engine';
 import {
   bootstrapProjectHome,
   createSpecificationForTesting,
@@ -395,8 +396,26 @@ const requests = (engine: SpecFlowEngine) =>
   );
 
 describe('a Create in flight when the Runtime died (real Git)', () => {
+  /** The principal of the test's developer, as a request records it. */
+  const OWNER = JSON.stringify({ kind: 'user', id: 'demo-user' });
+
+  /** The Runtime that accepted it: a process that no longer runs. */
+  const killedRuntime = async (): Promise<ExecutorIdentity> => ({
+    ...(await ownExecutorIdentity()),
+    pid: deadPid(),
+  });
+
   /** What the killed Runtime had written before it died: the request and the first-step intent. */
-  async function accepted(engine: SpecFlowEngine, operationId: string, title: string) {
+  async function accepted(
+    engine: SpecFlowEngine,
+    operationId: string,
+    title: string,
+    record: {
+      executor?: ExecutorIdentity | null;
+      resumed?: true;
+      principal?: string;
+    } = {},
+  ) {
     const body = {
       ...ARCHETYPE_REQUEST,
       operationId,
@@ -405,17 +424,20 @@ describe('a Create in flight when the Runtime died (real Git)', () => {
       target: { kind: 'existing' as const, workspaceId: engine.workspace.workspaceId },
     };
     const before = new Date(Date.now() - 60_000).toISOString();
+    const executor = record.executor === undefined ? await killedRuntime() : record.executor;
     await requests(engine).write({
       version: 1,
       operationId,
-      principal: 'owner-principal',
+      principal: record.principal ?? OWNER,
       request: body,
       createdAt: before,
+      ...(executor ? { executor } : {}),
+      ...(record.resumed ? { resumed: true as const } : {}),
     });
     await createFileFirstStepIntentStore(firstStepIntentDirectory(engine)).write({
       version: 1,
       operationId,
-      principal: 'owner-principal',
+      principal: record.principal ?? OWNER,
       request: firstStep,
       step: { id: 'requirements', title: 'Gather requirements' },
       createdAt: before,
@@ -434,7 +456,7 @@ describe('a Create in flight when the Runtime died (real Git)', () => {
     const settled = await first.untilSettled(operationId);
     expect(settled).toMatchObject({ status: 'completed', firstStep: { status: 'started' } });
     await vi.waitFor(() => expect(start).toHaveBeenCalledTimes(1));
-    expect(start.mock.calls[0]![0]).toMatchObject({ operationId, principal: 'owner-principal' });
+    expect(start.mock.calls[0]![0]).toMatchObject({ operationId, principal: OWNER });
     expect(await requests(engine).read(operationId)).toBeUndefined();
     expect((await engine.readRegistry()).specBindings).toHaveLength(1);
     await first.app.close();
@@ -499,6 +521,43 @@ describe('a Create in flight when the Runtime died (real Git)', () => {
     },
     240000,
   );
+
+  it.each([
+    ['its accepting Runtime cannot be judged', { executor: null }, 'CREATE_INTERRUPTED'],
+    ['an earlier start already reran it', { resumed: true as const }, 'CREATE_INTERRUPTED'],
+    [
+      'its principal may no longer create',
+      { principal: JSON.stringify({ kind: 'user', id: 'nobody' }) },
+      'CREATE_RESUME_FORBIDDEN',
+    ],
+  ])(
+    'settles, instead of rerunning, a Create when %s',
+    async (_case, record, code) => {
+      const engine = await project();
+      const operationId = randomUUID();
+      await accepted(engine, operationId, 'Not rerun', record);
+      const { starter, start } = fakeStarter();
+      const { inspect } = await server(engine, starter);
+      await vi.waitFor(async () =>
+        expect((await inspect(operationId)).json()).toMatchObject({ status: 'failed', code }),
+      );
+      expect(start).not.toHaveBeenCalled();
+      expect((await engine.readRegistry()).specBindings).toHaveLength(0);
+    },
+    240000,
+  );
+
+  it('leaves a Create whose accepting Runtime still runs to it', async () => {
+    const engine = await project();
+    const operationId = randomUUID();
+    await accepted(engine, operationId, 'Still running', { executor: await ownExecutorIdentity() });
+    const { starter, start } = fakeStarter();
+    const { inspect } = await server(engine, starter);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect((await inspect(operationId)).json()).toMatchObject({ status: 'in-progress' });
+    expect(start).not.toHaveBeenCalled();
+    expect((await engine.readRegistry()).specBindings).toHaveLength(0);
+  }, 240000);
 
   it('keeps a Create that was refused readable as failed, never "not found"', async () => {
     const engine = await project();

@@ -53,6 +53,8 @@ export function createFailureTitleKey(failure: CreateFailure): MessageKey {
       return 'create.errors.offline.title';
     case 'failed':
       return 'create.errors.failed.title';
+    case 'interrupted':
+      return 'create.errors.interrupted.title';
   }
 }
 
@@ -98,7 +100,27 @@ function bodyKey(failure: CreateFailure): MessageKey {
       return failure.operationFailed
         ? 'create.errors.failed.bodyOperation'
         : 'create.errors.failed.body';
+    case 'interrupted':
+      return 'create.errors.interrupted.body';
   }
+}
+
+/** The exact command an operator runs for a recovery the Runtime can name (shown, never run). */
+export function recoveryCommand(
+  failure: CreateFailure,
+  operationId: string | undefined,
+): string | undefined {
+  if (failure.kind !== 'recovery-required') {
+    return undefined;
+  }
+
+  if (failure.cause === 'lock') {
+    return 'nevo-specflow specs documents recover --confirmed-stopped';
+  }
+
+  return failure.cause === 'git' && operationId
+    ? `nevo-specflow specs recover ${operationId} --confirmed-stopped --confirmed-git-stopped`
+    : undefined;
 }
 
 /** Facts of a sent operation; the label of each is a catalogue key, the value is data. */
@@ -169,6 +191,15 @@ export function CreateFailureAlert({
             })
           : t(bodyKey(failure))}
       </p>
+      {failure.kind === 'recovery-required' && failure.cause && (
+        <RecoveryNextStep
+          cause={failure.cause}
+          command={recoveryCommand(
+            failure,
+            details.find((detail) => detail.id === 'operation')?.value,
+          )}
+        />
+      )}
       {failure.kind === 'recovery-required' && status && (
         <p className="mt-2">
           {status.status === 'in-progress'
@@ -268,5 +299,22 @@ export function CreateFailureAlert({
         </Button>
       )}
     </Alert>
+  );
+}
+
+/** What stopped the operation and the exact next step, before anyone acts (explain before action). */
+function RecoveryNextStep({ cause, command }: { cause: 'git' | 'lock'; command?: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="mt-2 grid gap-1">
+      <p>{t(cause === 'git' ? 'create.errors.recovery.git' : 'create.errors.recovery.lock')}</p>
+      {command && (
+        <p>
+          {t('create.errors.recovery.nextStep')}{' '}
+          <code className="[overflow-wrap:anywhere]">{command}</code>
+        </p>
+      )}
+    </div>
   );
 }

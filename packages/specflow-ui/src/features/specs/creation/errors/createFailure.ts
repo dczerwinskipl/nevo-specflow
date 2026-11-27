@@ -35,7 +35,22 @@ export type CreateFailure =
    * (`COMMIT_FAILED`): the files exist, an operator resumes the operation. Absent: the generic
    * journal recovery, the details of which the code does not tell.
    */
-  | { kind: 'recovery-required'; committed?: true }
+  | {
+      kind: 'recovery-required';
+      committed?: true;
+      /**
+       * Why only an operator can go on, when the Runtime knows: `git`, a Git command of the stopped
+       * Create may still run (`CREATE_GIT_UNSETTLED`); `lock`, the project control lock is held by
+       * a process nothing proves stopped (`CONTROL_LOCK_RECOVERY_REQUIRED`, `CONTROL_LOCK_CORRUPT`).
+       * The page names the exact command.
+       */
+      cause?: 'git' | 'lock';
+    }
+  /**
+   * The Runtime stopped before the specification was created and did not continue it
+   * (`CREATE_INTERRUPTED`): nothing was created; trying again with the same operation is safe.
+   */
+  | { kind: 'interrupted' }
   /**
    * The Engine does not commit on the branch (`BRANCH_PROTECTED`, project configuration), so
    * nothing was created. `cause` says which choice led there: the owner's own branch name

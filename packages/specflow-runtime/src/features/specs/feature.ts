@@ -26,6 +26,7 @@ import type {
   WorkspaceContributions,
 } from './workspace/repository';
 import type { SessionReferenceOwner } from '../sessions';
+import type { RequestAuthorization } from '../auth';
 import type { OperationEventsStreamOptions, OperationProgressRegistry } from '../operations';
 
 export interface SpecsFeatureDependencies {
@@ -49,6 +50,8 @@ export interface SpecsFeatureDependencies {
   readonly firstStepStarter?: FirstStepStarter;
   /** Replaces the first-step intent owner (tests). */
   readonly firstStep?: CreateFirstStep;
+  /** The authorization of a stored principal (the startup rerun of a Create checks it again). */
+  readonly authorizePrincipal?: (principal: string) => RequestAuthorization | undefined;
   /** Generic operation progress registry; absent disables live progress. */
   readonly progress?: {
     readonly registry: OperationProgressRegistry;
@@ -99,6 +102,9 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
       app.register(specsCreateEndpoint, {
         engine: options.dependencies?.engine,
         ...(firstStep ? { firstStep } : {}),
+        ...(options.dependencies?.authorizePrincipal
+          ? { authorizePrincipal: options.dependencies.authorizePrincipal }
+          : {}),
         projectId,
         ...(options.dependencies?.progress
           ? {

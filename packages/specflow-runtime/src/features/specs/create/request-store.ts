@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promise
 import { join } from 'node:path';
 
 import { CreateSpecRequestSchema } from '@nevo/specflow-contracts/specs';
+import { isExecutorIdentity, type ExecutorIdentity } from '@nevo/specflow-engine';
 import { OperationIdSchema } from '@nevo/specflow-contracts/operations';
 import { Type, type Static } from 'typebox';
 import { Value } from 'typebox/value';
@@ -22,6 +23,16 @@ const StoredCreateRequestSchema = Type.Object(
     /** The request body, with `operationId` set. */
     request: CreateSpecRequestSchema,
     createdAt: Type.String(),
+    /**
+     * The process that runs it (the accepting Runtime, or the one that resumed it): a later Runtime
+     * reruns the Create only on positive evidence that this process is gone (ADR 0027).
+     */
+    executor: Type.Optional(Type.Unsafe<ExecutorIdentity>(Type.Object({}))),
+    /**
+     * A Runtime start already reran it once: it is never rerun again, the next start settles it with
+     * a reason instead (a Specification never appears days after the owner started it).
+     */
+    resumed: Type.Optional(Type.Literal(true)),
     /**
      * How the last run ended without a result: `definite` is a refusal (nothing was or will be
      * created by this run), otherwise the outcome stays open and the next Runtime start tries again.
@@ -79,7 +90,10 @@ export function createFileCreateRequestStore(directory: () => string): CreateReq
     try {
       const value: unknown = JSON.parse(text);
 
-      return Value.Check(StoredCreateRequestSchema, value) ? value : undefined;
+      return Value.Check(StoredCreateRequestSchema, value) &&
+        (value.executor === undefined || isExecutorIdentity(value.executor))
+        ? value
+        : undefined;
     } catch {
       return undefined;
     }

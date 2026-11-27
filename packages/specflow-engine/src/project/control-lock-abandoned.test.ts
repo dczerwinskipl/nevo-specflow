@@ -78,12 +78,16 @@ describe('release of an abandoned control lock (positive evidence only)', () => 
     expect(existsSync(projectControlLockPath(home))).toBe(false);
   });
 
-  it('releases a lock written before owners were recorded when its PID is not running', async () => {
+  it('keeps a lock written before owners were recorded, even when its PID is not running here', async () => {
     const home = fakeHome();
+    // Nothing says it came from this host and platform: WSL or a container over the same files
+    // reads as "no such process" from Windows.
     writeLock(home, 1184488);
-    expect(await releaseAbandonedProjectControlLock(home, { own, table: os({}) })).toMatchObject({
-      status: 'released',
+    expect(await releaseAbandonedProjectControlLock(home, { own, table: os({}) })).toEqual({
+      status: 'kept',
+      reason: 'holder-unknown',
     });
+    expect(existsSync(projectControlLockPath(home))).toBe(true);
   });
 
   it('never releases a lock whose holder runs', async () => {
@@ -110,11 +114,11 @@ describe('release of an abandoned control lock (positive evidence only)', () => 
     expect(
       await releaseAbandonedProjectControlLock(home, { own, table: os({ 200: undefined }) }),
     ).toEqual({ status: 'kept', reason: 'holder-unknown' });
-    // A lock without an owner whose PID runs again: only the PID is known, so it is the holder's.
+    // A lock without an owner: only the PID is known, which proves nothing either way.
     writeLock(home, 300);
     expect(
       await releaseAbandonedProjectControlLock(home, { own, table: os({ 300: '1' }) }),
-    ).toEqual({ status: 'kept', reason: 'holder-alive' });
+    ).toEqual({ status: 'kept', reason: 'holder-unknown' });
     expect(existsSync(projectControlLockPath(home))).toBe(true);
   });
 

@@ -5,6 +5,7 @@ import {
   CreateOperationError,
   createSpecificationFromRequest,
   projectCreatedSpecification,
+  ownExecutorIdentity,
   readRegistrySnapshot,
   willCommitCreatedScaffold,
   type CreateSpecificationRequest,
@@ -40,7 +41,13 @@ export interface RunCreateInput {
    * operation is not resumed by the Runtime.
    */
   readonly requests?:
-    | { readonly store: CreateRequestStore; readonly principal: string; readonly now?: () => Date }
+    | {
+        readonly store: CreateRequestStore;
+        readonly principal: string;
+        readonly now?: () => Date;
+        /** The Runtime startup's one rerun of a Create an earlier Runtime did not see through. */
+        readonly resumed?: true;
+      }
     | undefined;
 }
 
@@ -96,6 +103,9 @@ export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome
       principal: earlier?.principal ?? requests.principal,
       request: { ...body, operationId },
       createdAt: earlier?.createdAt ?? (requests.now ?? (() => new Date()))().toISOString(),
+      // This process runs it now: a later Runtime reruns it only once this process is proven gone.
+      executor: await ownExecutorIdentity(),
+      ...(requests.resumed ? { resumed: true as const } : {}),
     });
   }
 

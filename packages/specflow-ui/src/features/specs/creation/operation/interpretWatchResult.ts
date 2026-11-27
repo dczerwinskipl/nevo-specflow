@@ -38,8 +38,13 @@ export function interpretWatchResult(
   switch (result.kind) {
     case 'completed':
       return { kind: 'completed', created: result.created };
-    case 'recovery-required':
-      return open({ kind: 'recovery-required' });
+    case 'recovery-required': {
+      // A cause the page can name (Git of the stopped Create, an unjudgeable project lock).
+      const named = result.code === undefined ? undefined : toOperationFailure(result.code);
+
+      return open(named?.kind === 'recovery-required' ? named : { kind: 'recovery-required' });
+    }
+
     case 'not-started':
       return open({ kind: 'uncertain' }, 'notStarted');
     case 'unresolved': {
@@ -58,6 +63,16 @@ export function interpretWatchResult(
 
     case 'operation-failed': {
       const failure = toOperationFailure(result.code, sent);
+      // Nothing was created, and the same operation may be sent again: it stays retained (Try again).
+      if (failure.kind === 'interrupted') {
+        return {
+          kind: 'failed',
+          failure,
+          releaseStorage: false,
+          discardAttempt: false,
+          announce: 'operationFailed',
+        };
+      }
 
       return isDefinite(failure) ? refused(failure, 'operationFailed') : open(failure);
     }

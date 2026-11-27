@@ -360,15 +360,46 @@ describe('E2.T04 — actual process termination and fresh-process recovery', () 
     const input = request(engine, 'Retried after git', true);
     expect(await killAtCheckpoint(root, input, 'git')).toBe('git');
     const started = Date.now();
-    expect(
-      await replay(root, input, { mode: 'retry', expectError: 'CREATE_RECOVERY_REQUIRED' }),
-    ).toBe('expected:CREATE_RECOVERY_REQUIRED');
+    expect(await replay(root, input, { mode: 'retry', expectError: 'CREATE_GIT_UNSETTLED' })).toBe(
+      'expected:CREATE_GIT_UNSETTLED',
+    );
     // It does not follow a journal nothing will advance (the reader would wait 90 s).
     expect(Date.now() - started).toBeLessThan(60000);
     expect((await inspectCreateSpecification(engine, input.operationId))?.stage).toBe(
       'git-initiated',
     );
   }, 150000);
+
+  it('R10: a Git lock left in the checkout of a commit-writing Create fences the retry until it goes', async () => {
+    const { root, engine } = await project(true);
+    git(root, 'checkout', '-q', '-b', 'develop');
+    const parent = git(root, 'rev-parse', 'HEAD');
+    const input = request(engine, 'Commit lock held');
+    // Killed right after its Git commit, before the journal recorded it: still `commit-writing`.
+    expect(await killAtCheckpoint(root, input, 'commit')).toBe('commit');
+    expect((await inspectCreateSpecification(engine, input.operationId))?.stage).toBe(
+      'commit-writing',
+    );
+    // As if the killed Runtime's `git commit` still ran: its index lock is held.
+    const lock = join(root, '.git', 'index.lock');
+    await writeFile(lock, '');
+    const started = Date.now();
+    expect(await replay(root, input, { mode: 'retry', expectError: 'CREATE_GIT_UNSETTLED' })).toBe(
+      'expected:CREATE_GIT_UNSETTLED',
+    );
+    // It waited for the Git, bounded, then failed closed instead of committing alongside it.
+    expect(Date.now() - started).toBeGreaterThanOrEqual(9000);
+    expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
+
+    // The Git finishes while a retry waits: the retry goes on, and commits nothing twice.
+    const waiting = replay(root, input, { mode: 'retry' });
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await rm(lock);
+    const output = JSON.parse(await waiting) as { specId: string };
+    expect(output.specId).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
+    expect((await inspectCreateSpecification(engine, input.operationId))?.stage).toBe('completed');
+  }, 180000);
 
   it('unavailable unrelated bound Spec blocks create intentionally until global slug ownership is provable', async () => {
     const { root, engine } = await project();

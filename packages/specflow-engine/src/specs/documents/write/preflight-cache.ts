@@ -63,7 +63,7 @@ async function statToken(path: string): Promise<string> {
   }
 }
 
-async function gitDirectoryOf(root: string): Promise<string | undefined> {
+export async function gitDirectoryOf(root: string): Promise<string | undefined> {
   const dotGit = join(root, '.git');
   const stat = await lstat(dotGit);
   if (stat.isDirectory()) {
@@ -86,7 +86,7 @@ async function gitDirectoryOf(root: string): Promise<string | undefined> {
  * state (HEAD, index, merge and rebase state) lives in the worktree's own directory; `info/exclude` and
  * `config` live here.
  */
-async function commonDirectoryOf(gitDirectory: string): Promise<string> {
+export async function commonDirectoryOf(gitDirectory: string): Promise<string> {
   const text = await readSmall(join(gitDirectory, 'commondir')).catch(() => undefined);
   const target = text?.trim();
   if (target === undefined || target === '') {

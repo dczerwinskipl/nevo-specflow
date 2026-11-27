@@ -35,6 +35,15 @@ export const createSpecErrorCodes: ErrorCodeTable = {
   // A workspace or Specification vanished between reading the options and creating (answered 503).
   SPEC_NOT_FOUND: { kind: 'precondition', outcome: 'not-applied' },
   CREATE_RECOVERY_REQUIRED: { kind: 'recovery-required', outcome: 'unknown' },
+  // A Git command of the stopped Create may still run: an operator resumes it.
+  CREATE_GIT_UNSETTLED: { kind: 'recovery-required', outcome: 'unknown' },
+  // The project control lock is held by a process nothing proves stopped: an operator clears it.
+  CONTROL_LOCK_RECOVERY_REQUIRED: { kind: 'recovery-required', outcome: 'unknown' },
+  CONTROL_LOCK_CORRUPT: { kind: 'recovery-required', outcome: 'unknown' },
+  // The Runtime stopped before anything was reserved and did not continue: nothing was created.
+  CREATE_INTERRUPTED: { kind: 'conflict', outcome: 'not-applied' },
+  // The principal who asked may no longer create: the Runtime did not continue it as them.
+  CREATE_RESUME_FORBIDDEN: { kind: 'forbidden', outcome: 'not-applied' },
   CREATE_JOURNAL_CORRUPT: { kind: 'recovery-required', outcome: 'unknown' },
   REGISTRY_RECOVERY_REQUIRED: { kind: 'recovery-required', outcome: 'unknown' },
   GIT_OPERATION_UNCERTAIN: { kind: 'recovery-required', outcome: 'unknown' },
@@ -99,6 +108,18 @@ export function toCreateFailure(error: ApiError, sent: SentCreate = {}): CreateF
 
   if (code === 'COMMIT_BLOCKED') {
     return { kind: 'commit-blocked' };
+  }
+
+  if (code === 'CREATE_INTERRUPTED') {
+    return { kind: 'interrupted' };
+  }
+
+  if (code === 'CREATE_GIT_UNSETTLED') {
+    return { kind: 'recovery-required', cause: 'git' };
+  }
+
+  if (code === 'CONTROL_LOCK_RECOVERY_REQUIRED' || code === 'CONTROL_LOCK_CORRUPT') {
+    return { kind: 'recovery-required', cause: 'lock' };
   }
 
   if (code === 'DOCUMENT_PATH_INVALID') {

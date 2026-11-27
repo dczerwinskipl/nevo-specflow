@@ -6,6 +6,7 @@ import { verifyScaffold, writeScaffoldWithEvidence } from './scaffold-writer';
 import type { WindowsPathBoundOptions } from './path-bound';
 import { reserveCreateOperation, writingSlugsByWorkspace } from './reservation/reservation';
 import { followExistingCreateOperation } from './reservation/observation';
+import { waitForOrphanCommit } from './git/orphan-git';
 import {
   nodeProcessTable,
   ownExecutorIdentity,
@@ -197,9 +198,10 @@ async function isGitDisabled(engine: SpecFlowEngine): Promise<boolean> {
  * Whether a retry takes an unfinished journal over: only on positive evidence that its executor is
  * gone (ADR 0027): the recorded process is provably dead (its PID absent, or reused by a process
  * with another start time, or another boot). A live, unknown or same-process executor is followed
- * as before (a retry is only a reader). The journal then names this process as its executor (a compare-and-set: a concurrent taker wins
- * or loses cleanly). `git-initiated` is never taken over this way: a Git child of the dead executor
- * may still run, which only an operator can confirm settled.
+ * as before (a retry is only a reader). The journal then names this process as its executor (a
+ * compare-and-set: a concurrent taker wins or loses cleanly). `git-initiated` is never taken over
+ * this way, and `commit-writing` only once no commit lock of the checkout is held: a Git child of the
+ * dead executor may still run, which only an operator can confirm settled.
  */
 async function takeOverStoppedExecutor(
   engine: SpecFlowEngine,
@@ -215,6 +217,16 @@ async function takeOverStoppedExecutor(
   }
 
   if (record.stage === 'git-initiated') {
+    return 'stopped-in-git';
+  }
+
+  // A `git commit` the dead executor started may outlive it (Windows does not kill child processes
+  // with their parent): its locks are waited for, and a lock that stays fences the takeover.
+  if (
+    record.stage === 'commit-writing' &&
+    record.commit &&
+    !(await waitForOrphanCommit(record.target.workspaceRoot, record.commit.branch))
+  ) {
     return 'stopped-in-git';
   }
 
@@ -257,8 +269,13 @@ async function createWithVerifiedIntent(
       : undefined;
   if (takeover === 'stopped-in-git') {
     // Nothing will advance this journal: answer at once instead of following it.
-    throw recovery(
-      'Create stopped while Git was creating its worktree; confirm Git settled to resume it.',
+    const command = `nevo-specflow specs recover ${operationId} --confirmed-stopped --confirmed-git-stopped`;
+
+    throw new CreateOperationError(
+      'CREATE_GIT_UNSETTLED',
+      record.stage === 'git-initiated'
+        ? `Create stopped while Git was creating its worktree. Check that no Git process of it runs, then run \`${command}\`.`
+        : `Create stopped while Git was committing its files and a Git lock is still held. Check that no Git process runs, remove a stale .git/index.lock, then run \`${command}\`.`,
     );
   }
 

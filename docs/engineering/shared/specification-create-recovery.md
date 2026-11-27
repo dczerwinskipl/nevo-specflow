@@ -28,14 +28,17 @@ writer). The journal keeps holding its slug, its branch/worktree path and (for a
 capacity slot until it is resolved; the 7 day retention only removes `completed` journals.
 
 **Automatic resume after a Runtime crash.** The journal records its executor (PID, start time, host).
-The Runtime records every Create it accepts before the Engine reserves anything and, at its next start, runs
-each one again with the same operation id: a journal whose executor is provably gone (its PID not running,
-or reused by a process with another start or creation time) is taken over and completed, a Create that died
-before its reservation is reserved now, and its first-step agent is started once
-([ADR 0027](../../architecture/decisions/0027-locks-released-only-on-positive-evidence.md)). Elapsed time
-never counts as evidence. What stays for the operator: a journal whose executor cannot be judged (another
-host, no recorded executor) and a journal stopped at `git-initiated`, where a Git child of the dead process
-may still run. **There is no HTTP or UI action for those (known gap).** What the operator can do:
+The Runtime records every Create it accepts before the Engine reserves anything and, at its next start only,
+reruns it once with the same operation id when the accepting Runtime is provably gone and the principal may
+still create: a journal whose executor is provably gone (its PID not running, or reused by a process with
+another start or creation time) is taken over and completed, a Create that died before its reservation is
+reserved now, and its first-step agent is started once
+([ADR 0027](../../architecture/decisions/0027-locks-released-only-on-positive-evidence.md)). Anything else is
+settled with a reason (`CREATE_INTERRUPTED`, `CREATE_RESUME_FORBIDDEN`) and offers Try again and Back to form.
+Elapsed time never counts as evidence. What stays for the operator: a journal whose executor cannot be judged
+(another host, no recorded executor), and a journal stopped at `git-initiated`, or at `commit-writing` with a
+Git commit lock still held, where a Git child of the dead process may still run (`CREATE_GIT_UNSETTLED`; the
+Create page shows the reason and the command below). What the operator can do:
 
 1. **Resume (preferred).** Stop whatever may still run the Create, then run
    `nevo-specflow specs recover <operation-id> --confirmed-stopped` (add `--confirmed-git-stopped` when the

@@ -505,6 +505,11 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_COMMIT_REFUSED',
   /** The project control lock (as in Close): only `CONTROL_LOCK_BUSY` is worth a retry. */
   'CONTROL_LOCK_BUSY',
+  /**
+   * The lock is held by an owner SpecFlow cannot prove stopped: stop every SpecFlow process of the
+   * project, then run `nevo-specflow specs documents recover --confirmed-stopped`.
+   */
+  'CONTROL_LOCK_RECOVERY_REQUIRED',
   'CONTROL_LOCK_CORRUPT',
   'CONTROL_LOCK_OWNERSHIP_LOST',
   'CONTROL_LOCK_INVALID_HOME',

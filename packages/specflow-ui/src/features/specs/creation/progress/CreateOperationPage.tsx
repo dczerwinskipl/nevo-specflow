@@ -374,7 +374,15 @@ export function CreateOperationPage({
             )}
             {view === 'refused' &&
               (retainable ? (
-                <Button onClick={() => void actions.retry()}>{t('create.page.tryAgain')}</Button>
+                <>
+                  <Button onClick={() => void actions.retry()}>{t('create.page.tryAgain')}</Button>
+                  {failure?.kind === 'interrupted' && (
+                    // Nothing was created: the owner may also change the settings first.
+                    <Button variant="secondary" onClick={() => backToForm()}>
+                      {t('create.page.backToForm')}
+                    </Button>
+                  )}
+                </>
               ) : (
                 <Button onClick={() => backToForm()}>{t('create.page.backToForm')}</Button>
               ))}

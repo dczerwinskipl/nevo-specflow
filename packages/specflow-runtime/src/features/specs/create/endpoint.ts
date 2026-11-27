@@ -1,6 +1,8 @@
 import {
   inspectCreateOptions,
   inspectPublicCreateOperation,
+  ownExecutorIdentity,
+  proveExecutorState,
   readArchetypeCatalogue,
   readPublicCreateOperationRow,
   type SpecFlowEngine,
@@ -27,7 +29,7 @@ import {
   SpecCapabilities,
 } from '@nevo/specflow-contracts/specs';
 
-import { requireCapability } from '../../auth';
+import { requireCapability, type RequestAuthorization } from '../../auth';
 import {
   deriveOperationStatus,
   registerOperationEventsRoute,
@@ -75,6 +77,11 @@ export interface SpecsCreateEndpointOptions {
   readonly projectId?: () => string | undefined;
   /** Replaces the Runtime's record of accepted Creates (tests); default: files under the Project Home state. */
   readonly requests?: CreateRequestStore;
+  /**
+   * The authorization of a stored principal, for the startup rerun of a Create (it runs without a
+   * request). Absent or undefined: the principal cannot be checked and the Create is not rerun.
+   */
+  readonly authorizePrincipal?: (principal: string) => RequestAuthorization | undefined;
 }
 
 /**
@@ -143,6 +150,35 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
             startedAt,
             now,
             stopped: () => closing,
+            executorState: async (executor) =>
+              proveExecutorState(executor, await ownExecutorIdentity()),
+            journalExists: async (operationId) =>
+              (await inspectPublicCreateOperation(resumeEngine, operationId)) !== undefined,
+            authorized: (record) => {
+              try {
+                const authz = options.authorizePrincipal?.(record.principal);
+                const projectId = options.projectId?.();
+                const scope: Readonly<Record<string, string>> =
+                  projectId === undefined ? {} : { projectId };
+
+                return (
+                  authz !== undefined &&
+                  authz.can({
+                    resource: SpecCapabilities,
+                    capability: SpecCapabilities.capabilities.Create,
+                    scope: {},
+                  }) &&
+                  (record.request.firstStep === undefined ||
+                    authz.can({
+                      resource: SpecCapabilities,
+                      capability: SpecCapabilities.capabilities.Manage,
+                      scope,
+                    }))
+                );
+              } catch {
+                return false;
+              }
+            },
             run: (record) =>
               runCreate({
                 engine: resumeEngine,
@@ -151,7 +187,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
                 progress: options.progress,
                 track,
                 onDetachedFailure: () => undefined,
-                requests: { store: requests, principal: record.principal, now },
+                requests: { store: requests, principal: record.principal, now, resumed: true },
                 ...(firstStep
                   ? { firstStep: { owner: firstStep, principal: record.principal } }
                   : {}),
@@ -350,7 +386,10 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
                 ? {
                     operationId: request.params.operationId,
                     kind: 'specification-create' as const,
-                    status: 'failed' as const,
+                    // A refusal is final; an open outcome names why only an operator can go on.
+                    status: accepted.failure.definite
+                      ? ('failed' as const)
+                      : ('recovery-required' as const),
                     code: accepted.failure.code,
                   }
                 : {
@@ -388,13 +427,15 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
           );
         }
 
-        if (accepted?.failure?.definite) {
-          // A refusal after the reservation (for example of a resumed run): the journal stays
-          // unfinished, the Runtime's record says how it ended.
+        if (accepted?.failure) {
+          // How the last run after the reservation ended (for example of a resumed run): the journal
+          // stays unfinished, the Runtime's record says why: a refusal, or what an operator must do.
           return reply.code(200).send({
             operationId: request.params.operationId,
             kind: 'specification-create' as const,
-            status: 'failed' as const,
+            status: accepted.failure.definite
+              ? ('failed' as const)
+              : ('recovery-required' as const),
             code: accepted.failure.code,
           });
         }

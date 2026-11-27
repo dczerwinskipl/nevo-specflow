@@ -46,6 +46,18 @@ describe('Create with a first-step intent needs Manage', () => {
     execFileSync('git', ['init', '-q'], { cwd: root });
     await mkdir(join(root, '.nevo'));
     await writeFile(join(root, '.nevo/config.yaml'), 'runtime: {}\ngit:\n  enabled: false\n');
+    await writeFile(join(root, '.gitignore'), '.nevo/local/\n');
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: root });
+    git('add', '.gitignore', '.nevo/config.yaml');
+    git(
+      '-c',
+      'user.name=SpecFlow Test',
+      '-c',
+      'user.email=specflow@example.invalid',
+      'commit',
+      '-qm',
+      'initial',
+    );
     const engine = await bootstrapProjectHome(root);
     await installDefinitionsForTesting(engine);
     const store = new InMemoryAuthenticationStore();

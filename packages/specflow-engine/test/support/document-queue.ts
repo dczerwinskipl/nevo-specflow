@@ -8,6 +8,9 @@ import { listDocumentBatches } from '../../src/specs/documents/queue/batch-store
 import { leasePath } from '../../src/specs/documents/queue/lease';
 import { SettleLedger, type QueueClock } from '../../src/specs/documents/queue/settle-ledger';
 import type { QueueDependencies } from '../../src/specs/documents/queue/types';
+import { openVersionControl } from '../../src/version-control';
+import { blocked } from '../../src/version-control/commits/commit-errors';
+import type { CommitPort } from '../../src/version-control/commits/port';
 import { findDocumentChangeJournal } from '../../src/specs/documents/write/journal-store';
 import { commitStaged, git } from './git-project';
 import { handBuiltSpecification } from './documents-fixture';
@@ -117,6 +120,21 @@ export async function alignWall(
 ): Promise<void> {
   const journal = await findDocumentChangeJournal(project.engine.context, operationId);
   clock.wallAt(Date.parse(journal!.queuedAt!));
+}
+
+/**
+ * The Git commit port of the project, refusing every commit at once as a held `index.lock` does
+ * (`COMMIT_BLOCKED`, `index-locked`). A real lock file makes each attempt wait out the port's lock
+ * retries (about 600 ms of wall-clock time) first, which a test of what the queue records for a
+ * failed attempt does not need and which, over many attempts, grows with the load of the machine.
+ */
+export function indexLockedCommits(project: QueueProject): CommitPort {
+  const real = openVersionControl(project.engine).commits;
+
+  return {
+    ...real,
+    commit: () => Promise.reject(blocked('index-locked')),
+  };
 }
 
 /** Dependencies with a ledger of their own, so tests never share settle state. */

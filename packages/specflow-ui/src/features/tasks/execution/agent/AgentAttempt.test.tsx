@@ -316,7 +316,9 @@ describe('a result that waits for the owner', () => {
     const { container } = renderNow('confirmation', { confirmResult });
 
     expect(screen.getByText(/Waiting for your confirmation/)).toBeTruthy();
-    expect(screen.getByText(/Five tasks cover the token exchange/)).toBeTruthy();
+    expect(screen.getByText('Tasks approved')).toBeTruthy();
+    // The result's feedback is one View feedback away (the Feedback view), never previewed here.
+    expect(screen.queryByText(/Five tasks cover the token exchange/)).toBeNull();
     expect(screen.getByText(/Confirming approves the 5 draft tasks \(t-01 to t-05\)/)).toBeTruthy();
     expect(actions(container)).toEqual(['Confirm', 'Reject']);
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
@@ -499,7 +501,7 @@ describe('the commit of a finished attempt', () => {
     );
 
     // One line of the Last hand-off: what was committed, then the commit's short id.
-    expect(await screen.findByText('1 document and 3 files committed · 3f9a1c7')).toBeTruthy();
+    expect(await screen.findByText('1 document and 3 files · 3f9a1c7')).toBeTruthy();
   });
 
   it('reads nothing when a person finished the step before', () => {

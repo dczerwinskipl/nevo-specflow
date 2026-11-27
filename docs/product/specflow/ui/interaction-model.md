@@ -337,6 +337,7 @@ comparison at 16 and 20 px across every icon here, states included, then by the 
 | Instructions          | ScrollText                     | Standing instructions (an agent's, a step's).             |
 | Artifacts             | Package                        | Files an agent produced.                                  |
 | Environment           | Container                      | Where a Session runs.                                     |
+| Owner decision        | UserCheck                      | The owner's Confirm or Reject of an agent's result.       |
 
 Document types declare their icon in their definition
 (`packages/specflow-engine/definitions/document-type/*.yaml`, `icon:`), and a typed document shows
@@ -395,7 +396,7 @@ header carries its title and state.
 (Continue, Start Implement, Approve). **Secondary** (`Button variant="secondary"`) is its
 alternative, at most one beside it (Take over, Run with agent). A **text action** (`TextAction` for
 an in-page action, `Link` for an address) leads to details (View dependencies, Open session, View
-full brief, Show feedback). An **icon action** (`IconButton`, or a header action with
+full brief, View feedback). An **icon action** (`IconButton`, or a header action with
 `presentation: 'icon'`) is a compact auxiliary action with a tooltip (copy, history, ⋯). Context in
 a Session is an icon action that shows its label from the split width (`labelWhenWide`), so it
 never competes with Continue or Start.
@@ -430,9 +431,15 @@ is plain prose and its tool work a light row ("[icon] 5 commands ›").
 path), never for a title, a header name or a trail item.
 
 **Disclosure chevrons.** Chevron down expands in place and turns up while open
-(`DisclosureToggle`: Show more, Show description, Show feedback, the Goal's Show more). Chevron
+(`DisclosureToggle`: Show more, Show description, the Goal's Show more). Chevron
 right navigates to details elsewhere (`TextAction chevron="navigate"`, navigation rows, the tool
-row, Last hand-off).
+row, Last hand-off, View feedback).
+
+**One place per kind of information** (owner review, PR 169). A kind of information has one place
+that presents it in detail, with any number of direct entry points to it. Feedback is presented
+whole only in the shared Feedback view ([Manual workflow execution](workflow-execution.md#feedback));
+Now's Last hand-off and every history entry offer **View feedback ›**, never a preview, a fade or a
+nested Show/Open in place.
 
 **One shared Now.** The Now block of a Specification and of a Task is one composition
 (`NowBlock`) of shared pieces: the state (the step, or an actionable readiness such as "Waiting for
@@ -441,7 +448,10 @@ dependencies" with the lifecycle position as its quiet line, `ReadinessLine`), t
 of its work in its tone, Open session) and the actions. There is no per-execution-kind component;
 actions and ownership come from the workflow projection.
 
-**The edges of the screen.** The floating ☰ and ⋯ of a stacked layout stay as decided (#208). The
+**The edges of the screen.** The floating ☰ and ⋯ of a stacked layout stay as decided (#208).
+They intentionally overlap about one line of content while scrolling on a phone: a deliberate
+owner decision, never a defect to report or fix (see
+[Floating controls](shell-geometry.md#floating-controls-on-mobile-208)). The
 Composer and the scroll-to-latest button never cover the last content: the conversation reserves
 the Composer's height under its last entry, and scroll-to-latest floats above the Composer.
 

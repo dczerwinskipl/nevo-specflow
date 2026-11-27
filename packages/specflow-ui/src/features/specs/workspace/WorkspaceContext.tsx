@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import type { AttemptRef } from '../../tasks';
+import type { FeedbackRef } from '../../tasks';
 
 /** A Full Task section an action lands on (its heading takes focus). */
 export type TaskSection = 'context' | 'dependencies';
@@ -25,8 +25,8 @@ export interface WorkspaceRuntime {
   readonly openRepository: () => void;
   readonly openChanges: (source?: 'base' | 'uncommitted' | 'mr') => void;
   readonly openHistory: () => void;
-  /** Opens the Activity history at an attempt, its feedback open ("Open full feedback"). */
-  readonly openFeedback: (attempt: AttemptRef) => void;
+  /** Opens a hand-off's feedback in the shared Feedback view ("View feedback"). */
+  readonly openFeedback: (ref: FeedbackRef) => void;
   /** Opens the Specification's New Session; its entry points are gated by `startSession`. */
   readonly openNewSession: () => void;
   readonly refresh: () => void | Promise<void>;

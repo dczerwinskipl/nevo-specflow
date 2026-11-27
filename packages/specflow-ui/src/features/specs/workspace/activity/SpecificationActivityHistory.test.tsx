@@ -14,11 +14,16 @@ import {
   specificationAttemptsHistory,
 } from '../../../tasks/execution/agent/agentAttempt.stories-support';
 import type { ActivityEvent } from '../../read-model/model';
+import type { FeedbackRef } from '../../../tasks';
 import { SpecificationActivityHistory } from './SpecificationActivityHistory';
 
 afterEach(cleanup);
 
-function renderHistory(history: unknown, events: readonly ActivityEvent[]) {
+function renderHistory(
+  history: unknown,
+  events: readonly ActivityEvent[],
+  onOpenFeedback?: (ref: FeedbackRef) => void,
+) {
   stubLayoutApis();
   const defaults = createSpecFlowAppServices();
   const services = createSpecFlowAppServices({
@@ -32,7 +37,11 @@ function renderHistory(history: unknown, events: readonly ActivityEvent[]) {
     <QueryClientProvider client={createSpecFlowQueryClient()}>
       <TestServicesRouterContext services={services}>
         <LocalizationProvider instance={createSpecFlowI18n('en')}>
-          <SpecificationActivityHistory specId="sso" events={events} />
+          <SpecificationActivityHistory
+            specId="sso"
+            events={events}
+            {...(onOpenFeedback ? { onOpenFeedback } : {})}
+          />
         </LocalizationProvider>
       </TestServicesRouterContext>
     </QueryClientProvider>,
@@ -76,18 +85,27 @@ function timeline(): string[] {
 
 describe('the Specification Activity history', () => {
   it('is one chronological timeline of the workflow and the Specification events', async () => {
-    renderHistory(nevo2AttemptsHistory(), [
-      ...NEVO_2_SESSIONS.map((session) => started(session.id, session.title, session.at)),
-      created,
-    ]);
+    const opened: FeedbackRef[] = [];
+    renderHistory(
+      nevo2AttemptsHistory(),
+      [
+        ...NEVO_2_SESSIONS.map((session) => started(session.id, session.title, session.at)),
+        created,
+      ],
+      (ref) => opened.push(ref),
+    );
 
-    await screen.findByText('Result confirmed');
+    // The owner's Confirm is a line of the attempt it decided, never an entry of its own.
+    const decision = await screen.findByText(/^Confirmed by dominikczerwinski · /);
+    expect(decision.closest('li')?.querySelector('[data-attempt-outcome]')?.textContent).toBe(
+      'Breakdown approved',
+    );
+    expect(screen.queryByText('Result confirmed')).toBeNull();
     expect(screen.queryByText('Agent attempts')).toBeNull();
     // The Sessions the attempts represent have no "Session started" of their own.
     expect(screen.queryByText('Session started')).toBeNull();
     const entries = timeline();
     expect(entries.slice(0, -1)).toEqual([
-      'Review the breakdown · Result confirmed',
       'Review the breakdown · Breakdown approved',
       'Break the solution down · Breakdown proposed',
       'Review the breakdown · Changes requested',
@@ -101,7 +119,8 @@ describe('the Specification Activity history', () => {
     expect(screen.getAllByText('Yesterday')).toHaveLength(1);
     expect(entries.at(-1)).toContain('Specification created');
     // Who acted: the owner in the time line, the agent as Now names it.
-    expect(screen.getAllByText(/ · dominikczerwinski · Attempt 2$/)).toHaveLength(2);
+    // (their Confirm says it in its own line, "Confirmed by dominikczerwinski").
+    expect(screen.getAllByText(/ · dominikczerwinski · Attempt 2$/)).toHaveLength(1);
     expect(
       Array.from(document.querySelectorAll('[data-attempt-actor] [data-agent-name]')).map((node) =>
         node.getAttribute('aria-label'),
@@ -110,10 +129,11 @@ describe('the Specification Activity history', () => {
     ).toContain('Claude · Opus 5.5');
     // The elapsed range, never a duration.
     expect(document.body.textContent).not.toMatch(/\d h \d+ min| min ·/);
-    // The owner's Finish keeps its feedback behind View feedback.
+    // Feedback is never expanded in the timeline: View feedback opens the Feedback view.
     expect(screen.queryByText(/Owner took over after the agent process/)).toBeNull();
     fireEvent.click(screen.getAllByRole('button', { name: 'View feedback' })[4]!);
-    expect(screen.getByText(/Owner took over after the agent process/)).toBeTruthy();
+    expect(opened).toEqual([{ step: 'solution', attempt: 2 }]);
+    expect(screen.queryByText(/Owner took over after the agent process/)).toBeNull();
   });
 
   it('keeps the "Session started" of a Session outside the workflow, at its time', async () => {

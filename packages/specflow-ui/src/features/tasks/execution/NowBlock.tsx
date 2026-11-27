@@ -135,7 +135,7 @@ export interface NowBlockProps {
    * still shows the agent and its Session.
    */
   readonly executor?: ReactNode;
-  /** What the attempt that handed over committed ("4 documents committed · 05f9d80"). */
+  /** What the attempt that handed over committed ("4 documents · 05f9d80"). */
   readonly handoffCommit?: string;
 }
 
@@ -486,14 +486,21 @@ export function NowBlock({
         {lastHandoff ? (
           <LastHandoff
             heading={t('workflowExecution.now.lastHandoff')}
-            {...lastHandoff}
+            outcome={lastHandoff.outcome}
+            lines={lastHandoff.lines}
+            tone={lastHandoff.tone}
             {...(handoffCommit ? { commit: handoffCommit } : {})}
             {...(links.attempt ? { onOpenDetails: links.attempt } : {})}
-            onOpenFeedback={links.feedback?.(
-              handoff?.kind === 'transition'
-                ? { step: handoff.from.step, attempt: handoff.from.attempt }
-                : undefined,
-            )}
+            {...(lastHandoff.hasFeedback && links.feedback && handoff
+              ? {
+                  onOpenFeedback: () =>
+                    links.feedback?.(
+                      handoff.kind === 'transition'
+                        ? { step: handoff.from.step, attempt: handoff.from.attempt }
+                        : { returnedAt: handoff.at },
+                    ),
+                }
+              : {})}
           />
         ) : null}
         {note}

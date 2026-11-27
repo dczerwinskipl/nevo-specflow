@@ -55,6 +55,15 @@ bands, while the Create form and Specification Overview stayed in one narrow col
 | Activity history       | Stays in the Secondary. An empty history does not open or reserve it; it is available on demand. The user's explicit choice persists per Specification for the visit.                                                                                                                                                                          |
 | Design System          | The Bounded workspace rule changes together with the code: `fit="bounded"` is now the Focused frame.                                                                                                                                                                                                                                           |
 
+## Floating controls on mobile (#208)
+
+The floating ☰/⋯ controls on mobile intentionally overlap content while scrolling (about one line).
+This is a deliberate owner decision (#208): for a user who scrolls, it is the least irritating way
+to keep the screen space. It only looks like a defect on static screenshots, so agents and reviewers
+must not report it as an issue or "fix" it: no hiding on scroll, no bands or bars, no padding hacks.
+Making the buttons bigger is a possible future change, but it needs a standard layout change and is
+not in scope.
+
 ## Rejected alternatives
 
 | Alternative                                                                 | Why it was rejected                                                                                                                        |
@@ -89,8 +98,8 @@ These findings came from the audit and stay open. None of them is part of the ge
   application header (the header's identity line, never a new row). It conflicts with "Identity
   adds no band or bar" ([Page identity](interaction-model.md#page-identity-and-product-icons)) and
   with the floating ☰/⋯ of a stacked layout (#208), which keep no header while scrolled, so it
-  needs the owner's decision before any work. The floating controls still cover about one line of
-  content while scrolling on a phone (Overview, Task, transcript); that is part of the same decision.
+  needs the owner's decision before any work. The floating controls' overlap while scrolling is
+  decided, not open (see [Floating controls on mobile](#floating-controls-on-mobile-208)).
 - **Attention does not roll up** from a Task to the Specification (a Task row carries its Requires
   attention overlay; the Specifications list row does not).
 - **The Specification switcher shows no state:** no attention or progress per item, and no New

@@ -25,15 +25,6 @@ export type WorkflowTimelineEntry =
       readonly order: number;
       readonly item: AttemptItem & { readonly actor: NonNullable<AttemptItem['actor']> };
     }
-  /** The owner's Confirm or Reject of a result held for confirmation. */
-  | {
-      readonly kind: 'confirmation';
-      readonly key: string;
-      readonly at: string;
-      readonly order: number;
-      readonly item: AttemptItem;
-      readonly confirmation: NonNullable<AttemptItem['confirmation']>;
-    }
   /** The owner's return while no attempt was active. */
   | {
       readonly kind: 'return';
@@ -46,7 +37,8 @@ export type WorkflowTimelineEntry =
 /**
  * The workflow history as Activity history entries, and the Sessions they already represent (an
  * agent attempt's Session, reached through its Open session). A wait step's attempt (no actor) is
- * the workflow's own lifecycle and is left out.
+ * the workflow's own lifecycle and is left out. The owner's Confirm or Reject of a result stays in
+ * the attempt's data and is shown with that attempt, not as an entry of its own.
  */
 export function workflowTimeline(history: WorkflowHistory | undefined): {
   readonly entries: readonly WorkflowTimelineEntry[];
@@ -87,18 +79,6 @@ export function workflowTimeline(history: WorkflowHistory | undefined): {
         at: item.startedAt,
         order: item.sequence,
         item: { ...item, actor: item.actor },
-      });
-    }
-
-    if (item.confirmation) {
-      entries.push({
-        kind: 'confirmation',
-        key: `${key}-${item.confirmation.state}`,
-        at: item.confirmation.at,
-        // After its attempt, before the next record.
-        order: item.sequence + 0.5,
-        item,
-        confirmation: item.confirmation,
       });
     }
   }

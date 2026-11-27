@@ -11,6 +11,8 @@ export type { WorkflowTimelineEntry } from './execution/agent/workflowTimeline';
 export { historyDay } from './execution/agent/AgentAttemptHistory';
 export { SpecificationNow } from './execution/specification/SpecificationNow';
 export type { AttemptRef } from './execution/StartBlockerLines';
+export type { FeedbackRef } from './execution/feedback/feedbackRef';
+export { feedbackStack } from './execution/feedback/feedbackStack';
 export {
   SpecificationSituation,
   type SituationAttention,

@@ -19,8 +19,8 @@ import {
   handedToAgent,
 } from '../../execution/agent/AgentAttemptHistory';
 import { useWorkflowHistory } from '../../execution/agent/useWorkflowHistory';
-import { HandoffFeedback } from '../../execution/progress/HandoffFeedback';
-import type { AttemptRef } from '../../execution/StartBlockerLines';
+import { FeedbackLink } from '../../execution/feedback/FeedbackParts';
+import type { FeedbackRef } from '../../execution/feedback/feedbackRef';
 
 export function TaskHistory({
   specId,
@@ -28,7 +28,7 @@ export function TaskHistory({
   snapshot,
   onOpenResource,
   onOpenDocument,
-  feedback,
+  onOpenFeedback,
 }: {
   readonly specId: string;
   readonly taskId: string;
@@ -36,8 +36,8 @@ export function TaskHistory({
   readonly onOpenResource?: (params: TaskHistoryResourceParams) => void;
   /** Opens a document an agent attempt wrote, by its checkout-relative path; false: not a Task document. */
   readonly onOpenDocument?: (path: string) => boolean;
-  /** The attempt whose feedback the reader opened from the Now block ("Open full feedback"). */
-  readonly feedback?: AttemptRef | undefined;
+  /** Opens an entry's feedback in the shared Feedback view (View feedback). */
+  readonly onOpenFeedback?: ((ref: FeedbackRef) => void) | undefined;
 }) {
   const { t, i18n } = useTranslation();
   const viewer = useViewer();
@@ -158,17 +158,6 @@ export function TaskHistory({
                       <span className="text-status-info">{t('taskDetails.historyInProgress')}</span>
                     )}
                   </Typography>
-                  {entry.feedback ? (
-                    <HandoffFeedback
-                      feedback={entry.feedback}
-                      mode="detail"
-                      initiallyOpen={
-                        feedback?.step === entry.step.id && feedback.attempt === entry.key.attempt
-                      }
-                      scrollIntoView
-                      showLabel={t('workflowExecution.feedback.view')}
-                    />
-                  ) : null}
                   {agentItem ? (
                     <>
                       <AgentAttemptMeta item={agentItem} />
@@ -192,6 +181,14 @@ export function TaskHistory({
                         .join(' · ')}
                     </Typography>
                   )}
+                  {entry.feedback?.trim() && onOpenFeedback ? (
+                    <FeedbackLink
+                      onOpen={() => {
+                        rememberScroll();
+                        onOpenFeedback({ step: entry.step.id, attempt: entry.key.attempt });
+                      }}
+                    />
+                  ) : null}
                   <Button
                     variant="ghost"
                     size="sm"

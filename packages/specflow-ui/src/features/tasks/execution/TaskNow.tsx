@@ -10,7 +10,7 @@ import { goToHeading } from './goToHeading';
 import { DisclosureToggle } from '../../../shared/actions';
 import { documentGateFix, stepGoal } from './presentation';
 import { WorkflowNow } from './WorkflowNow';
-import type { AttemptRef, FeedbackSource } from './StartBlockerLines';
+import type { FeedbackRef } from './feedback/feedbackRef';
 
 /** The Task's lifecycle primary (Approve or Resume), when the projection allows one. */
 export interface LifecyclePrimary {
@@ -31,8 +31,8 @@ export interface TaskNowProps {
   readonly onOpenDocument: (documentId: string) => void;
   /** Opens the Task history (the ⋯ menu's Workflow history). */
   readonly onOpenHistory?: () => void;
-  /** Opens the Task history at an attempt, its feedback open ("Open full feedback"). */
-  readonly onOpenFeedback?: (attempt: AttemptRef) => void;
+  /** Opens a hand-off's feedback in the shared Feedback view ("View feedback"). */
+  readonly onOpenFeedback?: (ref: FeedbackRef) => void;
 }
 
 /**
@@ -142,16 +142,7 @@ export function TaskNow({
           context: () => goToHeading('task-context-heading'),
           dependencies: () => goToHeading('task-dependencies-heading'),
           ...(onOpenHistory ? { attempt: onOpenHistory } : {}),
-          // The Task history lists every attempt with its feedback, a person's too; a return names
-          // no attempt, so the history opens at its top.
-          ...(onOpenFeedback && onOpenHistory
-            ? {
-                feedback: (source: FeedbackSource) =>
-                  source
-                    ? () => onOpenFeedback({ step: source.step, attempt: source.attempt })
-                    : onOpenHistory,
-              }
-            : {}),
+          ...(onOpenFeedback ? { feedback: onOpenFeedback } : {}),
           // The agent's paths are checkout-relative; the Task's documents are its folder's.
           document: (path) => {
             const document = resource.documents.find((item) => path.endsWith(`/${item.path}`));

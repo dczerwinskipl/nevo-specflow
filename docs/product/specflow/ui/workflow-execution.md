@@ -113,19 +113,17 @@ In reading order:
    are the readiness lead above, not a second line. An awaited process artifact is
    one neutral line.
 6. **Last hand-off** (the Specification and the Task, one shared component): under a divider, the
-   label "Last hand-off", then one row: a status mark, the result as its title ("Breakdown
-   approved"), the step, who and when ("Review the breakdown · Claude Code · Opus 5.5 · Today, 1:12 AM")
-   and a chevron that opens the work history; under it what the attempt committed ("4 documents
-   committed · 05f9d80", from the history read, when an agent's attempt committed). A hand-off that
-   finished as expected keeps its feedback behind "Show feedback". A hand-off the next attempt must
-   act on (a `fail` result such as a review that requested changes, or a return) is marked in the
-   attention tone and shows its feedback open. Open, the feedback is a short preview of a few lines,
-   rendered by the shared Markdown renderer (as messages and documentation), and **Open full
-   feedback** opens the work history at the attempt that left it, its feedback open (owner,
-   2026-11-26: two levels, never arbitrarily long text in Overview). Feedback the preview shows
-   whole has neither the fade nor Open full feedback. A return's feedback names no attempt: Open
-   full feedback opens the history at its top. Feedback no history holds (the agent's result
-   waiting for confirmation) is shown whole in a bounded box that scrolls. "Hide feedback" closes it. The Now of a terminal run
+   label "Last hand-off", then one row: a status mark and the result as its title ("Breakdown
+   approved"), with a chevron that opens the work history; under it one line each for the step
+   ("Review the breakdown"), who handed it over ("Claude Code · Opus 5.5") and when ("Nov 25, 5:09
+   PM"); then what the attempt committed, with the Commit icon ("[commit] 3 documents · 3ca401a",
+   from the history read, when an agent's attempt committed); then **View feedback ›** when the
+   hand-off left feedback, which opens the shared [Feedback view](#feedback) directly. The
+   feedback is never previewed here: no fade, no cut fragment, no nested Show/Open (owner review,
+   PR 169: one kind of information has one place of detailed presentation, with any number of
+   direct entry points). A hand-off the next attempt must act on (a `fail` result such as a review
+   that requested changes, or a return) is marked in the attention tone (its status mark and
+   `data-handoff-tone="blocking"`), with the same one View feedback. The Now of a terminal run
    shows no hand-off.
 7. **The main action**, with at most one button-styled secondary, for the Specification and the Task
    alike (one rule, `nowActionPlan`). Finish step is the main action while some result can be taken.
@@ -625,8 +623,8 @@ The attempt is finished and committed before the owner decides.
 
 - "Waiting for your confirmation · the agent finished <time> · <Session>"; under the step's purpose
   the agent's result in the Last hand-off component, labelled "The agent's result" (its result,
-  "<provider> · <model> · <time>", what its commit holds, its feedback open in a bounded box (info tone): the
-  owner decides on it), then an info note with what Confirm applies ("Confirming approves the 5 draft tasks
+  the agent and the time on their own lines, what its commit holds, in the info tone, and View
+  feedback, which opens the [Feedback view](#feedback) of that attempt), then an info note with what Confirm applies ("Confirming approves the 5 draft tasks
   (t-01 to t-05) and moves to <next>.", **See Tasks**; "records the agent's decisions on N tasks"
   when it proposes decisions on Tasks; "completes the workflow" or "ends the workflow as abandoned"
   when it ends the run). Actions **Confirm** (main) and **Reject**.
@@ -647,6 +645,30 @@ The attempt is finished and committed before the owner decides.
   leaves no uncommitted agent work. A required field **What should change (required)** ("The next
   attempt reads it first, whether you start it yourself or run it with an agent"). **Cancel** and
   **Reject** (disabled until the field has text).
+
+### Feedback
+
+One view presents a hand-off's feedback whole, wherever it is reached from (owner review, PR 169):
+Now's Last hand-off (a Specification's and a Task's), the agent's result waiting for the owner, and
+every Activity history and Task history entry that has feedback, each through **View feedback ›**.
+It is a Secondary screen (`feedbackStack`): opened from Now it replaces the Secondary (on a phone,
+the Overview), and Back or Close returns to Now; opened from a history entry it is pushed onto the
+history, and Back returns to the history. It is not a route.
+
+- The header: "Feedback", with **Copy** (an icon action, its words as tooltip, "Copied" for a
+  moment) that copies the original Markdown.
+- The step's title, how it ended (the history's mark and outcome line: "Breakdown approved",
+  "Changes requested", "Result rejected", "Returned to <step>"), "Attempt N · <when>" (an owner's
+  attempt adds "you"), the agent with its mark and **Open session**, and the owner's decision line
+  ("Confirmed by you · <when>").
+- Under a divider, the full original Markdown in the shared renderer (as messages and
+  documentation). A rejected result shows the agent's feedback, then the owner's, each under its own
+  label ("Result", "Why the result was rejected").
+- A return between attempts names no attempt and no agent: its step, "Returned to <step>" and when.
+  A return hand-off is found in the history by its time (a return record, a Reject, or an attempt
+  that returned).
+- A feedback the history no longer holds (cut off as older) says so instead of showing anything
+  stale.
 
 ### Take over and the attempt's history
 
@@ -709,9 +731,11 @@ The attempt is finished and committed before the owner decides.
   `specs/active/<slug>/` prefix) and "N tasks" (Task titles as links, the first four, then "N more
   tasks"); then its commit as one row, "Committed · cac3c46". A failed commit shows the Now block's
   note with **Retry commit**; work an attempt that ended without its own result left in the
-  checkout reads "Kept in the checkout, not committed". **View feedback** shows the feedback its
-  result or return left, when there is any, whole, in the same feedback component as Now's hand-off
-  (Markdown, at the size of the entry's other lines; the Task history's entries too). SpecFlow's own records (execution state, Task resource
+  checkout reads "Kept in the checkout, not committed". The owner's Confirm or Reject of its result
+  is a line of the attempt, after the agent ("[person-check] Confirmed by you · 5:09 PM", "Rejected
+  by you · 5:09 PM"; the Owner decision icon). **View feedback ›** opens the shared
+  [Feedback view](#feedback) when its result, its return or its Reject left feedback; the history
+  never expands feedback in place, however long it is (the Task history's entries too). SpecFlow's own records (execution state, Task resource
   files, the manifest) are never listed. In the Task history the attempt sits inside the ordinary
   entry (step, result line) and says how it ended when the entry's result does not ("Taken over by
   <person>", "Returned to <step>", "Abandoned", "The agent is working on it"; "The agent stopped
@@ -721,16 +745,19 @@ The attempt is finished and committed before the owner decides.
   Specification's events (see
   [Specification Overview](specification-overview.md#activity-history)), newest first and grouped
   by day (**Today**, **Yesterday**, then the date). The owner's entries use the same grammar: the
-  owner's own attempt (the step, its result line, "1:12 – 1:13 PM · you · Attempt 2", View feedback),
-  the owner's Confirm ("Result confirmed") or Reject ("Result rejected", with its feedback) at the
-  time it was decided with who decided, and a return ("Returned to <step>"). Each agent entry is
+  owner's own attempt (the step, its result line, "1:12 – 1:13 PM · you · Attempt 2", View feedback)
+  and a return ("Returned to <step>", View feedback). The owner's Confirm or Reject is not an entry
+  of its own: it is the "Confirmed by you · <time>" or "Rejected by you · <time>" line of the
+  attempt it decided, so one attempt is one entry with the agent's result and the owner's decision
+  (the decision stays its own record in the data; only the presentation joins them). A rejected
+  attempt is marked "Result rejected" (circle-alert, attention). Each agent entry is
   marked by how the attempt ended, with the marks of the Now block's Last hand-off: completed
   (circle-check, success; the line names the result, "Breakdown approved", or "Completed"),
   waiting for your confirmation (clock, info), changes requested, result rejected and a commit that
   failed ("Finished, but not committed") (circle-alert, attention), running (spinner), taken over
   or returned (undo, neutral), abandoned (close, neutral). Then the step as its title, the outcome
   line and the lines above. Three levels: the entry by default; the rows open to the files and
-  Tasks; the full feedback and, through Open session, the Session's transcript on request. When
+  Tasks; the full feedback (the Feedback view) and, through Open session, the Session's transcript on request. When
   older attempts are cut off it says "Older attempts are not shown."
 - What an attempt changed is listed on every entry that changed anything, from the paths its commit
   recorded. A commit that did not record its paths lists none: the checkout's dirty set holds the

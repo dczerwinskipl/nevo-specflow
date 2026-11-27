@@ -3,6 +3,7 @@ import { InlineNote, Typography } from '@nevo/ui';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { GateList } from './GateList';
 import { TextAction } from '../../../shared/actions';
+import type { FeedbackRef } from './feedback/feedbackRef';
 
 type Position = WorkflowActionProjection['position'];
 export type StartBlocker = Extract<Position, { kind: 'blocked' }>['blockers'][number];
@@ -14,24 +15,14 @@ export interface AttemptRef {
   readonly attempt: number;
 }
 
-/**
- * Where a hand-off's feedback came from: the attempt that left it, or `undefined` for a return,
- * which names no attempt.
- */
-export type FeedbackSource = AttemptRef | undefined;
-
 export interface NowLinks {
   readonly tasks?: () => void;
   readonly context?: () => void;
   readonly dependencies?: () => void;
   /** Opens the subject's workflow history: the agent's attempts ("See the attempt"). */
   readonly attempt?: () => void;
-  /**
-   * Opens the detail view holding a hand-off's whole feedback (the workflow history, at the attempt
-   * that left it, its feedback open). Undefined, or a source it returns undefined for: no detail
-   * view holds it.
-   */
-  readonly feedback?: (source: FeedbackSource) => (() => void) | undefined;
+  /** Opens a hand-off's feedback in the shared Feedback view; absent: the page has none. */
+  readonly feedback?: (ref: FeedbackRef) => void;
   /** Opens a document by its checkout-relative path (the agent's kept work); false: not found here. */
   readonly document?: (path: string) => boolean;
 }

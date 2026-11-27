@@ -11,7 +11,7 @@ import { useNow } from '../../../../shared/operations/panel/relativeTime';
 import {
   historyDay,
   WorkflowHistoryEntry,
-  type AttemptRef,
+  type FeedbackRef,
   type useSpecificationWorkflowTimeline,
 } from '../../../tasks';
 import { activityDays, composeActivityTimeline, type ActivityTimelineEntry } from './timeline';
@@ -22,8 +22,8 @@ const DATE_TIME = /^\d{4}-\d{2}-\d{2}T/u;
 /** The Specification's workflow entries and what they need to render. */
 export type ActivityWorkflow = ReturnType<typeof useSpecificationWorkflowTimeline> & {
   readonly specId: string;
-  /** The attempt whose feedback the reader opened ("Open full feedback"): its entry opens it. */
-  readonly feedback?: AttemptRef | undefined;
+  /** Opens a feedback in the shared Feedback view (View feedback of an entry). */
+  readonly openFeedback?: ((ref: FeedbackRef) => void) | undefined;
 };
 
 export interface ActivityHistoryProps {
@@ -71,7 +71,7 @@ export function ActivityHistory({
           items={workflow.items}
           specId={workflow.specId}
           openDocument={workflow.openDocument}
-          feedback={workflow.feedback}
+          onOpenFeedback={workflow.openFeedback}
         />
       ) : null;
     }

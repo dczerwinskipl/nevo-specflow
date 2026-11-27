@@ -1,21 +1,15 @@
 import { useTranslation } from 'react-i18next';
 import { Icon, InformationList, Typography, type IconName } from '@nevo/ui';
 import { OperationalRow } from '../../../../shared/operational-list';
-import { HandoffFeedback, type HandoffFeedbackTone } from './HandoffFeedback';
+import { productIcons } from '../../../../shared/product-icons';
+import { FeedbackLink } from '../feedback/FeedbackParts';
 
 /**
- * How the hand-off reads: `done` (the step finished as expected: its feedback waits behind "Show
- * feedback"), `blocking` (a review requested changes, a return, an agent's error: the feedback is
- * open and in the attention tone) or `waiting` (the agent's result waits for the owner: open, in
- * the info tone).
+ * How the hand-off reads: `done` (the step finished as expected), `blocking` (a review requested
+ * changes, a return, an agent's error: what the next attempt must act on, in the attention tone) or
+ * `waiting` (the agent's result waits for the owner, in the info tone).
  */
 export type HandoffTone = 'done' | 'blocking' | 'waiting';
-
-const FEEDBACK_TONES: Record<HandoffTone, HandoffFeedbackTone> = {
-  done: 'neutral',
-  blocking: 'attention',
-  waiting: 'info',
-};
 
 const ICONS: Record<HandoffTone, { readonly name: IconName; readonly className: string }> = {
   done: { name: 'circle-check', className: 'text-status-success' },
@@ -25,18 +19,17 @@ const ICONS: Record<HandoffTone, { readonly name: IconName; readonly className: 
 
 /**
  * The last hand-off of a workflow (or the agent's result waiting for the owner): its outcome as the
- * row's title, who handed it over and when, what was committed, then its feedback
- * ({@link HandoffFeedback}: a preview of a few lines, the whole of it in the work history). The row
- * opens the details (the work history) when `onOpenDetails` is given. A finished step's feedback is
- * collapsed; feedback the next attempt or the owner must act on is open and emphasised. Shared by
- * the Specification's and a Task's Now.
+ * row's title, then one line each for the step, who handed it over and when, what was committed
+ * ("[commit] 3 documents · 3ca401a") and "View feedback ›", which opens the shared Feedback view
+ * (workflow-execution.md, "Feedback"). Feedback is never previewed here: one place presents it. The
+ * row opens the details (the work history) when `onOpenDetails` is given. Shared by the
+ * Specification's and a Task's Now.
  */
 export function LastHandoff({
   heading,
   outcome,
-  meta,
+  lines = [],
   commit,
-  feedback,
   tone,
   onOpenDetails,
   onOpenFeedback,
@@ -45,14 +38,13 @@ export function LastHandoff({
   readonly heading: string;
   /** What the hand-off decided: "Breakdown approved", "Changes requested", "Returned to this step". */
   readonly outcome: string;
-  /** Who handed it over and when: "Claude · Opus 5.5 · Today, 1:12 AM". */
-  readonly meta?: string;
-  /** What was committed: "4 documents committed · 05f9d80". */
+  /** The step, who handed it over and when, one line each: ["Review the breakdown", "Claude Code · Opus 5.5", "Nov 25, 5:09 PM"]. */
+  readonly lines?: readonly string[];
+  /** What was committed: "3 documents · 3ca401a". */
   readonly commit?: string;
-  readonly feedback?: string;
   readonly tone: HandoffTone;
   readonly onOpenDetails?: () => void;
-  /** Opens the detail view holding the whole feedback; absent: no detail view holds it. */
+  /** Opens the hand-off's feedback in the Feedback view; absent: the hand-off left none. */
   readonly onOpenFeedback?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
@@ -76,7 +68,17 @@ export function LastHandoff({
           leading={
             <Icon name={icon.name} size="sm" aria-hidden="true" className={icon.className} />
           }
-          {...(meta ? { supporting: meta } : {})}
+          {...(lines.length > 0
+            ? {
+                supporting: (
+                  <span className="grid" data-now-handoff-lines="">
+                    {lines.map((line, index) => (
+                      <span key={index}>{line}</span>
+                    ))}
+                  </span>
+                ),
+              }
+            : {})}
           {...(onOpenDetails
             ? {
                 onPrimaryClick: onOpenDetails,
@@ -90,22 +92,16 @@ export function LastHandoff({
         <Typography
           as="p"
           variant="body-sm"
-          className="text-content-secondary [overflow-wrap:anywhere]"
+          className="flex min-w-0 items-start gap-2 text-content-secondary"
           data-now-handoff-commit=""
         >
-          {commit}
+          <span className="flex h-[1lh] shrink-0 items-center">
+            <Icon name={productIcons.commit} size="sm" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 [overflow-wrap:anywhere]">{commit}</span>
         </Typography>
       ) : null}
-      {feedback ? (
-        <HandoffFeedback
-          feedback={feedback}
-          mode="summary"
-          tone={FEEDBACK_TONES[tone]}
-          initiallyOpen={tone !== 'done'}
-          onOpenFull={onOpenFeedback}
-          showLabel={t('workflowExecution.feedback.show')}
-        />
-      ) : null}
+      {onOpenFeedback ? <FeedbackLink onOpen={onOpenFeedback} /> : null}
     </section>
   );
 }

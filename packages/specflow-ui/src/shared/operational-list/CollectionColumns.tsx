@@ -18,7 +18,8 @@ export const collectionContainer = '@container/collection';
 /**
  * The title track's maximum as a width limit, for text blocks above the rows (a search or filter
  * field, a failed-read notice): they stay as wide as the titles they lead to, not the whole frame.
- * Keep the 40rem in step with the `minmax(0,40rem)` title track of every preset below.
+ * Keep the 40rem in step with the `minmax(0,40rem)` title track of the presets below (the current
+ * Specifications preset shares its width with its two progress tracks instead).
  */
 export const collectionTitleTrackMaxWidth = 'max-w-[40rem]';
 
@@ -31,15 +32,20 @@ export const collectionPrimaryLink =
   'pointer-events-auto static cursor-pointer whitespace-normal [overflow-wrap:anywhere] outline-none after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-focus-ring hover:text-content-link';
 
 /**
- * Named track presets. The title track is bounded (`minmax(0,40rem)`, a reading measure), so the
+ * Named track presets. The title track is bounded (a reading measure), so the
  * facts always stay next to the name they qualify, whatever width the list is given; the rest of a
  * wide row stays empty while the row surface, hover and focus span the whole list.
  */
 const collectionTrackPresets = {
-  /** Specifications, current: title, situation, progress. */
+  /**
+   * Specifications, current: title, workflow, Tasks. Every track grows from its minimum toward its
+   * maximum together, so on an ordinary width the title gives room to the two full-width bars
+   * rather than pushing them to the edge; on a wide frame all three stop at their maximum.
+   */
   specification: {
-    header: '@min-[48rem]/collection:grid grid-cols-[minmax(0,40rem)_15rem_8.25rem]',
-    row: 'gap-y-2 @min-[48rem]/collection:grid-cols-[minmax(0,40rem)_15rem_8.25rem]',
+    header:
+      '@min-[48rem]/collection:grid grid-cols-[minmax(18rem,32rem)_minmax(15rem,22rem)_minmax(11rem,18rem)]',
+    row: 'gap-y-3 @min-[48rem]/collection:grid-cols-[minmax(18rem,32rem)_minmax(15rem,22rem)_minmax(11rem,18rem)]',
   },
   /** Specifications without work status: title, last updated. */
   specificationFlat: {
@@ -48,8 +54,8 @@ const collectionTrackPresets = {
   },
   /** Specifications without work status but with progress: title, last updated, progress. */
   specificationFlatWithProgress: {
-    header: '@min-[48rem]/collection:grid grid-cols-[minmax(0,40rem)_8rem_8.25rem]',
-    row: 'gap-y-2 @min-[48rem]/collection:grid-cols-[minmax(0,40rem)_8rem_8.25rem]',
+    header: '@min-[48rem]/collection:grid grid-cols-[minmax(0,40rem)_8rem_12rem]',
+    row: 'gap-y-2 @min-[48rem]/collection:grid-cols-[minmax(0,40rem)_8rem_12rem]',
   },
   /** Specifications, archive: title, milestone, pull request. */
   specificationArchive: {

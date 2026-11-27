@@ -144,17 +144,14 @@ describe('SpecsOverview page title', () => {
       .mockReturnValue({ width, height: 900, x: 0, y: 0, top: 0, left: 0, right: 0 } as DOMRect);
   afterEach(() => vi.restoreAllMocks());
 
-  it('shows the page title under the header in a split layout', () => {
-    shellWidth(1600);
-    renderOverview(loaded());
-    expect(pageTitle().classList.contains('sr-only')).toBe(false);
-  });
-
-  it('keeps the title for assistive technology only on Narrow, where the header names the screen', () => {
-    shellWidth(390);
-    renderOverview(loaded());
-    expect(pageTitle().classList.contains('sr-only')).toBe(true);
-  });
+  it.each([1600, 390])(
+    'keeps the title for assistive technology only at %i px, where the header names the screen',
+    (width) => {
+      shellWidth(width);
+      renderOverview(loaded());
+      expect(pageTitle().classList.contains('sr-only')).toBe(true);
+    },
+  );
 });
 
 describe('SpecsOverview create', () => {
@@ -352,7 +349,7 @@ describe('SpecsOverview without work status', () => {
     );
     expect(document.querySelector('[data-spec-layout="flat"]')).not.toBeNull();
     expect(document.querySelector('[data-spec-columns]')?.textContent).toBe(
-      'SpecificationUpdatedProgress',
+      'SpecificationUpdatedTasks',
     );
   });
 

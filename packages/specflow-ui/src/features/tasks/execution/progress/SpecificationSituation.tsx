@@ -68,8 +68,9 @@ function trackOf(t: TFunction, workflow: CurrentSpecWorkflow): StepTrack | undef
 /**
  * Who or what the step waits for, in the Now's words: the running attempt ("In progress since
  * 11:18 · started by you", "Attempt 1 · agent working since 11:18"), a hand-off the next attempt must
- * act on ("Changes requested"), "Ready to start", or the wait step's Tasks ("5 ready to start",
- * "Waiting for 7 of 12 tasks").
+ * act on ("Changes requested"), "Ready to start", or, for the wait step when no Task can start,
+ * "Waiting for 7 of 12 tasks" (Tasks that can start are the row's Task progress, {@link
+ * readyToStartOf}).
  */
 function stepDetail(
   t: TFunction,
@@ -108,9 +109,10 @@ function stepDetail(
         return undefined;
       }
 
-      // What the owner can start first, else what is left (the Now's Task progress and wait line).
+      // Tasks that can start are the row's Task progress ("3 ready to start", as in the Now's Task
+      // progress); with none, the step says what it still waits for (the Now's wait line).
       return tasks.readyToStart > 0
-        ? t('taskOverview.progress.readyToStart', { count: tasks.readyToStart })
+        ? undefined
         : t('workflowExecution.now.waitingFor', { count: tasks.open, total: tasks.total });
     }
   }
@@ -180,6 +182,16 @@ export function situationOf(
       };
     }
   }
+}
+
+/**
+ * Tasks the owner can start now, while the workflow waits for its Tasks: the list row shows them
+ * with its Task progress, as the Now does ("0 of 11 tasks done · 3 ready to start").
+ */
+export function readyToStartOf(workflow: CurrentSpecWorkflow | undefined): number | undefined {
+  return workflow?.kind === 'step' && workflow.state === 'waiting' && workflow.tasks
+    ? workflow.tasks.readyToStart || undefined
+    : undefined;
 }
 
 const TONES = {

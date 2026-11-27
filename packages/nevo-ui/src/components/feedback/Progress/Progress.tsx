@@ -9,10 +9,12 @@ const progressVariants = tv({
     size: { default: 'h-progress-track', compact: 'h-1' },
     representation: {
       segmented: 'flex w-full gap-0.5',
-      continuous: 'w-full bg-surface-control',
+      continuous: 'w-full bg-progress-track',
       // Intrinsic width (20 px segments, a 40 px current one) up to 16rem; the segments shrink to
       // fit a narrower container and never below 4 px.
       position: 'flex w-fit max-w-[min(100%,16rem)] gap-0.5',
+      // `fill`: the same segments spread over the container's width (a list column).
+      positionFill: 'flex w-full gap-0.5',
     },
   },
 });
@@ -30,14 +32,23 @@ export type ProgressPosition =
 type PositionSegment = 'before' | 'current' | 'after' | 'next' | 'completed' | 'ended';
 
 const positionSegmentClasses: Record<PositionSegment, string> = {
-  before: 'w-5 bg-content-secondary/60',
-  current: 'w-10 bg-status-info',
-  after: 'w-5 bg-surface-control',
+  before: 'bg-content-secondary/60',
+  current: 'bg-status-info',
+  after: 'bg-progress-track',
   // Not started: the first step is outlined as the one that comes next.
-  next: 'w-5 bg-surface-control shadow-[inset_0_0_0_1px_var(--color-status-info)]',
-  completed: 'w-5 bg-status-success',
-  ended: 'w-5 bg-content-muted',
+  next: 'bg-progress-track shadow-[inset_0_0_0_1px_var(--color-status-info)]',
+  completed: 'bg-status-success',
+  ended: 'bg-content-muted',
 };
+
+/**
+ * Segment widths: `intrinsic` 20 px a step and 40 px the current one; `fill` the same one-to-two
+ * proportion as shares of the container's width.
+ */
+const positionSegmentWidth = {
+  intrinsic: { step: 'w-5', current: 'w-10' },
+  fill: { step: 'flex-[1_1_0%]', current: 'flex-[2_1_0%]' },
+} as const;
 
 export function validProgressPosition(position: ProgressPosition, total: number) {
   if (!Number.isSafeInteger(total) || total <= 0) {
@@ -85,6 +96,11 @@ export type ProgressProps = Omit<
 > &
   ProgressAccessibilityProps & {
     size?: 'default' | 'compact';
+    /**
+     * Position mode only. `intrinsic` (default): 20 px segments up to 16rem; `fill`: the segments
+     * share the container's width, for a track that lines up with a full-width bar beside it.
+     */
+    width?: 'intrinsic' | 'fill';
   } & (
     | {
         variant: 'segmented';
@@ -146,6 +162,7 @@ export const Progress = forwardRef<HTMLDivElement, ProgressProps>(function Progr
     className,
     variant = 'continuous',
     size = 'default',
+    width: positionWidth = 'intrinsic',
     style,
     completed: _completed,
     total: _total,
@@ -198,7 +215,11 @@ export const Progress = forwardRef<HTMLDivElement, ProgressProps>(function Progr
     return (
       <div
         ref={ref}
-        className={progressVariants({ size, representation: 'position', className })}
+        className={progressVariants({
+          size,
+          representation: positionWidth === 'fill' ? 'positionFill' : 'position',
+          className,
+        })}
         role="img"
         data-progress-representation="position"
         data-progress-position={position.state}
@@ -211,7 +232,11 @@ export const Progress = forwardRef<HTMLDivElement, ProgressProps>(function Progr
             key={index}
             aria-hidden="true"
             data-progress-segment={kind}
-            className={cn('h-full min-w-1 shrink rounded-[2px]', positionSegmentClasses[kind])}
+            className={cn(
+              'h-full min-w-1 shrink rounded-[2px]',
+              positionSegmentClasses[kind],
+              positionSegmentWidth[positionWidth][kind === 'current' ? 'current' : 'step'],
+            )}
           />
         ))}
       </div>
@@ -255,7 +280,7 @@ export const Progress = forwardRef<HTMLDivElement, ProgressProps>(function Progr
             data-completed={index < counts.completed ? 'true' : 'false'}
             className={cn(
               'h-full min-w-0 flex-1 rounded-[2px]',
-              index < counts.completed ? 'bg-progress-fill' : 'bg-surface-control',
+              index < counts.completed ? 'bg-progress-fill' : 'bg-progress-track',
             )}
           />
         ))

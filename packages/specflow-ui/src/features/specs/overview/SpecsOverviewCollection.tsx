@@ -168,11 +168,11 @@ function OverviewColumns({
         ? 'specifications.milestoneColumn'
         : flat
           ? 'specifications.updatedColumn'
-          : 'specifications.situationColumn',
+          : 'specifications.workflowColumn',
     ),
   ];
   if (progress) {
-    labels.push(t(archive ? 'specifications.pullRequestColumn' : 'specifications.progressColumn'));
+    labels.push(t(archive ? 'specifications.pullRequestColumn' : 'specifications.tasksColumn'));
   }
 
   return (

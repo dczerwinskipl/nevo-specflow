@@ -10,7 +10,6 @@ import {
   Typography,
   cn,
   useInitialAppearance,
-  useWorkspaceCapabilities,
 } from '@nevo/ui';
 
 import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
@@ -70,7 +69,6 @@ export function SpecsOverview({
 }: SpecsOverviewProps) {
   const { t } = useTranslation();
   const workspaceLabels = useWorkspaceLabels(t('specifications.title'));
-  const { supportsSplit } = useWorkspaceCapabilities();
   const search = useCollectionSearch(state.collection);
   const projection =
     state.projection?.collection === state.collection ? state.projection : undefined;
@@ -105,12 +103,10 @@ export function SpecsOverview({
           {/* A flex column down to the list, so an empty collection can centre in the free height. */}
           <AppWorkspaceBody scroll="area" contentClassName="flex min-h-full flex-col py-6">
             <AppContentContainer align="start" className="flex flex-1 flex-col gap-4" size="full">
-              {/* Narrow: the header already names the screen (`ApplicationLocationIdentity`, the same
-                  `supportsSplit` decision), so the page heading stays for assistive technology and
-                  focus only instead of repeating "Specifications" right under it. */}
-              <ViewPageTitle className={supportsSplit ? 'mb-2' : 'sr-only'}>
-                {t('specifications.title')}
-              </ViewPageTitle>
+              {/* The application header names the screen with its icon at every width
+                  (`ApplicationLocationIdentity`), so the page heading stays for assistive technology
+                  and focus only instead of repeating "Specifications" right under it. */}
+              <ViewPageTitle className="sr-only">{t('specifications.title')}</ViewPageTitle>
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                 <SegmentedControl
                   aria-label={t('specifications.collection')}

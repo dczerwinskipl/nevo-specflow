@@ -294,8 +294,11 @@ Tasks › [Task] Task` (the Task's key is the item's tooltip). The body keeps th
   nevo-2", only "Specification" when the Specification has no key. The trail's Specification item
   carries the Specification icon and the key (its title when there is no key).
 - A **peer area**'s Narrow header names the area with its icon and the Specification's key
-  ("[Tasks] Tasks · nevo-2"). Peer lists (Specifications, Sessions, Tasks, Documents) keep their
-  visible heading.
+  ("[Tasks] Tasks · nevo-2"). Peer lists of a Specification (Sessions, Tasks, Documents) keep their
+  visible heading. The **Specifications list**, the top-level collection, is named once by the
+  application header at every width, with its collection icon (the Narrow identity; the trail's
+  current item on Wide and Compact); its body heading is for assistive technology only (owner
+  review, 2026-11-27).
 - A **Session**'s header is the Session icon and the Session's one title (the same in the
   Overview's Sessions, the Sessions list and the header, see
   [Specification Sessions](specification-sessions.md)), with its state under it. The agent is named

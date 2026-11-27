@@ -14,7 +14,7 @@ import { taskAttentionEntry } from '../../contributions/specification-overview/a
 import { attentionActionLabel } from '../../overview/attentionWording';
 import { stepTrack } from '../presentation';
 import { handoffView } from './handoffView';
-import { situationOf } from './SpecificationSituation';
+import { readyToStartOf, situationOf } from './SpecificationSituation';
 
 const { t } = createSpecFlowI18n('en');
 const locale = 'en';
@@ -98,9 +98,8 @@ const states: readonly {
         totalTasks: 12,
       },
     },
+    // Tasks that can start are the row's Task progress (`readyToStartOf`), as in the Now.
     title: 'Waiting for Tasks',
-    // The Now's Task progress side text for the same count.
-    detail: t('taskOverview.progress.readyToStart', { count: 5 }),
   },
   {
     name: 'completed',
@@ -143,6 +142,13 @@ describe('a Specifications list row and the Overview say the same', () => {
     if (projection.handoff) {
       expect(situation.detail).toBe(handoffView(t, projection.handoff, { locale }).outcome);
     }
+  });
+
+  it('hands the Tasks that can start to the row’s Task progress, not the workflow line', () => {
+    expect(situationOf(t, workflowFixtures.waiting, { locale }).detail).toBeUndefined();
+    expect(readyToStartOf(workflowFixtures.waiting)).toBe(5);
+    expect(readyToStartOf(workflowFixtures.agentWorking)).toBeUndefined();
+    expect(readyToStartOf(undefined)).toBeUndefined();
   });
 
   it('says when an abandoned run was abandoned, in the Now’s words for the time', () => {

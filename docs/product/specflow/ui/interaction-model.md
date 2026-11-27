@@ -337,7 +337,8 @@ comparison at 16 and 20 px across every icon here, states included, then by the 
 | Instructions          | ScrollText                     | Standing instructions (an agent's, a step's).             |
 | Artifacts             | Package                        | Files an agent produced.                                  |
 | Environment           | Container                      | Where a Session runs.                                     |
-| Owner decision        | UserCheck                      | The owner's Confirm or Reject of an agent's result.       |
+| Owner confirmed       | UserCheck                      | The owner confirmed an agent's result.                    |
+| Owner rejected        | UserX                          | The owner rejected an agent's result.                     |
 
 Document types declare their icon in their definition
 (`packages/specflow-engine/definitions/document-type/*.yaml`, `icon:`), and a typed document shows
@@ -433,7 +434,7 @@ path), never for a title, a header name or a trail item.
 **Disclosure chevrons.** Chevron down expands in place and turns up while open
 (`DisclosureToggle`: Show more, Show description, the Goal's Show more). Chevron
 right navigates to details elsewhere (`TextAction chevron="navigate"`, navigation rows, the tool
-row, Last hand-off, View feedback).
+row, View feedback).
 
 **One place per kind of information** (owner review, PR 169). A kind of information has one place
 that presents it in detail, with any number of direct entry points to it. Feedback is presented

@@ -65,7 +65,15 @@ export function DecisionLine({
       data-attempt-decision={confirmation.state}
     >
       <span className="flex h-[1lh] shrink-0 items-center">
-        <Icon name={productIcons.ownerDecision} size="sm" aria-hidden="true" />
+        <Icon
+          name={
+            confirmation.state === 'confirmed'
+              ? productIcons.ownerConfirmed
+              : productIcons.ownerRejected
+          }
+          size="sm"
+          aria-hidden="true"
+        />
       </span>
       <span className="min-w-0 [overflow-wrap:anywhere]">
         {t(

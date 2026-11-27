@@ -114,7 +114,8 @@ In reading order:
    one neutral line.
 6. **Last hand-off** (the Specification and the Task, one shared component): under a divider, the
    label "Last hand-off", then one row: a status mark and the result as its title ("Breakdown
-   approved"), with a chevron that opens the work history; under it one line each for the step
+   approved"); the row opens nothing (one chevron per block, View feedback's; the work history is
+   the header's History action); under it one line each for the step
    ("Review the breakdown"), who handed it over ("Claude Code · Opus 5.5") and when ("Nov 25, 5:09
    PM"); then what the attempt committed, with the Commit icon ("[commit] 3 documents · 3ca401a",
    from the history read, when an agent's attempt committed); then **View feedback ›** when the
@@ -733,7 +734,7 @@ history, and Back returns to the history. It is not a route.
   note with **Retry commit**; work an attempt that ended without its own result left in the
   checkout reads "Kept in the checkout, not committed". The owner's Confirm or Reject of its result
   is a line of the attempt, after the agent ("[person-check] Confirmed by you · 5:09 PM", "Rejected
-  by you · 5:09 PM"; the Owner decision icon). **View feedback ›** opens the shared
+  by you · 5:09 PM"; the Owner confirmed and Owner rejected icons). **View feedback ›** opens the shared
   [Feedback view](#feedback) when its result, its return or its Reject left feedback; the history
   never expands feedback in place, however long it is (the Task history's entries too). SpecFlow's own records (execution state, Task resource
   files, the manifest) are never listed. In the Task history the attempt sits inside the ordinary

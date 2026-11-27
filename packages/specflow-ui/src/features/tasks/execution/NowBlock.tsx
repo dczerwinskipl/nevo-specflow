@@ -490,7 +490,6 @@ export function NowBlock({
             lines={lastHandoff.lines}
             tone={lastHandoff.tone}
             {...(handoffCommit ? { commit: handoffCommit } : {})}
-            {...(links.attempt ? { onOpenDetails: links.attempt } : {})}
             {...(lastHandoff.hasFeedback && links.feedback && handoff
               ? {
                   onOpenFeedback: () =>

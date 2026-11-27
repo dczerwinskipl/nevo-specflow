@@ -401,7 +401,6 @@ export function useAgentAttemptNow({
               : {})}
             {...(committedLine ? { commit: committedLine } : {})}
             tone="waiting"
-            {...(links.attempt ? { onOpenDetails: links.attempt } : {})}
           />
           <ConfirmApplies confirmation={position} links={links} />
           {heldElsewhere ? heldNote : null}

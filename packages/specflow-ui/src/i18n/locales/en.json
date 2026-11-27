@@ -2741,7 +2741,6 @@
       "youActTakenOverCanHand": "You took this step over from the agent, so it is yours now: do the rest yourself and finish it, or hand it back to the agent in a new attempt.",
       "handUnavailable": "Hand to agent cannot run now: {{why}}.",
       "personActs": "{{actor}} is doing this step; you can follow it here.",
-      "handoffDetails": "{{outcome}}: open it in the work history",
       "handoffCommittedAll": "Work committed",
       "openSession": "Open session",
       "sessionGone": "Session deleted",
@@ -3367,7 +3366,8 @@
       "failed": "The feedback could not be read.",
       "missing": "This feedback is no longer in the history.",
       "resultSection": "Result",
-      "rejectionSection": "Why the result was rejected"
+      "rejectionSection": "Why the result was rejected",
+      "loading": "Loading feedback…"
     }
   },
   "taskOverview": {

@@ -21,7 +21,6 @@ const meta = {
     lines: ['Review the breakdown', 'Claude Code · Opus 5.5', 'Nov 25, 5:09 PM'],
     commit: '3 documents · 3ca401a',
     tone: 'done',
-    onOpenDetails: fn(),
     onOpenFeedback: fn(),
   },
 } satisfies Meta<typeof LastHandoff>;

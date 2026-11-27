@@ -45,6 +45,45 @@ export const Running: Story = {
   },
 };
 
+/** The Feedback view once it is open in the Secondary. */
+async function feedbackView() {
+  return waitFor(() => {
+    const view = document.body.querySelector<HTMLElement>('[data-feedback-view]');
+    if (!view) {
+      throw new Error('the Feedback view is not open yet');
+    }
+
+    return view;
+  }, wait);
+}
+
+/**
+ * The Task page: Now's View feedback opens the same Feedback view as the Overview, read from the
+ * Task's own workflow history, at its reading width (never a sliver while the history loads).
+ */
+export const TaskFeedback: Story = {
+  args: { scenario: 'attempt-working' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await userEvent.click(await within(now).findByRole('button', { name: 'View feedback' }, wait));
+    const view = await feedbackView();
+    await expect(within(view).getByRole('heading', { name: 'Review' })).toBeVisible();
+    await expect(view.querySelector('[data-feedback-markdown]')?.textContent).toBeTruthy();
+    await expect(view.getBoundingClientRect().width).toBeGreaterThan(300);
+  },
+};
+
+/** The result waiting for the owner: View feedback opens the attempt's Feedback view. */
+export const ConfirmationFeedback: Story = {
+  args: { scenario: 'attempt-confirmation' },
+  play: async ({ canvasElement }) => {
+    const now = await findNow(canvasElement);
+    await userEvent.click(await within(now).findByRole('button', { name: 'View feedback' }, wait));
+    const view = await feedbackView();
+    await expect(within(view).getByText(/Five tasks cover the token exchange/)).toBeVisible();
+  },
+};
+
 /** Stopping: the step stays locked until the process is proven ended; nothing says "stopped" yet. */
 /**
  * The agent's Turn waits for the owner's answer to a question in its Session: the note says so and

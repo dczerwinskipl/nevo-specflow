@@ -1,4 +1,3 @@
-import { useTranslation } from 'react-i18next';
 import { Icon, InformationList, Typography, type IconName } from '@nevo/ui';
 import { OperationalRow } from '../../../../shared/operational-list';
 import { productIcons } from '../../../../shared/product-icons';
@@ -22,8 +21,8 @@ const ICONS: Record<HandoffTone, { readonly name: IconName; readonly className: 
  * row's title, then one line each for the step, who handed it over and when, what was committed
  * ("[commit] 3 documents · 3ca401a") and "View feedback ›", which opens the shared Feedback view
  * (workflow-execution.md, "Feedback"). Feedback is never previewed here: one place presents it. The
- * row opens the details (the work history) when `onOpenDetails` is given. Shared by the
- * Specification's and a Task's Now.
+ * row itself opens nothing (one chevron per block: View feedback's; the history is the header's
+ * action). Shared by the Specification's and a Task's Now.
  */
 export function LastHandoff({
   heading,
@@ -31,7 +30,6 @@ export function LastHandoff({
   lines = [],
   commit,
   tone,
-  onOpenDetails,
   onOpenFeedback,
 }: {
   /** The block's label: "Last hand-off", "The agent's result". */
@@ -43,11 +41,9 @@ export function LastHandoff({
   /** What was committed: "3 documents · 3ca401a". */
   readonly commit?: string;
   readonly tone: HandoffTone;
-  readonly onOpenDetails?: () => void;
   /** Opens the hand-off's feedback in the Feedback view; absent: the hand-off left none. */
   readonly onOpenFeedback?: (() => void) | undefined;
 }) {
-  const { t } = useTranslation();
   const icon = ICONS[tone];
 
   return (
@@ -79,13 +75,7 @@ export function LastHandoff({
                 ),
               }
             : {})}
-          {...(onOpenDetails
-            ? {
-                onPrimaryClick: onOpenDetails,
-                primaryAriaLabel: t('workflowExecution.now.handoffDetails', { outcome }),
-                trailing: <Icon name="chevron-right" size="sm" className="text-content-muted" />,
-              }
-            : { interactive: false })}
+          interactive={false}
         />
       </InformationList>
       {commit ? (

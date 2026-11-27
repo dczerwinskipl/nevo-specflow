@@ -2741,7 +2741,6 @@
       "youActTakenOverCanHand": "Przejąłeś ten krok od agenta, więc teraz należy do Ciebie: dokończ pracę sam i zakończ krok albo przekaż go z powrotem agentowi w nowej próbie.",
       "handUnavailable": "Przekazanie agentowi nie jest teraz możliwe: {{why}}.",
       "personActs": "Ten krok wykonuje {{actor}}; możesz śledzić go tutaj.",
-      "handoffDetails": "{{outcome}}: otwórz w historii pracy",
       "handoffCommittedAll": "Praca zatwierdzona",
       "openSession": "Otwórz sesję",
       "sessionGone": "Sesja usunięta",
@@ -3367,7 +3366,8 @@
       "failed": "Nie udało się odczytać uwag.",
       "missing": "Tych uwag nie ma już w historii.",
       "resultSection": "Wynik",
-      "rejectionSection": "Dlaczego wynik odrzucono"
+      "rejectionSection": "Dlaczego wynik odrzucono",
+      "loading": "Wczytywanie uwag…"
     }
   },
   "taskOverview": {

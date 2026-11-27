@@ -168,6 +168,19 @@ describe('Specification aggregate resource boundary', () => {
     expect(html).not.toContain('Niedostępne na tym serwerze');
   });
 
+  it('says a section the Runtime could not read because it is busy (source_busy) is busy', () => {
+    const specId = 'busy';
+    const client = createSpecFlowQueryClient();
+    client.setQueryData(specificationKeys.detail(specId), {
+      ...createSpecificationWorkspaceFixture('working', specId),
+      sectionAvailability: { documents: 'unavailable' },
+      sectionUnavailableReason: { documents: 'source_busy' },
+    });
+    const html = renderPage(client, specId);
+    expect(html).toContain('SpecFlow jest zajęty');
+    expect(html).toContain('uruchom SpecFlow ponownie');
+  });
+
   it('shows "not available in this Runtime" for a section the Runtime does not implement', () => {
     const specId = 'not-implemented';
     const client = createSpecFlowQueryClient();

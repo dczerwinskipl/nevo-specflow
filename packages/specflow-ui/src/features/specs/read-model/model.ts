@@ -195,9 +195,13 @@ export type SpecificationSectionState = 'available' | 'unavailable' | 'forbidden
 
 export interface SpecificationWorkspaceData {
   readonly sectionAvailability?: Partial<Record<SpecificationSectionId, SpecificationSectionState>>;
-  /** Why an unavailable section is unavailable: `not_implemented` is permanent for this Runtime. */
+  /**
+   * Why an unavailable section is unavailable: `not_implemented` is permanent for this Runtime,
+   * `source_busy` is a held control lock (busy or recovering from a stop), `source_unavailable` any
+   * other read failure.
+   */
   readonly sectionUnavailableReason?: Partial<
-    Record<SpecificationSectionId, 'not_implemented' | 'source_unavailable'>
+    Record<SpecificationSectionId, 'not_implemented' | 'source_unavailable' | 'source_busy'>
   >;
   readonly id: string;
   /** The registered workspace the Specification is bound to (its documentation is read there). */

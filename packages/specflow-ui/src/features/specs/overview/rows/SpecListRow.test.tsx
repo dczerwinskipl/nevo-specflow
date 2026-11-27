@@ -234,7 +234,7 @@ describe('SpecListRow situation', () => {
         unreadable: { reason: 'busy' },
       }),
     ).toBe(
-      'State unavailable · busy | SpecFlow is busy or recovering from a stop. Try again in a moment.',
+      'State unavailable · busy | SpecFlow is busy or recovering from a stop. Refresh the list in a moment. If it keeps happening, restart SpecFlow.',
     );
     expect(document.querySelector('[data-spec-unreadable="busy"]')).not.toBeNull();
   });

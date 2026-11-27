@@ -71,7 +71,11 @@ export function SpecificationAggregatePage({
   // Why the read failed, in plain words; a section the Runtime could not read is `source`.
   const failedCopy = unreadableCopy(unreadableCauseOf(query.error));
   const unavailableCopy = { title: t(failedCopy.title), message: t(failedCopy.description) };
-  const sourceCopy = unreadableCopy('source');
+  const sourceCopy = unreadableCopy(
+    section && query.data?.sectionUnavailableReason?.[section] === 'source_busy'
+      ? 'busy'
+      : 'source',
+  );
   const notFoundCopy = {
     title: t('specification.notFoundTitle'),
     message: t('specification.notFoundDescription', { id: specId }),

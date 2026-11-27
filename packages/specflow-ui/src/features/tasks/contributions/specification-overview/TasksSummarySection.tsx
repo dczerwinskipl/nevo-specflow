@@ -74,11 +74,17 @@ export function TasksSummarySection({ data, actions }: SpecificationWorkSectionC
   }
 
   if (availability === 'unavailable') {
-    // The Runtime could not read the Tasks now (`source_unavailable`): busy, recovering from a stop
-    // or a file it cannot read. Transient, so it says so and offers to read again.
+    // The Runtime could not read the Tasks now: `source_busy` (busy or recovering from a stop) or
+    // `source_unavailable` (also a file it cannot read). Transient, so it says so and offers Retry.
     return (
       <Alert tone="attention" role="status" title={t('specification.tasksUnreadableTitle')}>
-        <p>{t(unreadableCopy('source').description)}</p>
+        <p>
+          {t(
+            unreadableCopy(
+              data.sectionUnavailableReason?.tasks === 'source_busy' ? 'busy' : 'source',
+            ).description,
+          )}
+        </p>
         <Button
           className="mt-3"
           variant="secondary"

@@ -308,7 +308,7 @@
       "reason": {
         "invalid": "Jej pliki przepływu pracy są nieprawidłowe.",
         "filesystem": "Nie udało się odczytać jej plików przepływu pracy.",
-        "busy": "SpecFlow jest zajęty albo wznawia pracę po zatrzymaniu. Spróbuj ponownie za chwilę.",
+        "busy": "SpecFlow jest zajęty albo wznawia pracę po zatrzymaniu. Odśwież listę za chwilę. Jeśli to się powtarza, uruchom SpecFlow ponownie.",
         "unexpected": "Wystąpił nieoczekiwany błąd; szczegóły są w logu Runtime."
       }
     }
@@ -635,7 +635,8 @@
       "uncertain": {
         "title": "Sprawdzamy wynik tworzenia",
         "body": "Nie mamy potwierdzonego wyniku. Sprawdź go tą samą operacją — nie utworzymy drugiej specyfikacji ani drugiej gałęzi.",
-        "bodyLost": "Ponowienie wysyła to samo żądanie jeszcze raz. Nie utworzy drugiej specyfikacji ani drugiej gałęzi."
+        "bodyLost": "Ponowienie wysyła to samo żądanie jeszcze raz, z tym samym identyfikatorem. Nie utworzy drugiej specyfikacji ani drugiej gałęzi. Możesz też wrócić do tworzenia: wpisane dane zostaną zachowane.",
+        "titleLost": "Ta operacja przepadła"
       },
       "recovery": {
         "title": "Tworzenie wymaga dokończenia",
@@ -1720,7 +1721,7 @@
   "unreadable": {
     "busy": {
       "title": "SpecFlow jest zajęty",
-      "description": "SpecFlow jest zajęty albo wznawia pracę po zatrzymaniu, więc nie można tego teraz odczytać. Spróbuj ponownie za chwilę."
+      "description": "SpecFlow jest zajęty albo wznawia pracę po zatrzymaniu, więc nie można tego teraz odczytać. Spróbuj ponownie za chwilę. Jeśli to się powtarza, uruchom SpecFlow ponownie."
     },
     "source": {
       "title": "Nie można tego teraz odczytać",

@@ -646,6 +646,10 @@ describe('CreateOperationPage', () => {
       ),
     ).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Check the result' })).toBeNull();
+    // The whole page agrees the operation is gone: no "checking", no "continues on the server".
+    expect(screen.getByText('This operation is gone')).toBeTruthy();
+    expect(screen.queryByText(/continues on the server/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Back to Create' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Open specification' })).toBeTruthy(),

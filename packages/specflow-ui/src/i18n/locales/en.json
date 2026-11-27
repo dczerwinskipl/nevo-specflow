@@ -308,7 +308,7 @@
       "reason": {
         "invalid": "Its workflow files are not valid.",
         "filesystem": "Its workflow files could not be read.",
-        "busy": "SpecFlow is busy or recovering from a stop. Try again in a moment.",
+        "busy": "SpecFlow is busy or recovering from a stop. Refresh the list in a moment. If it keeps happening, restart SpecFlow.",
         "unexpected": "Something unexpected went wrong; the Runtime log has the details."
       }
     }
@@ -635,7 +635,8 @@
       "uncertain": {
         "title": "We are checking the creation result",
         "body": "We have no confirmed result. Check it with the same operation — we will not create a second specification or a second branch.",
-        "bodyLost": "Retry sends the same request again. It cannot create a second specification or a second branch."
+        "bodyLost": "Retry sends the same request again under the same identifier. It cannot create a second specification or a second branch. Or go back to Create: your entries are kept.",
+        "titleLost": "This operation is gone"
       },
       "recovery": {
         "title": "Creation needs to be completed",
@@ -1720,7 +1721,7 @@
   "unreadable": {
     "busy": {
       "title": "SpecFlow is busy",
-      "description": "SpecFlow is busy or recovering from a stop, so this can't be read right now. Try again in a moment."
+      "description": "SpecFlow is busy or recovering from a stop, so this can't be read right now. Try again in a moment. If it keeps happening, restart SpecFlow."
     },
     "source": {
       "title": "Can't be read right now",

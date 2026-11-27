@@ -165,6 +165,8 @@ export function CreateOperationPage({
     ownDraft?.agent,
   );
   const failure = state.failure;
+  // The Runtime has no record of the operation: nothing runs on the server, Retry sends it again.
+  const lost = view === 'unknown' && failure?.kind === 'uncertain' && failure.cause === 'lost';
   // A failure that kept the operation (a lost session) is tried again here; a refusal ends it.
   const retainable = view === 'refused' && state.retained;
 
@@ -214,7 +216,7 @@ export function CreateOperationPage({
     ? t('create.submit.checking')
     : failure?.kind === 'recovery-required'
       ? t('create.submit.checkOperation')
-      : failure?.kind === 'uncertain' && failure.cause === 'lost'
+      : lost
         ? t('common.retry')
         : t('create.submit.checkResult');
 
@@ -350,7 +352,7 @@ export function CreateOperationPage({
             </section>
           )}
 
-          {(working || view === 'unknown') && (
+          {(working || (view === 'unknown' && !lost)) && (
             <InlineNote>
               {agentPath ? t('create.page.leaveNoteAgent') : t('create.page.leaveNote')}
             </InlineNote>
@@ -373,6 +375,12 @@ export function CreateOperationPage({
             {view === 'unknown' && (
               <Button disabled={state.checking} onClick={() => void actions.check()}>
                 {checkLabel}
+              </Button>
+            )}
+            {lost && (
+              // Nothing of it exists on the server: starting over from the kept entries is safe.
+              <Button variant="secondary" onClick={() => backToForm(undefined, false)}>
+                {t('create.page.backToCreate')}
               </Button>
             )}
             {view === 'refused' &&

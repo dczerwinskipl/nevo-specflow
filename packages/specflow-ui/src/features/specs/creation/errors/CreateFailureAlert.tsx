@@ -18,7 +18,9 @@ function staleReason(code: string): MessageKey {
 export function createFailureTitleKey(failure: CreateFailure): MessageKey {
   switch (failure.kind) {
     case 'uncertain':
-      return 'create.errors.uncertain.title';
+      return failure.cause === 'lost'
+        ? 'create.errors.uncertain.titleLost'
+        : 'create.errors.uncertain.title';
     case 'recovery-required':
       return failure.committed
         ? 'create.errors.commitFailed.title'

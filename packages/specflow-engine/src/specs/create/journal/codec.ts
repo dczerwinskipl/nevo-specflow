@@ -8,7 +8,7 @@ import type { ResolvedProjectHome } from '../../../project/home/home';
 import { DOCUMENT_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
 import { OPERATION_ID_PATTERN } from '../../durable';
-import { isExecutorIdentity } from '../../durable/executor-identity';
+import { isExecutorIdentity } from '../../../project/process/executor-identity';
 
 import { TEXT_CONTENT_MAX_BYTES, validateDocumentPath } from '../../documents';
 import { isExplicitSpecificationSlug } from '../../model';

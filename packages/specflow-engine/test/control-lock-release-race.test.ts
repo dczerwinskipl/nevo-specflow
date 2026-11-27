@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { bootstrapProjectHome } from '../src/testing';
 import { inspectProjectControlLock, projectControlLockPath } from '../src/project/control-lock';
-import { ownExecutorIdentity } from '../src/specs/durable/executor-identity';
+import { ownExecutorIdentity } from '../src/project/process/executor-identity';
 import { createGitTestProject } from './support/git-project';
 import {
   reapVitestWorker,

@@ -10,7 +10,7 @@ import {
   removeControlLockBreaker,
 } from './control-lock';
 import type { ResolvedProjectHome } from './home/home';
-import type { ExecutorIdentity, ProcessTable } from '../specs/durable/executor-identity';
+import type { ExecutorIdentity, ProcessTable } from './process/executor-identity';
 
 const roots: string[] = [];
 afterEach(() => {

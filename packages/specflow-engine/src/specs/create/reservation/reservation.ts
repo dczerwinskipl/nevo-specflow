@@ -27,7 +27,7 @@ import {
   type CreateJournal,
 } from '../journal';
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
-import { ownExecutorIdentity } from '../../durable/executor-identity';
+import { ownExecutorIdentity } from '../../../project/process/executor-identity';
 import { admitCreateArchetype } from '../admission';
 import { assertCreatePathsFitWindows, type WindowsPathBoundOptions } from '../path-bound';
 import { getStableProjectCatalogue } from '../../../definitions/process-catalogue';

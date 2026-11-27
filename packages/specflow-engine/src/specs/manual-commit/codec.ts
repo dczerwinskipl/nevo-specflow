@@ -1,4 +1,4 @@
-import { isExecutorIdentity } from '../durable/executor-identity';
+import { isExecutorIdentity } from '../../project/process/executor-identity';
 import { exactKeys, isCount, isIsoInstant, isRecord } from '../durable/guards';
 import { OPERATION_ID_PATTERN } from '../durable/journal-store';
 import { ledgerOwnerOfKey } from '../durable/ledger/model';

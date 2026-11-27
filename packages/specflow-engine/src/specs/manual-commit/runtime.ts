@@ -7,7 +7,7 @@ import {
   nodeProcessTable,
   type ExecutorIdentity,
   type ProcessTable,
-} from '../durable/executor-identity';
+} from '../../project/process/executor-identity';
 import type { ClaimSelf, MutationResource } from '../durable/claims';
 import type { LedgerOwner } from '../durable/ledger/model';
 import type { LeaseErrors } from '../durable/lease';

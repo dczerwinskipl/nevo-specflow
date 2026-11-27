@@ -12,7 +12,7 @@ import {
   ownExecutorIdentity,
   proveExecutorState,
   type ExecutorIdentity,
-} from '../durable/executor-identity';
+} from '../../project/process/executor-identity';
 import type { CreateSpecificationInput } from './input';
 export type { CreateSpecificationInput, CreateSpecificationTarget } from './input';
 import { commitBinding } from './binding/binding';

@@ -1,5 +1,5 @@
 import type { AgentWriteActor } from '../../../durable/claims';
-import type { ExecutorIdentity } from '../../../durable/executor-identity';
+import type { ExecutorIdentity } from '../../../../project/process/executor-identity';
 import type { DocumentChangeAction } from '../plan/model';
 import type { PlanEvidence } from '../plan/codec';
 import type { DocumentChangeStage, DocumentRecoveryPhase } from './stages';

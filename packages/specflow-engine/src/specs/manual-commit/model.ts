@@ -5,7 +5,7 @@
  * batch of the document queue, so the two never run in a checkout at once. Pure model: the journal
  * record, its state machine and the limits. No I/O.
  */
-import type { ExecutorIdentity } from '../durable/executor-identity';
+import type { ExecutorIdentity } from '../../project/process/executor-identity';
 import type { PayloadEvidence } from '../durable/payload-store';
 
 /** The only journal format this Engine writes and interprets. */

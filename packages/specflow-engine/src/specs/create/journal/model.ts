@@ -1,6 +1,6 @@
 import type { CreateClientIntent } from '../intent';
 import type { WorkspaceIntegrationDestination } from '../../../project/workspace/registry/registry';
-import type { ExecutorIdentity } from '../../durable/executor-identity';
+import type { ExecutorIdentity } from '../../../project/process/executor-identity';
 
 export const CREATE_STAGES = [
   'reserved',

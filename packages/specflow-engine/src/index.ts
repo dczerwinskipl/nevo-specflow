@@ -62,7 +62,7 @@ export {
   proveExecutorState,
   setProcessStartTimeSource,
   type ExecutorIdentity,
-} from './specs/durable/executor-identity';
+} from './project/process/executor-identity';
 
 export { readRegistrySnapshot, type SpecFlowEngine } from './application';
 export { openSpecFlowEngine } from './engine';

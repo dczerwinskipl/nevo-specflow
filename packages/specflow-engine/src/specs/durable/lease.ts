@@ -11,7 +11,7 @@ import {
   type ExecutorIdentity,
   type ExecutorState,
   type ProcessTable,
-} from './executor-identity';
+} from '../../project/process/executor-identity';
 import { exactKeys, isIsoInstant, isRecord } from './guards';
 import { OPERATION_ID_PATTERN, isMissing } from './journal-store';
 

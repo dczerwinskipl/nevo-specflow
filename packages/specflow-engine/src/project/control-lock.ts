@@ -23,7 +23,7 @@ import {
   proveExecutorState,
   type ExecutorIdentity,
   type ProcessTable,
-} from '../specs/durable/executor-identity';
+} from './process/executor-identity';
 
 export const PROJECT_CONTROL_LOCK_RELATIVE_PATH = 'engine/control.lock';
 

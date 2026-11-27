@@ -2,7 +2,7 @@
 // It imports neither `specs/create` nor `specs/documents` (enforced by the import-cycle gate).
 export * from './claims';
 export * from './committed-evidence';
-export * from './executor-identity';
+export * from '../../project/process/executor-identity';
 export * from './guards';
 export * from './journal-store';
 export * from './lease';

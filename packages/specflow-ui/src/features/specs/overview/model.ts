@@ -5,6 +5,7 @@ import type {
   SpecsCollection,
   SpecsOverview,
 } from '@nevo/specflow-contracts/specs/overview';
+import type { UnreadableCause } from '../../../shared/unreadable/unreadable';
 
 export type {
   ArchivedSpecOverviewItem,
@@ -30,6 +31,8 @@ export interface SpecsOverviewState {
   readonly paused?: boolean;
   readonly refreshing: boolean;
   readonly error: boolean;
+  /** Why the read failed (`error`), in the words the notice says it; absent: unexpected. */
+  readonly errorCause?: UnreadableCause;
   /** The session may not use the Specs area at all (not a single forbidden resource). */
   readonly accessDenied?: boolean;
 }

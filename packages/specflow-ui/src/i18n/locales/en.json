@@ -102,10 +102,9 @@
     "sectionRenderFailedDescription": "This section encountered a rendering error. Try displaying it again.",
     "attentionSourceFailedTitle": "Some attention items could not be loaded",
     "attentionSourceFailedDescription": "An attention source failed. Other available items are still shown.",
-    "unavailableTitle": "Specification is unavailable",
-    "unavailableDescription": "The specification workspace is not supported by Runtime yet or could not be loaded.",
     "notFoundTitle": "Specification not found",
     "notFoundDescription": "Specification {{id}} could not be found.",
+    "tasksUnreadableTitle": "Tasks can't be read right now",
     "noChangesNotice": "No changed files recorded for this view.",
     "viewOverview": "Overview",
     "viewDocuments": "Documents",
@@ -230,8 +229,7 @@
     "moreActions": "Specification actions",
     "search": "Search specifications",
     "loading": "Loading specifications",
-    "unavailable": "Specifications are unavailable",
-    "unavailableDescription": "The specification overview is not available from this Runtime yet.",
+    "unavailable": "Couldn't load specifications",
     "refreshFailed": "Could not refresh specifications",
     "refreshFailedDescription": "Showing the last loaded collection. Try again to get the latest state.",
     "emptyCurrent": "No current specifications",
@@ -306,10 +304,11 @@
     },
     "unreadable": {
       "title": "Could not read this Specification",
+      "busyTitle": "State unavailable · busy",
       "reason": {
         "invalid": "Its workflow files are not valid.",
         "filesystem": "Its workflow files could not be read.",
-        "busy": "The project was busy with another change. Try again in a moment.",
+        "busy": "SpecFlow is busy or recovering from a stop. Refresh the list in a moment. If it keeps happening, restart SpecFlow.",
         "unexpected": "Something unexpected went wrong; the Runtime log has the details."
       }
     }
@@ -635,7 +634,9 @@
       "readOnlyForm": "The form is read-only.",
       "uncertain": {
         "title": "We are checking the creation result",
-        "body": "We have no confirmed result. Check it with the same operation — we will not create a second specification or a second branch."
+        "body": "We have no confirmed result. Check it with the same operation — we will not create a second specification or a second branch.",
+        "bodyLost": "Retry sends the same request again under the same identifier. It cannot create a second specification or a second branch. Or go back to Create: your entries are kept.",
+        "titleLost": "This operation is gone"
       },
       "recovery": {
         "title": "Creation needs to be completed",
@@ -1079,7 +1080,13 @@
         "workingNew": "Preparing a new workspace and the specification.",
         "completedUncommitted": "Done, but the files are not committed yet.",
         "agentStarted": "The agent started {{step}}. Opening its session…",
-        "agentNotStarted": "The specification exists. The agent is not running."
+        "agentNotStarted": "The specification exists. The agent is not running.",
+        "unconfirmed": {
+          "busy": "SpecFlow was busy or recovering from a stop and did not confirm the result.",
+          "lost": "SpecFlow has no record of this operation: it may have stopped before starting it.",
+          "noAnswer": "SpecFlow did not answer in time.",
+          "unknown": "SpecFlow did not confirm the result."
+        }
       },
       "leaveNote": "You can leave this page. Creation continues on the server, and you can return to check its status from the specification list.",
       "openSpecification": "Open specification",
@@ -1088,7 +1095,7 @@
       "backToCreate": "Back to Create",
       "notFound": {
         "title": "This operation does not exist",
-        "body": "The server has no record of it. The link may be wrong or the operation may have expired. Nothing is being created."
+        "body": "SpecFlow has no record of it: it may have been lost when SpecFlow stopped, or the link is wrong. Nothing is being created."
       },
       "configuration": "Configuration",
       "details": {
@@ -1717,6 +1724,24 @@
     "title": "Not available on this server",
     "description": "The connected server does not provide this part of SpecFlow yet. The rest of the product keeps working.",
     "back": "Go back"
+  },
+  "unreadable": {
+    "busy": {
+      "title": "SpecFlow is busy",
+      "description": "SpecFlow is busy or recovering from a stop, so this can't be read right now. Try again in a moment. If it keeps happening, restart SpecFlow."
+    },
+    "source": {
+      "title": "Can't be read right now",
+      "description": "SpecFlow is busy or recovering from a stop, or couldn't read its files. Try again in a moment. If it keeps happening, restart SpecFlow."
+    },
+    "unreachable": {
+      "title": "SpecFlow isn't responding",
+      "description": "SpecFlow Runtime did not answer. Make sure it is running, then try again."
+    },
+    "failed": {
+      "title": "Something went wrong",
+      "description": "SpecFlow could not read this because of an unexpected error. Try again; if it keeps happening, the Runtime log has the details."
+    }
   },
   "routeError": {
     "title": "Something went wrong",

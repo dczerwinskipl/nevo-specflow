@@ -17,6 +17,7 @@ import {
   ViewPageTitle,
 } from '../../../app/navigation/ApplicationLocation';
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
+import { unreadableCauseOf, unreadableCopy } from '../../../shared/unreadable/unreadable';
 
 export interface SpecificationTaskPageProps {
   readonly specId: string;
@@ -39,6 +40,8 @@ export function SpecificationTaskPage({
     label: t('navigation.backTo', { parent: t('specification.viewTasks') }),
     onBack,
   };
+  // Why the read failed, in plain words; an answer for another Task is an unexpected failure.
+  const failed = unreadableCopy(taskState.isError ? unreadableCauseOf(taskState.error) : 'failed');
   if (
     taskState.data?.task.id === taskId &&
     !(taskState.isError && [401, 403, 404, 409].includes(taskState.errorStatus ?? 0))
@@ -98,14 +101,14 @@ export function SpecificationTaskPage({
                         ? t('specification.resourceAccessDeniedTitle')
                         : taskState.isTaskNotFound
                           ? t('specification.taskNotFoundTitle')
-                          : t('specification.unavailableTitle')
+                          : t(failed.title)
                     }
                   >
                     {taskState.errorStatus === 403
                       ? t('specification.resourceAccessDeniedDescription')
                       : taskState.isTaskNotFound
                         ? t('specification.taskNotFoundDescription', { taskId })
-                        : t('specification.unavailableDescription', { id: taskId })}
+                        : t(failed.description)}
                   </Alert>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="secondary" size="sm" onClick={() => void taskState.refetch()}>
@@ -114,11 +117,11 @@ export function SpecificationTaskPage({
                   </div>
                 </div>
               ) : taskState.data?.task.id !== taskId ? (
-                <Alert role="alert" tone="attention" title={t('specification.unavailableTitle')}>
-                  {t('specification.unavailableDescription', { id: taskId })}
+                <Alert role="alert" tone="attention" title={t(failed.title)}>
+                  {t(failed.description)}
                 </Alert>
               ) : (
-                <Alert tone="attention" title={t('specification.unavailableTitle')} />
+                <Alert tone="attention" title={t(failed.title)} />
               )}
             </AppContentContainer>
           </AppWorkspaceBody>

@@ -19,8 +19,6 @@ export interface UseSpecificationWorkspaceResult {
   readonly error: unknown;
   readonly errorStatus: number | undefined;
   readonly isDomainNotFound: boolean;
-  /** The Runtime has no source for this read at all (permanent; retrying cannot help). */
-  readonly isNotInRuntime: boolean;
   /** Reads again; resolves with whether that read failed. */
   readonly refetch: () => Promise<{ readonly isError: boolean }>;
 }
@@ -48,7 +46,6 @@ export function useSpecificationWorkspace(
   const failure = asApiError(query.error, { operation: specsWorkspaceOperation, method: 'GET' });
   const isDomainNotFound = failure?.status === 404 && failure.code === 'specification_not_found';
   const errorStatus = failure?.status;
-  const isNotInRuntime = failure?.reason === 'not-in-runtime';
 
   return {
     data: query.data,
@@ -61,7 +58,6 @@ export function useSpecificationWorkspace(
     error: query.error,
     errorStatus,
     isDomainNotFound,
-    isNotInRuntime,
     refetch: query.refetch,
   };
 }

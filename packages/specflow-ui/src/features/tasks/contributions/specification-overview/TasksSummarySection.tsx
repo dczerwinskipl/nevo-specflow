@@ -24,6 +24,7 @@ import { taskRowViewOf } from '../../list/taskListModel';
 import { getGroupTone } from '../../list/presentation';
 import { emptyTasks } from '../../overview/tasksStepLine';
 import { productIcons } from '../../../../shared/product-icons';
+import { unreadableCopy } from '../../../../shared/unreadable/unreadable';
 
 /** A plain click opens in the app; a modified click keeps the browser's own behaviour. */
 const plainClick = (event: MouseEvent) =>
@@ -53,7 +54,7 @@ export function emptyTasksLine(
  * it. Without Tasks the section keeps its place with the line naming the workflow step that
  * produces them, and a quiet New task.
  */
-export function TasksSummarySection({ specId, data, actions }: SpecificationWorkSectionContext) {
+export function TasksSummarySection({ data, actions }: SpecificationWorkSectionContext) {
   const { t } = useTranslation();
   const workflow = useSpecificationWorkflow();
   const availability = data.sectionAvailability?.tasks;
@@ -64,10 +65,34 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
     return <FeatureUnavailable className="border-none" />;
   }
 
-  if (availability === 'forbidden' || availability === 'unavailable') {
+  if (availability === 'forbidden') {
     return (
-      <Alert tone="attention" title={t('specification.unavailableTitle')}>
-        {t('specification.unavailableDescription', { id: specId })}
+      <Alert tone="attention" title={t('specification.resourceAccessDeniedTitle')}>
+        {t('specification.resourceAccessDeniedDescription')}
+      </Alert>
+    );
+  }
+
+  if (availability === 'unavailable') {
+    // The Runtime could not read the Tasks now: `source_busy` (busy or recovering from a stop) or
+    // `source_unavailable` (also a file it cannot read). Transient, so it says so and offers Retry.
+    return (
+      <Alert tone="attention" role="status" title={t('specification.tasksUnreadableTitle')}>
+        <p>
+          {t(
+            unreadableCopy(
+              data.sectionUnavailableReason?.tasks === 'source_busy' ? 'busy' : 'source',
+            ).description,
+          )}
+        </p>
+        <Button
+          className="mt-3"
+          variant="secondary"
+          size="sm"
+          onClick={() => void actions.refresh()}
+        >
+          {t('common.retry')}
+        </Button>
       </Alert>
     );
   }

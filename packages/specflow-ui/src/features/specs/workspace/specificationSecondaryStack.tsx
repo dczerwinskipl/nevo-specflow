@@ -55,7 +55,7 @@ function useDocumentPreviewData({
   if (context?.specId !== specId) {
     return {
       status: 'unavailable',
-      message: t('specification.unavailableDescription', { id: documentId }),
+      message: t('unreadable.failed.description'),
     };
   }
 

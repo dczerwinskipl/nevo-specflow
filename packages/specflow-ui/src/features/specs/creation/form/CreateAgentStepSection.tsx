@@ -4,15 +4,17 @@ import { Icon, Typography, cn } from '@nevo/ui';
 import type { ArchetypeFirstStep } from '@nevo/specflow-contracts/documents';
 import { productIcons } from '../../../../shared/product-icons';
 import { TextAction } from '../../../../shared/actions/TextAction';
-import { AgentAvailabilityNote } from '../../../sessions';
+import { workModeFor } from '@nevo/specflow-contracts/sessions';
+import { AgentAvailabilityNote, agentCanStart } from '../../../sessions';
 import { AgentSession, type AgentCatalogue, type FreshChoice } from '../../../tasks';
 import { createControlWidth } from '../createFormLayout';
 
 /**
  * The agent path's one extra section of the Create form, in the right column above the workspace:
  * what happens right after Create, the step the agent starts and the same agent and model picker as
- * Run with agent (`AgentSession`, a new Session), with the Session start screen's availability note
- * when an agent cannot start. An archetype whose first step only the owner can do (or that starts
+ * Run with agent (`AgentSession`, a new Session) and the work mode its Session starts in, with the
+ * Session start screen's availability note only when the chosen agent cannot start (the other
+ * agents' state stays in their tiles). An archetype whose first step only the owner can do (or that starts
  * no workflow) shows one line instead, with **Use Manually**, which switches to the manual form and
  * keeps the draft.
  */
@@ -42,6 +44,16 @@ export function CreateAgentStepSection({
   const noteId = useId();
   const fallback = useRef<HTMLDivElement>(null);
   const runnable = firstStep?.agent === true;
+  const ready = agents.status === 'ready' ? agents : undefined;
+  // The chosen agent can start: the others' state is in their tiles, not a warning under them.
+  const chosenCanStart = ready ? agentCanStart(ready.catalogue, choice.providerId) : false;
+  // The mode the Runtime starts the agent's Session in (the same rule), said as Run with agent says it.
+  const workMode = ready
+    ? workModeFor(
+        ready.providers.find((provider) => provider.providerId === choice.providerId),
+        choice.modelId,
+      )?.title
+    : undefined;
 
   return (
     <section className={cn('grid gap-4', createControlWidth)} aria-labelledby={headingId}>
@@ -101,14 +113,15 @@ export function CreateAgentStepSection({
                 catalogue={agents}
                 choice={choice}
                 preselected={false}
+                workMode={chosenCanStart ? workMode : undefined}
                 onChoice={onChoice}
               />
             )}
           </div>
-          {agents.status === 'ready' && (
+          {ready && !chosenCanStart && (
             <AgentAvailabilityNote
               id={noteId}
-              catalogue={agents.catalogue}
+              catalogue={ready.catalogue}
               refreshing={refreshing}
               onRefresh={onRefresh}
               focusFallback={() => fallback.current}

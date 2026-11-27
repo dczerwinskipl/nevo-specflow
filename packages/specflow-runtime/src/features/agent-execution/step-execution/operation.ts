@@ -30,11 +30,10 @@ import {
   sessionWorkMode,
   withOfferedModel,
   withRuntimeReasons,
-  workModeFor,
   type AgentRuntimeFacts,
 } from './availability';
 import type { ActiveAgentAttempt, AgentBrief, AgentStepEngine } from './engine-port';
-import type { RequestOrigin } from '@nevo/specflow-contracts/sessions';
+import { workModeFor, type RequestOrigin } from '@nevo/specflow-contracts/sessions';
 
 /** The Session operations agent step execution uses. */
 export type AgentStepSessions = Pick<

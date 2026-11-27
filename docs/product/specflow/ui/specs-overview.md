@@ -64,12 +64,15 @@ unavailable**) holds a Specification whose workflow cannot be read; it is added 
 sections whenever a row needs it. A Specification appears in exactly one section. A section with no
 rows is not rendered. The UI maps ids to its own i18n labels.
 
-**Layout follows the data.** When no Specification in the collection has a real section (a
-project Runtime that knows the Specifications but not their work status), the list is **one flat
-list**: title and facts, an **Updated** column, and a progress column only when some row has
+**Layout follows the data.** When no Specification in the collection has a real section or a
+reason its workflow could not be read (a project Runtime that knows the Specifications but not
+their work status), the list is **one flat list**: title and facts, an **Updated** column, and a progress column only when some row has
 progress. It never shows a "Status unavailable" group with empty columns. The decision is taken
 from the whole collection (`overviewCapabilities`), never from a search result, so typing does not
-change the layout. An empty collection shows only the empty state, without column headers.
+change the layout. A row the Runtime could not read (`unreadable`) is a status, not missing data:
+it stays under **Status unavailable** with its reason, and a `busy` read (SpecFlow busy or
+recovering from a stop) is the quiet marker **State unavailable · busy** with "Try again in a
+moment", not the danger line of files that cannot be read. An empty collection shows only the empty state, without column headers.
 
 ## Row anatomy and information budget
 

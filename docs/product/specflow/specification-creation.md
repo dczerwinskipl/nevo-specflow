@@ -356,12 +356,18 @@ Lifecycle states keep their semantics:
   there. Only this explicit path restores a draft. The remedies of the explanation return to the form with that change made.
 - **Outcome unknown / recovery required**: a separate calm state with the same explanation and a
   single **Check the result** / **Check operation status** action for the same operation, never a
-  second create and no way back to the form to start another.
+  second create and no way back to the form to start another. The status line says why in one line:
+  SpecFlow was busy or recovering from a stop (`CONTROL_LOCK_BUSY`), did not answer in time, or did
+  not confirm the result. When the Runtime has no record of an operation it accepted (it stopped
+  before starting it), the action is **Retry**: the same request under the same operation id, which
+  cannot create a second specification or branch.
 - **Opened without a stored request** (a direct link, cleared storage; a reload is the same): the
   page asks the server by `operationId` and shows what it knows (running: the steps without a
   title; finished: the specification opens; failed: the explanation), never a duplicate. An
-  operation the server has no record of is shown calmly as **Operation not found**, with a way back
-  to Create; nothing is sent.
+  operation the server has no record of is shown calmly as **Operation not found** (it may have
+  been lost when SpecFlow stopped, or the link is wrong), with **Back to Create**, which restores
+  the draft this browser kept for the operation when there is one; nothing is sent, and no text
+  offers a retry that cannot happen.
 
 ### Way back from elsewhere: the operations panel
 
@@ -500,7 +506,11 @@ vertically centred in the tile.
 - **With an agent** is the same form with one extra **Agent** section in the right column above
   the workspace: what happens right after Create, **First step: …** (the archetype's first workflow
   step, from the catalogue) and the agent and model picker of Run with agent (a new Session; no work
-  mode to choose, nothing is said to be preselected). The button reads **Create and run with agent**
+  mode to choose, nothing is said to be preselected), with the sentence naming the work mode the
+  agent's Session starts in (**The agent works in the Auto mode.**, the Runtime's `workModeFor`
+  rule, as Run with agent says it). Other agents that cannot start show their state only in their
+  tiles: the availability note (with **How to fix**) appears only when the chosen agent cannot
+  start (`agentCanStart`). The button reads **Create and run with agent**
   and the note **Opens the agent's session once it starts.** An archetype whose first step only the
   owner can do shows only "The first step is yours." with **Use Manually**, which switches to the
   manual form and keeps the draft; Create is blocked with the same line.
@@ -513,7 +523,8 @@ vertically centred in the tile.
   agent did not start <step>** with an attention marker, the alert says why and how to fix it (the
   Run with agent blocker copy), and the actions are **Run with agent…** (the existing dialog, with
   the chosen agent preselected; it checks again and sends a new request) and **Open
-  specification**. The Configuration list names the Agent and the First step.
+  specification**. The Configuration list names the Agent (`agentDisplayName` with the chosen
+  effort, "Claude Code · Opus 5.5 · high") and the First step.
 
 This replaces dogfood decision D5 (the UI chaining Create and Run with agent).
 

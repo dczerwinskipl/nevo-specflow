@@ -320,10 +320,10 @@ function SpecificationWorkspaceInner({
                     <Alert
                       tone="attention"
                       role="status"
-                      title={t('specification.unavailableTitle')}
+                      title={t('specification.staleDataTitle')}
                       className="max-w-content-standard"
                     >
-                      {t('specification.unavailableDescription', { id: specId })}
+                      {t('specification.staleDataDescription')}
                     </Alert>
                   ) : null}
 

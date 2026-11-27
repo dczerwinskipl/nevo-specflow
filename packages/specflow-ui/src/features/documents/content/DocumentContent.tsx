@@ -11,6 +11,7 @@ import { useMarkdownLabels } from '../../../i18n/useMarkdownLabels';
 import { documentKeys } from '../read-model/queries';
 import { documentOutline } from '../../../shared/document-reading/outlineData';
 import { DocumentProperties } from '../../../shared/document-reading/DocumentProperties';
+import { unreadableCauseOf, unreadableCopy } from '../../../shared/unreadable/unreadable';
 
 export function DocumentContent({
   specId,
@@ -63,12 +64,11 @@ export function DocumentContent({
 
   if (query.isError && !usable) {
     const forbidden = isHttpClientError(query.error) && query.error.status === 403;
-    const title = t(
-      forbidden ? 'specification.resourceAccessDeniedTitle' : 'specification.unavailableTitle',
+    const failed = unreadableCopy(unreadableCauseOf(query.error));
+    const title = t(forbidden ? 'specification.resourceAccessDeniedTitle' : failed.title);
+    const description = t(
+      forbidden ? 'specification.resourceAccessDeniedDescription' : failed.description,
     );
-    const description = forbidden
-      ? t('specification.resourceAccessDeniedDescription')
-      : t('specification.unavailableDescription', { id: documentId });
 
     return (
       <div className="grid gap-3">
@@ -108,7 +108,7 @@ export function DocumentContent({
           labels={markdownLabels}
         />
       ) : (
-        <Alert tone="attention" role="alert" title={t('specification.unavailableTitle')} />
+        <Alert tone="attention" role="alert" title={t('unreadable.failed.title')} />
       )}
     </div>
   );

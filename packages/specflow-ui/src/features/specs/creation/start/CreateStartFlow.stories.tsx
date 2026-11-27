@@ -11,6 +11,9 @@ import { VisitStateProvider } from '../../../../app/VisitStateProvider';
 import { withLocale } from '../../../../i18n/StoryLocalization';
 import { createSpecFlowAppServices } from '../../../../services';
 import {
+  antigravityTurnedOff,
+  claudeDescriptor,
+  codexNotFound,
   managedProviders,
   unavailableProviders,
 } from '../../../sessions/start/catalogue/providerDescriptors.stories-support';
@@ -148,6 +151,32 @@ export const AgentForm: Story = {
     await expect(
       await canvas.findByText('Otworzy sesję agenta, gdy ten wystartuje.'),
     ).toBeVisible();
+  },
+};
+
+/**
+ * The chosen agent can start while the others cannot (dogfood 4): no warning about them under the
+ * picker, their state stays in their tiles. The form says the work mode the agent's Session starts
+ * in, as Run with agent does (Auto, when the provider runs it).
+ */
+const claudeWithAuto: ProviderDescriptor = {
+  ...claudeDescriptor,
+  providerModes: claudeDescriptor.providerModes?.map((mode) =>
+    mode.modeId === 'auto' ? { ...mode, readiness: 'ready', reason: undefined } : mode,
+  ),
+};
+export const AgentFormOtherAgentsUnavailable: Story = {
+  args: { providers: [claudeWithAuto, codexNotFound(), antigravityTurnedOff] },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: /^Z agentem/ }));
+    const section = within(
+      (await canvas.findByRole('heading', { name: 'Agent' })).closest('section')!,
+    );
+    await expect(await section.findByText('Agent pracuje w trybie „Auto”.')).toBeVisible();
+    await expect(section.queryByText(/^Niedostępne: /)).toBeNull();
+    await expect(section.queryByRole('button', { name: 'Jak naprawić' })).toBeNull();
+    // The other agents still say why, in their own tiles.
+    await expect(section.getByRole('radio', { name: /Codex/ })).toBeInTheDocument();
   },
 };
 

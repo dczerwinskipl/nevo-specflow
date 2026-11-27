@@ -46,7 +46,9 @@ export function interpretWatchResult(
     }
 
     case 'not-started':
-      return open({ kind: 'uncertain' }, 'notStarted');
+      // The Runtime has no record of an operation it accepted or this browser kept: it was lost
+      // (SpecFlow stopped before starting it). Sending the same request again is the way on.
+      return open({ kind: 'uncertain', cause: 'lost' });
     case 'unresolved': {
       // A journal that needs recovery and a lost session or capability are told apart; every other
       // unknown stays "check it".
@@ -55,7 +57,8 @@ export function interpretWatchResult(
       return open(
         failure?.kind === 'unauthenticated' ||
           failure?.kind === 'forbidden' ||
-          failure?.kind === 'recovery-required'
+          failure?.kind === 'recovery-required' ||
+          failure?.kind === 'uncertain'
           ? failure
           : { kind: 'uncertain' },
       );

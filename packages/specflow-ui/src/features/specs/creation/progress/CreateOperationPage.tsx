@@ -165,6 +165,8 @@ export function CreateOperationPage({
     ownDraft?.agent,
   );
   const failure = state.failure;
+  // The Runtime has no record of the operation: nothing runs on the server, Retry sends it again.
+  const lost = view === 'unknown' && failure?.kind === 'uncertain' && failure.cause === 'lost';
   // A failure that kept the operation (a lost session) is tried again here; a refusal ends it.
   const retainable = view === 'refused' && state.retained;
 
@@ -209,11 +211,14 @@ export function CreateOperationPage({
     }
   }, [announce, statusText]);
 
+  // A lost operation (the Runtime has no record of it) is sent again under the same id: Retry.
   const checkLabel = state.checking
     ? t('create.submit.checking')
     : failure?.kind === 'recovery-required'
       ? t('create.submit.checkOperation')
-      : t('create.submit.checkResult');
+      : lost
+        ? t('common.retry')
+        : t('create.submit.checkResult');
 
   return (
     <CreateShell title={created ? t('create.page.heading.completed') : t('create.page.location')}>
@@ -347,7 +352,7 @@ export function CreateOperationPage({
             </section>
           )}
 
-          {(working || view === 'unknown') && (
+          {(working || (view === 'unknown' && !lost)) && (
             <InlineNote>
               {agentPath ? t('create.page.leaveNoteAgent') : t('create.page.leaveNote')}
             </InlineNote>
@@ -372,6 +377,12 @@ export function CreateOperationPage({
                 {checkLabel}
               </Button>
             )}
+            {lost && (
+              // Nothing of it exists on the server: starting over from the kept entries is safe.
+              <Button variant="secondary" onClick={() => backToForm(undefined, false)}>
+                {t('create.page.backToCreate')}
+              </Button>
+            )}
             {view === 'refused' &&
               (retainable ? (
                 <>
@@ -387,11 +398,9 @@ export function CreateOperationPage({
                 <Button onClick={() => backToForm()}>{t('create.page.backToForm')}</Button>
               ))}
             {view === 'not-found' && (
-              // The draft this browser kept for the operation, if any: the owner's input is never dropped.
-              <Button
-                variant="secondary"
-                onClick={() => onBackToForm(ownDraft ? operationId : undefined)}
-              >
+              // No request of it is kept here, so nothing can be sent again: back to Create, with
+              // the draft this browser kept for it when there is one.
+              <Button onClick={() => onBackToForm(ownDraft ? operationId : undefined)}>
                 {t('create.page.backToCreate')}
               </Button>
             )}

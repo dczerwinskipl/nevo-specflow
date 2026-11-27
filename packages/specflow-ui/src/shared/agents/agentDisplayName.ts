@@ -19,6 +19,8 @@ export interface AgentNameSource {
   readonly model?: string | undefined;
   /** The model's title as the attempt recorded it or its Session reports it ("Opus 5.5"). */
   readonly modelTitle?: string | undefined;
+  /** The model's effort, where the choice names one ("high"): it follows the model, as the picker shows it. */
+  readonly effort?: string | undefined;
   readonly catalogue?: AgentTitleCatalogue | undefined;
 }
 
@@ -44,14 +46,14 @@ export function agentNameParts(agent: AgentNameSource): {
 
 /**
  * An agent as every screen names it, "Claude Code · Opus 5.5": the tool, then the model
- * ({@link agentNameParts}). The one formatter of the Now block, the work history, the Run with
+ * ({@link agentNameParts}) and, when given, its effort ("Claude Code · Opus 5.5 · high"). The one formatter of the Now block, the work history, the Run with
  * agent dialog, the Task history and the Session's own agent line. Where a line is too short for it, the provider's mark stands
  * for the tool and the model is shown alone ({@link AgentName}), the whole name kept accessible.
  */
 export function agentDisplayName(agent: AgentNameSource): string {
   const { provider, model } = agentNameParts(agent);
 
-  return [provider, model].filter(Boolean).join(' · ');
+  return [provider, model, model ? agent.effort : undefined].filter(Boolean).join(' · ');
 }
 
 /** A provider's id made readable, `claude` is "Claude": the fallback when no title names it. */

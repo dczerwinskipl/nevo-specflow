@@ -1,6 +1,6 @@
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../../i18n/message';
-import type { CreateFailure } from '../errors/createFailure';
+import type { CreateFailure, UncertainCause } from '../errors/createFailure';
 import type { CreateOperationState } from '../operation/createOperationReducer';
 import type { CreateSettingsFacts, FactWorkspace } from '../workspace/model/createFacts';
 
@@ -75,6 +75,12 @@ const nothingCreatedKinds: ReadonlySet<CreateFailure['kind']> = new Set([
   'catalogue-stale',
 ]);
 
+const unconfirmedKeys = {
+  busy: 'create.page.status.unconfirmed.busy',
+  lost: 'create.page.status.unconfirmed.lost',
+  'no-answer': 'create.page.status.unconfirmed.noAnswer',
+} as const satisfies Record<UncertainCause, string>;
+
 /** What the page needs to say what is going on now. */
 export interface CreateStatusInput {
   readonly view: CreatePageView;
@@ -119,9 +125,16 @@ export function createPageStatus(input: CreateStatusInput): Message | undefined 
         ? message('create.page.notCreated')
         : undefined;
     case 'unknown':
-      return failure?.kind === 'recovery-required' && failure.committed
-        ? message('create.page.createdNotCommitted')
-        : undefined;
+      if (failure?.kind === 'recovery-required') {
+        return failure.committed ? message('create.page.createdNotCommitted') : undefined;
+      }
+
+      // Why the result is not confirmed, in one line under the heading.
+      return message(
+        failure?.kind === 'uncertain' && failure.cause
+          ? unconfirmedKeys[failure.cause]
+          : 'create.page.status.unconfirmed.unknown',
+      );
     case 'not-found':
       return undefined;
     case 'working':

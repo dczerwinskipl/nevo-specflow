@@ -18,7 +18,9 @@ function staleReason(code: string): MessageKey {
 export function createFailureTitleKey(failure: CreateFailure): MessageKey {
   switch (failure.kind) {
     case 'uncertain':
-      return 'create.errors.uncertain.title';
+      return failure.cause === 'lost'
+        ? 'create.errors.uncertain.titleLost'
+        : 'create.errors.uncertain.title';
     case 'recovery-required':
       return failure.committed
         ? 'create.errors.commitFailed.title'
@@ -61,7 +63,10 @@ export function createFailureTitleKey(failure: CreateFailure): MessageKey {
 function bodyKey(failure: CreateFailure): MessageKey {
   switch (failure.kind) {
     case 'uncertain':
-      return 'create.errors.uncertain.body';
+      // A lost operation is sent again (Retry); any other unconfirmed result is checked.
+      return failure.cause === 'lost'
+        ? 'create.errors.uncertain.bodyLost'
+        : 'create.errors.uncertain.body';
     case 'recovery-required':
       return failure.committed ? 'create.errors.commitFailed.body' : 'create.errors.recovery.body';
     case 'branch-protected':

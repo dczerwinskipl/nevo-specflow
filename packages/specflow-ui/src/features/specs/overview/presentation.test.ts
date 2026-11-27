@@ -305,6 +305,18 @@ describe('Specs Overview capabilities', () => {
     ).toEqual({ status: false, progress: true });
   });
 
+  it('has status when the Runtime says why it could not read every workflow (busy)', () => {
+    expect(
+      overviewCapabilities({
+        ...createSpecsFixture(),
+        items: [
+          { ...unknown('a'), unreadable: { reason: 'busy' } },
+          { ...unknown('b'), unreadable: { reason: 'busy' } },
+        ],
+      }),
+    ).toEqual({ status: true, progress: false });
+  });
+
   it('keeps the full layout for an empty list and the archive', () => {
     expect(overviewCapabilities({ ...createSpecsFixture(), items: [] })).toEqual({
       status: true,

@@ -45,6 +45,33 @@ describe('createPageStatus', () => {
   });
 });
 
+describe('createPageStatus of an unconfirmed result', () => {
+  const unknown = {
+    view: 'unknown' as const,
+    stillWorking: false,
+    runningStep: undefined,
+    monitoring: false,
+    reading: false,
+    newWorkspace: false,
+  };
+
+  it.each([
+    ['busy', 'create.page.status.unconfirmed.busy'],
+    ['lost', 'create.page.status.unconfirmed.lost'],
+    ['no-answer', 'create.page.status.unconfirmed.noAnswer'],
+  ] as const)('says why in one line (%s)', (cause, key) => {
+    expect(createPageStatus({ ...unknown, failure: { kind: 'uncertain', cause } })).toEqual(
+      message(key),
+    );
+  });
+
+  it('says the result was not confirmed when the cause is unknown', () => {
+    expect(createPageStatus({ ...unknown, failure: { kind: 'uncertain' } })).toEqual(
+      message('create.page.status.unconfirmed.unknown'),
+    );
+  });
+});
+
 describe('shortenGoal', () => {
   it('is absent for an empty goal and collapses whitespace', () => {
     expect(shortenGoal(undefined)).toBeUndefined();

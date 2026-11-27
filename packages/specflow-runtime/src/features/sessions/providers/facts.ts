@@ -10,6 +10,8 @@ import {
   validateTelemetryContextUsage,
   CommandPermissionActionSchema,
   ToolOperationSchema,
+  NoticeSeveritySchema,
+  ToolSubjectSchema,
 } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
 import type { DriverFact } from '../persistence/protocol';
@@ -31,6 +33,7 @@ const counters = Type.Object(
 const question = Type.Object(
   {
     kind: Type.Literal('question'),
+    header: Type.Optional(text(128)),
     prompt: text(8192),
     allowText: Type.Boolean(),
     maxSelections: Type.Optional(Type.Integer({ minimum: 1, maximum: 20 })),
@@ -104,7 +107,14 @@ const schema = Type.Union([
   Type.Object({ kind: Type.Literal('interaction-expired'), key }, closed),
   Type.Object({ kind: Type.Literal('correlation'), providerSessionId: key }, closed),
   Type.Object(
-    { kind: Type.Literal('work-open'), key, workKind: WorkKindSchema, title: text(2048) },
+    {
+      kind: Type.Literal('work-open'),
+      key,
+      workKind: WorkKindSchema,
+      title: text(2048),
+      operation: Type.Optional(ToolOperationSchema),
+      subject: Type.Optional(ToolSubjectSchema),
+    },
     closed,
   ),
   Type.Object({ kind: Type.Literal('work-update'), key, state: WorkStateSchema }, closed),
@@ -115,10 +125,24 @@ const schema = Type.Union([
       parentKey: key,
       title: text(2048),
       operation: Type.Optional(ToolOperationSchema),
+      subject: Type.Optional(ToolSubjectSchema),
     },
     closed,
   ),
-  Type.Object({ kind: Type.Literal('action-update'), key, state: WorkStateSchema }, closed),
+  Type.Object(
+    {
+      kind: Type.Literal('action-update'),
+      key,
+      state: WorkStateSchema,
+      error: Type.Optional(
+        Type.Object(
+          { code: text(64), message: text(1024), reason: Type.Optional(text(128)) },
+          closed,
+        ),
+      ),
+    },
+    closed,
+  ),
   Type.Object(
     {
       kind: Type.Literal('text'),
@@ -129,6 +153,7 @@ const schema = Type.Union([
         ),
       ),
       text: text(16384),
+      notice: Type.Optional(NoticeSeveritySchema),
     },
     closed,
   ),
@@ -140,7 +165,12 @@ const schema = Type.Union([
     {
       kind: Type.Literal('outcome'),
       outcome: TurnOutcomeSchema,
-      error: Type.Optional(Type.Object({ code: text(64), message: text(2048) }, closed)),
+      error: Type.Optional(
+        Type.Object(
+          { code: text(64), message: text(2048), reason: Type.Optional(text(128)) },
+          closed,
+        ),
+      ),
     },
     closed,
   ),
@@ -174,6 +204,10 @@ export function validateDriverFact(fact: DriverFact): void {
       'SESSION_INPUT_INVALID',
       'Provider fact violates the canonical protocol.',
     );
+  }
+
+  if (fact.kind === 'text' && fact.notice && fact.channel !== 'commentary') {
+    throw new SessionError('SESSION_INPUT_INVALID', 'Only commentary can be a SpecFlow notice.');
   }
 
   if (

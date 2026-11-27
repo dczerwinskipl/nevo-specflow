@@ -6,9 +6,11 @@ import type { GateStatus, WorkflowActionProjection } from '@nevo/specflow-contra
 import { useTaskDocumentOperations } from '../authoring/documents/useTaskDocumentOperations';
 import { RefusalAlert } from '../authoring/RefusalAlert';
 import type { GateAction } from './GateList';
-import { goToHeading, InlineAction } from './InlineAction';
+import { goToHeading } from './goToHeading';
+import { DisclosureToggle } from '../../../shared/actions';
 import { documentGateFix, stepGoal } from './presentation';
 import { WorkflowNow } from './WorkflowNow';
+import type { FeedbackRef } from './feedback/feedbackRef';
 
 /** The Task's lifecycle primary (Approve or Resume), when the projection allows one. */
 export interface LifecyclePrimary {
@@ -29,6 +31,8 @@ export interface TaskNowProps {
   readonly onOpenDocument: (documentId: string) => void;
   /** Opens the Task history (the ⋯ menu's Workflow history). */
   readonly onOpenHistory?: () => void;
+  /** Opens a hand-off's feedback in the shared Feedback view ("View feedback"). */
+  readonly onOpenFeedback?: (ref: FeedbackRef) => void;
 }
 
 /**
@@ -59,13 +63,9 @@ function TaskGoal({ goal }: { goal: { readonly text: string; readonly more?: str
         {expanded && goal.more ? goal.more : goal.text}
       </Typography>
       {fromInstructions ? (
-        <InlineAction
-          className="w-fit text-body-sm"
-          aria-expanded={expanded}
-          onClick={() => setExpanded((open) => !open)}
-        >
+        <DisclosureToggle expanded={expanded} onClick={() => setExpanded((open) => !open)}>
           {expanded ? t('workflowExecution.now.showLess') : t('workflowExecution.now.showMore')}
-        </InlineAction>
+        </DisclosureToggle>
       ) : null}
     </div>
   );
@@ -89,6 +89,7 @@ export function TaskNow({
   onRemoveTask,
   onOpenDocument,
   onOpenHistory,
+  onOpenFeedback,
 }: TaskNowProps) {
   const { t } = useTranslation();
   const documents = useTaskDocumentOperations(specId, taskId);
@@ -140,6 +141,17 @@ export function TaskNow({
         links={{
           context: () => goToHeading('task-context-heading'),
           dependencies: () => goToHeading('task-dependencies-heading'),
+          ...(onOpenHistory ? { attempt: onOpenHistory } : {}),
+          ...(onOpenFeedback ? { feedback: onOpenFeedback } : {}),
+          // The agent's paths are checkout-relative; the Task's documents are its folder's.
+          document: (path) => {
+            const document = resource.documents.find((item) => path.endsWith(`/${item.path}`));
+            if (document) {
+              onOpenDocument(document.id);
+            }
+
+            return document !== undefined;
+          },
         }}
         primaryAction={
           primary ? (

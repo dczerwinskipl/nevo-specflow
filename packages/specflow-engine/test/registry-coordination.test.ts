@@ -318,18 +318,12 @@ describe('E1.T05 independent OS-process coordination', () => {
     expect(files).toContain('workspaces.json');
     expect(files.some((name) => name.endsWith('.tmp'))).toBe(true);
 
-    await expect(
-      updateWorkspaceRegistry(
-        context,
-        (current) => bindSpecToWorkspace(current, randomUUID(), current.primaryWorkspaceId),
-        { lock: { waitMs: 0 } },
-      ),
-    ).rejects.toMatchObject({ code: 'CONTROL_LOCK_BUSY' });
-
-    // Explicit test-only operator recovery; production must not steal this lock.
-    await rm(projectControlLockPath(context));
-    await updateWorkspaceRegistry(context, (current) =>
-      bindSpecToWorkspace(current, randomUUID(), current.primaryWorkspaceId),
+    // The killed holder's PID is gone: the next writer releases its lock on that evidence alone
+    // (ADR 0027), without a wait and without an operator.
+    await updateWorkspaceRegistry(
+      context,
+      (current) => bindSpecToWorkspace(current, randomUUID(), current.primaryWorkspaceId),
+      { lock: { waitMs: 0 } },
     );
     expect((await readWorkspaceRegistry(context)).revision).toBe(1);
   }, 75000);
@@ -344,13 +338,8 @@ describe('E1.T05 independent OS-process coordination', () => {
     const published = await readWorkspaceRegistry(context);
     expect(published.revision).toBe(1);
     expect((await inspectProjectControlLock(context)).status).toBe('held');
-    // Recovery must not infer "free" merely from a dead PID.
-    await expect(
-      updateWorkspaceRegistry(context, (current) => current, { lock: { waitMs: 0 } }),
-    ).rejects.toMatchObject({ code: 'CONTROL_LOCK_BUSY' });
-
-    // After explicit operator recovery, a request with old CAS cannot replay.
-    await rm(projectControlLockPath(context));
+    // The lock of the killed holder is released on the evidence that it is gone (ADR 0027); a request
+    // with the old CAS still cannot replay.
     await expect(
       updateWorkspaceRegistry(context, (current) => current, { expectedRevision: 0 }),
     ).rejects.toMatchObject({ code: 'REGISTRY_CONFLICT' });

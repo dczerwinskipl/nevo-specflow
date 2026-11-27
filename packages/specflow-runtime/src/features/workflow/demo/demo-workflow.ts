@@ -70,6 +70,8 @@ function demoReferences(lookups: DemoWorkflowLookups): TaskReferences {
     // Task document saves are final at once: nothing is ever pending.
     pendingDocumentChange: () => Promise.resolve(false),
     pendingDocumentChanges: () => Promise.resolve(new Set<string>()),
+    // The demo runs no agent step, so no result ever waits for a Confirm that pins documents.
+    taskDocumentRevisions: () => Promise.resolve([]),
     documentsOfType: (scope, type) => lookups.documentsOfType(scope, type),
   };
 }

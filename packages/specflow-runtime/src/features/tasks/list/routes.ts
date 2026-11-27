@@ -82,7 +82,10 @@ export const taskListRoutes: FastifyPluginCallback<TaskListRoutesOptions> = (
           reply.header('Retry-After', '1');
         }
 
-        return reply.code(503).send({ error: 'specification_source_unavailable' });
+        return reply.code(503).send({
+          error: 'specification_source_unavailable',
+          ...(error.recovery ? { code: 'CONTROL_LOCK_RECOVERY_REQUIRED' as const } : {}),
+        });
       }
     },
   );

@@ -38,6 +38,22 @@ function fixture(allowedTools?: readonly string[], freshContext = false) {
 }
 
 describe('Claude full-message protocol', () => {
+  it('ignores the post-turn summary Claude Code 2.1.312 sends before its result', async () => {
+    const f = fixture();
+    await f.accept({
+      type: 'system',
+      subtype: 'post_turn_summary',
+      summarizes_uuid: '00000000-0000-4000-8000-000000000002',
+      status_category: 'completed',
+      status_detail: 'replied as requested',
+      needs_action: '',
+      uuid: '00000000-0000-4000-8000-000000000003',
+      session_id: sessionId,
+    });
+    await f.result({ result: 'ok' });
+    expect(f.protocol.terminal).toBe(true);
+    expect(JSON.stringify(f.facts)).not.toContain('replied as requested');
+  });
   it('maps documented Claude account quota fractions without inferring consumption from status', async () => {
     const f = fixture();
     for (const rateLimitType of ['five_hour', 'seven_day']) {
@@ -277,8 +293,77 @@ describe('Claude full-message protocol', () => {
       },
     });
     await f.result({ result: 'Done' });
-    expect(f.facts).toContainEqual({ kind: 'action-update', key: 'tool:tool-1', state: 'failed' });
+    // The failure names its reason, and the action what it acts on.
+    expect(f.facts).toContainEqual({
+      kind: 'action-update',
+      key: 'tool:tool-1',
+      state: 'failed',
+      error: { code: 'TOOL_FAILED', message: expect.any(String) as string },
+    });
+    expect(f.facts).toContainEqual(
+      expect.objectContaining({ kind: 'action-open', title: 'Write', subject: '…/Temp/t1.md' }),
+    );
     expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+  });
+  // Captured from Claude Code 2.1.312 in auto mode (ids redacted): parallel Writes, a permission
+  // check of the first one taking over 4 s, and the running task summary.
+  it('accepts the task summary and a slow permission check of an open call of parallel file writes', async () => {
+    const f = fixture(['Write']);
+    const progress = (uuid: string, extra: Record<string, unknown>) =>
+      f.accept({ type: 'system', uuid, session_id: sessionId, ...extra });
+    await progress('s1', { subtype: 'task_summary', detail: 'Reading backend.md' });
+    await f.assistant('w1', [
+      { type: 'tool_use', id: 'tool-1', name: 'Write', input: { file_path: 'a.md', content: 'x' } },
+    ]);
+    await progress('s2', {
+      subtype: 'permission_check_status',
+      tool_use_id: 'tool-1',
+      status: 'checking',
+    });
+    await f.assistant('w2', [
+      { type: 'tool_use', id: 'tool-2', name: 'Write', input: { file_path: 'b.md', content: 'y' } },
+    ]);
+    await progress('s3', {
+      subtype: 'permission_check_status',
+      tool_use_id: 'tool-1',
+      status: 'done',
+    });
+    await progress('s4', { subtype: 'task_summary', detail: 'Writing .scratch\\tasks.yaml' });
+    await f.accept({
+      type: 'user',
+      session_id: sessionId,
+      message: {
+        content: [
+          { type: 'tool_result', tool_use_id: 'tool-1', content: 'ok' },
+          { type: 'tool_result', tool_use_id: 'tool-2', content: 'ok' },
+        ],
+      },
+    });
+    await f.result({ result: 'Done' });
+    expect(f.facts.at(-1)).toEqual({ kind: 'outcome', outcome: 'completed' });
+    expect(JSON.stringify(f.facts)).not.toContain('Reading backend.md');
+  });
+  it.each([
+    [{ subtype: 'permission_check_status', tool_use_id: 'tool-9', status: 'checking' }],
+    [{ subtype: 'permission_check_status', tool_use_id: 'tool-1', status: 'allowed' }],
+    [{ subtype: 'permission_check_status', tool_use_id: 'tool-1', status: 'done', agent_id: 'a1' }],
+    [{ subtype: 'task_summary', detail: 42 }],
+  ])('rejects progress that is not of an open call of this Turn: %j', async (change) => {
+    const f = fixture(['Write']);
+    await f.assistant('w1', [
+      { type: 'tool_use', id: 'tool-1', name: 'Write', input: { file_path: 'a.md', content: 'x' } },
+    ]);
+    await expect(
+      f.accept({ type: 'system', uuid: 's1', session_id: sessionId, ...change }),
+    ).rejects.toMatchObject({ detail: expect.stringContaining(change.subtype) as string });
+  });
+  it('names an unknown system frame subtype in its refusal', async () => {
+    await expect(
+      fixture().accept({ type: 'system', subtype: 'code_change_published', session_id: sessionId }),
+    ).rejects.toMatchObject({
+      detail:
+        'It sent a system frame of subtype code_change_published, which SpecFlow does not know.',
+    });
   });
   it.each([{ tool_use_id: 'tool-2' }, { tool_name: 'Edit' }, { tool_use_id: undefined }])(
     'rejects a permission denial that is not of an open call: %j',

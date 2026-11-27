@@ -2,6 +2,7 @@ import { Button, cn } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { type RepoContext } from '../../../specs/read-model';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
+import { productIcons } from '../../../../shared/product-icons';
 
 export interface RepositorySectionProps {
   readonly repoContext: RepoContext;
@@ -21,7 +22,7 @@ export function RepositorySection({
       <WorkspaceSection.Header
         id="repo-heading"
         title={t('specification.repositoryHeading')}
-        icon="branch"
+        icon={productIcons.repository}
       />
 
       <div className="grid gap-2">

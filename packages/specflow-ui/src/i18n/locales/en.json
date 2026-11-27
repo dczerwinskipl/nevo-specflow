@@ -102,10 +102,9 @@
     "sectionRenderFailedDescription": "This section encountered a rendering error. Try displaying it again.",
     "attentionSourceFailedTitle": "Some attention items could not be loaded",
     "attentionSourceFailedDescription": "An attention source failed. Other available items are still shown.",
-    "unavailableTitle": "Specification is unavailable",
-    "unavailableDescription": "The specification workspace is not supported by Runtime yet or could not be loaded.",
     "notFoundTitle": "Specification not found",
     "notFoundDescription": "Specification {{id}} could not be found.",
+    "tasksUnreadableTitle": "Tasks can't be read right now",
     "noChangesNotice": "No changed files recorded for this view.",
     "viewOverview": "Overview",
     "viewDocuments": "Documents",
@@ -148,7 +147,6 @@
     "prReviewLink": "Review PR",
     "gitRefreshFailed": "Failed to refresh repository status",
     "gitStaleData": "Stale data · last checked 30 min ago",
-    "sessionActions": "Session actions",
     "openSessionAction": "Open session",
     "allSessionsLink": "All sessions",
     "activityHistoryLink": "Activity history",
@@ -231,8 +229,7 @@
     "moreActions": "Specification actions",
     "search": "Search specifications",
     "loading": "Loading specifications",
-    "unavailable": "Specifications are unavailable",
-    "unavailableDescription": "The specification overview is not available from this Runtime yet.",
+    "unavailable": "Couldn't load specifications",
     "refreshFailed": "Could not refresh specifications",
     "refreshFailedDescription": "Showing the last loaded collection. Try again to get the latest state.",
     "emptyCurrent": "No current specifications",
@@ -243,13 +240,12 @@
     "noResultsDescription": "Try another title or clear the search to see this collection.",
     "openSpec": "Open specification: {{title}}",
     "openPullRequest": "PR #{{number}}: Open pull request — {{title}}",
-    "progress": "{{completed}} / {{total}} Tasks",
     "updated": "Updated {{date}}",
     "sections": {
       "requiresAttention": "Requires attention",
-      "active": "Active",
-      "ready": "Ready",
-      "draft": "Draft",
+      "inProgress": "In progress",
+      "notStarted": "Not started",
+      "ended": "Ended",
       "unknown": "Status unavailable"
     },
     "collapseSection": "Collapse {{label}} section",
@@ -269,15 +265,22 @@
       "active_other": "{{count}} active sessions",
       "active_few": "{{count}} active sessions",
       "active_many": "{{count}} active sessions",
-      "ready": "Ready to start",
-      "draft": "In preparation",
+      "attentionItems_one": "1 item requires attention",
+      "attentionItems_few": "{{count}} items require attention",
+      "attentionItems_many": "{{count}} items require attention",
+      "attentionItems_other": "{{count}} items require attention",
       "unavailable": "Steering information unavailable",
       "concurrent_one": "1 session active",
       "concurrent_other": "{{count}} sessions active",
       "concurrent_few": "{{count}} sessions active",
       "concurrent_many": "{{count}} sessions active",
       "attention": "Human attention required",
-      "unknown": "Work status not available yet"
+      "unknown": "Work status not available yet",
+      "moreAttention_one": "{{count}} more item requires attention",
+      "moreAttention_other": "{{count}} more items require attention",
+      "moreAttention_few": "{{count}} more items require attention",
+      "moreAttention_many": "{{count}} more items require attention",
+      "attentionOnTask": "{{action}} · {{task}}"
     },
     "forbidden": {
       "title": "Access denied",
@@ -288,8 +291,8 @@
     "invalidProgress": "Progress unavailable",
     "progressLabel": "Task completion for {{title}}",
     "specificationColumn": "Specification",
-    "situationColumn": "Situation",
-    "progressColumn": "Progress",
+    "workflowColumn": "Workflow",
+    "tasksColumn": "Tasks",
     "updatedColumn": "Updated",
     "milestoneColumn": "Milestone",
     "pullRequestColumn": "PR",
@@ -298,6 +301,17 @@
     "milestone": {
       "completed": "Completed",
       "archived": "Archived"
+    },
+    "unreadable": {
+      "title": "Could not read this Specification",
+      "busyTitle": "State unavailable · busy",
+      "reason": {
+        "invalid": "Its workflow files are not valid.",
+        "filesystem": "Its workflow files could not be read.",
+        "busy": "SpecFlow is busy or recovering from a stop. Refresh the list in a moment. If it keeps happening, restart SpecFlow.",
+        "unexpected": "Something unexpected went wrong; the Runtime log has the details.",
+        "recovery": "The project lock needs a recovery. Stop every SpecFlow process of this project, then run nevo-specflow specs documents recover --confirmed-stopped."
+      }
     }
   },
   "taskWorkspace": {
@@ -428,14 +442,16 @@
     "noSpecificationSelectedTitle": "Select a specification",
     "noSpecificationSelectedDescription": "Open a specification from the list to see its documents and sessions.",
     "activeCount_few": "{{count}} active",
-    "activeCount_many": "{{count}} active"
+    "activeCount_many": "{{count}} active",
+    "taskPage": "Task"
   },
   "operations": {
     "progress": {
       "status": {
         "pending": "waiting",
         "running": "in progress",
-        "done": "done"
+        "done": "done",
+        "notDone": "not done"
       }
     },
     "panel": {
@@ -480,7 +496,11 @@
       "step": "Step {{current}} of {{total}}: {{title}}",
       "interrupted": "No activity for {{minutes}} min. Check the result",
       "started": "Started {{time}}",
-      "updated": "Updated {{time}}"
+      "updated": "Updated {{time}}",
+      "gitUnsettled": "Stopped while Git was working. Open it for the recovery command",
+      "lockRecovery": "The project lock needs a recovery. Open it for the command",
+      "createInterrupted": "Stopped with the Runtime. Nothing was created",
+      "resumeForbidden": "Not continued: you may no longer create here"
     },
     "announce": {
       "completed": "{{name}} is done",
@@ -502,18 +522,12 @@
     "loadError": "Unable to load the configuration",
     "sessionReady": "Session ready",
     "specificationCreated": "Specification created",
-    "withAI": "With an agent",
-    "manual": "On my own",
     "nameLabel": "Specification name",
     "namePlaceholder": "E.g. SSO sign-in",
     "providerDefault": "Executor default",
-    "changeMethod": "Change the way of working",
     "formRegion": "Specification creation",
     "method": {
-      "title": "Creation method",
-      "intro": "Choose whether to start with a conversation with the Spec Writer or with the document skeleton from the archetype.",
-      "aiText": "Start a Spec Writer session. Later stages can use other agents.",
-      "manualText": "Create the documents of an archetype and edit them yourself."
+      "aiText": "Start a Spec Writer session. Later stages can use other agents."
     },
     "heading": {
       "specification": "New specification"
@@ -538,7 +552,7 @@
       "workspaceError": "Unable to load the workspace options.",
       "forbidden": "You do not have permission to create specifications.",
       "refreshConfiguration": "Refresh the configuration before creating.",
-      "title": "Enter a specification name.",
+      "title": "Enter a name to create the specification.",
       "provider": "Choose an available agent.",
       "model": "Choose a model.",
       "effort": "Choose an effort this model supports.",
@@ -625,13 +639,18 @@
       "readOnlyForm": "The form is read-only.",
       "uncertain": {
         "title": "We are checking the creation result",
-        "body": "We have no confirmed result. Check it with the same operation — we will not create a second specification or a second branch."
+        "body": "We have no confirmed result. Check it with the same operation — we will not create a second specification or a second branch.",
+        "bodyLost": "Retry sends the same request again under the same identifier. It cannot create a second specification or a second branch. Or go back to Create: your entries are kept.",
+        "titleLost": "This operation is gone"
       },
       "recovery": {
         "title": "Creation needs to be completed",
         "body": "Nevo started preparing the workspace but did not confirm the result. Do not create the specification again — it could duplicate the branch and folder. The form is locked until the check is done.",
         "inProgress": "The operation is still in progress.",
-        "pending": "The operation still needs to be completed."
+        "pending": "The operation still needs to be completed.",
+        "git": "The Runtime stopped while Git was working on this specification. Make sure no Git process of it still runs (and remove a leftover .git/index.lock), then finish it from the command line.",
+        "lock": "A SpecFlow process that SpecFlow cannot prove stopped still holds the project lock. Stop every SpecFlow process of this project, then clear the lock from the command line.",
+        "nextStep": "Next step:"
       },
       "branchExistsAutomatic": {
         "title": "Nevo could not choose a free branch name",
@@ -710,7 +729,11 @@
         "title": "The archetypes changed while you were filling the form",
         "body": "The specification was not created. Your entries are kept: refresh the archetypes and check your choice."
       },
-      "refreshArchetypes": "Refresh archetypes"
+      "refreshArchetypes": "Refresh archetypes",
+      "interrupted": {
+        "title": "Creation stopped with the Runtime",
+        "body": "The Runtime stopped before this specification was created and did not continue it. Nothing was created. Try again with the same settings, or go back to the form."
+      }
     },
     "workspace": {
       "heading": "Workspace",
@@ -1008,6 +1031,14 @@
           "title": "Next step",
           "running": "In progress",
           "done": "Finished"
+        },
+        "starting-agent": {
+          "title": "Starting the agent",
+          "running": "Opening its session",
+          "done": "Agent started",
+          "titleNamed": "Starting the agent on {{step}}",
+          "pending": "After the specification is ready",
+          "notStarted": "The agent did not start {{step}}"
         }
       },
       "neutral": {
@@ -1041,7 +1072,9 @@
         "goal": "Goal",
         "committedTo": "The specification files are committed to <branch/>",
         "archetype": "Archetype",
-        "documents": "Documents"
+        "documents": "Documents",
+        "agent": "Agent",
+        "firstStep": "First step"
       },
       "status": {
         "sending": "Sending the request…",
@@ -1050,7 +1083,15 @@
         "reading": "Reading the operation…",
         "completed": "Done. Opening the specification…",
         "workingNew": "Preparing a new workspace and the specification.",
-        "completedUncommitted": "Done, but the files are not committed yet."
+        "completedUncommitted": "Done, but the files are not committed yet.",
+        "agentStarted": "The agent started {{step}}. Opening its session…",
+        "agentNotStarted": "The specification exists. The agent is not running.",
+        "unconfirmed": {
+          "busy": "SpecFlow was busy or recovering from a stop and did not confirm the result.",
+          "lost": "SpecFlow has no record of this operation: it may have stopped before starting it.",
+          "noAnswer": "SpecFlow did not answer in time.",
+          "unknown": "SpecFlow did not confirm the result."
+        }
       },
       "leaveNote": "You can leave this page. Creation continues on the server, and you can return to check its status from the specification list.",
       "openSpecification": "Open specification",
@@ -1059,7 +1100,7 @@
       "backToCreate": "Back to Create",
       "notFound": {
         "title": "This operation does not exist",
-        "body": "The server has no record of it. The link may be wrong or the operation may have expired. Nothing is being created."
+        "body": "SpecFlow has no record of it: it may have been lost when SpecFlow stopped, or the link is wrong. Nothing is being created."
       },
       "configuration": "Configuration",
       "details": {
@@ -1072,13 +1113,55 @@
       "uncommitted": {
         "title": "The specification files are not committed",
         "body": "Git is disabled in this project (git.enabled in .nevo/config.yaml), so Nevo wrote the files without committing them. Commit them with Git yourself: Close refuses while they are uncommitted."
+      },
+      "leaveNoteAgent": "You can leave this page. SpecFlow finishes creating and starts the agent without it; the operations list shows how it went.",
+      "agentStarted": "The agent started {{step}}",
+      "agentNotStarted": {
+        "title": "The agent did not start",
+        "body": "Something went wrong while starting it. Run {{step}} with an agent again, or open the specification and go on from there."
       }
     },
     "operations": {
       "kind": "Creating a specification"
     },
     "guide": {
-      "goToField": "Go to the field"
+      "goToField": "Go to the field",
+      "enterName": "Enter the name"
+    },
+    "start": {
+      "title": "How do you want to start?",
+      "agent": {
+        "title": "With an agent",
+        "text": "Fill in the basics. An agent then starts the first step and works on it in a session."
+      },
+      "manual": {
+        "title": "Manually",
+        "text": "Create the documents from an archetype and write them yourself."
+      },
+      "agentUnavailable": {
+        "none": "No agent can start: {{reasons}}.",
+        "empty": "No agent can start: this server lists no agents.",
+        "failed": "Could not check which agents can start."
+      },
+      "backToStart": "Back to ways to start"
+    },
+    "agentStep": {
+      "title": "Agent",
+      "intro": "Right after the specification is created, an agent starts its first step. You review the result before anything moves on.",
+      "firstStep": "First step: <step>{{step}}</step>",
+      "ownerFirst": "The first step is yours.",
+      "noWorkflow": "This archetype starts no workflow, so an agent has no step to start.",
+      "useManual": "Use Manually",
+      "goalHelp": "Saved in the specification overview. The agent reads it first.",
+      "footNote": "Opens the agent’s session once it starts.",
+      "submit": "Create and run with agent",
+      "prerequisite": {
+        "ownerFirst": "The first step is yours. Use Manually.",
+        "noWorkflow": "No agent can start this archetype. Use Manually.",
+        "agentsLoading": "Checking which agents can start…",
+        "agentsFailed": "Could not check which agents can start. Check again in the Agent section.",
+        "noAgent": "No agent can start right now. Fix one above, or go back and create it manually."
+      }
     }
   },
   "documents": {
@@ -1384,13 +1467,15 @@
       "gitPolicyInvalid": "the project's Git settings are invalid.",
       "busy": "another change to this specification is in progress.",
       "notEditable": "this file type can be viewed but not edited here.",
-      "dangling": "The file is missing; only its registration can be removed."
+      "dangling": "The file is missing; only its registration can be removed.",
+      "attemptCommit": "an agent's work here is not committed yet."
     },
     "remedy": {
       "branch": "To edit, open the specification in a workspace on an allowed branch.",
       "commitBlocked": "Finish or abort the merge or rebase in this workspace, then try again.",
       "gitPolicy": "Fix the Git settings in the project configuration.",
-      "notEditable": "Download the file to edit it elsewhere."
+      "notEditable": "Download the file to edit it elsewhere.",
+      "attemptCommit": "Retry the commit of the agent's work, then try again."
     },
     "save": {
       "saving": "Saving…",
@@ -1404,7 +1489,8 @@
       "tryAgain": "Try again",
       "recoveryTitle": "The save did not finish",
       "recoveryBody": "Finish the save before editing further.",
-      "resume": "Resume"
+      "resume": "Resume",
+      "attemptCommit": "Not saved: the agent's work on this document is not committed yet"
     },
     "conflict": {
       "title": "Not saved: {{name}} changed on disk",
@@ -1429,6 +1515,12 @@
     },
     "image": {
       "actualSize": "Actual size"
+    },
+    "attemptCommit": {
+      "held": "The agent's work on this document in {{step}} is not committed yet, so it cannot be edited until it is: the agent and you never share an uncommitted file.",
+      "pending": "SpecFlow is committing it; if that does not finish, Retry commit makes it now.",
+      "failed": "Its commit failed (<code>{{code}}</code>): fix the cause, then Retry commit.",
+      "retryFailed": "The commit did not run; see why in the workflow of the specification."
     }
   },
   "sessions": {
@@ -1557,7 +1649,7 @@
       "emptyArchive": "No archived sessions",
       "failed": "Couldn’t load sessions.",
       "forbiddenSpecification": "You don’t have access to this specification’s sessions.",
-      "statusUnknown": "Session state unknown",
+      "statusUnknown": "SpecFlow has not confirmed that {{provider}} can run it; open the session to check",
       "statusAttention": "Requires attention",
       "statusActive": "Active",
       "statusAuthentication": "{{provider}}: sign-in required",
@@ -1573,7 +1665,8 @@
       "taskCount_few": "{{count}} tasks",
       "taskCount_many": "{{count}} tasks",
       "associatedTasks_few": "Associated with {{count}} tasks",
-      "associatedTasks_many": "Associated with {{count}} tasks"
+      "associatedTasks_many": "Associated with {{count}} tasks",
+      "attempt": "Attempt {{attempt}}"
     }
   },
   "apiErrors": {
@@ -1637,6 +1730,28 @@
     "description": "The connected server does not provide this part of SpecFlow yet. The rest of the product keeps working.",
     "back": "Go back"
   },
+  "unreadable": {
+    "busy": {
+      "title": "SpecFlow is busy",
+      "description": "SpecFlow is busy or recovering from a stop, so this can't be read right now. Try again in a moment. If it keeps happening, restart SpecFlow."
+    },
+    "source": {
+      "title": "Can't be read right now",
+      "description": "SpecFlow is busy or recovering from a stop, or couldn't read its files. Try again in a moment. If it keeps happening, restart SpecFlow."
+    },
+    "unreachable": {
+      "title": "SpecFlow isn't responding",
+      "description": "SpecFlow Runtime did not answer. Make sure it is running, then try again."
+    },
+    "failed": {
+      "title": "Something went wrong",
+      "description": "SpecFlow could not read this because of an unexpected error. Try again; if it keeps happening, the Runtime log has the details."
+    },
+    "recovery": {
+      "title": "SpecFlow needs a recovery",
+      "description": "A SpecFlow process that SpecFlow cannot prove stopped still holds the project lock, so this cannot be read. Stop every SpecFlow process of this project, then run nevo-specflow specs documents recover --confirmed-stopped in the project."
+    }
+  },
   "routeError": {
     "title": "Something went wrong",
     "description": "This screen could not be displayed. You can try again or go back to the specifications.",
@@ -1689,9 +1804,32 @@
     "failed": "Could not load this part of the session.",
     "historyFailed": "Older messages could not be loaded.",
     "commandFailed": "The request was not confirmed. Retry with the same request.",
+    "sending": "Sending…",
+    "sendFailure": {
+      "unconfirmed": "SpecFlow got no answer, so it does not know whether the message arrived. Retry sends the same message; it will not run twice.",
+      "too-long": "The message is too long. Shorten it and send again.",
+      "TURN_CONFLICT": "An agent or a specification change is writing to this project right now. Your message is kept; send it again when that work finishes.",
+      "PROVIDER_UNAVAILABLE": "The agent's provider is not available right now. Your message is kept; send it again once the provider is available.",
+      "PROVIDER_AUTH_REQUIRED": "The provider needs you to sign in again (for Claude, in the Claude CLI). Your message is kept; send it again after signing in.",
+      "MODEL_UNSUPPORTED": "The chosen model is not available. Pick another model and send again.",
+      "CAPABILITY_UNSUPPORTED": "This Session cannot run in the chosen work mode. Pick another work mode and send again.",
+      "SESSION_RECOVERY_REQUIRED": "The outcome of the last Turn must be checked first. Check it above, then send again.",
+      "SESSION_RECOVERY_REQUIRED_SESSION": "SpecFlow cannot safely continue this Session's agent conversation. Start a new Session to go on; this one stays readable.",
+      "mode-model-unsupported": "The chosen work mode does not run this model. Pick another model or work mode and send again.",
+      "refused": "The message was not sent. Your message is kept; try again, or change the model or work mode."
+    },
     "savedRequestUnreadable": "Saved request can't be read",
     "savedRequestUnreadableBody": "This browser kept a request that could not be read. It may already have been applied. Discarding it lets you send a new one.",
     "discardSavedRequest": "Discard saved request",
+    "unconfirmedCheck": "Check the Session",
+    "unconfirmedCheckBody": "Or check the Session: if the message arrived, SpecFlow confirms it; if not, you can edit it and send again. If it still arrives later, it shows in the conversation.",
+    "modeModelUnsupported": "{{mode}} does not run {{model}}. Pick another model or work mode to send.",
+    "notice": {
+      "source": "SpecFlow:",
+      "error": "SpecFlow error.",
+      "warning": "SpecFlow warning.",
+      "info": "SpecFlow note."
+    },
     "responseRequired": "Response required",
     "selectionCount": "Selected {{count}} of at most {{max}}.",
     "commandDirectory": "Directory relative to the workspace: {{cwd}}",
@@ -1716,14 +1854,16 @@
       "default": "Default model",
       "triggerLabel": "Model: {{value}}",
       "sectionLabel": "Model",
-      "effortSectionLabel": "Reasoning effort"
+      "effortSectionLabel": "Reasoning effort",
+      "modeUnsupported": "Not in the selected work mode"
     },
     "intent": {
       "label": "Work mode — next Turn",
       "placeholder": "Select work mode",
       "triggerLabel": "Work mode: {{value}}",
       "sectionLabel": "Work mode",
-      "unavailable": "Unavailable"
+      "unavailable": "Unavailable",
+      "modelUnsupported": "Not for the selected model"
     },
     "attach": {
       "action": "Add attachment",
@@ -1768,17 +1908,32 @@
     "actions_many": "Tool actions",
     "actions_other": "Tool actions",
     "newer": "Newer activity",
-    "outcome": {
-      "completed": "Completed",
-      "failed": "Failed",
-      "cancelled": "Cancelled",
-      "interrupted": "Interrupted"
-    },
     "workKind": {
       "commentary": "Progress",
       "reasoning": "Thinking",
-      "interaction": "User interaction",
+      "interaction": "Question or permission request",
       "tool": "Tool"
+    },
+    "toolVerb": {
+      "read": "Read file",
+      "edit": "Edited file",
+      "write": "Wrote file",
+      "list": "Listed files",
+      "search": "Searched",
+      "command": "Ran command",
+      "test": "Ran tests",
+      "web": "Fetched from the web",
+      "other": "Tool call",
+      "andMore": "{{label}} and {{count}} more"
+    },
+    "failureReason": {
+      "outside-worktree": "Outside the worktree: the agent can read and write files only inside the worktree."
+    },
+    "permissionState": {
+      "allowed": "Allowed",
+      "denied": "Denied",
+      "waiting": "Waiting for you",
+      "answered": "Answered"
     },
     "workState": {
       "queued": "Queued",
@@ -1790,7 +1945,20 @@
       "interrupted": "Interrupted",
       "expired": "Expired"
     },
+    "ownerMessageHold": {
+      "agent-attempt-open": "This session belongs to the agent's attempt, which is still open: a message here would run outside that attempt. To tell the agent something, use Continue with a note on the specification (stop the agent first if it is working), or Take over. You can write here again once the attempt has ended."
+    },
     "workInspector": {
+      "command": "Command",
+      "fileContent": "Content",
+      "before": "Before",
+      "after": "After",
+      "rawParameters": "Raw parameters",
+      "copyCommand": "Copy command",
+      "copyContent": "Copy content",
+      "copyBefore": "Copy text before the edit",
+      "copyAfter": "Copy text after the edit",
+      "wrapLines": "Wrap lines",
       "copy": "Copy",
       "copyInput": "Copy parameters",
       "copyOutput": "Copy tool response",
@@ -1825,13 +1993,9 @@
       "emptyTurn": "No Work yet for this Turn.",
       "noActions": "No tool actions yet.",
       "input": "Parameters",
-      "output": "Tool response",
+      "output": "Result",
       "errorCode": "Error code: {{code}}",
       "counts": {
-        "total_one": "{{count}} work item",
-        "total_few": "{{count}} work items",
-        "total_many": "{{count}} work items",
-        "total_other": "{{count}} work items",
         "inProgress": "{{count}} in progress",
         "commentary_one": "{{count}} progress note",
         "commentary_few": "{{count}} progress notes",
@@ -1841,10 +2005,30 @@
         "reasoning_few": "{{count}} thinking steps",
         "reasoning_many": "{{count}} thinking steps",
         "reasoning_other": "{{count}} thinking steps",
-        "interaction_one": "{{count}} user interaction",
-        "interaction_few": "{{count}} user interactions",
-        "interaction_many": "{{count}} user interactions",
-        "interaction_other": "{{count}} user interactions"
+        "interaction_one": "{{count}} question or permission request",
+        "interaction_few": "{{count}} questions and permission requests",
+        "interaction_many": "{{count}} questions and permission requests",
+        "interaction_other": "{{count}} questions and permission requests",
+        "notices_one": "{{count}} SpecFlow note",
+        "notices_few": "{{count}} SpecFlow notes",
+        "notices_many": "{{count}} SpecFlow notes",
+        "notices_other": "{{count}} SpecFlow notes"
+      },
+      "question": {
+        "answer": "{{question}} → {{answer}}",
+        "ownText": "your own answer",
+        "asked": "Question",
+        "chosen": "Chosen",
+        "yourText": "Your words: {{text}}"
+      },
+      "detailedView": "Show every operation",
+      "authorization": {
+        "title": "Authorization",
+        "answered": "Permission request · who decided is not recorded"
+      },
+      "interaction": {
+        "permission": "Permission request",
+        "question": "Question"
       }
     },
     "workSummary": {
@@ -1915,8 +2099,12 @@
       "actionsAtLeast_many": "at least {{count}} tool actions"
     },
     "outcomeReason": {
+      "claude-policy-check-failed": "SpecFlow could not check Claude's settings on this computer. Try again; if it keeps failing, restart the Runtime.",
       "TURN_CONFLICT": "Another agent or a specification change is still writing to this project. Wait until it finishes, or check the outcome of a Turn whose outcome is unknown, then send the message again.",
-      "PROCESS_STOPPED": "The agent stopped while SpecFlow could not record its result. Review the changes in the workspace before you continue."
+      "PROCESS_STOPPED": "The agent process stopped before SpecFlow could record how the Turn ended.",
+      "failed": "The agent could not finish this Turn.",
+      "cancelled": "The agent was stopped before it finished.",
+      "interrupted": "The agent stopped before it finished."
     },
     "turnUnknown": "Turn outcome unknown",
     "reconcile": {
@@ -1934,7 +2122,47 @@
       "description": "This session's history is no longer available.",
       "action": "Go to specifications"
     },
-    "messageActions": "Message actions"
+    "messageActions": "Message actions",
+    "brief": {
+      "title": "What the agent received",
+      "subject": "{{step}} · attempt {{attempt}}",
+      "subjectTask": "{{step}} of {{task}} · attempt {{attempt}}",
+      "intro": "What SpecFlow asked the agent to do when this attempt started.",
+      "source": {
+        "stepPurpose": "Step purpose",
+        "stepInstructions": "Step instructions",
+        "agentProfile": "Agent profile",
+        "handoff": "Hand-off from the previous step",
+        "task": "Task"
+      },
+      "generated": "Generated by SpecFlow",
+      "titleTask": "{{step}} of {{task}}",
+      "openFull": "View full brief",
+      "ownerNote": "Your note for the agent",
+      "resumed": "Execution resumed",
+      "continue": "Continue attempt {{attempt}}",
+      "openContinuation": "View continuation brief",
+      "introContinuation": "What SpecFlow asked the agent to do when this attempt continued.",
+      "handoff": {
+        "from": "From {{step}} · attempt {{attempt}}",
+        "returned": "Returned to this step",
+        "artifacts": "Handed-over files",
+        "fromUnnamed": "From the previous step · attempt {{attempt}}"
+      },
+      "fullText": "Full text sent to the agent",
+      "fullTextNote": "Exactly as the agent received it, with SpecFlow's rules and references."
+    },
+    "turnOutcome": {
+      "consequence": "Some workspace changes may already have been made.",
+      "reviewChanges": "Review workspace changes",
+      "details": "View technical details",
+      "changesLeft_one": "{{count}} file is uncommitted in the workspace now.",
+      "changesLeft_few": "{{count}} files are uncommitted in the workspace now.",
+      "changesLeft_many": "{{count}} files are uncommitted in the workspace now.",
+      "changesLeft_other": "{{count}} files are uncommitted in the workspace now.",
+      "noChangesLeft": "The workspace has no uncommitted changes now."
+    },
+    "composerPlaceholder": "Message {{agent}}…"
   },
   "sessionStart": {
     "heading": "New session",
@@ -1949,10 +2177,6 @@
     },
     "prerequisite": {
       "noProvider": "No agent is available right now."
-    },
-    "footer": {
-      "nameLater": "The session opens without a message. You can name it later.",
-      "ready": "The session opens without a message, with your name."
     },
     "submit": {
       "start": "Start session"
@@ -2114,7 +2338,11 @@
       "draftNotice": "needs approval before it can start",
       "onHold": "On hold",
       "cancelled": "Cancelled",
-      "loadFailed": "What can be done with this task could not be loaded."
+      "loadFailed": "What can be done with this task could not be loaded.",
+      "kind": "Task",
+      "copyKey": "Copy task key",
+      "keyCopied": "Task key copied",
+      "keyCopyFailed": "Could not copy the task key"
     },
     "lifecycle": {
       "approve": "Approve",
@@ -2249,7 +2477,7 @@
       "artifactLabel": "Created earlier in the process (for example by another task)",
       "artifactDescription": "Needed before this task starts. It may not exist yet; until then it shows as awaited, without a warning. What this task produces is not context: it is an exit gate of the step that produces it.",
       "specificationLegend": "Documents of {{spec}}",
-      "alreadyInContext": "already in context",
+      "alreadyInContext": "Already in context",
       "documentIdLabel": "Document id",
       "documentIdDescription": "The id it will be registered with. Until then it shows as awaited.",
       "searchLabel": "Search project documentation",
@@ -2272,7 +2500,13 @@
       "ownArtifactBody": "Context lists what the task needs before it starts. {{ref}} is produced by this task, so it belongs to an exit gate of the step that produces it, for example “a findings document exists” before finishing.",
       "notFoundOptional": "Not found: {{ref}} was moved or deleted. Optional, so the next step skips it.",
       "requiredShort": "required",
-      "optionalShort": "optional"
+      "optionalShort": "optional",
+      "confirmCount_one": "Add {{count}} document to context",
+      "confirmCount_other": "Add {{count}} documents to context",
+      "confirmCount_few": "Add {{count}} documents to context",
+      "confirmCount_many": "Add {{count}} documents to context",
+      "noneAvailable": "Every document is in the context already.",
+      "resultsInContext": "Every result is already in the context."
     },
     "dependencies": {
       "none": "No dependencies: the task can start as soon as it is approved.",
@@ -2280,18 +2514,22 @@
       "fixed": "Dependencies are fixed once the task has started.",
       "remove": "Remove dependency",
       "actionsFor": "Actions for {{id}}",
-      "dialogTitle": "Add dependencies to {{id}}",
-      "dialogDescription": "{{id}} becomes ready only when these tasks are done.",
-      "existing": "Already a dependency",
-      "confirm": "Add dependencies",
-      "legend": "Tasks",
+      "dialogTitle": "Add dependencies",
+      "dialogDescription": "Choose the tasks that must be done before “{{title}}” can start.",
       "noCandidates": "There are no other tasks in this specification.",
       "missingTask": "{{id}} is not a task of this specification any more.",
       "unavailable": {
-        "would-create-cycle": "{{other}} already depends on {{id}}; adding it would create a cycle",
+        "dependency": "Already a dependency",
+        "would-create-cycle": "Depends on this task already; adding it would create a cycle",
         "cancelled": "Cancelled; it would never be done",
         "broken": "Broken; restore its files first"
-      }
+      },
+      "confirmNone": "Add dependencies",
+      "confirm_one": "Add {{count}} dependency",
+      "confirm_other": "Add {{count}} dependencies",
+      "confirm_few": "Add {{count}} dependencies",
+      "confirm_many": "Add {{count}} dependencies",
+      "noneAvailable": "No task can be added now."
     },
     "refusal": {
       "generic": "The change was not saved. Try again.",
@@ -2309,12 +2547,108 @@
       "documentPathConflict": "A document with this name exists already.",
       "documentPathInvalid": "This file name is not allowed.",
       "documentRevisionConflict": "The document changed since you opened it. Reload and try again.",
-      "documentProtected": "task.md is the task's main document: it cannot be renamed or deleted."
+      "documentProtected": "task.md is the task's main document: it cannot be renamed or deleted.",
+      "lockRecovery": "A SpecFlow process that SpecFlow cannot prove stopped still holds the project lock. Stop every SpecFlow process of this project, then run nevo-specflow specs documents recover --confirmed-stopped."
+    },
+    "picker": {
+      "availableTasks": "Available tasks",
+      "unavailableTasks": "Unavailable tasks",
+      "unavailableDocuments": "Unavailable documents",
+      "searchTasks": "Search tasks",
+      "searchDocuments": "Search documents",
+      "noMatches": "Nothing matches the search."
     }
   },
   "workflowExecution": {
     "actor": {
       "you": "you"
+    },
+    "agent": {
+      "title": "Run with agent: {{step}}",
+      "descriptionTask": "The agent does this step of {{task}} on its own: it reads the step, its documents and context, writes what the step needs and proposes a result. Decisions that need you stay with you.",
+      "descriptionSpecification": "The agent does this step of this specification on its own: it reads the step, its documents and context, writes what the step needs and proposes a result. Decisions that need you stay with you.",
+      "checking": "Checking whether an agent can run this step…",
+      "checkFailedTitle": "SpecFlow could not check the agent",
+      "checkFailedBody": "The check did not finish, so nothing was started.",
+      "checkAgain": "Check again",
+      "checkingAgain": "Checking…",
+      "submit": "Run with agent",
+      "submitting": "Starting…",
+      "role": "{{name}} agent",
+      "roleFallback": "agent",
+      "blocker": {
+        "dirty": {
+          "title": "Commit or undo these changes first",
+          "body": "These files changed outside SpecFlow and are not committed. The agent starts from a committed checkout, so that everything that changes afterwards is its own work. (Documents and tasks SpecFlow saved itself do not block it.)",
+          "more": "and {{count}} more",
+          "hint": "Commit them, or undo the ones you do not need, then check again."
+        },
+        "ownerWork": {
+          "title": "Commit or undo your changes first",
+          "body": "These files have changes that are not committed. If the agent took the step over now, its attempt would count them as its own work and commit them as the agent’s.",
+          "hint": "Commit your work, or undo what you do not need, then check again. The agent then goes on from what you committed."
+        },
+        "noAgent": {
+          "title": "No agent is chosen for {{step}}",
+          "body": "{{step}} is done by the {{role}}, and the project names no agent and model for it yet, so SpecFlow cannot tell which one to start.",
+          "hint": "Choose them for the {{role}} in the project’s agent settings, then check again.",
+          "bodyUnnamed": "{{step}} is done by an agent, and the project names no agent and model for it yet, so SpecFlow cannot tell which one to start.",
+          "hintUnnamed": "Choose them in the project’s agent settings, then check again."
+        },
+        "providerNotReady": {
+          "title": "The agent is not ready",
+          "body": "The agent the workflow chose cannot start now.",
+          "hint": "Fix that, then check again.",
+          "bodyRefused": "SpecFlow did not start the agent: the agent or model chosen below cannot run now."
+        },
+        "sessionUnavailable": {
+          "title": "The session to continue is gone",
+          "body": "This step continues the session of an earlier step, and that session no longer exists. SpecFlow does not start a new one in its place, because this step is meant to build on what that session knows.",
+          "hint": "Do the step yourself with {{startLabel}}, or have the workflow changed so this step may start a new session."
+        },
+        "projectBusy": {
+          "title": "The project is busy",
+          "body": "Another change is being saved in this project, so an agent cannot start now.",
+          "hint": "Wait until it ends, then check again."
+        },
+        "demo": {
+          "title": "Agents do not run in the demo",
+          "body": "The demo runs no agents.",
+          "hint": "Do the step yourself with {{startLabel}}."
+        },
+        "other": {
+          "title": "An agent cannot run this step now",
+          "body": "The step changed since you opened it, or no agent does it.",
+          "hint": "Check again to read it once more."
+        }
+      },
+      "session": {
+        "newSession": "New session",
+        "label": "Session",
+        "continues": "Continues",
+        "continuesWhy": "{{model}}. This step continues the session named above, the one of an earlier step, so the agent keeps what it learned there. Its agent and model stay as they are.",
+        "earlier": "the earlier session",
+        "gone": "This session no longer exists.",
+        "notChosen": "Agent and model not chosen",
+        "model": "Model",
+        "preselected": "Preselected from the {{role}} settings. Your choice applies to this attempt only.",
+        "independent": "{{step}} is done independently: it always starts in a new session, never in the one that wrote the change. Preselected from the {{role}} settings.",
+        "independentOwn": "{{step}} is done independently: it always starts in a new session, never in the one that wrote the change.",
+        "catalogueFailed": "The agents could not be listed, so the attempt starts with {{agent}} from the {{role}} settings.",
+        "loadingAgents": "Loading the agents…",
+        "chooseModel": "Choose a model",
+        "modelUnassigned": "No model {{provider}} offers is set for the {{role}}. Choose one for this start.",
+        "workMode": "The agent works in the {{mode}} mode."
+      },
+      "commit": "When the agent finishes, SpecFlow commits its work on <code>{{branch}}</code> as one commit; changes of others are never included.",
+      "commitNoBranch": "When the agent finishes, SpecFlow commits its work on the specification’s branch as one commit; changes of others are never included.",
+      "hand": {
+        "title": "Hand to agent: {{step}}",
+        "descriptionTask": "Your attempt {{attempt}} of this step of {{task}} ends here, and the agent goes on with the step in a new attempt: it reads the step, its documents and context, writes what the step needs and proposes a result. Decisions that need you stay with you.",
+        "descriptionSpecification": "Your attempt {{attempt}} of this step ends here, and the agent goes on with the step in a new attempt: it reads the step, its documents and context, writes what the step needs and proposes a result. Decisions that need you stay with you.",
+        "submit": "Hand to agent",
+        "submitting": "Handing over…"
+      }
     },
     "now": {
       "heading": "Now",
@@ -2327,11 +2661,20 @@
       "ready": "Ready to start",
       "active": "In progress since {{since}} · started by {{actor}}",
       "activeAttempt": "Attempt {{attempt}} · in progress since {{since}} · started by {{actor}}",
+      "takenOverFrom": "taken over from the agent",
       "starting": "Starting…",
       "track": {
         "current": "Step {{position}} of {{total}}: {{title}}",
         "notStarted": "Not started, {{total}} steps. First step: {{title}}",
-        "completed": "All {{total}} steps · completed"
+        "completed": "All {{total}} steps · completed",
+        "steps_one": "{{count}} step",
+        "steps_other": "{{count}} steps",
+        "allSteps_one": "{{count}} step done",
+        "allSteps_other": "All {{count}} steps done",
+        "steps_few": "{{count}} steps",
+        "steps_many": "{{count}} steps",
+        "allSteps_few": "All {{count}} steps done",
+        "allSteps_many": "All {{count}} steps done"
       },
       "newTask": "New task",
       "addSectionsToFinish_one": "Add the {{sections}} section to {{name}} to finish.",
@@ -2368,9 +2711,8 @@
       "return": "Return to earlier step",
       "finishKept": "Your finish is kept: result, feedback and artifacts stay as you left them. Finish step continues it.",
       "postActionFailed": "The step is finished. Its workflow state was not committed ({{code}}): it stays uncommitted, and Close includes it.",
+      "postActionAttemptCommit": "The change is saved, but its commit waits for the agent’s work in this specification to be committed first. Retry that commit; the next commit then takes this change too.",
       "postActionHeld": "The step is finished. {{edited}} changed outside SpecFlow after SpecFlow wrote it, so the files of its Task, and of Tasks added or removed since, stay uncommitted; the rest of the workflow state is committed. Commit those files with Git; otherwise Close includes them.",
-      "lastPrefix": "Last: {{step}} · ",
-      "handoffFrom": "{{step}} · ",
       "alreadyFinished": "This step was already finished. What you can do now is shown below.",
       "reevaluateWait": "End wait",
       "retryWait": "Retry ending wait",
@@ -2387,7 +2729,29 @@
       "tasksOpenDrafts": "To finish with {{result}}, leave out the open drafts of this step: untick {{tasks}} when you finish.",
       "technicalStep": "Step {{step}} · {{title}} rev {{version}}",
       "technical": "{{title}} rev {{version}}",
-      "openDocument": "Open {{name}}"
+      "openDocument": "Open {{name}}",
+      "runWithAgent": "Run with agent",
+      "handToAgent": "Hand to agent",
+      "readFailed": "SpecFlow could not read what can be done in this step now.",
+      "readStale": "SpecFlow could not refresh this step; it shows what was read last, which may be out of date.",
+      "readRetry": "Try again",
+      "youAct": "You are doing this step: do the work, then finish it.",
+      "youActCanHand": "You are doing this step: do the work and finish it, or hand it to the agent to go on.",
+      "youActTakenOver": "You took this step over from the agent, so it is yours now: do the rest yourself and finish it.",
+      "youActTakenOverCanHand": "You took this step over from the agent, so it is yours now: do the rest yourself and finish it, or hand it back to the agent in a new attempt.",
+      "handUnavailable": "Hand to agent cannot run now: {{why}}.",
+      "personActs": "{{actor}} is doing this step; you can follow it here.",
+      "handoffCommittedAll": "Work committed",
+      "openSession": "Open session",
+      "sessionGone": "Session deleted",
+      "agentWorking": "Working since {{since}}",
+      "agentWorkingAttempt": "Attempt {{attempt}} · working since {{since}}",
+      "waitingForDependencies": "Waiting for dependencies",
+      "dependenciesRemaining_one": "{{count}} dependency remaining",
+      "dependenciesRemaining_few": "{{count}} dependencies remaining",
+      "dependenciesRemaining_many": "{{count}} dependencies remaining",
+      "dependenciesRemaining_other": "{{count}} dependencies remaining",
+      "viewDependencies": "View dependencies"
     },
     "blocker": {
       "dependencies_one": "Waiting for {{count}} dependency",
@@ -2590,6 +2954,8 @@
         "workflowStateUncommittedStep": "Task and step changes of another specification in this checkout are not committed yet. Commit them with Git, or finish the step in progress there (finishing it commits them), then check again.",
         "uncommittedAbandoned": "Changes in this checkout whose commit was abandoned are not committed. Commit them with Git, then check again.",
         "uncommittedGit": "Files SpecFlow wrote in this checkout are not committed. Commit them with Git, then check again.",
+        "agentCommitFailed": "An agent finished its work, but its commit failed. Retry the commit below, then check again.",
+        "agentAndOthers": "Some files in this checkout are not committed: an agent's work whose commit failed, and files of other specifications. Each group below says how to commit its files, then check again.",
         "documentsFailed": "A document commit failed. Retry or resolve it in Documents, then check again."
       },
       "repository": {
@@ -2682,9 +3048,21 @@
       "archiveNote": "Closing archives the specification; it cannot be reopened.",
       "submitting": "Closing…",
       "heldBy": {
+        "mixed": "files in its checkout are not committed",
         "other": "another specification has uncommitted changes in this checkout",
         "own": "it has uncommitted changes in its checkout",
         "checkout": "files SpecFlow wrote in this checkout are not committed"
+      },
+      "agentCommit": {
+        "title": "Agent work whose commit failed",
+        "lead": "An agent finished its step, but Git did not accept its commit. The files stay uncommitted until the commit is made.",
+        "stepTask": "{{step}} of {{task}}, attempt {{attempt}}",
+        "stepSpecification": "{{step}} of this specification, attempt {{attempt}}",
+        "reason_one": "the commit failed: {{reason}} ({{code}}). {{count}} file.",
+        "reason_few": "the commit failed: {{reason}} ({{code}}). {{count}} files.",
+        "reason_many": "the commit failed: {{reason}} ({{code}}). {{count}} files.",
+        "reason_other": "the commit failed: {{reason}} ({{code}}). {{count}} files.",
+        "retryLabel": "Retry commit of {{step}}"
       }
     },
     "abandon": {
@@ -2723,7 +3101,11 @@
       "localConfigModified": "The worktree's local configuration (.nevo/local/config.yaml) was changed, added by hand or cannot be read. Move or delete it, then close again.",
       "busy": "The specification is busy with another change. Try again in a moment.",
       "draftConflict": "A draft you keep depends on a draft you unticked. Keep both, or untick both.",
-      "tasksOpen": "The specification cannot complete while tasks are open: {{tasks}}. Finish or cancel them first."
+      "tasksOpen": "The specification cannot complete while tasks are open: {{tasks}}. Finish or cancel them first.",
+      "confirmationChanged": "What Confirm would apply changed since you opened this. Read the summary again, then confirm.",
+      "attemptCommitRequired": "The agent’s work in this specification is not committed yet, so nothing in its workflow can change. Retry its commit (shown above), then try again.",
+      "agentUnavailable": "The agent cannot continue now. Refresh the page to see why.",
+      "lockRecovery": "A SpecFlow process that SpecFlow cannot prove stopped still holds the project lock. Stop every SpecFlow process of this project, then run nevo-specflow specs documents recover --confirmed-stopped."
     },
     "time": {
       "today": "Today {{time}}",
@@ -2735,6 +3117,257 @@
       "removed": "Removes step {{step}}",
       "renamed": "Renames step {{from}} to {{to}}",
       "transitions": "Changes where {{step}} leads"
+    },
+    "agentAttempt": {
+      "sessionFallback": "the agent’s session",
+      "stop": "Stop agent",
+      "stopping": "Stopping…",
+      "checkOutcome": "Check outcome",
+      "continue": "Continue",
+      "retryStart": "Retry start",
+      "line": {
+        "working": "Attempt {{attempt}} · agent working since {{since}}",
+        "stopping": "Attempt {{attempt}} · stopping the agent",
+        "unknown": "Attempt {{attempt}} · the agent’s outcome is unknown",
+        "sessionMissing": "Attempt {{attempt}} · the agent did not start",
+        "stopped": "Attempt {{attempt}} · the agent stopped without a result at {{at}}",
+        "refused": "Attempt {{attempt}} · the agent’s result was not accepted",
+        "applying": "Attempt {{attempt}} · the agent proposed a result",
+        "returnRequested": "Attempt {{attempt}} · return requested · waiting for the agent to stop",
+        "returnStopped": "Attempt {{attempt}} · return requested · the agent has stopped",
+        "waiting": "Attempt {{attempt}} · agent working since {{since}} · waiting for you"
+      },
+      "stoppingNote": "Asked the agent to stop. {{step}} stays locked until SpecFlow sees its process has ended; then you can continue or return.",
+      "unknown": {
+        "title": "SpecFlow cannot tell whether the agent is still working.",
+        "body": "Its process may still be running, so nothing can be saved anywhere in this project until that is known: steps, documents and tasks of every specification wait. Check outcome asks the machine running SpecFlow again. If it still cannot tell, end the agent’s process there, then check again."
+      },
+      "missing": {
+        "title": "The agent did not start.",
+        "body": "Its session could not be created, so it has done nothing yet. Retry start asks again."
+      },
+      "noResult": {
+        "title": "The agent stopped without proposing a result.",
+        "body": "Continue lets it go on in the same session. Take over to finish the step yourself."
+      },
+      "applying": "The agent proposed {{result}}. SpecFlow is applying it.",
+      "refused": {
+        "title": "The agent proposed {{result}}, and SpecFlow did not accept it:",
+        "undeclared": "<code>{{path}}</code> does not match what the agent listed as its changes.",
+        "unregistered": "<code>{{path}}</code> has no document type. Give it a type or delete it.",
+        "engineFile": "<code>{{path}}</code> is a file SpecFlow wrote, and it was edited outside SpecFlow.",
+        "nested": "<code>{{path}}</code> is a Git repository inside this checkout.",
+        "gate": "A condition for this result is not met.",
+        "tasksOpen": "Tasks are still open.",
+        "other": "SpecFlow did not accept it",
+        "next": "Continue lets the agent fix this in the same session. Take over to fix it yourself."
+      },
+      "changed": {
+        "title_one": "The agent cannot continue: {{count}} file changed since it stopped.",
+        "title_few": "The agent cannot continue: {{count}} files changed since it stopped.",
+        "title_many": "The agent cannot continue: {{count}} files changed since it stopped.",
+        "title_other": "The agent cannot continue: {{count}} files changed since it stopped.",
+        "body": "SpecFlow never counts someone else’s edits as the agent’s work. Undo these changes, or commit them yourself (they become your commit, not the agent’s), then continue. Or take over and finish the step yourself."
+      },
+      "gone": {
+        "title": "The agent cannot continue: its session no longer exists.",
+        "body": "SpecFlow does not start another session in its place. Take over to finish the step yourself, or return to an earlier step from the menu."
+      },
+      "takeOver": "Take over",
+      "takingOver": "Taking over…",
+      "keptLead": "Kept so far:",
+      "seeAttempt": "See the attempt",
+      "keptFiles_one": " and {{count}} changed file",
+      "keptFiles_few": " and {{count}} changed files",
+      "keptFiles_many": " and {{count}} changed files",
+      "keptFiles_other": " and {{count}} changed files",
+      "keptFilesOnly_one": "{{count}} changed file",
+      "keptFilesOnly_few": "{{count}} changed files",
+      "keptFilesOnly_many": "{{count}} changed files",
+      "keptFilesOnly_other": "{{count}} changed files",
+      "returning": "Returning…",
+      "stopAgain": "Stop again",
+      "returnNote": "You asked to return to {{target}}. SpecFlow is stopping the agent first: the step goes back to {{target}} only once its process has ended, so nothing it still writes is lost or mixed into the next attempt.",
+      "returnStopFailed": "SpecFlow could not stop the agent, so it may still be working. The return to {{target}} waits until the agent has stopped.",
+      "returnNextAction": "The agent has stopped. Your return to {{target}} applies when you next act on this step: choose Return in the menu.",
+      "returnRefused": "The return to {{target}} was not applied: {{reason}} ({{code}}). The attempt stays as it is.",
+      "continueDialog": {
+        "title": "Continue {{step}}",
+        "description": "The agent goes on with attempt {{attempt}} in the same session, with this attempt's own scope.",
+        "noteLabel": "Note for the agent (optional)",
+        "noteHint": "For example what to do differently. It is sent with SpecFlow's continuation message, in the same Turn.",
+        "tooLong": "The note can be at most {{max}} characters.",
+        "withNote": "Continue with the note"
+      },
+      "takeOverDialog": {
+        "title": "Take over {{step}}",
+        "description": "The agent’s attempt ends as taken over, and your own attempt {{attempt}} starts. You then finish the step yourself.",
+        "stays": "The agent’s work stays",
+        "staysBody": "Nothing is undone. These files stay as the agent left them, uncommitted until you commit them; finishing the step does not commit them, and Close lists them until they are committed.",
+        "noFiles": "The agent left no uncommitted files.",
+        "session": "The session <session/> stays open to read; it no longer works on this step.",
+        "sessionGone": "The session <session/> no longer exists, so there is nothing to read."
+      },
+      "earlierStep": "an earlier step",
+      "workingNote": "The agent is doing this step now. You do not need to do anything until it finishes; Stop agent ends its work.",
+      "waiting": {
+        "title": {
+          "question": "The agent is waiting for you: it asked a question.",
+          "permission": "The agent is waiting for you: it asks for permission to go on.",
+          "input": "The agent is waiting for you in its session."
+        },
+        "body": "It does nothing more until you answer it there.",
+        "open": {
+          "question": "Answer the question",
+          "permission": "Answer the permission request",
+          "input": "Open the session"
+        }
+      }
+    },
+    "confirmation": {
+      "line": "Waiting for your confirmation · the agent finished {{at}}",
+      "applies": "Confirming {{what}}.",
+      "movesTo": "moves to {{step}}",
+      "ends": {
+        "completed": "completes the workflow",
+        "abandoned": "ends the workflow as abandoned"
+      },
+      "approvesDrafts_one": "approves the draft task {{first}}",
+      "approvesDrafts_few": "approves the {{count}} draft tasks ({{first}} to {{last}})",
+      "approvesDrafts_many": "approves the {{count}} draft tasks ({{first}} to {{last}})",
+      "approvesDrafts_other": "approves the {{count}} draft tasks ({{first}} to {{last}})",
+      "recordsDecisions_one": "records the agent’s decision on {{count}} task",
+      "recordsDecisions_few": "records the agent’s decisions on {{count}} tasks",
+      "recordsDecisions_many": "records the agent’s decisions on {{count}} tasks",
+      "recordsDecisions_other": "records the agent’s decisions on {{count}} tasks",
+      "confirm": "Confirm",
+      "confirming": "Confirming…",
+      "reject": "Reject",
+      "rejectTitle": "Reject the agent’s result",
+      "rejectDescription": "{{step}} goes back to ready to start, with your feedback as its hand-off. The agent’s proposal {{result}} is not applied.",
+      "rejectDescriptionDrafts": "{{step}} goes back to ready to start, with your feedback as its hand-off. The agent’s proposal {{result}} is not applied; the draft tasks and documents it wrote stay as they are.",
+      "feedbackLabel": "What should change (required)",
+      "feedbackHint": "The next attempt reads it first, whether you start it yourself or run it with an agent.",
+      "resultHeading": "The agent's result"
+    },
+    "attemptCommit": {
+      "committed": "The agent finished {{step}}. Its work is committed.",
+      "committedOn": "The agent finished {{step}}. Its work is committed on <code>{{branch}}</code>.",
+      "committedSha": "The agent finished {{step}}. Committed <code>{{sha}}</code>{{list}}.",
+      "committedShaOn": "The agent finished {{step}}. Committed <code>{{sha}}</code> on <code>{{branch}}</code>{{list}}.",
+      "countDocuments_one": "{{count}} document",
+      "countDocuments_few": "{{count}} documents",
+      "countDocuments_many": "{{count}} documents",
+      "countDocuments_other": "{{count}} documents",
+      "countFiles_one": "{{count}} file",
+      "countFiles_few": "{{count}} files",
+      "countFiles_many": "{{count}} files",
+      "countFiles_other": "{{count}} files",
+      "and": " and ",
+      "pending": "The agent finished {{step}}. SpecFlow is committing its work…",
+      "failed": "<strong>{{step}} is finished, but its commit failed: {{reason}} (<code>{{code}}</code>).</strong>",
+      "reason": {
+        "branchProtected": "the branch is protected",
+        "blocked": "a Git hook or rule in this repository refused it",
+        "other": "Git could not complete it"
+      },
+      "staysOn_one": "This file stays uncommitted on <code>{{branch}}</code>, and Close lists it until it is committed.",
+      "staysOn_few": "These {{count}} files stay uncommitted on <code>{{branch}}</code>, and Close lists them until they are committed.",
+      "staysOn_many": "These {{count}} files stay uncommitted on <code>{{branch}}</code>, and Close lists them until they are committed.",
+      "staysOn_other": "These {{count}} files stay uncommitted on <code>{{branch}}</code>, and Close lists them until they are committed.",
+      "stays_one": "This file stays uncommitted, and Close lists it until it is committed.",
+      "stays_few": "These {{count}} files stay uncommitted, and Close lists them until they are committed.",
+      "stays_many": "These {{count}} files stay uncommitted, and Close lists them until they are committed.",
+      "stays_other": "These {{count}} files stay uncommitted, and Close lists them until they are committed.",
+      "blocksNext": "Until then Run with agent cannot start {{next}}: an agent starts only from a committed checkout.",
+      "blocksAgent": "Until then Run with agent cannot start the next step: an agent starts only from a committed checkout.",
+      "blocksConfirm": "Confirm and Reject become possible once the agent’s work is committed: Retry commit makes the commit again after you fix the cause.",
+      "stalled": "The commit has not finished. If it does not finish by itself, Retry commit makes it now; Confirm and Reject wait for it.",
+      "blocksWorkflow": "Until it is committed, nothing in this specification’s workflow can change: Start, Finish step, Return and Run with agent wait for it.",
+      "blocksWorkflowFailed": "Until it is committed, nothing in this specification’s workflow can change: Start, Finish step, Return and Run with agent wait for it. Fix the cause, then Retry commit.",
+      "stalledWorkflow": "The commit has not finished. If it does not finish by itself, Retry commit makes it now.",
+      "stepOfTask": "{{step}} of task {{task}}",
+      "retry": "Retry commit",
+      "retrying": "Retrying…"
+    },
+    "projectHold": {
+      "session": "Session:",
+      "unknown": {
+        "title": "Nothing can be saved in this project right now.",
+        "body": "SpecFlow cannot tell whether an agent is still running. Check its outcome in"
+      },
+      "working": {
+        "body": "An agent is working in this project. Until it stops, starting, finishing or returning a step here is refused; this page updates by itself when it stops. It works on"
+      }
+    },
+    "attemptHistory": {
+      "truncated": "Older attempts are not shown.",
+      "stopped": "The agent stopped without a result at {{at}}.",
+      "outcome": {
+        "takenOverBy": "Taken over by {{who}}",
+        "takenOver": "Taken over",
+        "abandoned": "Abandoned",
+        "returned": "Returned to {{step}}",
+        "active": "The agent is working on it",
+        "handedToAgent": "Handed to the agent",
+        "completed": "Completed",
+        "awaitingConfirmation": "Waiting for your confirmation",
+        "rejected": "Result rejected",
+        "commitFailed": "Finished, but not committed"
+      },
+      "ownerNote": "Your note for the agent: {{note}}",
+      "event": {
+        "started": "Started",
+        "handed-over": "Handed to the agent",
+        "turn-started": "The agent started working",
+        "turn-ended": "The agent stopped",
+        "proposal-refused": "Result not accepted",
+        "return-requested": "Return requested",
+        "returned": "Returned to an earlier step",
+        "finished": "Finished with a result",
+        "committed": "Work committed",
+        "commit-failed": "Commit failed: {{reason}} ({{code}})",
+        "taken-over": "Taken over",
+        "abandoned": "Abandoned",
+        "awaiting-confirmation": "Waiting for confirmation",
+        "confirmed": "Result confirmed",
+        "rejected": "Result rejected"
+      },
+      "changes": {
+        "tasks_one": "{{count}} task",
+        "tasks_other": "{{count}} tasks",
+        "tasks_few": "{{count}} tasks",
+        "tasks_many": "{{count}} tasks",
+        "files_one": "{{count}} changed file",
+        "files_other": "{{count}} changed files",
+        "files_few": "{{count}} changed files",
+        "files_many": "{{count}} changed files",
+        "moreTasks_one": "{{count}} more task",
+        "moreTasks_other": "{{count}} more tasks",
+        "moreTasks_few": "{{count}} more tasks",
+        "moreTasks_many": "{{count}} more tasks",
+        "truncated": "The commit held more files than are listed here."
+      },
+      "committed": "Committed",
+      "notCommitted": "Kept in the checkout, not committed",
+      "day": {
+        "today": "Today",
+        "yesterday": "Yesterday"
+      },
+      "openSession": "Open session",
+      "confirmedBy": "Confirmed by {{who}} · {{at}}",
+      "rejectedBy": "Rejected by {{who}} · {{at}}"
+    },
+    "feedback": {
+      "view": "View feedback",
+      "label": "Feedback",
+      "copy": "Copy feedback",
+      "copied": "Copied",
+      "failed": "The feedback could not be read.",
+      "missing": "This feedback is no longer in the history.",
+      "resultSection": "Result",
+      "rejectionSection": "Why the result was rejected",
+      "loading": "Loading feedback…"
     }
   },
   "taskOverview": {
@@ -2750,7 +3383,9 @@
         "resume-task": "Resume",
         "start-step": "Start step",
         "reevaluate-wait": "Go to current step",
-        "return-to-step": "Return to earlier step"
+        "return-to-step": "Return to earlier step",
+        "confirm-result": "Review result",
+        "reject-result": "Reject result"
       },
       "specification": "Specification",
       "stuckTitle_one": "Resolve {{count}} blocking task",
@@ -2760,15 +3395,29 @@
       "resumeFailed": "The task could not be resumed. Open the task to see what you can do now.",
       "startNamed": "Start {{step}}",
       "stuckTitle_few": "Resolve {{count}} blocking tasks",
-      "stuckTitle_many": "Resolve {{count}} blocking tasks"
+      "stuckTitle_many": "Resolve {{count}} blocking tasks",
+      "reason": {
+        "holdsTasks": "It is on hold and holds up {{tasks}}: resume it, or cancel it.",
+        "holdsFinish": "It is on hold and keeps {{step}} from finishing: resume it, or cancel it.",
+        "holdsTasksAndFinish": "It is on hold, holds up {{tasks}} and keeps {{step}} from finishing: resume it, or cancel it.",
+        "theStep": "the step",
+        "dependsOnBroken": "It depends on broken tasks: {{tasks}}. Restore their files from Git, or edit its dependencies.",
+        "dependsOnEnded": "It depends on tasks that can no longer complete: {{tasks}}. Edit its dependencies or cancel it.",
+        "escalated": "Escalated to the specification: {{tasks}}. Decide each task, or return the specification to an earlier step.",
+        "broken": "The files of the task are inconsistent: restore them from Git."
+      }
     },
     "summary": {
       "allTasks": "All tasks",
-      "moreIn_one": "{{count}} more in {{group}}",
-      "moreIn_other": "{{count}} more in {{group}}",
-      "moreIn_few": "{{count}} more in {{group}}",
-      "moreIn_many": "{{count}} more in {{group}}",
-      "moreActions": "Tasks: more actions"
+      "moreActions": "Tasks: more actions",
+      "showMore_one": "Show {{count}} more",
+      "showMore_few": "Show {{count}} more",
+      "showMore_many": "Show {{count}} more",
+      "showMore_other": "Show {{count}} more",
+      "moreIn_one": "Show {{count}} more task: {{group}}",
+      "moreIn_other": "Show {{count}} more tasks: {{group}}",
+      "moreIn_few": "Show {{count}} more tasks: {{group}}",
+      "moreIn_many": "Show {{count}} more tasks: {{group}}"
     },
     "progress": {
       "tasksDone": "{{completed}} of {{total}} tasks done",
@@ -2779,14 +3428,16 @@
       "ended_other": "{{count}} ended",
       "onHold_one": "{{count}} on hold",
       "onHold_other": "{{count}} on hold",
-      "barNote": "The bar counts every task except cancelled ones.",
-      "barNoteEnded": "The bar counts every task except cancelled and ended ones.",
       "cancelled_few": "{{count}} cancelled",
       "cancelled_many": "{{count}} cancelled",
       "ended_few": "{{count}} ended",
       "ended_many": "{{count}} ended",
       "onHold_few": "{{count}} on hold",
-      "onHold_many": "{{count}} on hold"
+      "onHold_many": "{{count}} on hold",
+      "readyToStart_one": "{{count}} ready to start",
+      "readyToStart_other": "{{count}} ready to start",
+      "readyToStart_few": "{{count}} ready to start",
+      "readyToStart_many": "{{count}} ready to start"
     },
     "terminal": {
       "allDone_one": "The task is done",
@@ -2826,7 +3477,11 @@
       "holdsUpMore": "holds up {{ids}} (+{{more}})",
       "holdsFinish": "{{step}} cannot finish while this task is on hold",
       "holdsFinishUnnamed": "the step cannot finish while this task is on hold",
-      "waitingFor": "Waiting for {{ids}}"
+      "waitingFor": "Waiting for {{ids}}",
+      "waitingForCount_one": "Waiting for {{count}} other task",
+      "waitingForCount_few": "Waiting for {{count}} other tasks",
+      "waitingForCount_many": "Waiting for {{count}} other tasks",
+      "waitingForCount_other": "Waiting for {{count}} other tasks"
     },
     "page": {
       "loading": "Loading tasks",

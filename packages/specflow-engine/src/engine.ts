@@ -1,5 +1,6 @@
 import { openEngineBoundary, type SpecFlowEngine } from './application';
 import type { ResolveProjectHomeOptions } from './project/home/home';
+import { readAttemptCommitHolds } from './workflow/agent/finalize/attempt-commit/holds';
 import { specificationCloseBlockers, specificationStepInProgress } from './workflow/composition';
 
 /**
@@ -10,5 +11,6 @@ export function openSpecFlowEngine(options: ResolveProjectHomeOptions): Promise<
   return openEngineBoundary(options, {
     specificationExit: (engine) => (specId) => specificationCloseBlockers(engine, specId),
     stepInProgress: (engine) => (specId) => specificationStepInProgress(engine, specId),
+    attemptCommitHolds: (engine) => (workspaceId) => readAttemptCommitHolds(engine, workspaceId),
   });
 }

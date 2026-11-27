@@ -16,7 +16,13 @@ export type {
   SessionReference,
   SessionReferenceOwner,
 } from './reference-owner';
-export type { SessionCoordinator } from './lifecycle/coordinator';
+export type { SessionCoordinator, TurnStartOptions } from './lifecycle/coordinator';
+export type { AgentAttemptSettlement, AgentTurnAdmission } from './effects/engine';
+export type {
+  InvocationCapabilities,
+  InvocationCapabilityBinding,
+  InvocationGrant,
+} from './lifecycle/invocation-capabilities';
 export type {
   SessionIdentity,
   SessionListRow,
@@ -28,6 +34,7 @@ export type {
 export { registerSessionErrorHandling } from './http/error-handling';
 export { SESSION_ROUTE_REFUSALS, sessionBodyErrors, sessionErrors } from './http/route-docs';
 export { listedSession } from './http/projection';
+export type { AgentStepOrigins } from './http/agent-step';
 export { authorizeSessionWrite } from './http/authorization';
 export { canStartSession, requireStartSession } from './start-authorization';
 export { sessionScope, type SessionScopeIdentity, type SessionCapabilityId } from './scope';

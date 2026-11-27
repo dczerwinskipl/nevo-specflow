@@ -45,6 +45,18 @@ export function countWorkOpened(
   };
 }
 
+/**
+ * A commentary Work turned out to be SpecFlow's own notice (its first text carries `notice`): it
+ * stays in `byKind.commentary` and is counted in `notices` too, so a client tells it from the
+ * agent's progress notes.
+ */
+export function countNotice(aggregate: WorkAggregate): WorkAggregate {
+  return {
+    ...aggregate,
+    counts: { ...aggregate.counts, notices: (aggregate.counts.notices ?? 0) + 1 },
+  };
+}
+
 /** `inProgress` counts Work in the `active` state only. */
 export function countWorkTransition(
   aggregate: WorkAggregate,

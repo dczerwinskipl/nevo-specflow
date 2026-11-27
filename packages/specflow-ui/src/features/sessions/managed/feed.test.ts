@@ -571,7 +571,7 @@ describe('Session feed operation lifetime', () => {
     expect(second.requestId).not.toBe(first.requestId);
     expect(feed.getSnapshot().commandError).toBe(false);
   });
-  it('keeps the command when the Runtime answers SESSION_RECOVERY_REQUIRED (409, outcome unknown)', async () => {
+  it('releases a start the Runtime refused with SESSION_RECOVERY_REQUIRED: its admission committed nothing', async () => {
     const { storage, api } = setup();
     const post = vi.fn().mockRejectedValue(
       new HttpClientError('conflict', {
@@ -587,16 +587,17 @@ describe('Session feed operation lifetime', () => {
       'actor',
       storage,
     );
-    feed.setDraft('Maybe applied');
+    feed.setDraft('Refused');
     await feed.send();
-    const pending = feed.getSnapshot().pending;
-    expect(pending).toMatchObject({ message: 'Maybe applied' });
-    expect(feed.getSnapshot().commandError).toBe(true);
-    await feed.send();
-    expect(post.mock.calls[1]![1]).toEqual(post.mock.calls[0]![1]);
-    expect(createSessionFeed(api, 'session', 'actor', storage).getSnapshot().pending).toEqual(
-      pending,
-    );
+    expect(feed.getSnapshot()).toMatchObject({
+      commandError: true,
+      sendFailure: 'SESSION_RECOVERY_REQUIRED',
+      draft: 'Refused',
+    });
+    expect(feed.getSnapshot().pending).toBeUndefined();
+    expect(
+      createSessionFeed(api, 'session', 'actor', storage).getSnapshot().pending,
+    ).toBeUndefined();
   });
   it('keeps the command when the start acknowledgement has the wrong shape (outcome unknown)', async () => {
     const { storage, api } = setup();

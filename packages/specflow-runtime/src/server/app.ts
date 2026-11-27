@@ -1,26 +1,34 @@
 import compress from '@fastify/compress';
+import type { AgentStepOrigin } from '@nevo/specflow-contracts/sessions';
 import cookie from '@fastify/cookie';
 import { RuntimeInfoResponseSchema } from '@nevo/specflow-contracts/runtime';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { openWorkflow, withCheckoutQuiescence } from '@nevo/specflow-engine';
+import { openAgentAttempts, openWorkflow, withCheckoutQuiescence } from '@nevo/specflow-engine';
 import Fastify, {
   type FastifyInstance,
   type FastifyServerOptions,
   type RawServerBase,
 } from 'fastify';
 
-import { authCookieNames, createAuthFeature, type AuthFeatureDependencies } from '../features/auth';
+import {
+  authCookieNames,
+  createAuthFeature,
+  type AuthFeatureDependencies,
+  type RequestAuthorization,
+} from '../features/auth';
 import type { RuntimeConfig } from '../config/types';
 import {
   checkoutSessions,
   createSessionsFeature,
+  type AgentStepOrigins,
+  type SessionsRuntime,
   projectSessionStoreDirectory,
   runtimeCheckoutQuiescence,
   type SessionReferenceOwner,
   type SessionDriver,
 } from '../features/sessions';
 import {
-  createEngineTaskProgress,
+  createEngineOverviewExecution,
   createEngineTaskSources,
   createProjectTaskEngine,
   createEngineWorkspaceTasks,
@@ -32,7 +40,18 @@ import {
   createEngineWorkspaceDocuments,
   type DocumentsFeatureDependencies,
 } from '../features/documents';
-import { createWorkflowFeature, type WorkflowFeatureDependencies } from '../features/workflow';
+import {
+  createWorkflowFeature,
+  demoAgentAvailability,
+  type WorkflowFeatureDependencies,
+} from '../features/workflow';
+import {
+  agentStepOrigins,
+  agentStepTitle,
+  createAgentExecutionFeature,
+  createUnavailableAgentStepExecutionFeature,
+  shownSessionTitle,
+} from '../features/agent-execution';
 import {
   createDocsFeature,
   openProjectDocumentLookup,
@@ -92,6 +111,8 @@ export interface RuntimeAppDependencies {
     driver?: SessionDriver | readonly SessionDriver[];
     /** Engine facts of associated Specifications and Tasks (default: the Engine, project mode). */
     targets?: AssociationTargets;
+    /** Agent step origins of Sessions (default: the Engine's attempt records, project mode). */
+    agentStepOrigins?: AgentStepOrigins;
   };
   readonly auth?: AuthFeatureDependencies;
   readonly specs?: SpecsFeatureDependencies;
@@ -219,9 +240,36 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   // Which checkouts agent Session Turns work in: Close never removes one of them (and holds a
   // checkout against new Turns while it removes it).
   const workspaceOccupancy = createWorkspaceOccupancy();
+  // Project mode: a write Turn of a Specification's Session gets an invocation capability and
+  // writes through the local agent broker (D11).
+  // Agent step execution: the Session coordinator is read at request time (the Sessions feature owns it).
+  const sessionsHolder: { runtime?: SessionsRuntime } = {};
+  const agentExecution =
+    mode === 'project' && engine
+      ? createAgentExecutionFeature({
+          engine,
+          projectDocument,
+          coordinator: () => sessionsHolder.runtime?.coordinator,
+          projectId: () => engine.context.project.projectId,
+        })
+      : undefined;
   const sessionsFeature = createSessionsFeature({
     ...(engine ? { engine } : {}),
+    ...(dependencies.sessions?.agentStepOrigins
+      ? { agentStepOrigins: dependencies.sessions.agentStepOrigins }
+      : mode === 'project' && taskEngine
+        ? {
+            agentStepOrigins: (specId: string) => agentStepOrigins(taskEngine.openWorkflow, specId),
+          }
+        : {}),
     workspaceOccupancy,
+    ...(agentExecution
+      ? {
+          invocationCapabilities: agentExecution.capabilities,
+          settleAgentAttempt: agentExecution.settleAgentAttempt,
+          agentTurns: agentExecution.agentTurns,
+        }
+      : {}),
     config: mode === 'project' ? config.sessions : undefined,
     storage:
       dependencies.sessions?.storage ??
@@ -243,6 +291,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         }
       : {}),
   });
+  sessionsHolder.runtime = sessionsFeature.runtime;
   // The association registry: the demo catalogue, or the Session store behind the Engine facts.
   const associationTargets =
     demo?.associationTargets ??
@@ -291,14 +340,31 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
               sessions: createWorkspaceSessionContribution({
                 sessions: sessionsFeature.runtime,
                 projectId,
+                ...(taskEngine
+                  ? {
+                      agentSteps: {
+                        origins: (specId: string) =>
+                          agentStepOrigins(taskEngine.openWorkflow, specId),
+                        title: (stored: string | undefined, origin: AgentStepOrigin) =>
+                          shownSessionTitle(stored, agentStepTitle(origin)),
+                      },
+                    }
+                  : {}),
               }),
             }
           : {}),
       };
+  // Create's "then run the first step with this agent" is started by agent step execution.
+  const firstStepStarter = dependencies.specs?.firstStepStarter ?? agentExecution?.firstStepStarter;
+  // Bound once the auth feature exists (it is composed after the product features it authorizes).
+  const principals: {
+    authorize?: (principal: string) => RequestAuthorization | undefined;
+  } = {};
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
       dependencies: {
+        authorizePrincipal: (principal) => principals.authorize?.(principal),
         // Close asks whether an agent can work in a checkout it removes: this Runtime's own Turns
         // while it owns the Session store, else the store's owner record.
         engine:
@@ -314,9 +380,13 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         overviewRepository: dependencies.specs?.overviewRepository ?? demo?.overviewRepository,
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
         contributions,
-        ...(taskEngine ? { taskProgress: createEngineTaskProgress(taskEngine) } : {}),
+        ...(taskEngine
+          ? { overviewExecution: createEngineOverviewExecution(taskEngine, app.log) }
+          : {}),
         sessions: sessionReferences,
         projectId,
+        // Create's first-step intent: the Runtime starts the first step with an agent after Create.
+        ...(firstStepStarter ? { firstStepStarter } : {}),
         // Close deletes a checkout only after the documentation index there is released (E9).
         releaseWorkspace: releaseAfterQuiescence(
           workspaceOccupancy,
@@ -369,10 +439,23 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     }),
     createWorkflowFeature({
       ...(taskEngine ? { openWorkflow: taskEngine.openWorkflow } : {}),
+      // What only the Runtime knows of the agent option; the demo runs no agent.
+      ...(agentExecution
+        ? {
+            agentAvailability: agentExecution.agentAvailability,
+            agentReturn: agentExecution.agentStepExecution.returnStep,
+          }
+        : demo
+          ? { agentAvailability: demoAgentAvailability }
+          : {}),
+      // Retry commit acts on the Project Home's agent attempts; the demo Runtime has none.
+      ...(engine && !demo ? { openAgentAttempts: () => openAgentAttempts(engine) } : {}),
       ...dependencies.workflow,
       projectId,
     }),
     sessionsFeature,
+    // Without an Engine the agent step execution routes answer 503, like the workflow routes.
+    agentExecution ?? createUnavailableAgentStepExecutionFeature(),
     createSessionAssociationsFeature({
       associations,
       targets: associationTargets,
@@ -401,6 +484,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     ...(dependencies.auth ? { dependencies: dependencies.auth } : {}),
   });
 
+  principals.authorize = (principal) => authFeature.authorizePrincipal(principal);
   await authFeature.register(app);
 
   app.withTypeProvider<TypeBoxTypeProvider>().get(

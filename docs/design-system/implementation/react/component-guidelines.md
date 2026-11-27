@@ -767,6 +767,10 @@ cells have a minimum width (so many columns scroll instead of crushing), a quiet
 GFM column alignment; ordinary prose, inline code and bare URLs wrap; images are capped to the column.
 Products pass localized `labels` (the defaults are English).
 
+`textSize="compact"` sets the body text (paragraphs, lists, table cells, quotes) to `body-sm`, for Markdown
+embedded in a dense row whose surrounding text is small (a history entry's feedback); headings and code keep
+their sizes. The default, `document`, is for reading surfaces.
+
 ## MarkdownDocument diagrams
 
 `<MarkdownDocument diagrams />` (opt-in, default off) draws a fenced block whose language is `mermaid` as a

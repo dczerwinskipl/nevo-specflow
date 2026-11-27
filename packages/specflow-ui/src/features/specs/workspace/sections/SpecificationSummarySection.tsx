@@ -1,8 +1,12 @@
-import { Typography } from '@nevo/ui';
+import { Icon, Typography } from '@nevo/ui';
+import { useTranslation } from 'react-i18next';
 import { DocumentContent, DocumentDescription } from '../../../documents';
+import { productIcons } from '../../../../shared/product-icons';
 
 export interface SpecificationSummarySectionProps {
   readonly title: string;
+  /** The Specification's key (`nevo-2`); without one the line under the title names only the type. */
+  readonly specificationKey?: string;
   readonly intro?: string;
   readonly overviewDocumentId?: string;
   readonly specId?: string;
@@ -10,14 +14,19 @@ export interface SpecificationSummarySectionProps {
   readonly overviewInitialOnly?: boolean;
 }
 
-/** The title and, whenever they exist, the description and the main document preview. */
+/**
+ * The title, the line that says what the page is (the Specification icon, "Specification" and its
+ * key) and, whenever they exist, the description and the main document preview.
+ */
 export function SpecificationSummarySection({
   title,
+  specificationKey,
   intro,
   overviewDocumentId,
   specId,
   overviewInitialOnly = false,
 }: SpecificationSummarySectionProps) {
+  const { t } = useTranslation();
   const description = intro && intro.trim() !== title.trim() ? intro.trim() : undefined;
   // "Show more" continues a description the Runtime cut (it ends the cut text with `…`), or shows
   // the overview when there is no description; a whole one-paragraph description has nothing more.
@@ -27,15 +36,32 @@ export function SpecificationSummarySection({
 
   return (
     <div>
-      <Typography
-        as="h1"
-        tabIndex={-1}
-        data-page-title
-        variant="title-lg"
-        className="font-semibold text-content-primary outline-none [overflow-wrap:anywhere]"
-      >
-        {title}
-      </Typography>
+      <div className="grid gap-1">
+        <Typography
+          as="h1"
+          tabIndex={-1}
+          data-page-title
+          variant="title-lg"
+          className="font-semibold text-content-primary outline-none [overflow-wrap:anywhere]"
+        >
+          {title}
+        </Typography>
+        <Typography
+          variant="body-sm"
+          className="flex min-w-0 items-center gap-1.5 text-content-muted"
+          data-page-kind=""
+        >
+          <Icon
+            name={productIcons.specification.item}
+            size="sm"
+            className="text-content-secondary"
+          />
+          <span className="min-w-0 [overflow-wrap:anywhere]">
+            <span className="font-medium text-content-secondary">{t('specification.title')}</span>
+            {specificationKey ? ` · ${specificationKey}` : null}
+          </span>
+        </Typography>
+      </div>
       <DocumentDescription
         key={`${specId}:${overviewDocumentId}`}
         // `summary` is already plain text bounded by the Runtime (320 graphemes): shown as is,

@@ -40,6 +40,8 @@ import type { StartBlocker } from './start-blockers';
  * - a Task on hold that the user has to resume or cancel ({@link heldTaskAttention}): escalated,
  *   waited on directly by an open Task, or refusing the finish of the Specification's active step to
  *   `completed`, unless the Specification's item already names it;
+ * - a subject whose agent result waits for the owner (`awaiting-confirmation`): Confirm or Reject,
+ *   with the attempt (`confirmationAttempt`);
  * - a run that has not ended whose pinned workflow is missing or changed: `definition-changed`
  *   (its next operation fails with `WORKFLOW_DEFINITION_CHANGED`);
  * - nothing for a subject that is being worked on, has not started or has ended, and for a Task
@@ -100,6 +102,8 @@ export function deriveAttention(
       changed(subject, run);
     } else if (position.state === 'ready') {
       add(subject, continuationOf(run, definition, catalogue), definition);
+    } else if (position.state === 'awaiting-confirmation') {
+      items.push(awaitingConfirmationItem(subject, position, definition));
     } else if (step?.kind === 'wait' && position.state === 'active') {
       if (waitRecoveryBlockers(tasks, broken).length === 0) {
         const transition = waitCompletionTransition(definition, position.step);
@@ -158,10 +162,27 @@ export function deriveAttention(
       changed(subject, run);
     } else if (run.position.state === 'ready') {
       add(subject, continuationOf(run, definition, catalogue), definition);
+    } else if (run.position.state === 'awaiting-confirmation') {
+      items.push(awaitingConfirmationItem(subject, run.position, definition));
     }
   }
 
   return items;
+}
+
+/** An agent's result that waits for the owner's Confirm or Reject (D17), on its subject. */
+function awaitingConfirmationItem(
+  subject: WorkflowSubject,
+  position: Extract<WorkflowRun['position'], { state: 'awaiting-confirmation' }>,
+  definition: WorkflowDefinition,
+): AttentionItem {
+  const title = findStep(definition, position.step)?.title;
+
+  return item(subject, 'awaiting-confirmation', {
+    step: position.step,
+    ...(title !== undefined ? { stepTitle: title } : {}),
+    confirmationAttempt: { step: position.step, attempt: position.attempt },
+  });
 }
 
 export interface HeldTaskInput {
@@ -310,9 +331,9 @@ export function startBlockerAttention(
         ? item(subject, 'dependency-unsatisfiable', {
             ...step,
             taskIds,
+            brokenTaskIds: restorable,
             action: 'restore-task',
             secondaryAction: 'edit-dependencies',
-            message: `It depends on broken tasks: ${restorable.join(', ')}. Restore their files from Git, or edit its dependencies.`,
           })
         : item(subject, 'dependency-unsatisfiable', { ...step, taskIds });
     }
@@ -364,6 +385,7 @@ const ACTIONS_OF: Readonly<
   'type-not-allowed': ['open-project-settings', 'cancel-task'],
   'definition-missing': ['open-project-settings', 'cancel-task'],
   'entry-gate-unsatisfied': ['satisfy-gate'],
+  'awaiting-confirmation': ['confirm-result', 'reject-result'],
 };
 
 type ItemFields = Partial<Omit<AttentionItem, 'subject' | 'reason' | 'actor'>>;
@@ -473,8 +495,12 @@ function messageOf(reason: AttentionItemReason, fields: ItemFields): string {
       return `It is on hold and ${blocks.join(' and ')}: resume it, or cancel it.`;
     }
 
+    case 'awaiting-confirmation':
+      return `The agent finished ${step}and its result waits for you: confirm it, or reject it with what should change.`;
     case 'dependency-unsatisfiable':
-      return `It depends on tasks that can no longer complete: ${(fields.taskIds ?? []).join(', ')}. Edit its dependencies or cancel it.`;
+      return fields.brokenTaskIds && fields.brokenTaskIds.length > 0
+        ? `It depends on broken tasks: ${fields.brokenTaskIds.join(', ')}. Restore their files from Git, or edit its dependencies.`
+        : `It depends on tasks that can no longer complete: ${(fields.taskIds ?? []).join(', ')}. Edit its dependencies or cancel it.`;
     default:
       // The other reasons always carry their own message.
       return `${step}needs your attention.`;

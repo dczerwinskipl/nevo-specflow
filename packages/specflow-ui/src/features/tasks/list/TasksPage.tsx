@@ -24,6 +24,7 @@ import { getGroupTone } from './presentation';
 import { TaskGroupHeader } from './TaskGroupHeader';
 import { TaskRow } from './TaskRow';
 import type { TaskListView } from './taskListModel';
+import { productIcons } from '../../../shared/product-icons';
 
 export type TaskListState =
   | { readonly status: 'loading' }
@@ -103,6 +104,12 @@ export function TasksPage({
   }
 
   const { view } = state;
+  // The Tasks the rows' facts name (the Runtime's `taskTitles`, also when a filter leaves them
+  // out), else the listed Tasks: "Waiting for <title>", "after <title>", "holds up <title>".
+  const titles = new Map(
+    view.groups.flatMap((group) => group.rows.map((row) => [row.id, row.title] as const)),
+  );
+  const titleOf = (taskId: string) => view.taskTitles?.[taskId] ?? titles.get(taskId);
   const needle = query.trim().toLowerCase();
   const groups = view.groups
     .map((group) => ({
@@ -198,7 +205,7 @@ export function TasksPage({
           id="tasks-heading"
           headingTag="h2"
           title={t('specification.tasksHeading')}
-          icon="list-checks"
+          icon={productIcons.task.collection}
           count={count}
           actions={newTask}
         />
@@ -239,6 +246,7 @@ export function TasksPage({
                       fullTaskHref={fullTaskHref(row.id)}
                       onOpen={onOpenTask}
                       {...(specificationTitle ? { specificationTitle } : {})}
+                      titleOf={titleOf}
                     />
                   ))}
                 </InformationList>

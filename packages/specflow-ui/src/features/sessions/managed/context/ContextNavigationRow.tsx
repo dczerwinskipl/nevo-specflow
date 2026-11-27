@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Icon, Typography, cn, fastColorTransitionClassName, type IconName } from '@nevo/ui';
+import { Icon, Typography, cn, fastColorTransitionClassName, type IconGlyph } from '@nevo/ui';
 
 /**
  * One row of Session Context (navigation into a subject, a Task/Specification reference, or an
@@ -30,7 +30,7 @@ import { Icon, Typography, cn, fastColorTransitionClassName, type IconName } fro
  */
 export interface ContextNavigationRowProps {
   /** Registry icon shown in the leading track. */
-  icon?: IconName;
+  icon?: IconGlyph;
   /** Custom leading node (e.g. a `StatusIndicator`) centred in the same track, instead of `icon`. */
   leading?: ReactNode;
   label: ReactNode;

@@ -1,8 +1,10 @@
 import { Icon, cn } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { collectionWide } from '../../../../shared/operational-list';
+import { SpecificationSituation } from '../../../tasks';
 import type { SpecRowModel } from '../presentation';
 import { formatSpecDate } from './specDate';
+import { productIcons } from '../../../../shared/product-icons';
 
 export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
   const { t, i18n } = useTranslation();
@@ -29,45 +31,88 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
   }
 
   const summary = item.summary;
+  if (summary.kind === 'workflow') {
+    // The Overview's own components and words for where the workflow stands (`SpecificationNow`).
+    return (
+      <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]" data-spec-reason>
+        <SpecificationSituation
+          workflow={summary.workflow}
+          {...(summary.attention ? { attention: summary.attention } : {})}
+        />
+      </span>
+    );
+  }
+
+  if (summary.kind === 'unreadable' && summary.reason === 'busy') {
+    // Busy is transient (another writer, a recovery after a stop), not a broken Specification: a
+    // quiet marker, not the danger line of files that cannot be read.
+    return (
+      <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]" data-spec-reason>
+        <span className="font-medium text-content-secondary" data-spec-unreadable="busy">
+          <Icon name="clock" size="sm" className="mr-1 inline-block align-text-bottom" />
+          {t('specifications.unreadable.busyTitle')}
+        </span>
+        <span className="text-content-secondary">{t('specifications.unreadable.reason.busy')}</span>
+      </span>
+    );
+  }
+
+  if (summary.kind === 'unreadable') {
+    return (
+      <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]" data-spec-reason>
+        <span className="font-medium text-status-danger" data-spec-unreadable={summary.reason}>
+          <Icon name="circle-alert" size="sm" className="mr-1 inline-block align-text-bottom" />
+          {t('specifications.unreadable.title')}
+        </span>
+        <span className="text-content-secondary">
+          {t(`specifications.unreadable.reason.${summary.reason}`)}
+        </span>
+      </span>
+    );
+  }
+
+  // Evidence that is not the workflow's (the demo's Sessions): its signal, then the step.
   const text =
     summary.kind === 'attention'
-      ? t(
-          summary.reason
-            ? `specifications.summary.${summary.reason}`
-            : 'specifications.sections.requiresAttention',
-          {
+      ? summary.reason
+        ? t(`specifications.summary.${summary.reason}`, {
             count: summary.reason === 'review' ? 1 : (summary.count ?? 1),
-          },
-        )
-      : summary.kind === 'active'
+          })
+        : summary.count !== undefined
+          ? t('specifications.summary.attentionItems', { count: summary.count })
+          : t('specifications.sections.requiresAttention')
+      : summary.kind === 'sessions'
         ? t('specifications.summary.active', { count: summary.executionCount })
-        : t(`specifications.summary.${summary.kind}`);
+        : t('specifications.summary.unknown');
 
   return (
-    <span
-      className={
-        summary.kind === 'attention'
-          ? 'text-status-attention [overflow-wrap:anywhere]'
-          : 'text-content-secondary [overflow-wrap:anywhere]'
-      }
-      data-spec-reason
-    >
-      {summary.kind === 'attention' ? (
-        <Icon
-          name={
-            summary.reason === 'blocked'
-              ? 'triangle-alert'
-              : summary.reason === 'review'
-                ? 'file-search'
-                : 'chat'
-          }
-          size="sm"
-          className="mr-1 inline-block align-text-bottom"
-        />
-      ) : null}
-      <span>{text}</span>
-      {item.qualifier ? (
-        <span className="block text-content-secondary">
+    <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]" data-spec-reason>
+      <span
+        className={
+          summary.kind === 'attention'
+            ? 'font-medium text-status-attention'
+            : 'text-content-secondary'
+        }
+      >
+        {summary.kind === 'attention' ? (
+          <Icon
+            name={
+              summary.reason === 'blocked'
+                ? 'triangle-alert'
+                : summary.reason === 'review'
+                  ? productIcons.review
+                  : productIcons.session.item
+            }
+            size="sm"
+            className="mr-1 inline-block align-text-bottom"
+          />
+        ) : null}
+        {text}
+      </span>
+      {item.workflow ? (
+        <SpecificationSituation workflow={item.workflow} />
+      ) : item.qualifier ? (
+        <span className="text-content-secondary">
           {t('specifications.summary.concurrent', { count: item.qualifier.executionCount })}
         </span>
       ) : null}

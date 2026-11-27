@@ -1,4 +1,5 @@
 import { randomUUID, createHash } from 'node:crypto';
+import { judgeAgentCliCommand } from '@nevo/specflow-contracts/documents';
 import type { RespondInteraction } from '@nevo/specflow-contracts/sessions';
 import type { DriverFact } from '../../persistence/protocol';
 import { SessionError } from '../../errors';
@@ -6,10 +7,21 @@ import type { EmitFact, Invocation, ProviderOperation } from '../driver';
 import { ProviderTimeouts } from '../driver';
 import type { launchOwnedProcess } from '../process';
 import { ProviderProcessError } from '../process';
-import { createClaudeProtocol, ClaudeProtocolError, identifier, object } from './protocol';
+import {
+  claudeFrameName,
+  createClaudeProtocol,
+  ClaudeProtocolError,
+  claudeToolOperations,
+  identifier,
+  object,
+} from './protocol';
+import type { ProductCliTrust } from './cli-path';
+import { commandPathsInsideWorkspace } from './command-paths';
 import { claudeUserMessage } from './requests';
 import { prepareClaudeRequest } from './permissions';
 import { claudeMode, toolsForClaudeMode } from './modes';
+import { claudeToolSubject } from './subjects';
+import { nativeToolOperation } from '../tool-operations';
 
 export type ClaudeProcess = Pick<
   Awaited<ReturnType<typeof launchOwnedProcess>>,
@@ -31,6 +43,40 @@ export const claudeLoss = {
   connection: 'SpecFlow lost its connection to the Claude process.',
 } as const;
 
+/** Which step of a launch ran out of time; each names its own budget. */
+export function timeoutMessage(reason: unknown): string {
+  const seconds = (ms: number) => String(Math.round(ms / 1000));
+  if (reason === 'initialize-timeout') {
+    return `Claude did not answer its initialization within ${seconds(ProviderTimeouts.initializeMs)} s. Send again; if it keeps happening, check that claude starts quickly in a terminal.`;
+  }
+
+  if (reason === 'admission-timeout') {
+    return `SpecFlow could not verify the Claude installation within ${seconds(ProviderTimeouts.discoveryMs)} s after Claude started. Send again.`;
+  }
+
+  return `Claude could not be checked and started within ${seconds(ProviderTimeouts.discoveryMs)} s. Send again.`;
+}
+
+/**
+ * The loss reason of a refused Claude output: the generic sentence and what exactly was refused, by
+ * identifiers only (a restriction, the refused field, or else the frame being read). Undefined for a
+ * failure that is not a refusal.
+ */
+export function rejection(failure: unknown, reading?: string): string | undefined {
+  if (failure instanceof SyntaxError) {
+    return claudeLoss.rejected + ' It sent a line that is not JSON.';
+  }
+
+  if (!(failure instanceof ClaudeProtocolError)) {
+    return undefined;
+  }
+
+  const detail =
+    failure.detail ?? (reading ? `SpecFlow could not accept its ${reading} frame.` : undefined);
+
+  return detail ? claudeLoss.rejected + ' ' + detail : claudeLoss.rejected;
+}
+
 /** One owner for the bidirectional transport. Waiting for user input never blocks the
  * reader; only persistence and bounded writes apply backpressure. Outcomes are held
  * until process-tree disposal supplies settlement evidence.
@@ -43,6 +89,13 @@ export function createClaudeOperation(
     launch(signal: AbortSignal): Promise<ClaudeProcess>;
     initialize(payload: Record<string, unknown>): void | Promise<void>;
     verifyFrame?(frame: Record<string, unknown>): void;
+    /**
+     * Whether a bare nevo-specflow is still the product CLI trusted at Turn start, asked at each
+     * auto-approval decision (see `productCliGuard`). Absent: not trusted, the owner decides.
+     */
+    productCli?: () => Promise<ProductCliTrust>;
+    /** Records why SpecFlow refused Claude's output (the Runtime log); the Turn keeps it too. */
+    onRejected?: (reason: string) => void;
   },
 ): ProviderOperation {
   const context = invocation.providerContext;
@@ -55,10 +108,13 @@ export function createClaudeOperation(
   const seen = new Map<string, string>();
   let owner: ClaudeProcess | undefined;
   let closed = false;
+  const distrustReported = new Set<string>();
   let initialized = false;
   let dispatched = false;
   let pendingOutcome: Extract<DriverFact, { kind: 'outcome' }> | undefined;
   let lost = false;
+  /** The frame being read, by its identifiers, so a refusal can name it. */
+  let reading: string | undefined;
   let writes = Promise.resolve();
   let queued = 0;
   let queuedBytes = 0;
@@ -138,6 +194,9 @@ export function createClaudeOperation(
     context.nativeSessionId,
     toolsForClaudeMode(claudeMode(invocation.selection)),
     !context.resume,
+    invocation.executionContext.kind === 'no-effects'
+      ? undefined
+      : invocation.executionContext.workspace,
   );
   async function outcome(fact: Extract<DriverFact, { kind: 'outcome' }>) {
     // Safe adapter messages must survive reload through the normal bounded conversation,
@@ -148,6 +207,7 @@ export function createClaudeOperation(
         key: 'provider-error',
         channel: 'commentary',
         text: fact.error.message,
+        notice: 'error',
       });
     }
 
@@ -187,7 +247,9 @@ export function createClaudeOperation(
         request: { subtype: 'initialize' },
       });
       for await (const line of owner.lines()) {
+        reading = undefined;
         const frame = object(JSON.parse(line));
+        reading = claudeFrameName(frame);
         if (frame.type === 'control_response') {
           const response = object(frame.response);
           if (
@@ -200,13 +262,23 @@ export function createClaudeOperation(
           }
 
           if (initialized) {
-            throw new ClaudeProtocolError();
+            throw new ClaudeProtocolError(
+              'It answered a control request SpecFlow did not send or no longer waits for.',
+            );
           }
 
           if (response.request_id !== initializeId || response.subtype !== 'success') {
-            throw new ClaudeProtocolError();
+            throw new ClaudeProtocolError('It did not accept its initialization.');
           }
 
+          // Claude answered its handshake: the host's own checks that follow (installation identity,
+          // model capabilities) are not Claude's initialization and get their own budget.
+          clearTimeout(deadline);
+          deadline = setTimeout(
+            () => internal.abort('admission-timeout'),
+            ProviderTimeouts.discoveryMs,
+          );
+          deadline.unref();
           await options.initialize(object(response.response));
           initialized = true;
           clearTimeout(deadline);
@@ -265,17 +337,108 @@ export function createClaudeOperation(
             throw new ClaudeProtocolError();
           }
 
+          // Only what Claude's own permission mode asks about arrives here (auto: its classifier did
+          // not allow it; manual/acceptEdits: not a read-only command). In an agent step execution
+          // Turn, a command made only of product CLI calls of its allowlist (judgeAgentCliCommand:
+          // parsed, never matched as text), whose `cd` and redirections stay in the worktree, is
+          // approved here by Nevo's allowlist and recorded in the Turn. It fails closed: without a
+          // product CLI identity verified for this very decision, the owner decides. Anything else
+          // goes to the owner.
+          const action = request.questions[0]?.interaction;
+          const judgement =
+            invocation.permissions &&
+            action?.kind === 'permission' &&
+            action.action?.operation === 'command'
+              ? judgeAgentCliCommand(action.action.command, invocation.permissions.allow)
+              : undefined;
+          if (
+            action?.kind === 'permission' &&
+            action.action?.operation === 'command' &&
+            judgement?.kind === 'allowlisted' &&
+            (invocation.executionContext.kind === 'no-effects'
+              ? judgement.paths.cd === undefined &&
+                judgement.paths.outputs.length === 0 &&
+                judgement.paths.inputs.length === 0
+              : await commandPathsInsideWorkspace(
+                  judgement.paths,
+                  invocation.executionContext.workspace,
+                  process.platform,
+                ))
+          ) {
+            const trust: ProductCliTrust = options.productCli
+              ? await options.productCli()
+              : {
+                  trusted: false,
+                  reason: 'SpecFlow has no product CLI trust information for this Turn.',
+                };
+            if (!trust.trusted) {
+              // The owner decides; say once per reason why the allowlist is off.
+              if (!distrustReported.has(trust.reason)) {
+                const key =
+                  'auto-approval-off' +
+                  (distrustReported.size ? ':' + String(distrustReported.size) : '');
+                distrustReported.add(trust.reason);
+                await publish({
+                  kind: 'work-open',
+                  key,
+                  workKind: 'commentary',
+                  title: 'Product CLI approval off',
+                });
+                await publish({
+                  kind: 'text',
+                  key,
+                  channel: 'commentary',
+                  text:
+                    'Allowlisted product CLI commands are not approved automatically in this Turn: ' +
+                    trust.reason,
+                  notice: 'warning',
+                });
+              }
+            } else {
+              const key = 'auto-approval:' + requestId;
+              await publish({
+                kind: 'work-open',
+                key,
+                workKind: 'commentary',
+                title: 'Product CLI auto-approved',
+              });
+              await publish({
+                kind: 'text',
+                key,
+                channel: 'commentary',
+                text: 'Allowed by the archetype allowlist: ' + action.action.command.slice(0, 500),
+                notice: 'info',
+              });
+              await send(request.respond(0, { kind: 'permission', requestId, decision: 'allow' }));
+              continue;
+            }
+          }
+
           groups.set(requestId, request);
           for (const [index, question] of request.questions.entries()) {
             pending.set(question.key, { group: request, index, live: true });
+            const tool = 'tool' in request ? request.tool : undefined;
+            const subject = tool
+              ? claudeToolSubject(
+                  tool.name,
+                  tool.input,
+                  invocation.executionContext.kind === 'no-effects'
+                    ? undefined
+                    : invocation.executionContext.workspace,
+                )
+              : undefined;
             await publish({
               kind: 'work-open',
               key: question.key,
               workKind: 'interaction',
-              title:
-                question.interaction.kind === 'permission'
-                  ? 'Claude permission'
-                  : 'Claude question',
+              // A permission is named by the tool call it is for; the client says its state.
+              title: tool
+                ? tool.name
+                : question.interaction.kind === 'permission'
+                  ? 'Permission'
+                  : 'Question',
+              ...(tool ? { operation: nativeToolOperation(claudeToolOperations, tool.name) } : {}),
+              ...(subject ? { subject } : {}),
             });
             await publish({ kind: 'interaction', ...question });
           }
@@ -284,7 +447,9 @@ export function createClaudeOperation(
         }
 
         if (frame.type === 'result' && pending.size) {
-          throw new ClaudeProtocolError();
+          throw new ClaudeProtocolError(
+            'It ended the Turn while a question or permission was open.',
+          );
         }
 
         await protocol.accept(line);
@@ -324,7 +489,7 @@ export function createClaudeOperation(
         };
         if (internal.signal.aborted) {
           error.code = 'TIMEOUT';
-          error.message = 'Claude initialization timed out.';
+          error.message = timeoutMessage(internal.signal.reason);
         } else if (failure instanceof SessionError) {
           // SessionError is the adapter's sanitized public boundary. Preserve its
           // actionable reason; arbitrary native exceptions remain masked.
@@ -367,14 +532,17 @@ export function createClaudeOperation(
       } else if (result) {
         await outcome(result);
       } else if (!lost) {
+        const rejected = rejection(failure, reading);
+        if (rejected) {
+          options.onRejected?.(rejected);
+        }
+
         await protocol.end(
           failure === undefined
             ? claudeLoss.exited
             : failure instanceof ProviderProcessError
               ? claudeLoss.connection
-              : failure instanceof ClaudeProtocolError || failure instanceof SyntaxError
-                ? claudeLoss.rejected
-                : undefined,
+              : rejected,
         );
       }
     }

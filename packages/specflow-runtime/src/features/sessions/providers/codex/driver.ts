@@ -14,7 +14,7 @@ import {
   withExecutableFields,
   type ExecutableResolution,
 } from '../executable';
-import { projectProviderEnvironment } from '../process';
+import { projectProviderEnvironment, withRuntimeEntries } from '../process';
 import { installationUnavailable, ProviderUnavailableError } from '../unavailable';
 import { codexExecutable } from './executable';
 import { admitProvider } from '../compatibility/admission';
@@ -487,6 +487,11 @@ export function createCodexDriver(
 
             return launchOwnedProcess({
               ...installation,
+              environment: withRuntimeEntries(
+                installation.environment,
+                invocation.runtimeEnvironment?.values,
+              ),
+              secrets: [...installation.secrets, ...(invocation.runtimeEnvironment?.secrets ?? [])],
               invocationId: invocation.invocationId,
               scope: temporary,
               cwd: options.workspace,

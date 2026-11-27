@@ -1,4 +1,4 @@
-import { InformationList, Progress, Typography, cn } from '@nevo/ui';
+import { InformationList, Typography, cn } from '@nevo/ui';
 import {
   CollectionRow,
   collectionWide,
@@ -6,6 +6,7 @@ import {
 } from '../../../../shared/operational-list';
 import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
+import { TaskProgress, readyToStartOf } from '../../../tasks';
 import {
   rowMetadata,
   rowProgress,
@@ -59,7 +60,7 @@ export function SpecListRow({
       interactive={
         Boolean(specificationHref) || Boolean(onOpenTarget) || Boolean(renderSpecificationLink)
       }
-      className="py-3"
+      className="py-2.5"
       data-spec-id={item.id}
       data-spec-key={item.key}
     >
@@ -131,7 +132,7 @@ function SpecRowIdentity({
             <span key={fact.id} className="contents">
               {index ? <span aria-hidden="true">·</span> : null}
               {fact.kind === 'key' ? (
-                <span className="font-mono" data-spec-key>
+                <span className="font-mono text-content-muted" data-spec-key>
                   {fact.value}
                 </span>
               ) : fact.kind === 'pr' ? (
@@ -186,24 +187,19 @@ function SpecUpdated({ item }: { item: CurrentSpecRowModel }) {
 function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
   const { t } = useTranslation();
   const details = item.progress;
-  const count = details
-    ? t('specifications.progress', details)
-    : t('specifications.progressUnknown');
   const progress = rowProgress(details);
+  const ready = readyToStartOf(
+    item.summary.kind === 'workflow' ? item.summary.workflow : item.workflow,
+  );
 
   return (
     <Typography
       as="div"
       variant="body-sm"
-      className={cn(
-        'flex min-w-0 items-center gap-2 text-content-secondary',
-        collectionWide.column3,
-        collectionWide.flexColumn,
-        collectionWide.itemsStart,
-      )}
+      className={cn('min-w-0 text-content-secondary', collectionWide.column3)}
       data-spec-progress
     >
-      {progress === 'unknown' ? (
+      {item.hideProgress ? null : progress === 'unknown' ? (
         t('specifications.progressUnknown')
       ) : progress === 'invalid' ? (
         t('specifications.invalidProgress')
@@ -213,28 +209,25 @@ function SpecProgress({ item }: { item: CurrentSpecRowModel }) {
           {t('specifications.noTasks')}
         </span>
       ) : details ? (
-        <>
-          <div className="w-28 shrink-0">
-            <Progress
-              variant="segmented"
-              size="compact"
-              completed={details.completed}
-              total={details.total}
-              aria-label={t('specifications.progressLabel', { title: item.title })}
-              aria-valuetext={count}
-            />
-          </div>
-          <span>{count}</span>
-        </>
+        // The Now's Task progress, compact: the count and the Tasks that can start, the bar under it.
+        <TaskProgress
+          variant="compact"
+          progress={details}
+          {...(ready ? { ready } : {})}
+          label={t('specifications.progressLabel', { title: item.title })}
+        />
       ) : null}
     </Typography>
   );
 }
 
+/**
+ * Narrow rows read as the Now: the workflow first, then its Tasks. In columns the cells take their
+ * own tracks (Workflow, Tasks).
+ */
 function CurrentSpecRowContent({ item }: { item: CurrentSpecRowModel }) {
   return (
     <>
-      <SpecProgress item={item} />
       <Typography
         as="div"
         variant="body-sm"
@@ -243,6 +236,7 @@ function CurrentSpecRowContent({ item }: { item: CurrentSpecRowModel }) {
       >
         <SpecRowSummary item={item} />
       </Typography>
+      <SpecProgress item={item} />
     </>
   );
 }

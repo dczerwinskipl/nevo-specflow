@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
-import { Alert, Button, InlineNote, Typography } from '@nevo/ui';
+import { Alert, Button, Icon, InlineNote, Typography } from '@nevo/ui';
 import type { TaskResourceFacts } from '@nevo/specflow-contracts/tasks';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import type { SpecificationWorkspaceData } from '../../specs/read-model';
@@ -14,6 +14,9 @@ import type { DependencyTask } from './dependencies/dependencyModel';
 import { TaskDocumentsSection } from './documents/TaskDocumentsSection';
 import { RefusalAlert } from './RefusalAlert';
 import { TaskNow, type LifecyclePrimary } from '../execution/TaskNow';
+import type { FeedbackRef } from '../execution/feedback/feedbackRef';
+import { CopyableIdentifier } from '../../../shared/clipboard/CopyableIdentifier';
+import { productIcons } from '../../../shared/product-icons';
 
 export interface TaskAuthoringViewProps {
   readonly specId: string;
@@ -35,6 +38,8 @@ export interface TaskAuthoringViewProps {
   readonly onOpenDocument: (documentId: string) => void;
   /** Opens the Task history (also offered in Now's ⋯ menu). */
   readonly onOpenHistory?: () => void;
+  /** Opens the Task history at an attempt, its feedback open. */
+  readonly onOpenFeedback?: (ref: FeedbackRef) => void;
   readonly onReload: () => void;
 }
 
@@ -60,6 +65,7 @@ export function TaskAuthoringView({
   onRemoveTask,
   onOpenDocument,
   onOpenHistory,
+  onOpenFeedback,
   onReload,
 }: TaskAuthoringViewProps) {
   const { t } = useTranslation();
@@ -115,10 +121,27 @@ export function TaskAuthoringView({
         >
           {task.title}
         </Typography>
-        <Typography variant="body-sm" className="text-content-muted">
-          <span className="font-mono">{task.id}</span>
-          {` · ${typeTitle}`}
+        {/* What the page is: its type, by icon and name, and the Task type; its key is the
+          secondary metadata under it, with a copy action (interaction-model.md "Page identity"). */}
+        <Typography
+          variant="body-sm"
+          className="flex min-w-0 items-center gap-1.5 text-content-muted"
+          data-page-kind=""
+        >
+          <Icon name={productIcons.task.item} size="sm" className="text-content-secondary" />
+          <span className="min-w-0">
+            <span className="font-medium text-content-secondary">
+              {t('taskAuthoring.page.kind')}
+            </span>
+            {` · ${typeTitle}`}
+          </span>
         </Typography>
+        <CopyableIdentifier
+          value={task.id}
+          copyLabel={t('taskAuthoring.page.copyKey')}
+          copiedLabel={t('taskAuthoring.page.keyCopied')}
+          failedLabel={t('taskAuthoring.page.keyCopyFailed')}
+        />
         {/* The status with its own glyph and a neutral tone: a status alone is not attention. */}
         {resource.status === 'draft' ? (
           <InlineNote icon="edit" className="mt-2">
@@ -176,6 +199,7 @@ export function TaskAuthoringView({
           {...(onRemoveTask ? { onRemoveTask } : {})}
           onOpenDocument={onOpenDocument}
           {...(onOpenHistory ? { onOpenHistory } : {})}
+          {...(onOpenFeedback ? { onOpenFeedback } : {})}
         />
       ) : null}
       <TaskDocumentsSection
@@ -204,6 +228,7 @@ export function TaskAuthoringView({
       <TaskDependenciesSection
         specId={specId}
         taskId={task.id}
+        taskTitle={task.title || task.id}
         revision={resource.revision}
         dependsOn={resource.dependsOn}
         tasks={otherTasks}

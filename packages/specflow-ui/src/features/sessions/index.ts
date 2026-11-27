@@ -30,3 +30,19 @@ export type { SessionStartSource } from './start/source/sessionStartSource';
 export { startedAssociation, useManagedStartSource } from './start/source/useManagedStartSource';
 export { startRouteRefusal, startSessionOffered } from './associations/startSessionGate';
 export { invalidateSpecificationSessions } from './associations/queries';
+// A step run by an agent (workflow-execution.md "Run with agent"): the start screen's agent tiles
+// and the Composer's model picker, over the Runtime's provider catalogue.
+export { AgentPicker } from './start/fields/AgentPicker';
+export { ModelEffortPicker } from './managed/ModelEffortPicker';
+export { startCatalogueFromProviders } from './start/catalogue/fromProviderDescriptors';
+export {
+  agentCanStart,
+  startableAgents,
+  type StartCatalogue,
+} from './start/catalogue/startCatalogue';
+// Which agents can start and how to fix those that cannot (the Session start screen's diagnosis),
+// also shown by Create with an agent.
+export { AgentAvailabilityNote } from './start/diagnostics/AgentAvailabilityNote';
+export { AgentDiagnosisPanel } from './start/diagnostics/AgentDiagnosisPanel';
+export { agentAvailability, recheckCanHelp } from './start/diagnostics/agentAvailability';
+export { agentStatusText } from './start/diagnostics/agentStatus';

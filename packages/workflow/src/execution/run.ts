@@ -17,12 +17,16 @@ import { WorkflowError } from '../errors';
  * - `not-started`: the next start activates the entry step;
  * - `active`: one attempt of one step is in progress;
  * - `ready`: the previous step finished (or the owner returned) and `step` is the next to start;
+ * - `awaiting-confirmation`: the attempt `step#attempt` ended with a transition the host holds for a
+ *   confirmation (`finish` with `confirmation`); the run waits at that transition until a `confirm`
+ *   takes it or a `reject` returns the run to `step`;
  * - `terminal`: the run ended.
  */
 export type RunPosition =
   | { readonly state: 'not-started' }
   | { readonly state: 'active'; readonly step: string; readonly attempt: number }
   | { readonly state: 'ready'; readonly step: string }
+  | { readonly state: 'awaiting-confirmation'; readonly step: string; readonly attempt: number }
   | { readonly state: 'terminal'; readonly outcome: TerminalOutcome };
 
 /**
@@ -46,7 +50,43 @@ export type AttemptOutcome =
   /** The owner returned the run to an earlier step while this attempt was active. */
   | { readonly kind: 'returned'; readonly to: string; readonly feedback?: string }
   /** The run was abandoned while this attempt was active (`abandonRun`). */
-  | { readonly kind: 'abandoned' };
+  | { readonly kind: 'abandoned' }
+  /**
+   * Another actor took the active attempt over (`take-over`): the attempt ended without a result,
+   * and the next record is a new attempt of the same step, worked on by that actor.
+   */
+  | { readonly kind: 'taken-over' };
+
+/**
+ * The confirmation a finished attempt's transition waits for (`finish` with `confirmation`). Who may
+ * confirm or reject is the host's rule; the core records who did and when.
+ *
+ * - `pending`: the run waits at the transition (`awaiting-confirmation`);
+ * - `confirmed`: the transition was taken then, and the run moved where it leads;
+ * - `rejected`: the transition was not taken; the run went back to the attempt's step, ready to
+ *   start, with the rejection's feedback as its handoff.
+ *
+ * `hostData` is what the host recorded with the held finish (for example decisions that apply only
+ * once confirmed); the core keeps it and never interprets it. `requestDigest` is the host's digest
+ * of the confirm or reject request, so a retry of it is recognized.
+ */
+export type AttemptConfirmation<TActor extends ActorRecord = ActorRecord> =
+  | { readonly state: 'pending'; readonly hostData?: unknown }
+  | {
+      readonly state: 'confirmed';
+      readonly hostData?: unknown;
+      readonly at: string;
+      readonly actor: TActor;
+      readonly requestDigest?: string;
+    }
+  | {
+      readonly state: 'rejected';
+      readonly hostData?: unknown;
+      readonly at: string;
+      readonly actor: TActor;
+      readonly feedback: string;
+      readonly requestDigest?: string;
+    };
 
 export interface AttemptRecord<TActor extends ActorRecord = ActorRecord> {
   readonly step: string;
@@ -59,6 +99,12 @@ export interface AttemptRecord<TActor extends ActorRecord = ActorRecord> {
   readonly startedAt: string;
   /** Who works on a work-step attempt; a wait-step attempt has none. */
   readonly actor?: TActor;
+  /**
+   * Data the host records with a work-step attempt when the attempt starts (for example the binding
+   * of the execution that works on it). The core keeps it with the attempt and never interprets it;
+   * a wait-step attempt has none.
+   */
+  readonly hostData?: unknown;
   /** Absent while the attempt is active. */
   readonly endedAt?: string;
   /** Who finished a work-step attempt (of the class of `actor`). */
@@ -66,6 +112,8 @@ export interface AttemptRecord<TActor extends ActorRecord = ActorRecord> {
   /** The host's digest of the finish request, so a retry of the same finish is recognized. */
   readonly requestDigest?: string;
   readonly outcome?: AttemptOutcome;
+  /** Only on a work-step attempt that ended with a transition held for a confirmation. */
+  readonly confirmation?: AttemptConfirmation<TActor>;
 }
 
 /** An owner return from a non-active position (no attempt was running). */
@@ -138,6 +186,20 @@ export function activeAttempt<TActor extends ActorRecord>(
 ): AttemptRecord<TActor> | undefined {
   const position = run.position;
   if (position.state !== 'active') {
+    return undefined;
+  }
+
+  return run.attempts.find(
+    (record) => record.step === position.step && record.attempt === position.attempt,
+  );
+}
+
+/** The attempt whose transition the run waits to have confirmed (`awaiting-confirmation`). */
+export function awaitingAttempt<TActor extends ActorRecord>(
+  run: WorkflowRun<TActor>,
+): AttemptRecord<TActor> | undefined {
+  const position = run.position;
+  if (position.state !== 'awaiting-confirmation') {
     return undefined;
   }
 

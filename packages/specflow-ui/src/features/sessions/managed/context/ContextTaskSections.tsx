@@ -13,6 +13,7 @@ import type {
   SessionContextTaskRef,
   SessionContextViewModel,
 } from './sessionContextTypes';
+import { productIcons } from '../../../../shared/product-icons';
 
 /** Task-scoped sessions show up to this many placeholder rows while the execution loads. */
 const maxExecutionSkeletonRows = 3;
@@ -234,7 +235,7 @@ export function ContextTaskRow({
 }) {
   return (
     <ContextNavigationRow
-      icon="list-checks"
+      icon={productIcons.task.item}
       emphasis="identity"
       label={task.title}
       secondary={

@@ -51,6 +51,8 @@ const expected = {
   WORKTREE_MEMBERSHIP_MISMATCH: 503,
   SPEC_SOURCE_INVALID: 503,
   SPEC_NOT_FOUND: 503,
+  CONTROL_LOCK_RECOVERY_REQUIRED: 503,
+  CREATE_GIT_UNSETTLED: 503,
 } satisfies Record<CreateErrorCode, CreateHttpStatus>;
 
 describe('Spec create HTTP error policy', () => {

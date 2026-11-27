@@ -90,3 +90,19 @@ it('describes even a harmless shell command as a one-time host operation', () =>
     },
   });
 });
+
+it('refuses a command over the size limit with the limit and the remedy, not the generic reason', () => {
+  const prepared = prepareClaudeRequest(
+    request('Bash', {
+      command: `nevo-specflow specs documents save S1 d --stdin <<'X'\n${'a'.repeat(7100)}\nX`,
+    }),
+    true,
+  );
+  expect(prepared.kind).toBe('denied');
+  const message = (prepared as { response: { response: { response: { message: string } } } })
+    .response.response.response.message;
+  expect(message).toMatch(/is \d+ bytes; a command may be at most 7000 bytes/);
+  expect(message).toMatch(/--content-file <file>/);
+  // Advice the agent can follow: its file tools reach only the worktree, and the file is never committed.
+  expect(message).toContain('under .nevo/local/scratch/ in the worktree');
+});

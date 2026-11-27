@@ -104,11 +104,18 @@ export function ModelEffortPicker({
   onChange,
   disabled = false,
   compact = false,
+  modelIds,
+  placeholder,
 }: {
   provider: ModelEffortProvider | undefined;
   value: ModelEffortValue | undefined;
   onChange: (modelId: string, effort?: string) => void;
   disabled?: boolean;
+  /**
+   * The models the selected work mode runs (its catalogue `modelIds`); absent: all. Any other
+   * model is listed disabled, saying the mode does not run it, so no refused pair can be picked.
+   */
+  modelIds?: readonly string[];
   /**
    * Narrows the trigger's max width for a layout with less room (`ManagedSession.tsx` passes
    * `!supportsSplit`, the same measured-width signal it already uses for the Context header
@@ -118,6 +125,11 @@ export function ModelEffortPicker({
    * typical content, not the point past which truncation kicks in.
    */
   compact?: boolean;
+  /**
+   * Shown when no listed model is selected, instead of the value's id or the provider default: a
+   * start that must name one of the provider's models ("Choose a model").
+   */
+  placeholder?: string;
 }) {
   const { t } = useTranslation();
   const modelItems = useMemo(() => modelSectionItems(provider), [provider]);
@@ -130,9 +142,11 @@ export function ModelEffortPicker({
     ? value?.effort
       ? `${selectedModel.label} · ${value.effort}`
       : selectedModel.label
-    : // A session model the catalogue no longer lists is still shown (its raw id), and a session
+    : (placeholder ??
+      // A session model the catalogue no longer lists is still shown (its raw id), and a session
       // with none chosen runs the provider's default: neither is a "select a model" prompt.
-      (value?.modelId ?? t('managedSession.model.default'));
+      value?.modelId ??
+      t('managedSession.model.default'));
   const showEffortSection = selectedModel?.hasEfforts ?? false;
 
   return (
@@ -196,6 +210,12 @@ export function ModelEffortPicker({
             <MenuRadioItem
               key={item.modelId}
               value={item.modelId}
+              disabled={modelIds !== undefined && !modelIds.includes(item.modelId)}
+              description={
+                modelIds !== undefined && !modelIds.includes(item.modelId)
+                  ? t('managedSession.model.modeUnsupported')
+                  : undefined
+              }
               onSelect={(event) => {
                 const nextEffort = item.hasEfforts
                   ? value?.effort && item.efforts.includes(value.effort)

@@ -9,9 +9,12 @@ import { describe, expect, it } from 'vitest';
 import {
   abandonLines,
   actionLines,
+  confirmLines,
+  contextLines,
   exitLines,
   finishLines,
   positionLine,
+  rejectLines,
   startLines,
 } from './present';
 
@@ -31,7 +34,19 @@ describe('actionLines', () => {
           title: 'Standard',
           firstStep: 'implement',
         },
-        next: { step: { id: 'implement' }, human: true, agent: { kind: 'available' } },
+        next: {
+          step: { id: 'implement' },
+          human: true,
+          agent: {
+            kind: 'available',
+            launch: {
+              archetype: 'implementer',
+              provider: 'claude',
+              model: 'claude-sonnet-5-5',
+              session: { mode: 'fresh' },
+            },
+          },
+        },
       },
       actions: { start: { step: 'implement', firstStart: true, expectedWorkflowRevision: 'r1' } },
     } as unknown as ActionProjection;
@@ -330,5 +345,175 @@ describe('abandonLines', () => {
 describe('positionLine', () => {
   it('names the terminal outcome', () => {
     expect(positionLine({ state: 'terminal', outcome: 'completed' })).toBe('ended: completed');
+  });
+});
+
+describe('contextLines', () => {
+  it('lists documents, types and the Task context by digest', () => {
+    const context = {
+      subject,
+      step: { id: 'implement', title: 'Implement' },
+      attempt: 1,
+      agent: {
+        documents: [
+          { id: 'overview', type: 'overview', path: 'specs/a/overview.md', templateOnly: true },
+        ],
+        documentTypes: [
+          {
+            id: 'decisions',
+            title: 'Decisions',
+            useWhen: 'a choice is made',
+            defaultFilename: 'decisions.md',
+          },
+        ],
+        taskContext: {
+          digest: 'd1',
+          entries: [
+            {
+              kind: 'path',
+              ref: 'src/a.ts',
+              path: 'src/a.ts',
+              sha256: 'a'.repeat(64),
+              bytes: 3,
+              required: true,
+            },
+            { kind: 'instructions', text: 'Be brief.', required: false },
+          ],
+        },
+      },
+    } as unknown as Parameters<typeof contextLines>[0];
+
+    expect(contextLines(context)).toEqual([
+      'Context: Task build, step Implement (implement) (attempt 1)',
+      'Documents (1):',
+      '  overview [overview] specs/a/overview.md (template only)',
+      'Document types you may register (documents add --type <id>):',
+      '  decisions: Decisions. Use when a choice is made (default decisions.md)',
+      'Task context (digest d1):',
+      '  path src/a.ts -> src/a.ts sha256:aaaaaaaaaaaa 3 bytes',
+      '  instructions (optional): Be brief.',
+    ]);
+  });
+});
+
+describe('an agent result that waits for the owner (D17)', () => {
+  const spec = { kind: 'specification', specId: 'spec' } as const;
+
+  it('shows the proposal, what Confirm applies and both owner actions', () => {
+    const projection = {
+      subject: spec,
+      position: {
+        kind: 'awaiting-confirmation',
+        step: { id: 'breakdown-review', title: 'Review the breakdown' },
+        attempt: { number: 1, startedAt: 'then', endedAt: 'now', actor: { class: 'agent' } },
+        proposal: {
+          transition: {
+            id: 'approved',
+            result: 'pass',
+            label: 'Approve',
+            targetTitle: 'Implementation',
+            feedback: 'optional',
+          },
+          feedback: 'Both Tasks are ready.',
+          artifacts: [],
+        },
+        confirms: { approvesDrafts: ['api', 'screen'] },
+        confirmsDigest: 'd'.repeat(64),
+      },
+      actions: {
+        confirm: { step: 'breakdown-review', attempt: 1 },
+        reject: { step: 'breakdown-review', attempt: 1 },
+      },
+    } as unknown as ActionProjection;
+
+    expect(actionLines(projection)).toEqual([
+      'Specification',
+      'State: waiting for your confirmation of Review the breakdown (breakdown-review) (attempt 1)',
+      'The agent proposes: Approve, to Implementation',
+      'Feedback: Both Tasks are ready.',
+      'Confirming approves 2 draft Tasks: api, screen',
+      `Action: confirm "breakdown-review" attempt 1 --confirms-digest ${'d'.repeat(64)}`,
+      'Action: reject "breakdown-review" attempt 1 --feedback <text>',
+    ]);
+  });
+
+  it('says once that the workflow waits for an agent attempt’s commit, and how to retry it', () => {
+    const waiting = (reason: string, code?: string) => {
+      const unavailable = { reason, ...(code ? { code } : {}) };
+
+      return {
+        subject: spec,
+        position: {
+          kind: 'ready',
+          next: {
+            step: { id: 'specification', title: 'Write the Specification' },
+            human: true,
+            agent: { kind: 'unavailable', reason },
+          },
+        },
+        actions: {
+          start: { step: 'specification', firstStart: false, unavailable },
+          return: {
+            targets: [{ step: 'requirements', title: 'Requirements', feedback: 'optional' }],
+            unavailable,
+          },
+        },
+        attemptCommit: {
+          ...unavailable,
+          attemptId: 'attempt-1',
+          subject: { specId: spec.specId, taskId: 'api' },
+          step: 'implement',
+          attempt: 2,
+          stepTitle: 'Implement',
+        },
+      } as unknown as ActionProjection;
+    };
+
+    const failed = actionLines(waiting('attempt-commit-failed', 'MANUAL_COMMIT_CONFLICT'));
+    expect(failed.filter((line) => line.startsWith('Action:'))).toEqual([]);
+    expect(failed.at(-1)).toBe(
+      `Nothing of this Specification's workflow changes until the commit of the agent's work in implement#2 of Task api ran (attempt-commit-failed, MANUAL_COMMIT_CONFLICT): it failed; fix the cause, then retry it. Action: retry-commit ${spec.specId} --task api --step implement --attempt 2`,
+    );
+    expect(actionLines(waiting('attempt-commit-pending')).at(-1)).toBe(
+      `Nothing of this Specification's workflow changes until the commit of the agent's work in implement#2 of Task api ran (attempt-commit-pending): it has not run (an interruption); retry it if it does not end by itself. Action: retry-commit ${spec.specId} --task api --step implement --attempt 2`,
+    );
+  });
+
+  it('reports a Confirm with the owner’s commit and a Reject of committed work', () => {
+    expect(
+      confirmLines({
+        subject: spec,
+        transition: 'approved',
+        position: { state: 'active', step: 'implementation', attempt: 1 },
+        continuation: { kind: 'none', reason: 'waiting-for-tasks' },
+        postActions: [
+          {
+            action: 'commit-execution-state',
+            status: 'completed',
+            commit: { sha: 'abc123', paths: ['a', 'b'] },
+          },
+        ],
+      }),
+    ).toEqual([
+      'Confirmed: Specification via "approved"',
+      'Position: active on "implementation" (attempt 1)',
+      'Next: nothing follows (waiting-for-tasks)',
+    ]);
+    expect(
+      rejectLines({
+        subject: spec,
+        position: { state: 'ready', step: 'breakdown-review' },
+        continuation: { kind: 'attention', step: 'breakdown-review', reason: 'owner-action' },
+        replayed: true,
+        postActions: [],
+      }),
+    ).toEqual([
+      "Already rejected: Specification; the agent's work was committed with its attempt",
+      'Position: ready to start "breakdown-review"',
+      'Next: needs the owner: "breakdown-review" (owner-action)',
+    ]);
+    expect(
+      positionLine({ state: 'awaiting-confirmation', step: 'breakdown-review', attempt: 1 }),
+    ).toBe('waiting for the owner to confirm the result of "breakdown-review" (attempt 1)');
   });
 });

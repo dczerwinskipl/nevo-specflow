@@ -14,6 +14,7 @@ related:
   - architecture.workflow.workflow-kernel
   - architecture.workflow.workflow-runs-and-handoffs
   - architecture.runtime.document-commit-policy
+  - architecture.workflow.workflow-agent-attempts
   - engineering.shared.specflow-git-recovery
 ---
 
@@ -21,12 +22,13 @@ related:
 
 ## State and storage
 
-| What                                    | Where                                                  | Belongs to                 |
-| --------------------------------------- | ------------------------------------------------------ | -------------------------- |
-| Specification run                       | `<specification>/.execution/specification.yaml`        | Git (committed, see below) |
-| Task runs (created at the first start)  | `<specification>/.execution/tasks/<taskId>.yaml`       | Git (committed, see below) |
-| Task resources (index, manifests, docs) | `<specification>/tasks/`                               | Git (committed, see below) |
-| Change journal                          | `<stateRoot>/engine/operations/workflow/<specId>.json` | local                      |
+| What                                    | Where                                                   | Belongs to                 |
+| --------------------------------------- | ------------------------------------------------------- | -------------------------- |
+| Specification run                       | `<specification>/.execution/specification.yaml`         | Git (committed, see below) |
+| Task runs (created at the first start)  | `<specification>/.execution/tasks/<taskId>.yaml`        | Git (committed, see below) |
+| Task resources (index, manifests, docs) | `<specification>/tasks/`                                | Git (committed, see below) |
+| Change journal                          | `<stateRoot>/engine/operations/workflow/<specId>.json`  | local                      |
+| Agent attempt journal                   | `<stateRoot>/engine/operations/agent-attempt/<id>.json` | local                      |
 
 ### Storage layout and revisions
 
@@ -65,7 +67,7 @@ related:
 
 - **Preconditions:** each journal target records its prior SHA-256 (or absence). Before any fresh/replayed write, require the expected old state or already-published new state; check again immediately before replacement.
 - **Conflict:** external edits/branch changes yield `WORKFLOW_STATE_CONFLICT` and leave the journal pending; reads fail likewise. Operator may remove the named local journal to retain disk state.
-- **Partial risk:** removing a journal after a mid-publish external race can preserve a partially applied change. This cannot be fully prevented until external writers participate in [workspace claims](../runtime/workspace-execution-claims.md) (F05).
+- **Partial risk:** removing a journal after a mid-publish external race can preserve a partially applied change. Engine writers are kept out by the writer admission: no change is applied while an agent execution claim other than the caller's own is unsettled (F05, [workspace execution claims](../runtime/workspace-execution-claims.md#the-project-wide-resource)); a writer outside the Engine (a hand edit, Git) is not.
 - **Temp files:** readers ignore `.<record>.<uuid>.tmp`. Next mutation cleans only temp files for known record names; unrelated dot-files remain untouched.
 
 ### Foreign files and recovery
@@ -101,7 +103,9 @@ documents ([documents layer](../runtime/document-commit-policy.md#commits-of-wor
   - Finishing a step ("Next") runs the post action `commit-execution-state` (`operations/post-actions.ts`): a manual commit of the Specification's ledger entries below `.execution/` and `tasks/` (closed under shared operation ids) with the subject `spec(workflow): finish "<step title>"[ of task <id>] in <slug>`, reported in `FinishStepResult.postActions`, apart from the finish.
   - Execution state edited since the Engine wrote it is held out of that commit with its operations, never refusing it (`held`, see [commits of workflow state](../runtime/document-commit-policy.md#commits-of-workflow-state)).
   - A failed post action does not fail the finish; a repeated finish runs it again.
-  - The post-action hook is the seam where E6 adds the push of an agent step's work (not implemented).
+- **Agent attempts.** A finalized agent attempt runs the post action `attempt-commit` instead of
+  `commit-execution-state`, whatever `git.commits.auto.documents` says
+  ([attempt commit](workflow-agent-attempts.md#attempt-commit)).
 - **Close and Abandon.** Abandon is a workflow change like the others. A Specification Close takes
   whatever execution state of that Specification is still uncommitted (in the ledger, or dirty
   without a record, for example a hand edit) into its archive commit; anything else that is dirty still refuses

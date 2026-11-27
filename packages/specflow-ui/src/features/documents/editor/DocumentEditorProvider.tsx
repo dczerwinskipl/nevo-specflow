@@ -1,4 +1,8 @@
-import type { ActionReason, DocumentContent } from '@nevo/specflow-contracts/documents';
+import type {
+  ActionReason,
+  DocumentAttemptCommit,
+  DocumentContent,
+} from '@nevo/specflow-contracts/documents';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -74,6 +78,11 @@ export interface DocumentEditorSession {
    * editable, not implemented); undefined when it can be edited. No Edit is offered then.
    */
   readOnlyReason?: ActionReason;
+  /**
+   * The agent attempt whose commit holds this document (`readOnlyReason` `attempt-commit`): the
+   * editor says so with Retry commit instead of the read-only line.
+   */
+  attemptCommit?: DocumentAttemptCommit;
   /** A save whose write did not finish (`DOCUMENT_RECOVERY_REQUIRED`): locked until resumed. */
   locked: boolean;
   /** Save would only repeat a refusal (conflict not resolved, read-only, locked). */
@@ -175,6 +184,7 @@ export function DocumentEditorProvider({
   specId,
   document,
   readOnlyReason,
+  attemptCommit,
   guidance,
   onSaved,
   children,
@@ -184,6 +194,8 @@ export function DocumentEditorProvider({
   document?: DocumentContent;
   /** Why the document cannot be edited (from the tree and the record); undefined when it can. */
   readOnlyReason?: ActionReason;
+  /** The agent attempt whose commit holds the document, when `readOnlyReason` is `attempt-commit`. */
+  attemptCommit?: DocumentAttemptCommit;
   /** The writing guidance of the document's type, when the catalogue has it. */
   guidance?: DocumentGuidance;
   /** After a save of a document of this scope (an owner refreshes what reads the document). */
@@ -503,6 +515,7 @@ export function DocumentEditorProvider({
       saving: owner.saving,
       saveError: owner.saveError,
       readOnlyReason,
+      ...(attemptCommit ? { attemptCommit } : {}),
       locked,
       saveBlocked:
         locked || saveCode === 'DOCUMENT_REVISION_CONFLICT' || readOnlyReason !== undefined,
@@ -547,6 +560,7 @@ export function DocumentEditorProvider({
     owner.saveError,
     textDocument,
     readOnlyReason,
+    attemptCommit,
     locked,
     saveCode,
     resume,

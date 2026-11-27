@@ -276,7 +276,8 @@ export function executionFactsOf(
   if (position.state === 'not-started') {
     const entryStep = stepById(definition.entryStep);
     projected = { state: 'not_started', next: entryStep ? stepFacts(entryStep) : null };
-  } else if (position.state === 'active') {
+  } else if (position.state === 'active' || position.state === 'awaiting-confirmation') {
+    // A result waiting for the owner's confirmation (D17) keeps its attempt as the current one.
     const step = stepById(position.step);
     if (!step) {
       return undefined;
@@ -388,7 +389,10 @@ export function historyFactsOf(
             ? (outcome.result ?? outcome.transition)
             : outcome.kind,
       transitionedTo: transition ? (destination(definition, transition) ?? null) : null,
-      feedback: outcome && outcome.kind !== 'abandoned' ? (outcome.feedback ?? null) : null,
+      feedback:
+        outcome && (outcome.kind === 'transition' || outcome.kind === 'returned')
+          ? (outcome.feedback ?? null)
+          : null,
       actor: actorOf(record),
       resources: [],
       provenance: [{ source: 'workflow_history', sourceId: id }],

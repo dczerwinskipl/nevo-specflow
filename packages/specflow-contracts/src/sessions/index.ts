@@ -6,3 +6,4 @@ export * from './telemetry';
 export * from './associations';
 export * from './list';
 export { sessionValidators } from './validation';
+export { workModeFor } from './work-mode';

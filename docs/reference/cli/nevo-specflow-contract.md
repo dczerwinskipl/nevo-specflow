@@ -76,11 +76,15 @@ outputs of:
   Worktree Close), `worktree close`, and `workspace close|inspect`;
 - `specs documents ...` (list, validate, add, folder, save, rename, move, delete, classify, status,
   flush, retry, abandon, resolve, recover);
-- `tasks list|inspect|create|edit|remove|status` and `workflow actions|start|finish|return`
+- `tasks list|inspect|create|edit|remove|status` and
+  `workflow actions|context|start|finish|return|reevaluate-wait|confirm|reject|retry-commit|take-over`
   ([Task and workflow commands](specflow-specification-commands.md#task-and-workflow-commands)),
   plus `specs documents read` and the `--task <task-id>` scope of `specs documents list|read|add|folder|save|rename|move|delete|classify`
   for the documents of a Task;
 - `commit` and `commit status`;
+- inside an agent Turn (the Runtime set `NEVO_AGENT_CAPABILITY`), the placement of every command as a
+  local read, a write sent to the Runtime's agent broker, or refused
+  ([Task and workflow commands](specflow-specification-commands.md#task-and-workflow-commands));
 - `definitions list|show|validate|install`
   ([Definitions commands](specflow-specification-commands.md#definitions-commands)).
 

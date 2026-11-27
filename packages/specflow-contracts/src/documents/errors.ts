@@ -66,6 +66,8 @@ export type RevisionConflict = Static<typeof RevisionConflictSchema>;
 
 /** Most owners `UncommittedHoldDetails.owners` names. */
 export const UNCOMMITTED_HOLD_OWNERS_MAX = 64;
+/** Failed agent attempt commits one refusal names. */
+export const UNCOMMITTED_ATTEMPTS_MAX = 8;
 /** Most paths one owner names (`count` is its total). */
 export const UNCOMMITTED_HOLD_PATHS_MAX = 8;
 
@@ -73,6 +75,29 @@ export const UNCOMMITTED_HOLD_PATHS_MAX = 8;
 const OwnerPathsSchema = Type.Array(Type.String({ minLength: 1, maxLength: 4096 }), {
   maxItems: UNCOMMITTED_HOLD_PATHS_MAX,
 });
+
+/**
+ * A finished agent attempt whose commit failed (D15, D16): its paths stay uncommitted until the
+ * owner retries the attempt commit (`POST .../workflow/attempt-commit/retry`, `nevo-specflow workflow
+ * retry-commit`). `paths` are at most 8 of the `count` paths of it the refusal holds (the attempt's
+ * documents, Tasks, workflow state and declared files); they are not listed again under another
+ * kind. `code` is why the commit failed.
+ */
+export const UncommittedAttemptSchema = Type.Object(
+  {
+    attemptId: Type.String({ minLength: 36, maxLength: 36 }),
+    specId: SpecIdSchema,
+    taskId: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
+    step: Type.String({ minLength: 1, maxLength: 200 }),
+    attempt: Type.Integer({ minimum: 1 }),
+    stepTitle: Type.String({ minLength: 1, maxLength: 1000 }),
+    code: Type.String({ minLength: 1, maxLength: 100 }),
+    count: Type.Integer({ minimum: 1 }),
+    paths: OwnerPathsSchema,
+  },
+  { additionalProperties: false },
+);
+export type UncommittedAttempt = Static<typeof UncommittedAttemptSchema>;
 
 /**
  * `DOCUMENT_COMMITS_PENDING` with `cause: commit-uncommitted` (a Close, an integration): what the
@@ -128,6 +153,10 @@ export const UncommittedHoldDetailsSchema = Type.Object(
         ),
       ]),
       { maxItems: UNCOMMITTED_HOLD_OWNERS_MAX },
+    ),
+    /** Agent attempts whose commit failed; their paths are not in `owners`. */
+    attempts: Type.Optional(
+      Type.Array(UncommittedAttemptSchema, { maxItems: UNCOMMITTED_ATTEMPTS_MAX }),
     ),
     unreadable: Type.Integer({ minimum: 0 }),
   },

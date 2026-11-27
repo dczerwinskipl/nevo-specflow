@@ -20,12 +20,19 @@ import {
 import { closableInFinishDialog } from './FinishTasksOpen';
 import type { GateAction } from './GateList';
 import { NowBlock } from './NowBlock';
+import { AgentStartDialog } from './agent/AgentStartDialog';
+import { blockerKeyOf } from './agent/AgentBlocker';
+import { useAgentAttemptNow } from './agent/AgentAttemptNow';
+import { ProjectHoldNote } from './agent/ProjectHoldNote';
+import { offersAgent } from './agent/agentOption';
 import { ReturnStepDialog } from './ReturnStepDialog';
 import { StartTaskDialog, type PinPreview } from './StartTaskDialog';
 import type { NowLinks } from './StartBlockerLines';
-import { nowActionPlan } from './presentation';
+import { nowActionPlan, personLabel } from './presentation';
 import { useWorkflowCommands } from './useWorkflowCommands';
+import { useViewer } from './useViewer';
 import { WorkflowRefusalAlert } from './WorkflowRefusalAlert';
+import { productIcons } from '../../../shared/product-icons';
 
 type PostAction = NonNullable<FinishWorkflowResult['postActions']>[number];
 type FailedPostAction = Extract<PostAction, { status: 'failed' }>;
@@ -126,19 +133,25 @@ export function WorkflowNow({
   specification,
 }: WorkflowNowProps) {
   const { t } = useTranslation();
+  const viewer = useViewer();
   const commands = useWorkflowCommands(subject);
   const { actions, position } = projection;
+  const agentNow = useAgentAttemptNow({ subject, projection, links, headingId });
   const finish = actions.finish;
   const attemptKey = finish ? attemptKeyOf(finish) : '';
-  const [dialog, setDialog] = useState<'start' | 'finish' | 'return'>();
+  const [dialog, setDialog] = useState<'start' | 'finish' | 'return' | 'agent' | 'hand'>();
   // The attempt the Finish dialog was opened for. When the projection moves on (the finish was
   // recorded although its answer was lost, or someone else finished it), the dialog closes and
   // never offers a retry for an attempt nobody worked on.
   const [finishFor, setFinishFor] = useState<string>();
   const finishOpen = dialog === 'finish' && finishFor === attemptKey;
-  // Not after this dialog's own finish succeeded: the refresh may land before the dialog closes.
+  // Not while or after this dialog's own finish runs: the refresh it triggers may land before the
+  // finish settles and the dialog closes. A refused finish (isError) still says so.
   const finishMovedOn =
-    dialog === 'finish' && finishFor !== attemptKey && !commands.finish.isSuccess;
+    dialog === 'finish' &&
+    finishFor !== attemptKey &&
+    !commands.finish.isPending &&
+    !commands.finish.isSuccess;
   const [storedDraft, setDraft] = useState<FinishDraft>();
   // A draft of another attempt (the run moved on) is not this attempt's draft.
   const draft =
@@ -158,11 +171,14 @@ export function WorkflowNow({
   const next =
     position.kind === 'not-started' || position.kind === 'ready' ? position.next : undefined;
   const step = position.kind === 'active' ? position.step : undefined;
+  // While an agent attempt's commit holds the specification, every workflow action waits for it;
+  // the block's notice (`useAgentAttemptNow`) says why and offers Retry commit.
   const busy =
     commands.start.isPending ||
     commands.finish.isPending ||
     commands.returnTo.isPending ||
-    commands.reevaluateWait.isPending;
+    commands.reevaluateWait.isPending ||
+    projection.attemptCommit !== undefined;
   const waitAttempt = subject.taskId === undefined ? projection.attention?.waitAttempt : undefined;
   // The read may already show a journaled transition whose publication still needs retrying.
   const submittedWait = commands.reevaluateWait.variables;
@@ -363,8 +379,26 @@ export function WorkflowNow({
       </Button>
     ) : undefined;
   const finishIsSecondary = secondary?.kind === 'finish';
+  // Hand to agent: from the owner's own attempt of a step an agent may do. An unavailable agent
+  // stays offered; its dialog explains why before anything is sent. It is the row's one secondary,
+  // or a ⋯ operation when the row has another secondary already (never three buttons).
+  const hand =
+    actions.handToAgent && offersAgent(actions.handToAgent.agent) ? actions.handToAgent : undefined;
+  const handInRow =
+    hand !== undefined && secondaryButton === undefined && primaryAction === undefined;
+  const handButton = handInRow ? (
+    <Button
+      key="hand-to-agent"
+      variant="secondary"
+      leadingIcon={productIcons.agent}
+      onClick={() => setDialog('hand')}
+      disabled={busy}
+    >
+      {t('workflowExecution.now.handToAgent')}
+    </Button>
+  ) : undefined;
 
-  const workflowActions =
+  const offeredActions =
     (waitAttempt ? (
       <Button
         key="reevaluate-wait"
@@ -375,27 +409,43 @@ export function WorkflowNow({
       </Button>
     ) : undefined) ??
     primaryAction ??
+    // The agent's attempt (or its result waiting for the owner) has its own actions.
+    agentNow?.actions ??
     // Distinct keys: the button that opened Finish must never become Start. When a finish whose
     // answer was lost closes its dialog, the dialog returns focus to its opener; a reused element
     // would then be the next step's Start, and one Enter or Space would start a step nobody chose.
     (showStart ? (
       // The busy pattern: the pending label until the new position is read, never a stale one.
-      <Button key="start" onClick={startNow} disabled={busy} aria-busy={starting}>
-        {starting ? t('workflowExecution.now.starting') : startLabel}
-      </Button>
+      <>
+        <Button key="start" onClick={startNow} disabled={busy} aria-busy={starting}>
+          {starting ? t('workflowExecution.now.starting') : startLabel}
+        </Button>
+        {/* The one secondary: only when the step's executors include an agent. */}
+        {next && offersAgent(next.agent) ? (
+          <Button
+            key="run-with-agent"
+            variant="secondary"
+            leadingIcon={productIcons.agent}
+            onClick={() => setDialog('agent')}
+            disabled={busy}
+          >
+            {t('workflowExecution.now.runWithAgent')}
+          </Button>
+        ) : null}
+      </>
     ) : showFinish ? (
       <>
         <Button key="finish" onClick={openFinish} disabled={busy}>
           {t('workflowExecution.now.finish')}
         </Button>
-        {secondaryButton}
+        {secondaryButton ?? handButton}
       </>
     ) : mainGateAction ? (
       <>
         <Button key="gate" onClick={mainGateAction.onSelect}>
           {mainGateAction.label}
         </Button>
-        {secondaryButton}
+        {secondaryButton ?? handButton}
         {quietNewTask}
       </>
     ) : plan.newTask === 'primary' && onNewTask ? (
@@ -430,6 +480,16 @@ export function WorkflowNow({
   const menu = (
     <NowOperationsMenu
       operations={[
+        ...(hand && !handInRow
+          ? [
+              {
+                id: 'hand-to-agent',
+                label: t('workflowExecution.now.handToAgent'),
+                onSelect: () => setDialog('hand'),
+                disabled: busy,
+              },
+            ]
+          : []),
         ...(actions.return
           ? [
               {
@@ -496,8 +556,56 @@ export function WorkflowNow({
     });
   }, [overviewSpecId, canReturn, resetReturn]);
 
+  // Another subject's agent holds the project: while its outcome is unknown nothing here can be
+  // saved, so no action is offered and the note says where to check it.
+  const projectHold = projection.projectHold;
+  const workflowActions =
+    projectHold?.kind === 'agent-outcome-unknown' ? undefined : offeredActions;
+  // Who acts on the step now and what the owner is expected to do, in one sentence. An agent's
+  // attempt says it in its own note.
+  const personActor =
+    position.kind === 'active' && position.attempt.actor.class === 'human'
+      ? position.attempt.actor
+      : undefined;
+  const actorName = personActor ? personLabel(t, personActor.details.actorId, viewer) : undefined;
+  const whoActs = !personActor
+    ? undefined
+    : actorName !== t('workflowExecution.actor.you')
+      ? t('workflowExecution.now.personActs', { actor: actorName })
+      : position.kind === 'active' && position.attempt.takenOverFrom
+        ? t(
+            hand
+              ? 'workflowExecution.now.youActTakenOverCanHand'
+              : 'workflowExecution.now.youActTakenOver',
+          )
+        : t(hand ? 'workflowExecution.now.youActCanHand' : 'workflowExecution.now.youAct');
+  // Hand to agent cannot run now: the line says why, before the click (its dialog says the rest).
+  const handBlocked =
+    whoActs !== undefined &&
+    actorName === t('workflowExecution.actor.you') &&
+    hand?.agent.kind === 'unavailable'
+      ? t('workflowExecution.now.handUnavailable', {
+          why: t(
+            `workflowExecution.agent.blocker.${blockerKeyOf(hand.agent)}.title` as 'workflowExecution.agent.blocker.dirty.title',
+            {
+              step: step ? step.title || step.id : '',
+              role: t('workflowExecution.agent.roleFallback'),
+            },
+          ),
+        })
+      : undefined;
   const note = (
     <>
+      {whoActs ? (
+        <Typography as="p" variant="body-sm" className="text-content-secondary" data-now-who="">
+          {whoActs}
+          {handBlocked ? ` ${handBlocked}` : null}
+        </Typography>
+      ) : null}
+      {projectHold ? (
+        <ProjectHoldNote hold={projectHold} hasAction={offeredActions !== undefined} />
+      ) : null}
+      {agentNow?.note}
       {attemptedWait && commands.reevaluateWait.isError ? (
         <WorkflowRefusalAlert error={commands.reevaluateWait.error} />
       ) : null}
@@ -516,7 +624,9 @@ export function WorkflowNow({
       ) : null}
       {shownCommitNote?.failed.map((action) => (
         <InlineNote key={action.action} tone="attention">
-          {t('workflowExecution.now.postActionFailed', { code: action.code })}
+          {action.code === 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED'
+            ? t('workflowExecution.now.postActionAttemptCommit')
+            : t('workflowExecution.now.postActionFailed', { code: action.code })}
         </InlineNote>
       ))}
       {shownCommitNote?.held.map((action) => (
@@ -534,6 +644,7 @@ export function WorkflowNow({
     <>
       <NowBlock
         projection={projection}
+        specId={subject.specId}
         headingId={headingId}
         status={status}
         links={links}
@@ -563,17 +674,23 @@ export function WorkflowNow({
           )
         }
         starting={starting}
-        menu={menu}
+        // The agent's attempt names its own state; a stop that waits for proof locks the menu.
+        menu={agentNow?.keepsMenu === false ? undefined : menu}
         summary={summary}
+        {...(agentNow?.executor ? { executor: agentNow.executor } : {})}
+        // The last hand-off is always said (its feedback collapsed unless it must be acted on); an
+        // agent's attempt that names its own state leaves it out.
+        showHandoff={agentNow?.showHandoff !== false}
+        {...(agentNow?.handoffCommit ? { handoffCommit: agentNow.handoffCommit } : {})}
         {...(hold ? { hold } : {})}
         {...(specification
           ? {
-              showHandoff: false,
               waitingContent: specification.waitingContent,
               titleNote: specification.titleNote,
             }
           : {})}
       />
+      {agentNow?.dialogs}
       {firstStart && preview ? (
         <StartTaskDialog
           open={dialog === 'start'}
@@ -601,6 +718,25 @@ export function WorkflowNow({
                 },
               }
             : {})}
+        />
+      ) : null}
+      {next && dialog === 'agent' ? (
+        <AgentStartDialog
+          subject={subject}
+          step={{ id: next.step.id, title: next.step.title }}
+          archetype={next.agent.launch?.archetype}
+          open
+          onOpenChange={(open) => !open && setDialog(undefined)}
+        />
+      ) : null}
+      {hand && step && dialog === 'hand' ? (
+        <AgentStartDialog
+          subject={subject}
+          step={{ id: step.id, title: step.title }}
+          archetype={hand.agent.launch?.archetype}
+          handOver={{ attempt: hand.attempt }}
+          open
+          onOpenChange={(open) => !open && setDialog(undefined)}
         />
       ) : null}
       {finish && step ? (

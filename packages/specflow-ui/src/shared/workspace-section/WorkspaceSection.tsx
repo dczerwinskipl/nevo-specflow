@@ -1,5 +1,5 @@
 import type { HTMLAttributes, ReactNode } from 'react';
-import { Icon, Typography, cn, type IconName } from '@nevo/ui';
+import { Icon, Typography, cn, type IconGlyph } from '@nevo/ui';
 
 export interface WorkspaceSectionProps extends HTMLAttributes<HTMLElement> {
   readonly id?: string;
@@ -11,7 +11,7 @@ export interface WorkspaceSectionProps extends HTMLAttributes<HTMLElement> {
 export interface WorkspaceSectionHeaderProps {
   readonly id?: string;
   readonly title: string;
-  readonly icon?: IconName;
+  readonly icon?: IconGlyph;
   readonly count?: number | string;
   readonly actions?: ReactNode;
   readonly className?: string;

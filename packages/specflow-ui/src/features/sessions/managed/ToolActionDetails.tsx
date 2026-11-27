@@ -1,14 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Check, Copy } from 'lucide-react';
 import type { ContentRef, ToolActionSummary } from '@nevo/specflow-contracts/sessions';
-import { Alert, Button, Spinner, Timeline, Typography } from '@nevo/ui';
+import { Alert, Button, Collapsible, Spinner, Timeline, Typography } from '@nevo/ui';
 import type { ManagedSessionsApi } from './api';
 import { historyEntry } from './pagedHistoryAnchor';
 import { ToolActionHeader } from './ToolActionHeader';
 import { ToolDetailCode } from './ToolDetailCode';
-import { workStateTone } from './workStatus';
+import { workMarkerTone, workStateTone } from './workStatus';
+import { workOperationIcon } from './workOperationIcon';
+import { useCodeWrapPreference } from './codeWrapPreference';
+import type { CodeLanguage } from '../../../shared/code-view';
 import { copyText } from '../../../shared/clipboard/copyText';
 
 interface ContentSource {
@@ -20,11 +24,16 @@ interface ContentSource {
 const MAX_DETAIL_PAGES = 32;
 
 /** The full text behind a ToolAction `ContentRef`, page by page (`ContentPage.nextOffset`). */
-function useContentText(source: ContentSource, ref: ContentRef) {
+function useContentText(source: ContentSource, ref: ContentRef | undefined) {
   return useQuery({
-    queryKey: ['managed-content', source.sessionId, ref.contentId, ref.revision],
+    queryKey: ['managed-content', source.sessionId, ref?.contentId, ref?.revision],
     staleTime: Infinity,
+    enabled: ref !== undefined,
     queryFn: async ({ signal }) => {
+      if (!ref) {
+        return { text: '', truncated: false };
+      }
+
       let text = '';
       let offset = 0;
       for (let page = 0; page < MAX_DETAIL_PAGES; page += 1) {
@@ -72,6 +81,7 @@ function CopyTextButton({ text, label }: { text: string; label: string }) {
     <>
       <Button
         aria-label={label}
+        title={label}
         leadingIcon={copied ? Check : Copy}
         size="sm"
         variant="ghost"
@@ -85,7 +95,11 @@ function CopyTextButton({ text, label }: { text: string; label: string }) {
           });
         }}
       >
-        {copied ? t('managedSession.copy.copied') : t('managedSession.workInspector.copy')}
+        {/* A block action is icon-only at every width, its words the accessible name and tooltip
+            (interaction-model.md "Page-level toggles"): a page toggle's words follow the header. */}
+        <span className="sr-only">
+          {copied ? t('managedSession.copy.copied') : t('managedSession.workInspector.copy')}
+        </span>
       </Button>
       <span role="status" aria-live="polite" className="sr-only">
         {copied ? t('managedSession.copy.copied') : ''}
@@ -94,56 +108,211 @@ function CopyTextButton({ text, label }: { text: string; label: string }) {
   );
 }
 
-/** One labelled section of a ToolAction: the parameters it was called with, or the tool's own
- * response. Copy always copies the ORIGINAL text, never the reformatted presentation. */
-function ToolActionDetailSection({
+/** One labelled code block of a ToolAction: its label, then Copy (the original text, never a
+ * reformatted presentation), then the text on the product's code view. Wrap lines is the screen's
+ * (a header action of the `actions` screen, `WorkInspector.tsx`). */
+function CodeSection({
   label,
   copyLabel,
-  value,
-  source,
+  text,
+  copy = text,
+  language,
+  lineNumbers,
+  heading = true,
 }: {
   label: string;
   copyLabel: string;
-  value: ContentRef;
-  source: ContentSource;
+  text: string;
+  /** What Copy copies, when it differs from what is shown (the raw JSON of pretty parameters). */
+  copy?: string;
+  language: CodeLanguage;
+  lineNumbers: boolean;
+  /** False inside a disclosure that already names the block. */
+  heading?: boolean;
 }) {
-  const { t } = useTranslation();
-  const content = useContentText(source, value);
-  const shape = content.data ? detailShape(content.data.text) : undefined;
+  const [wrap] = useCodeWrapPreference();
 
   return (
-    <section className="grid min-w-0 gap-1.5">
-      {/* The heading and its Copy action share one row — two different things, so at opposite
-          ends; the content gets its own code surface below. The heading is the DS section-title
-          role (`section-label`), the exact treatment Session Context uses for its own section
-          headings ("SPECYFIKACJA", "AKTUALNE WYKONANIE") — not a fourth, ad-hoc label style. */}
-      <div className="flex min-h-control-height-compact min-w-0 items-center justify-between gap-2">
-        <Typography as="h3" variant="section-label">
-          {label}
-        </Typography>
-        {content.data && <CopyTextButton text={content.data.text} label={copyLabel} />}
+    <section className="grid min-w-0 gap-1.5" aria-label={heading ? undefined : label}>
+      {/* The heading and its actions share one row — two different things, so at opposite ends;
+          the content gets its own code surface below. The heading is the DS section-title role
+          (`section-label`), the exact treatment Session Context uses for its own headings. */}
+      <div className="flex min-h-control-height-compact min-w-0 flex-wrap items-center justify-between gap-2">
+        {heading ? (
+          <Typography as="h3" variant="section-label">
+            {label}
+          </Typography>
+        ) : (
+          <span />
+        )}
+        <CopyTextButton text={copy} label={copyLabel} />
       </div>
-      {content.isPending && <Spinner size="sm" />}
+      <ToolDetailCode
+        text={text}
+        language={language}
+        label={label}
+        lineNumbers={lineNumbers}
+        wrap={wrap}
+      />
+    </section>
+  );
+}
+
+/** The loading, failure and truncation states of a body read from a ContentRef. */
+function ContentState({ content }: { content: ReturnType<typeof useContentText> }) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {content.isPending && content.fetchStatus !== 'idle' && <Spinner size="sm" />}
       {content.isError && (
         <Typography as="p" variant="body-sm" className="text-content-muted">
           {t('managedSession.failed')}
         </Typography>
-      )}
-      {/* Numbered only when the lines are ours (pretty-printed JSON); verbatim text keeps exactly
-          its own lines, including any numbering the tool printed (`cat -n`). */}
-      {shape?.kind === 'json' && (
-        <ToolDetailCode text={shape.pretty} language="json" label={label} lineNumbers />
-      )}
-      {shape?.kind === 'text' && (
-        <ToolDetailCode text={shape.text} language="plain" label={label} lineNumbers={false} />
       )}
       {content.data?.truncated && (
         <Typography as="p" variant="body-sm" className="text-content-muted">
           {t('managedSession.workInspector.detailTruncated')}
         </Typography>
       )}
-    </section>
+    </>
   );
+}
+
+type Parameters = Record<string, unknown>;
+const textOf = (value: unknown) => (typeof value === 'string' ? value : undefined);
+const slashes = (value: string) => value.split('\\').join('/');
+
+/** The input as an object, when it is a JSON object. */
+function parameters(text: string | undefined): Parameters | undefined {
+  if (!text) {
+    return undefined;
+  }
+
+  try {
+    const value: unknown = JSON.parse(text);
+
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Parameters)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The workspace root a file tool's absolute path reveals: its `file_path` minus the Runtime's
+ * workspace-relative `subject`. Used only to show the tool's response with relative paths.
+ */
+export function workspaceRootOf(
+  params: Parameters | undefined,
+  subject: string | undefined,
+): string | undefined {
+  const path = textOf(params?.file_path);
+  if (!path || !subject || subject.startsWith('…')) {
+    return undefined;
+  }
+
+  const normalized = slashes(path);
+  const relative = slashes(subject);
+
+  return normalized.endsWith('/' + relative)
+    ? normalized.slice(0, -(relative.length + 1))
+    : undefined;
+}
+
+/** `text` with every path under `root` written relative to it, whichever separators it uses. */
+export function relativeTo(text: string, root: string | undefined): string {
+  if (!root) {
+    return text;
+  }
+
+  const separator = String.raw`[\\/]`;
+  const pattern = root
+    .split('/')
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`))
+    .join(separator);
+
+  // A path under the root loses it; the root itself reads as `.`.
+  return text.replace(
+    new RegExp(pattern + separator + '?', /^[A-Za-z]:/.test(root) ? 'gi' : 'g'),
+    (match) => (/[\\/]$/.test(match) ? '' : '.'),
+  );
+}
+
+/** A readable block of one known tool's input. */
+interface ReadableBlock {
+  key: string;
+  label: string;
+  copyLabel: string;
+  text: string;
+  lineNumbers: boolean;
+}
+
+const blockLabels = {
+  command: ['managedSession.workInspector.command', 'managedSession.workInspector.copyCommand'],
+  fileContent: [
+    'managedSession.workInspector.fileContent',
+    'managedSession.workInspector.copyContent',
+  ],
+  before: ['managedSession.workInspector.before', 'managedSession.workInspector.copyBefore'],
+  after: ['managedSession.workInspector.after', 'managedSession.workInspector.copyAfter'],
+} as const;
+
+/**
+ * What a known tool's input says, readably: a command wrapped for reading, a written file's
+ * content, an edit's text before and after. Unknown tools have none (their raw parameters show).
+ */
+export function readableBlocks(
+  tool: string,
+  params: Parameters | undefined,
+  t: TFunction,
+): ReadableBlock[] {
+  if (!params) {
+    return [];
+  }
+
+  const block = (
+    key: string,
+    kind: keyof typeof blockLabels,
+    text: unknown,
+    lineNumbers = false,
+  ): ReadableBlock[] =>
+    typeof text === 'string'
+      ? [
+          {
+            key,
+            label: t(blockLabels[kind][0]),
+            copyLabel: t(blockLabels[kind][1]),
+            text,
+            lineNumbers,
+          },
+        ]
+      : [];
+  switch (tool) {
+    case 'Bash':
+      return block('command', 'command', params.command);
+    case 'Write':
+      return block('content', 'fileContent', params.content, true);
+    case 'Edit':
+      return [
+        ...block('before', 'before', params.old_string),
+        ...block('after', 'after', params.new_string),
+      ];
+    case 'MultiEdit':
+      return (Array.isArray(params.edits) ? (params.edits as unknown[]) : []).flatMap(
+        (edit, index) => {
+          const change = (edit ?? {}) as Parameters;
+
+          return [
+            ...block(`before-${index}`, 'before', change.old_string),
+            ...block(`after-${index}`, 'after', change.new_string),
+          ];
+        },
+      );
+    default:
+      return [];
+  }
 }
 
 /**
@@ -163,9 +332,15 @@ function ToolActionContent({
   source,
   withHeader,
   asHeading = false,
+  withHeading = true,
+  authorization,
 }: {
   item: ToolActionSummary;
   source: ContentSource;
+  /** False where the screen's own header already names the action. */
+  withHeading?: boolean;
+  /** How the permission for this action was answered, between what it ran and its result. */
+  authorization?: ReactNode;
   /** Render the header (`ToolActionHeader`) as the first part of the content. */
   withHeader: boolean;
   /** The single-action screen's own heading (no parent Work title above it). */
@@ -173,28 +348,75 @@ function ToolActionContent({
 }) {
   const { t } = useTranslation();
   const failed = workStateTone(item.state) === 'danger';
+  const input = useContentText(source, item.input);
+  const output = useContentText(source, item.output);
+  const params = parameters(input.data?.text);
+  const blocks = readableBlocks(item.title.text, params, t);
+  const root = workspaceRootOf(params, item.subject);
+  const raw = input.data ? detailShape(input.data.text) : undefined;
 
   return (
-    // `gap-5`: the screen's section rhythm (20px) between the header, the parameters and the
-    // response — the sections read as separate blocks, not one stack of captions.
+    // `gap-5`: the screen's section rhythm (20px) between the header, the readable input, the
+    // response and the raw parameters — separate blocks, not one stack of captions.
     <div className="grid min-w-0 gap-5">
-      {withHeader && <ToolActionHeader item={item} asHeading={asHeading} />}
-      {item.input && (
-        <ToolActionDetailSection
-          label={t('managedSession.workInspector.input')}
-          copyLabel={t('managedSession.workInspector.copyInput')}
-          value={item.input}
-          source={source}
-        />
+      {withHeader && (
+        <ToolActionHeader item={item} asHeading={asHeading} withHeading={withHeading} />
       )}
-      {item.output && (
-        <ToolActionDetailSection
+      {blocks.map((block) => (
+        <CodeSection
+          key={block.key}
+          label={block.label}
+          copyLabel={block.copyLabel}
+          text={block.text}
+          language="plain"
+          lineNumbers={block.lineNumbers}
+        />
+      ))}
+      {authorization}
+      {output.data && (
+        // Shown with workspace paths relative; Copy keeps the tool's own text.
+        <CodeSection
           label={t('managedSession.workInspector.output')}
           copyLabel={t('managedSession.workInspector.copyOutput')}
-          value={item.output}
-          source={source}
+          text={relativeTo(output.data.text, root)}
+          copy={output.data.text}
+          language={detailShape(output.data.text).kind === 'json' ? 'json' : 'plain'}
+          lineNumbers={false}
         />
       )}
+      {item.output && <ContentState content={output} />}
+      {raw &&
+        input.data &&
+        (blocks.length === 0 ? (
+          // Nothing above reads them: the parameters are the body, as they are.
+          <CodeSection
+            label={t('managedSession.workInspector.input')}
+            copyLabel={t('managedSession.workInspector.copyInput')}
+            text={raw.kind === 'json' ? raw.pretty : raw.text}
+            copy={input.data.text}
+            language={raw.kind === 'json' ? 'json' : 'plain'}
+            lineNumbers={raw.kind === 'json'}
+          />
+        ) : (
+          // Read above: the raw parameters stay one click away.
+          <Collapsible>
+            <Collapsible.Trigger>
+              {t('managedSession.workInspector.rawParameters')}
+            </Collapsible.Trigger>
+            <Collapsible.Content>
+              <CodeSection
+                label={t('managedSession.workInspector.input')}
+                copyLabel={t('managedSession.workInspector.copyInput')}
+                text={raw.kind === 'json' ? raw.pretty : raw.text}
+                copy={input.data.text}
+                language={raw.kind === 'json' ? 'json' : 'plain'}
+                lineNumbers={raw.kind === 'json'}
+                heading={false}
+              />
+            </Collapsible.Content>
+          </Collapsible>
+        ))}
+      {item.input && <ContentState content={input} />}
       {item.error && (
         <Alert tone={failed ? 'danger' : 'attention'} title={item.error.message}>
           {/* Labelled, not a bare technical code as the primary visible text (a raw `process_exit`
@@ -222,7 +444,11 @@ export function ToolActionTimelineItem({
 }) {
   return (
     <Timeline.Item {...historyEntry(item.actionId)}>
-      <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
+      <Timeline.Marker
+        active={item.state === 'active'}
+        icon={workOperationIcon(item.operation)}
+        tone={workMarkerTone(item.state)}
+      />
       <Timeline.Content title={<ToolActionContent item={item} source={source} withHeader />} />
     </Timeline.Item>
   );
@@ -248,14 +474,26 @@ export function SingleToolActionDetail({
   item,
   source,
   withHeader,
+  authorization,
 }: {
   item: ToolActionSummary;
   source: ContentSource;
+  authorization?: ReactNode;
   /**
    * Heads the content with the action's header (as the screen's heading). False when the workspace
    * already shows it in the detail header row (`SingleToolActionHeader`, `detailHeader`).
    */
   withHeader: boolean;
 }) {
-  return <ToolActionContent item={item} source={source} withHeader={withHeader} asHeading />;
+  return (
+    <ToolActionContent
+      item={item}
+      source={source}
+      withHeader={withHeader}
+      asHeading
+      // Where it heads the content, the screen's own header names the action already.
+      withHeading={false}
+      authorization={authorization}
+    />
+  );
 }

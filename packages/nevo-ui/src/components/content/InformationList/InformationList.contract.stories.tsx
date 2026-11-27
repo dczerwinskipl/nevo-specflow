@@ -120,6 +120,35 @@ export const LeadingFirstLine: Story = {
   },
 };
 
+/** `align="center"`: a decorative mark centred on a short row (a title and one line of facts). */
+export const LeadingCenter: Story = {
+  render: () => (
+    <div className="w-72">
+      <InformationList>
+        <InformationList.Item>
+          <InformationList.Leading align="center">
+            <span aria-hidden="true" data-testid="mark-center" className="size-4 bg-current" />
+          </InformationList.Leading>
+          <InformationList.Content data-testid="content-center">
+            <Typography variant="title-sm">Review the breakdown</Typography>
+            <Typography variant="body-sm">Attempt 2 · Opus 5.5 · 17 hours ago</Typography>
+          </InformationList.Content>
+        </InformationList.Item>
+      </InformationList>
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const centre = (box: DOMRect) => box.top + box.height / 2;
+    const mark = canvas.getByTestId('mark-center').getBoundingClientRect();
+    const content = canvas.getByTestId('content-center').getBoundingClientRect();
+    assert(content.height > 30, 'The row must span two lines for the check to mean anything');
+    assert(
+      Math.abs(centre(mark) - centre(content)) <= 1.5,
+      'A centred mark sits on the row centre',
+    );
+  },
+};
+
 export const CompactTextRows: Story = {
   render: () => (
     <div className="w-72">

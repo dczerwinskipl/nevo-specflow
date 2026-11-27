@@ -1,11 +1,15 @@
 import { createAuthorization } from '@nevo/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
-import { WORKFLOW_ERROR_CODES } from '@nevo/specflow-contracts/workflow';
+import { SPECIFICATION_BUSY_CAUSES, WORKFLOW_ERROR_CODES } from '@nevo/specflow-contracts/workflow';
 import {
+  AttributionRefusalError,
+  DocumentError,
   ProjectControlLockError,
+  SpecificationBusyError,
   GateUnsatisfiedError,
   SpecificationExitBlockedError,
   TasksOpenError,
+  SPECIFICATION_BUSY_CAUSES as ENGINE_BUSY_CAUSES,
   WORKFLOW_ERROR_CODES as ENGINE_ERROR_CODES,
   WorkflowError,
   type ActionProjection,
@@ -27,6 +31,7 @@ import { workflowFailure } from './refusal';
 const SPEC = 'spec-1';
 const alice = { kind: 'user' as const, id: 'alice' };
 const viewer = { kind: 'user' as const, id: 'viewer' };
+const REQUEST_ID = '5d4fae96-ae87-4a99-9b7c-5fbec16dc005';
 
 const policy = createAuthorization({
   resources: [SpecCapabilities],
@@ -103,10 +108,12 @@ function fakePort(overrides: Partial<WorkflowPort> = {}): { port: WorkflowPort; 
     } as never),
     finish: record('finish', finished),
     return: record('return', {
+      kind: 'returned' as const,
       subject: subjectSpec,
       position: { state: 'ready', step: 'draft' },
       continuation: { kind: 'none', reason: 'terminal' },
     }),
+    history: record('history', { subject: subjectSpec, items: [] }),
     reevaluateWait: record('reevaluateWait', {
       step: 'implementation',
       attempt: 1,
@@ -123,6 +130,28 @@ function fakePort(overrides: Partial<WorkflowPort> = {}): { port: WorkflowPort; 
       },
       cancelledTasks: ['t1'],
       abandonedTaskRuns: [],
+    }),
+    retryAttemptCommit: record('retryAttemptCommit', {
+      postActions: [
+        {
+          action: 'attempt-commit',
+          status: 'completed',
+          commit: { sha: 'a'.repeat(40), paths: ['src/app.ts'] },
+        },
+      ],
+    }),
+    confirm: record('confirm', {
+      subject: subjectSpec,
+      transition: 'approved',
+      position: { state: 'active', step: 'implementation', attempt: 1 },
+      continuation: { kind: 'none', reason: 'waiting-for-tasks' },
+      postActions: [{ action: 'commit-execution-state', status: 'completed' }],
+    }),
+    reject: record('reject', {
+      subject: subjectSpec,
+      position: { state: 'ready', step: 'review' },
+      continuation: { kind: 'attention', step: 'review', reason: 'owner-action' },
+      postActions: [{ action: 'commit-execution-state', status: 'completed' }],
     }),
     ...overrides,
   };
@@ -375,6 +404,232 @@ describe('workflow action routes', () => {
     await app.close();
   });
 
+  it('answers a Return during an agent attempt as requested, the step unchanged', async () => {
+    const requested = {
+      kind: 'return-requested' as const,
+      subject: subjectSpec,
+      to: 'draft',
+      attemptId: 'a1',
+      step: 'review',
+      attempt: 1,
+      sessionId: 's1',
+      turnId: 't1',
+      requestedAt: '2026-11-21T10:00:00.000Z',
+    };
+    let principal: string | undefined;
+    const { port } = fakePort({
+      return: (_input, caller) => {
+        principal = caller;
+
+        return Promise.resolve(requested);
+      },
+    });
+    const app = appWith(port);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/specs/${SPEC}/workflow/return`,
+      payload: { step: 'draft', reason: 'Rework the scope' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(requested);
+    expect(principal).toContain('alice');
+    await app.close();
+  });
+
+  it('reads the workflow history of a Specification with an agent attempt', async () => {
+    const work = {
+      documents: ['specs/x/draft.md'],
+      mixed: [],
+      tasks: [],
+      declared: ['src/app.ts'],
+      // A commit is served with its sha and how many paths of each kind it held.
+      commit: {
+        state: 'committed' as const,
+        runs: 1,
+        sha: 'e'.repeat(40),
+        documents: 2,
+        files: 1,
+      },
+      // What the attempt changed, by what it is: documents, Tasks, other files, SpecFlow's records.
+      changes: {
+        directory: 'specs/x',
+        documents: ['specs/x/draft.md'],
+        tasks: [{ id: 'login', title: 'Sign in' }],
+        files: ['src/app.ts'],
+        state: ['specs/x/.execution/specification.yaml'],
+      },
+    };
+    const history = {
+      subject: subjectSpec,
+      items: [
+        {
+          kind: 'attempt' as const,
+          sequence: 1,
+          step: 'draft',
+          stepTitle: 'Draft',
+          attempt: 1,
+          startedAt: '2026-11-21T10:00:00.000Z',
+          endedAt: '2026-11-21T10:05:00.000Z',
+          outcome: {
+            kind: 'transition' as const,
+            transition: 'approved',
+            result: 'pass',
+            artifacts: [],
+          },
+          transitionLabel: 'Draft approved',
+          agent: {
+            attemptId: 'a1',
+            provider: 'mock',
+            sessionId: 's1',
+            turns: 1,
+            ended: 'taken-over' as const,
+            takenOverBy: { attempt: 2 },
+            events: [
+              { kind: 'started' as const, at: '2026-11-21T10:00:00.000Z' },
+              { kind: 'taken-over' as const, at: '2026-11-21T10:05:00.000Z' },
+            ],
+            work,
+          },
+        },
+      ],
+    };
+    const { port } = fakePort({ history: () => Promise.resolve(history) });
+    const app = appWith(port);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/specs/${SPEC}/workflow/history`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(history);
+    await app.close();
+  });
+
+  it("retries a Task attempt's commit as the owner, needs manage, and maps a refusal", async () => {
+    const { port, calls } = fakePort();
+    const app = appWith(port);
+    const url = `/api/specs/${SPEC}/tasks/t1/workflow/attempt-commit/retry`;
+
+    const response = await app.inject({
+      method: 'POST',
+      url,
+      payload: { step: 'implement', attempt: 2 },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      postActions: [{ action: 'attempt-commit', status: 'completed' }],
+    });
+    expect(calls.last).toMatchObject({
+      subject: { kind: 'task', specId: SPEC, taskId: 't1' },
+      step: 'implement',
+      attempt: 2,
+      actor: { class: 'human' },
+    });
+    expect((await app.inject({ method: 'POST', url, payload: { step: 'x' } })).statusCode).toBe(
+      400,
+    );
+    await app.close();
+
+    const viewerApp = appWith(port, viewer);
+    expect(
+      (await viewerApp.inject({ method: 'POST', url, payload: { step: 'implement', attempt: 2 } }))
+        .statusCode,
+    ).toBe(403);
+    await viewerApp.close();
+
+    const refused = appWith(
+      fakePort({
+        retryAttemptCommit: () =>
+          Promise.reject(new WorkflowError('WORKFLOW_POSITION_INVALID', 'Nothing to retry.')),
+      }).port,
+    );
+    const answer = await refused.inject({
+      method: 'POST',
+      url,
+      payload: { step: 'implement', attempt: 2 },
+    });
+    expect(answer.statusCode).toBe(409);
+    expect(answer.json()).toMatchObject({ code: 'WORKFLOW_POSITION_INVALID' });
+    await refused.close();
+  });
+
+  it('confirms an agent’s result as the owner, with its request id and what it was shown', async () => {
+    const { port, calls } = fakePort();
+    const app = appWith(port);
+    const url = `/api/specs/${SPEC}/workflow/confirmation/confirm`;
+    const payload = {
+      requestId: REQUEST_ID,
+      step: 'review',
+      attempt: 1,
+      confirmsDigest: 'd'.repeat(64),
+    };
+
+    const response = await app.inject({ method: 'POST', url, payload });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      transition: 'approved',
+      postActions: [{ action: 'commit-execution-state', status: 'completed' }],
+    });
+    expect(calls.last).toMatchObject({
+      subject: subjectSpec,
+      ...payload,
+      actor: { class: 'human', details: { trust: 'authenticated' } },
+    });
+    // No request id, no digest of what was shown, or an actor in the body, is refused before the Engine.
+    for (const body of [
+      { step: 'review', attempt: 1, confirmsDigest: 'd'.repeat(64) },
+      { requestId: REQUEST_ID, step: 'review', attempt: 1 },
+      { ...payload, actor: { class: 'agent' } },
+    ]) {
+      expect((await app.inject({ method: 'POST', url, payload: body })).statusCode).toBe(400);
+    }
+
+    await app.close();
+    const viewerApp = appWith(port, viewer);
+    expect((await viewerApp.inject({ method: 'POST', url, payload })).statusCode).toBe(403);
+    await viewerApp.close();
+  });
+
+  it('rejects an agent’s result with the owner’s feedback; empty feedback is refused', async () => {
+    const { port, calls } = fakePort();
+    const app = appWith(port);
+    const url = `/api/specs/${SPEC}/tasks/t1/workflow/confirmation/reject`;
+    const payload = {
+      requestId: REQUEST_ID,
+      step: 'implement',
+      attempt: 2,
+      feedback: 'Add tests.',
+    };
+
+    const response = await app.inject({ method: 'POST', url, payload });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ position: { state: 'ready', step: 'review' } });
+    expect(calls.last).toMatchObject({
+      subject: { kind: 'task', specId: SPEC, taskId: 't1' },
+      feedback: 'Add tests.',
+      requestId: REQUEST_ID,
+      actor: { class: 'human' },
+    });
+    expect(
+      (await app.inject({ method: 'POST', url, payload: { ...payload, feedback: '' } })).statusCode,
+    ).toBe(400);
+    await app.close();
+
+    const refused = appWith(
+      fakePort({
+        reject: () =>
+          Promise.reject(new WorkflowError('WORKFLOW_ATTEMPT_MISMATCH', 'Decided already.')),
+      }).port,
+    );
+    const answer = await refused.inject({ method: 'POST', url, payload });
+    expect(answer.statusCode).toBe(409);
+    expect(answer.json()).toMatchObject({ code: 'WORKFLOW_ATTEMPT_MISMATCH' });
+    await refused.close();
+  });
+
   it('answers a refused abandon with 409 and the blockers', async () => {
     const blockers = [
       { kind: 'pending-execution-change' as const, subjectIds: [SPEC], message: 'Retry.' },
@@ -448,6 +703,83 @@ describe('workflow action routes', () => {
     });
   });
 
+  // Before: a document refusal of the workflow state's commit admission was no workflow refusal, so
+  // it answered 500 INTERNAL_ERROR. Each is now a stable refusal with what it met.
+  it.each([
+    [
+      new SpecificationBusyError('An agent Session Turn (Session s-1) holds the claim.', {
+        cause: 'agent-turn',
+        sessionId: 's-1',
+      }),
+      409,
+      'WORKFLOW_SPECIFICATION_BUSY',
+      { cause: 'agent-turn', sessionId: 's-1' },
+    ],
+    [
+      new DocumentError('SPEC_BUSY', 'A batch is being committed.', {
+        reason: 'busy',
+        cause: 'commit-in-progress',
+      }),
+      409,
+      'WORKFLOW_SPECIFICATION_BUSY',
+      { cause: 'commit-in-progress' },
+    ],
+    // Fails closed: a busy cause the contract does not know is still busy.
+    [
+      new DocumentError('SPEC_BUSY', 'Busy.', { reason: 'busy', cause: 'something-new' }),
+      409,
+      'WORKFLOW_SPECIFICATION_BUSY',
+      { cause: 'other' },
+    ],
+    [
+      new DocumentError('BRANCH_PROTECTED', 'The branch is protected.', {
+        reason: 'branch-protected',
+      }),
+      409,
+      'WORKFLOW_COMMIT_REFUSED',
+      { commit: { code: 'BRANCH_PROTECTED', reason: 'branch-protected' } },
+    ],
+    [
+      new DocumentError('COMMIT_BLOCKED', 'Git is not available.', {
+        reason: 'commit-blocked',
+        blockedBy: 'git-unavailable',
+      }),
+      409,
+      'WORKFLOW_COMMIT_REFUSED',
+      {
+        commit: { code: 'COMMIT_BLOCKED', reason: 'commit-blocked', blockedBy: 'git-unavailable' },
+      },
+    ],
+    [
+      new DocumentError('DOCUMENT_UNCOMMITTED_LIMIT', 'Too many uncommitted paths.'),
+      409,
+      'WORKFLOW_COMMIT_REFUSED',
+      { commit: { code: 'DOCUMENT_UNCOMMITTED_LIMIT' } },
+    ],
+    [new DocumentError('SPEC_SOURCE_UNAVAILABLE', 'Gone.'), 503, 'WORKFLOW_UNAVAILABLE', undefined],
+  ] as const)('answers %s with %i %s', async (error, status, code, details) => {
+    const { port } = fakePort({ start: () => Promise.reject(error) });
+    const app = appWith(port);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/specs/${SPEC}/tasks/build/workflow/start`,
+      payload: { expectedWorkflowRevision: 'r'.repeat(64) },
+    });
+
+    expect(response.statusCode).toBe(status);
+    expect(response.json()).toEqual({
+      error: code,
+      code,
+      message:
+        code === 'WORKFLOW_UNAVAILABLE'
+          ? 'The Specification source is unavailable.'
+          : error.message,
+      ...(details ? { details } : {}),
+    });
+    await app.close();
+  });
+
   it('maps a refusal of the Engine to its status; a defect is not a refusal', async () => {
     const { port } = fakePort({
       actions: () =>
@@ -513,16 +845,46 @@ describe('workflow refusals', () => {
     expect(failure).toMatchObject({ status: 503, body: { code: 'CONTROL_LOCK_CORRUPT' } });
   });
 
+  it('names the paths of an agent step execution attribution refusal', () => {
+    const failure = workflowFailure(
+      new AttributionRefusalError('WORKFLOW_UNDECLARED_CHANGES', 'Declare them.', {
+        paths: ['src/a.ts'],
+        count: 1,
+        undeclared: ['src/a.ts'],
+        unchanged: [],
+      }),
+    );
+
+    expect(failure).toEqual({
+      status: 409,
+      body: {
+        error: 'WORKFLOW_UNDECLARED_CHANGES',
+        code: 'WORKFLOW_UNDECLARED_CHANGES',
+        message: 'Declare them.',
+        details: {
+          attribution: { paths: ['src/a.ts'], count: 1, undeclared: ['src/a.ts'], unchanged: [] },
+        },
+      },
+    });
+  });
+
   it('knows exactly the codes of the Engine, plus its own', () => {
     expect([...WORKFLOW_ERROR_CODES].sort()).toEqual(
       [
         ...ENGINE_ERROR_CODES,
+        'WORKFLOW_AGENT_UNAVAILABLE',
         'WORKFLOW_UNAVAILABLE',
+        'WORKFLOW_COMMIT_REFUSED',
         'CONTROL_LOCK_BUSY',
+        'CONTROL_LOCK_RECOVERY_REQUIRED',
         'CONTROL_LOCK_CORRUPT',
         'CONTROL_LOCK_OWNERSHIP_LOST',
         'CONTROL_LOCK_INVALID_HOME',
       ].sort(),
     );
+  });
+
+  it('knows exactly the busy causes of the Engine', () => {
+    expect([...SPECIFICATION_BUSY_CAUSES]).toEqual([...ENGINE_BUSY_CAUSES]);
   });
 });

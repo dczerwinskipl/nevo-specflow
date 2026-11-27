@@ -142,3 +142,50 @@ export function namedTaskIds(attention: readonly AttentionItem[]): Set<string> {
 
   return ids;
 }
+
+/** The Task ids the structured facts of an attention item name. */
+export function itemTaskIds(
+  item: Pick<AttentionItem, 'taskIds' | 'blocking' | 'blocks'>,
+): string[] {
+  return [
+    ...(item.taskIds ?? []),
+    ...(item.blocking ?? []).map((task) => task.taskId),
+    ...(item.blocks && 'taskIds' in item.blocks ? item.blocks.taskIds : []),
+  ];
+}
+
+/**
+ * The titles of the Tasks that `entries` and `attention` name in their structured facts (a row's
+ * dependencies and dependency wait, an item's `taskIds`, `blocking` and `blocks`), from `rows`, the
+ * whole board: a client words its blocker and dependency lines from the facts with these titles,
+ * also for a Task it does not list. Broken Tasks without a readable title are left out; nothing
+ * when no titled Task is named.
+ */
+export function namedTaskTitles(
+  rows: readonly TaskListEntry[],
+  entries: readonly TaskListEntry[],
+  attention: readonly AttentionItem[] = [],
+): { taskTitles?: Record<string, string> } {
+  const ids = new Set<string>();
+  for (const entry of entries) {
+    if (isReadable(entry)) {
+      entry.dependsOn.forEach((id) => ids.add(id));
+      entry.facts.dependencyWait?.waitingFor.forEach((id) => ids.add(id));
+      entry.facts.dependencyWait?.unsatisfiable.forEach((id) => ids.add(id));
+    }
+
+    if (entry.attention) {
+      itemTaskIds(entry.attention).forEach((id) => ids.add(id));
+    }
+  }
+
+  attention.forEach((item) => itemTaskIds(item).forEach((id) => ids.add(id)));
+  const titles: Record<string, string> = {};
+  for (const row of rows) {
+    if (ids.has(row.id) && row.title !== undefined) {
+      titles[row.id] = row.title;
+    }
+  }
+
+  return Object.keys(titles).length > 0 ? { taskTitles: titles } : {};
+}

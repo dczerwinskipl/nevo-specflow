@@ -177,7 +177,6 @@ async function handBuilt(root: string, slug: string, location: 'active' | 'archi
         { id: 'data', path: 'data.bin', type: 'notes' },
       ],
       folders: [],
-      status: 'draft',
       location,
       priority: 10,
       created: '2026-10-27',

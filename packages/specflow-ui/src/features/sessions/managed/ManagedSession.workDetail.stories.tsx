@@ -151,7 +151,7 @@ export const WorkHistoryToolActionDetail: Story = {
 
     // JSON parameters numbered; the Read tool's own numbered output verbatim, no second gutter.
     const input = await within(region).findByRole('textbox', { name: 'Parametry' });
-    const output = await within(region).findByRole('textbox', { name: 'Odpowiedź narzędzia' });
+    const output = await within(region).findByRole('textbox', { name: 'Wynik' });
     await expect(input.closest('.cm-editor')!.querySelector('.cm-lineNumbers')).not.toBeNull();
     await expect(output.closest('.cm-editor')!.querySelector('.cm-gutters')).toBeNull();
     await expect(output.querySelector('.cm-line')!.textContent).toBe(
@@ -244,5 +244,41 @@ export const ToolActionDetailMobile: Story = {
         ).toBeNull(),
       );
     }
+  },
+};
+
+/**
+ * Owner, PR 169: the "Show every operation" toggle in the Work header is the icon with its words on
+ * a wide (desktop) header and the icon alone on a phone, a neutral (ghost) control, never the filled
+ * primary look; it stays in the header, with no segmented switch in the content. Checked on the
+ * composed screen, where Work history opens as a tab beside Context at a real desktop width (a
+ * lone panel of the Work history harness stays at the 330 px minimum, below the header's
+ * breakpoint for words).
+ */
+export const DetailedToggleByWidth: Story = {
+  tags: ['contract'],
+  globals: WIDE_VIEWPORT,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toggle = () => canvas.getByRole('button', { name: 'Pokaż każdą operację' });
+
+    await settleViewport(1440, 900);
+    await openTurnWork(canvasElement, 2);
+    await waitFor(() => expect(toggle()).toBeVisible());
+    // Desktop: the words are shown beside the icon, and the control is not the primary fill.
+    await expect(toggle()).toHaveTextContent('Pokaż każdą operację');
+    await expect(toggle()).toHaveAttribute('aria-pressed', 'false');
+    await expect(toggle().className).not.toContain('bg-action-primary');
+    await userEvent.click(toggle());
+    await waitFor(() => expect(toggle()).toHaveAttribute('aria-pressed', 'true'));
+    await userEvent.click(toggle());
+
+    await settleViewport(375, 812);
+    // Phone: the icon alone, named for assistive technology by the same words.
+    await waitFor(() => expect(toggle()).toBeVisible());
+    await expect(toggle()).not.toHaveTextContent('Pokaż każdą operację');
+    const bounds = toggle().getBoundingClientRect();
+    await expect(bounds.right).toBeLessThanOrEqual(375);
+    await expect(bounds.width).toBeLessThanOrEqual(40);
   },
 };

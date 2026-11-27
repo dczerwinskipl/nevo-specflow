@@ -52,9 +52,23 @@ sessions:
 
 Disabled Claude (not allowed by the project, or turned off on this machine) inspects no login and
 launches no process. An unsupported installation leaves the
-provider unavailable; Runtime and other providers stay usable. Startup warms discovery; ordinary
-snapshots launch no subprocess. Discovery and caching follow
-[provider compatibility](compatibility.md).
+provider unavailable; Runtime and other providers stay usable. Ordinary snapshots launch no
+subprocess. Discovery and caching follow [provider compatibility](compatibility.md), with this probe
+policy:
+
+- **Once at start.** The Runtime starts the first discovery when it starts, in the background; it
+  does not wait for it. Only a catalogue read (`GET /api/session-providers`) that comes before that
+  discovery ended waits for it.
+- **Every later read answers at once** with the last known descriptor, never waiting for a probe.
+  At most every 30 s a read starts a background check of the installation (the executable's hash is
+  cached by its real path, size and modification time, so an unchanged ~300 MB binary is hashed
+  once; the login fingerprint is derived off the event loop). The CLI probes run again, in the
+  background, only when that identity changed (a new or updated binary, another login or policy),
+  when the last probe is older than 15 minutes, or when the descriptor was invalidated (a Turn's
+  launch found the login rejected, the installation changed or the protocol unsupported).
+- **Check again** (`?recheck=true`, the owner's explicit recheck) probes now and is awaited.
+- **A Turn never runs on a stale answer**: validation and launch read the installation again and
+  probe again first when its identity differs from the one probed.
 
 ## Supported installation and login
 
@@ -84,11 +98,40 @@ currently verified login is protected.
 | `acceptEdits` | `acceptEdits` | `workspace-write` | Read, Glob, Grep, AskUserQuestion, Edit, Write, Bash |
 | `auto`        | `auto`        | `workspace-write` | as above                                             |
 | `manual`      | `default`     | `workspace-write` | as above                                             |
-| `dontAsk`     | `dontAsk`     | `workspace-write` | as above (Bash is refused rather than asked)         |
+| `dontAsk`     | `dontAsk`     | `workspace-write` | as above (what would ask is refused)                 |
 | `plan`        | `plan`        | `read-only`       | Read, Glob, Grep, AskUserQuestion                    |
 
-`acceptEdits` is the default writable mode when managed execution is available; each mode is probed
-and can be unavailable independently. `bypassPermissions` is not admitted. Model IDs, titles and
+`acceptEdits` is the default writable mode when managed execution is available: a writable Turn
+without a native mode runs in it. Agent step execution creates its fresh Session in `auto` when the
+catalogue lists `auto` ready and authorized for the chosen model (`providerModes[].modelIds`), and
+in `acceptEdits` otherwise; the agent option names it as `workMode`. Claude is launched with a PATH
+from which the Runtime drops empty and relative entries (the user's PATH is not changed), so the
+host-side approval of allowlisted product CLI calls is judged on that PATH. That approval fails
+closed (ADR 0026, D20): it is bound to the identity of the file a bare `nevo-specflow` resolves to
+at Turn start (canonical real path, size, modification time, sha256), re-verified at each decision,
+and withheld when the executable is missing, unreadable or inside the workspace, or when trust
+information is missing. **The native mode decides each Bash call** (ADR 0026 D20, owner decision
+2026-11-26, superseding "Bash always asks"): SpecFlow adds no Bash rule, so `auto` runs Claude's
+classifier (it reports a slow check as `system/permission_check_status`), `manual` and `acceptEdits`
+run Claude's read-only commands and ask about the rest, and only what Claude itself asks reaches
+the host. Measured with 2.1.312 and these arguments, twelve typical commands asked 0 times in
+`auto`, 4 in `acceptEdits`, 5 in `manual` (12 in `auto` with the former `ask: [Bash]`). Of
+those requests the host approves a command made only of allowlisted
+`nevo-specflow` calls (joined by `&&`, `;`, `|` or new lines, optionally after `cd <absolute folder
+in the worktree>`, literal quoted words, output redirections only into `.nevo/local/scratch/` or
+`/dev/null`, `--…-file` values and input files inside the worktree, relative paths only after that
+absolute `cd`, quoted here-documents); the command is parsed, not pattern-matched, and anything outside that subset goes to
+the owner (ADR 0026, D20). Edit and Write inside the worktree never reach the host in `acceptEdits`
+or `auto`: Claude's own check allows them (dogfood rounds 2 and 3: 0 of 472 owner prompts were file
+edits); Claude refuses file tools outside the worktree itself. SpecFlow installs no permission
+hook (`disableAllHooks: true`). A Bash command above
+7000 bytes is denied with its size, the limit and `--content-file` as the remedy. Each mode is probed and can be unavailable
+independently. When native initialization reports `supportsAutoMode` (Claude 2.1.312 and later),
+`auto` offers only the models it marks; Claude would run any other model in `default`, so such a
+choice is refused before launch (`MODEL_UNSUPPORTED` with `details.reason: mode-model-unsupported`),
+and the catalogue lists the models `auto` runs as its `providerModes[].modelIds` so a client offers
+no such pair. An older CLI that reports the field for no model keeps every model in `auto`; a silent
+fallback to `default` is still refused by the `system/status` frame check. `bypassPermissions` is not admitted. Model IDs, titles and
 per-model effort lists come from native initialization, never a static list; an effort outside the
 model's list is rejected before dispatch.
 
@@ -96,11 +139,15 @@ model's list is rejected before dispatch.
 
 - Safe/restricted mode, the selected permission mode, the explicit tool inventory above, strict
   empty MCP, no setting sources, disabled hooks and slash commands, permission prompts over stdio.
-- Fixed settings: `permissions.ask: [Bash]` (every Bash call requires a host request in
-  `acceptEdits`, `auto` and `manual`) and `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1`.
+- Fixed settings: no Bash rule of SpecFlow's own (the native mode decides; no `Bash(...)` rule is
+  ever forwarded, as allow or ask), only an attempt Turn's scoped read-tool `allow` rules, and
+  `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1`.
 - User frames are `client_composed: true`, suppressing path-mention and slash-command
   interpretation.
 - Native `system/init` must report the expected version, cwd, mode, tool inventory and no MCP.
+  A `system/status` frame (also before init) must report the selected mode when it reports one;
+  a silent fallback to another mode is refused. A refusal names the failing field and Claude
+  version; it becomes the provider's unavailable reason and is appended to the Turn's loss message.
   Only the builtin `agents-md`, `telemetry` and `plugin-authoring` plugins with exact builtin
   source are accepted; any other plugin is refused. The telemetry plugin can perform auxiliary
   network activity; the guarantee concerns restricted workspace effects, and native private
@@ -111,7 +158,9 @@ model's list is rejected before dispatch.
 Before launch one store transaction reserves an independent native UUID, workspace and account scope
 with the Turn. A fenced dispatch-intent transaction precedes the first user frame. Correlation must
 match the reserved ID. Confirmed contexts resume only in the same workspace and account; an
-unconfirmed possible dispatch is never replayed as a new conversation. Native IDs and account
+unconfirmed possible dispatch is never resumed or rebound. Once its Turn has settled (no process of
+it runs on), the next Turn starts a new native context under a new reservation instead of refusing
+the Session for good. Native IDs and account
 binding are not exposed.
 
 ## Questions and permissions
@@ -138,8 +187,8 @@ Native `api_error` results (including HTTP 429) become safe structured failures;
 is excluded. Loss without an authoritative outcome stays unknown. Provider-supplied thinking text is
 reasoning content; numeric `system/thinking_tokens` frames, foreground `tool_progress` metadata
 (including the 30-second heartbeat whose parent is the open tool call itself) and
-`system/permission_denied` for an open tool call (its error tool result follows) are validated and
-ignored, and final native usage remains authoritative.
+`system/permission_denied` for an open tool call (its error tool result follows) and the
+`system/post_turn_summary` Claude sends before its result (2.1.312) are validated and ignored, and final native usage remains authoritative.
 
 ## Limits
 

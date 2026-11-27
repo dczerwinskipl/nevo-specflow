@@ -54,6 +54,12 @@ order). The title opens `/sessions/:sessionId`. Rows show no ids; mode, effort a
 | facts   | In this order, each omitted when absent: relative `updatedAt`; the agent fact; the associated Task count (**1 task**, **3 tasks**), only when the association has Tasks |
 | status  | The Session status below; nothing for a ready Session. No archived label under **Archive**                                                                              |
 
+- **Agent step Sessions.** A Session the Runtime reports with `agentStep` (an agent step
+  execution) is named by its step, with the Task's title for a Task's step ("Review the
+  breakdown", "Implementation · Token exchange"), and its facts read "Attempt 1 · Opus 5.5 · 10
+  hours ago" (attempt, agent, age; no Task count, the Task is in the title). A title the owner gave
+  the Session wins; the Runtime's own "<step> · attempt <n>" and the old "Agent step execution" are
+  not the owner's. The Overview's Sessions, this list and the Session's header use the same title.
 - **Agent fact.** Visible text: the model title, else the raw model id, else the provider title,
   else the provider id, capped at 16 rem with an ellipsis. Assistive technology reads **{provider},
   model {model}** (the provider alone without a model), so the provider shown only by the decorative
@@ -65,9 +71,10 @@ order). The title opens `/sessions/:sessionId`. Rows show no ids; mode, effort a
   one line (ellipsis) and puts the status after the facts as the last inline item; a narrower row
   wraps the title and facts and puts the status on its own line. A line breaks between facts, never
   inside the age or the Task count, and never starts with a separator.
-- **Mark placement.** The mark is on the title's first line, at the top of the row at every row
-  height (`InformationList.Leading align="first-line"`), never centred on a multi-line row. It does not
-  capture clicks, so a click on it opens the Session like the rest of the row.
+- **Mark placement.** The mark is centred on the row, against the title and the facts line
+  (`InformationList.Leading align="center"`; owner, 2026-11-26), the same in the Overview's
+  Sessions section and the Overview's attention rows. It does not capture clicks, so a click on it
+  opens the Session like the rest of the row.
 
 ### Status: effective Session readiness only
 
@@ -75,13 +82,13 @@ The row status comes from the row's effective `readiness` alone (the single-Sess
 projection, applied by the list read). `activeTurn.state` adds no row state and Engine attempt facts
 never colour a row ([AI session UX](ai-session-ux.md#session-status-ownership-accepted-2026-11-08)).
 
-| `readiness`              | Status                           | Tone and icon                    |
-| ------------------------ | -------------------------------- | -------------------------------- |
-| `ready`                  | none                             | none                             |
-| `busy`                   | **Active**                       | info, spinning `loader` icon     |
-| `requiresAttention`      | **Requires attention**           | attention, `triangle-alert` icon |
-| `authenticationRequired` | **{provider}: sign-in required** | muted, no icon                   |
-| `unavailable`            | **Session state unknown**        | muted, no icon                   |
+| `readiness`              | Status                                                                               | Tone and icon                    |
+| ------------------------ | ------------------------------------------------------------------------------------ | -------------------------------- |
+| `ready`                  | none                                                                                 | none                             |
+| `busy`                   | **Active**                                                                           | info, spinning `loader` icon     |
+| `requiresAttention`      | **Requires attention**                                                               | attention, `triangle-alert` icon |
+| `authenticationRequired` | **{provider}: sign-in required**                                                     | muted, no icon                   |
+| `unavailable`            | **SpecFlow has not confirmed that {provider} can run it; open the session to check** | muted, no icon                   |
 
 A sign-in is provider-wide and resolved in the provider's CLI, so it names the provider and stays
 muted. Status is always text; colour and icon only repeat it.

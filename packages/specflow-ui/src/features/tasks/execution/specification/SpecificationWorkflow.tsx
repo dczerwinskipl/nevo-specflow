@@ -8,7 +8,7 @@ import { useRuntimeMode } from '../../../../app/useRuntimeMode';
 import { useSpecificationWorkspace } from '../../../specs/read-model';
 import { NewTaskDialog } from '../../authoring/NewTaskDialog';
 import { useSpecificationActions } from '../../read-model';
-import { goToHeading } from '../InlineAction';
+import { goToHeading } from '../goToHeading';
 import { AbandonSpecificationDialog } from './AbandonSpecificationDialog';
 import type { BlockerTask } from './BlockerGroups';
 import { CloseSpecificationDialog } from './CloseSpecificationDialog';
@@ -20,6 +20,10 @@ type WorkflowDialog = ExitDialog | 'new-task';
 interface SpecificationWorkflowValue {
   readonly specId: string;
   readonly projection: WorkflowActionProjection | undefined;
+  /** The last read of the projection failed (kept `projection` is then the last one read). */
+  readonly readFailed: boolean;
+  readonly retryRead: () => void;
+  readonly retrying: boolean;
   readonly openExit: (dialog: ExitDialog) => void;
   /** Opens the Tasks page (`/specs/:specId/tasks`). */
   readonly openTasks: () => void;
@@ -66,7 +70,8 @@ function ProjectSpecificationWorkflow({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const collection = useApplicationCollection();
-  const projection = useSpecificationActions(specId).data;
+  const actions = useSpecificationActions(specId);
+  const projection = actions.data;
   const workspace = useSpecificationWorkspace(specId).data;
   const [dialog, setDialog] = useState<WorkflowDialog>();
   const all = (workspace?.taskGroups ?? []).flatMap((group) => group.tasks);
@@ -96,6 +101,9 @@ function ProjectSpecificationWorkflow({
       value={{
         specId,
         projection,
+        readFailed: actions.isError,
+        retryRead: () => void actions.refetch(),
+        retrying: actions.isFetching,
         openExit: setDialog,
         openTasks,
         ...(canCreateTask ? { openNewTask: () => setDialog('new-task') } : {}),

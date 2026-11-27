@@ -4,16 +4,22 @@ import type {
   AttentionItem,
   ActionProjection,
   CloseBlocker,
+  ConfirmAgentResultResult,
   ContinuationDecision,
   FinishStepResult,
   GateStatus,
-  ReturnToStepResult,
+  PostActionResult,
+  RejectAgentResultResult,
+  RetryAgentAttemptCommitResult,
+  OwnerReturnResult,
   RunPosition,
   SpecificationExitActions,
   StartBlocker,
   StartResult,
   StartableStep,
+  StepContext,
   WorkflowSubject,
+  TakeOverAgentAttemptResult,
 } from '@nevo/specflow-engine';
 
 /** A step as a person reads it: `Title (id)`, or the id alone when there is no title. */
@@ -34,6 +40,8 @@ export function positionLine(position: RunPosition): string {
       return `active on "${position.step}" (attempt ${position.attempt})`;
     case 'ready':
       return `ready to start "${position.step}"`;
+    case 'awaiting-confirmation':
+      return `waiting for the owner to confirm the result of "${position.step}" (attempt ${position.attempt})`;
     case 'terminal':
       return `ended: ${position.outcome}`;
   }
@@ -113,6 +121,32 @@ function positionLines(position: ActionPosition): string[] {
         `State: active on ${named(position.step)} (attempt ${position.attempt.number})`,
         `Worked by: ${position.attempt.actor.class}`,
       ];
+    case 'awaiting-confirmation': {
+      const { proposal, confirms } = position;
+      const transition = proposal.transition;
+
+      return [
+        `State: waiting for your confirmation of ${named(position.step)} (attempt ${position.attempt.number})`,
+        `The agent proposes: ${transition.label ?? transition.result ?? transition.id}` +
+          (transition.targetTitle !== undefined ? `, to ${transition.targetTitle}` : ''),
+        ...(proposal.feedback !== undefined ? [`Feedback: ${proposal.feedback}`] : []),
+        ...(confirms.approvesDrafts !== undefined
+          ? [
+              `Confirming approves ${String(confirms.approvesDrafts.length)} draft Tasks` +
+                (confirms.approvesDrafts.length > 0
+                  ? `: ${confirms.approvesDrafts.join(', ')}`
+                  : ''),
+            ]
+          : []),
+        ...(confirms.taskDecisions ?? []).map(
+          (decision) =>
+            `Confirming sets Task ${decision.taskId} ${decision.status}` +
+            (decision.reason !== undefined ? ` (${decision.reason})` : ''),
+        ),
+        ...(transition.gates ?? []).map((gate) => `  ${gateLine(gate)}`),
+      ];
+    }
+
     case 'waiting':
       return [
         `State: waiting on ${named(position.step)} for ${position.blockingTasks.count} of ${position.totalTasks} Tasks`,
@@ -158,7 +192,7 @@ export function actionLines(projection: ActionProjection): string[] {
   }
 
   const { start, finish, return: back } = projection.actions;
-  if (start) {
+  if (start && !start.unavailable) {
     lines.push(
       `Action: start "${start.step}"` +
         (start.expectedWorkflowRevision
@@ -167,7 +201,7 @@ export function actionLines(projection: ActionProjection): string[] {
     );
   }
 
-  if (finish) {
+  if (finish && !finish.unavailable) {
     for (const transition of finish.transitions) {
       lines.push(
         `Action: finish "${finish.step}" attempt ${finish.attempt}` +
@@ -190,7 +224,38 @@ export function actionLines(projection: ActionProjection): string[] {
     }
   }
 
-  for (const target of back?.targets ?? []) {
+  const { confirm, reject } = projection.actions;
+  // Every workflow write of the Specification waits for an agent attempt's own commit: one line
+  // says so, naming the attempt and its Retry commit; no action that writes is listed meanwhile.
+  const waiting = projection.attemptCommit;
+  if (waiting) {
+    const { subject, step, attempt } = waiting;
+    lines.push(
+      `Nothing of this Specification's workflow changes until the commit of the agent's work in ` +
+        `${step}#${String(attempt)}${subject.taskId !== undefined ? ` of Task ${subject.taskId}` : ''} ` +
+        `ran (${waiting.reason}${waiting.code !== undefined ? `, ${waiting.code}` : ''}): ` +
+        (waiting.reason === 'attempt-commit-failed'
+          ? 'it failed; fix the cause, then retry it. '
+          : 'it has not run (an interruption); retry it if it does not end by itself. ') +
+        `Action: retry-commit ${subject.specId}${subject.taskId !== undefined ? ` --task ${subject.taskId}` : ''} ` +
+        `--step ${step} --attempt ${String(attempt)}`,
+    );
+  }
+
+  if (confirm && !confirm.unavailable) {
+    // Confirm applies exactly what these lines show: the digest of it goes with the command.
+    const digest =
+      projection.position.kind === 'awaiting-confirmation'
+        ? ` --confirms-digest ${projection.position.confirmsDigest}`
+        : '';
+    lines.push(`Action: confirm "${confirm.step}" attempt ${confirm.attempt}${digest}`);
+  }
+
+  if (reject && !reject.unavailable) {
+    lines.push(`Action: reject "${reject.step}" attempt ${reject.attempt} --feedback <text>`);
+  }
+
+  for (const target of back?.unavailable ? [] : (back?.targets ?? [])) {
     lines.push(
       `Action: return to ${named({ id: target.step, title: target.title })}${target.feedback === 'required' ? ' (reason required)' : ''}`,
     );
@@ -273,6 +338,46 @@ export function startLines(result: StartResult): string[] {
   return lines;
 }
 
+/** `workflow context`: what the active attempt works from; references by digest, never content. */
+export function contextLines(context: StepContext): string[] {
+  const lines = [
+    `Context: ${subjectLabel(context.subject)}, step ${named(context.step)} (attempt ${context.attempt})`,
+  ];
+  const agent = context.agent;
+  if (!agent) {
+    return lines;
+  }
+
+  lines.push(`Documents (${String(agent.documents.length)}):`);
+  for (const document of agent.documents) {
+    lines.push(
+      `  ${document.id} [${document.type}] ${document.path}${document.templateOnly ? ' (template only)' : ''}`,
+    );
+  }
+
+  lines.push(`Document types you may register (documents add --type <id>):`);
+  for (const type of agent.documentTypes) {
+    lines.push(
+      `  ${type.id}: ${type.title}. Use when ${type.useWhen}${type.defaultFilename ? ` (default ${type.defaultFilename})` : ''}`,
+    );
+  }
+
+  if (agent.taskContext) {
+    lines.push(`Task context (digest ${agent.taskContext.digest}):`);
+    for (const entry of agent.taskContext.entries) {
+      lines.push(
+        entry.kind === 'instructions'
+          ? `  instructions${entry.required ? '' : ' (optional)'}: ${entry.text}`
+          : `  ${entry.kind} ${entry.ref}${entry.path !== undefined ? ` -> ${entry.path}` : ''}` +
+              `${entry.sha256 !== undefined ? ` sha256:${entry.sha256.slice(0, 12)} ${String(entry.bytes)} bytes` : ''}` +
+              `${entry.required ? '' : ' (optional)'}${entry.missing ? ' (missing)' : ''}`,
+      );
+    }
+  }
+
+  return lines;
+}
+
 export function finishLines(result: FinishStepResult): string[] {
   return [
     `${result.replayed ? 'Already finished' : 'Finished'}: ${subjectLabel(result.subject)} via "${result.transition}"`,
@@ -282,28 +387,100 @@ export function finishLines(result: FinishStepResult): string[] {
     ...(result.specification ? [`Specification: ${continuationLine(result.specification)}`] : []),
     // The finish is recorded either way; the commit of the state reports on its own line: a failure,
     // or the state it left uncommitted because someone edited it since the Engine wrote it.
-    ...(result.postActions ?? []).flatMap((post) => {
-      if (post.status === 'failed') {
-        return [`Post action ${post.action} failed: ${post.code} ${post.message}`];
-      }
-
-      if (post.status === 'completed' && post.held) {
-        return [
-          `Workflow state left uncommitted (${post.held.paths.length} files), edited outside the ` +
-            `Engine since it wrote them: ${post.held.edited.join(', ')}. Commit them with Git; ` +
-            'Close takes them otherwise.',
-        ];
-      }
-
-      return [];
-    }),
+    ...postActionLines(result.postActions ?? []),
   ];
 }
 
-export function returnLines(result: ReturnToStepResult): string[] {
+/** What the post actions of a finish (or a Retry commit) did, one line each that says something. */
+export function postActionLines(postActions: readonly PostActionResult[]): string[] {
+  return postActions.flatMap((post) => {
+    if (post.status === 'failed') {
+      return [`Post action ${post.action} failed: ${post.code} ${post.message}`];
+    }
+
+    if (post.action === 'attempt-commit') {
+      return post.status === 'completed' && post.commit?.sha !== undefined
+        ? [
+            `Committed the agent's attempt: ${post.commit.sha} (${String(post.commit.paths.length)} files)`,
+          ]
+        : [
+            `Nothing of the agent's attempt to commit (${post.status === 'skipped' ? post.reason : 'every file equals HEAD'})`,
+          ];
+    }
+
+    if (post.status === 'completed' && post.held) {
+      return [
+        `Workflow state left uncommitted (${post.held.paths.length} files), edited outside the ` +
+          `Engine since it wrote them: ${post.held.edited.join(', ')}. Commit them with Git; ` +
+          'Close takes them otherwise.',
+      ];
+    }
+
+    return [];
+  });
+}
+
+/** `workflow retry-commit`: the attempt and what its commit did now. */
+export function retryCommitLines(
+  subject: WorkflowSubject,
+  step: string,
+  attempt: number,
+  result: RetryAgentAttemptCommitResult,
+): string[] {
+  return [
+    `Retried the commit of ${subjectLabel(subject)} ${step}#${String(attempt)}`,
+    ...postActionLines(result.postActions),
+  ];
+}
+
+/** `workflow confirm`: the agent's result applied as the owner's, what follows and what the owner's commit did. */
+export function confirmLines(result: ConfirmAgentResultResult): string[] {
+  return [
+    `${result.replayed ? 'Already confirmed' : 'Confirmed'}: ${subjectLabel(result.subject)} via "${result.transition}"`,
+    `Position: ${positionLine(result.position)}`,
+    `Next: ${continuationLine(result.continuation)}`,
+    ...(result.specification ? [`Specification: ${continuationLine(result.specification)}`] : []),
+    ...postActionLines(result.postActions),
+  ];
+}
+
+/** `workflow reject`: back at the step, with the owner's feedback as its handoff. */
+export function rejectLines(result: RejectAgentResultResult): string[] {
+  return [
+    `${result.replayed ? 'Already rejected' : 'Rejected'}: ${subjectLabel(result.subject)}; the agent's work was committed with its attempt`,
+    `Position: ${positionLine(result.position)}`,
+    `Next: ${continuationLine(result.continuation)}`,
+    ...postActionLines(result.postActions),
+  ];
+}
+
+export function returnLines(result: OwnerReturnResult): string[] {
+  if (result.kind === 'return-requested') {
+    return [
+      `Return requested: ${subjectLabel(result.subject)} back to ${result.to}`,
+      `The agent's Turn of ${result.step}#${String(result.attempt)} (Session ${result.sessionId}) may still run; the return applies once it has stopped.`,
+      'Stop the agent from the Runtime (Stop) if it is still working.',
+    ];
+  }
+
   return [
     `Returned: ${subjectLabel(result.subject)}`,
     `Position: ${positionLine(result.position)}`,
     `Next: ${continuationLine(result.continuation)}`,
+    ...postActionLines(result.postActions ?? []),
+  ];
+}
+
+/**
+ * `workflow take-over`: the agent attempt that ended and the owner's attempt that started. Nothing
+ * the agent wrote was committed: Close lists what stays uncommitted.
+ */
+export function takeOverLines(result: TakeOverAgentAttemptResult): string[] {
+  const { takenOver, context } = result;
+
+  return [
+    `Took over: ${subjectLabel(result.subject)} ${takenOver.step}#${String(takenOver.attempt)} (the agent's attempt ended)`,
+    `Active: ${named(context.step)}, attempt ${String(context.attempt)} (yours)`,
+    "The agent's changes are kept and not committed; Close lists what is uncommitted.",
   ];
 }

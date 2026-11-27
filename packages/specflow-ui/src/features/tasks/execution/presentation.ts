@@ -1,4 +1,9 @@
 import type { TFunction } from 'i18next';
+import {
+  agentDisplayName,
+  type AgentTitleCatalogue,
+  type AgentNameSource,
+} from '../../../shared/agents/agentDisplayName';
 import type {
   GateStatus,
   OpenTask,
@@ -34,13 +39,49 @@ export function personLabel(t: TFunction, actorId: string, viewer: Viewer = {}):
   return actorId.replace(/^(local|user):/, '');
 }
 
-/** Who acted, as recorded: a person by {@link personLabel}, an agent by provider and model. */
-export function actorLabel(t: TFunction, actor: WorkflowActor, viewer: Viewer = {}): string {
+/** The titles a Session carries for what it ran, as the Runtime names them. */
+export interface SessionTitles {
+  readonly providerTitle?: string | undefined;
+  readonly modelTitle?: string | undefined;
+}
+
+/** Where an agent's name comes from ({@link agentDisplayName}): its Session, then the catalogue. */
+export interface AgentTitles {
+  readonly catalogue?: AgentTitleCatalogue | undefined;
+  readonly session?: ((sessionId: string) => SessionTitles | undefined) | undefined;
+}
+
+/**
+ * Who acted, as recorded: a person by {@link personLabel}, an agent by {@link agentDisplayName}
+ * (the titles its attempt recorded, else its Session's, else the catalogue's).
+ */
+export function actorLabel(
+  t: TFunction,
+  actor: WorkflowActor,
+  viewer: Viewer = {},
+  titles: AgentTitles = {},
+): string {
   if (actor.class === 'human') {
     return personLabel(t, actor.details.actorId, viewer);
   }
 
-  return [actor.details.provider, actor.details.model].filter(Boolean).join(' · ');
+  return agentDisplayName(agentOfActor(actor, titles));
+}
+
+/** An agent actor with the titles it is named by, for {@link agentDisplayName}. */
+export function agentOfActor(
+  actor: Extract<WorkflowActor, { class: 'agent' }>,
+  titles: AgentTitles = {},
+): AgentNameSource {
+  const session = actor.details.sessionId ? titles.session?.(actor.details.sessionId) : undefined;
+
+  return {
+    provider: actor.details.provider,
+    providerTitle: actor.details.providerTitle ?? session?.providerTitle,
+    model: actor.details.model,
+    modelTitle: actor.details.modelTitle ?? session?.modelTitle,
+    catalogue: titles.catalogue,
+  };
 }
 
 /** `needs-changes` -> `Needs changes`: the fallback for an id that has no label. */
@@ -101,6 +142,25 @@ export function formatWhen(
   }).format(date);
 }
 
+/**
+ * A span of time as the history shows it: "Nov 13, 12:52 PM – 1:15 PM" (the end carries its date
+ * only when it is another day).
+ */
+export function formatRange(t: TFunction, from: string, to: string, locale: string): string {
+  const start = formatWhen(t, from, locale);
+  const a = new Date(from);
+  const b = new Date(to);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
+    return start;
+  }
+
+  const end = sameDay(a, b)
+    ? new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(b)
+    : formatWhen(t, to, locale);
+
+  return `${start} – ${end}`;
+}
+
 export interface PreviewStep {
   readonly id: string;
   readonly title: string;
@@ -155,7 +215,9 @@ export function openTasksText(t: TFunction, tasks: readonly OpenTask[]): string 
 
 /** The step the position is about: the current step, else the one that starts next. */
 function positionStep(position: WorkflowActionProjection['position']) {
-  return position.kind === 'active' || position.kind === 'waiting'
+  return position.kind === 'active' ||
+    position.kind === 'waiting' ||
+    position.kind === 'awaiting-confirmation'
     ? position.step
     : position.kind === 'terminal'
       ? undefined
@@ -335,10 +397,78 @@ export function attemptLine(
 export interface StepTrack {
   readonly position: ProgressPosition;
   readonly total: number;
-  /** The visible label beside the track ("Step 4 of 7 · next: Review the breakdown"). */
+  /** The full position ("Step 4 of 7 · next: Review the breakdown"), the count's tooltip. */
   readonly label: string;
+  /** The short position beside the step's title ("Step 4 of 7", "7 steps", "All 7 steps"). */
+  readonly count: string;
   /** The track's accessible name ("Step 4 of 7: Break the solution down"). */
   readonly ariaLabel: string;
+}
+
+/**
+ * Where a run sits among its declared steps, as facts both screens have: at a step (`current`, with
+ * the next step's title when known), before the first start (`not-started`, the first step) or
+ * `completed`. The Overview's Now reads them from the outline, a Specifications list row from the
+ * list's workflow position.
+ */
+export type TrackFacts =
+  | {
+      readonly kind: 'current';
+      readonly position: number;
+      readonly total: number;
+      readonly title: string;
+      readonly next?: string;
+    }
+  | { readonly kind: 'not-started'; readonly total: number; readonly firstStep: string }
+  | { readonly kind: 'completed'; readonly total: number };
+
+/** The step track of {@link TrackFacts}: one wording for the Overview's Now and the list rows. */
+export function positionTrack(t: TFunction, facts: TrackFacts): StepTrack {
+  const { total } = facts;
+  switch (facts.kind) {
+    case 'current': {
+      const count = t('workflowExecution.now.progress', { position: facts.position, total });
+
+      return {
+        position: { state: 'current', step: facts.position },
+        total,
+        label:
+          facts.next !== undefined
+            ? t('workflowExecution.now.progressNext', {
+                position: facts.position,
+                total,
+                next: facts.next,
+              })
+            : count,
+        count,
+        ariaLabel: t('workflowExecution.now.track.current', {
+          position: facts.position,
+          total,
+          title: facts.title,
+        }),
+      };
+    }
+
+    case 'not-started':
+      return {
+        position: { state: 'not-started' },
+        total,
+        label: t('workflowExecution.now.firstStep', { title: facts.firstStep }),
+        count: t('workflowExecution.now.track.steps', { count: total }),
+        ariaLabel: t('workflowExecution.now.track.notStarted', { total, title: facts.firstStep }),
+      };
+    case 'completed': {
+      const label = t('workflowExecution.now.track.completed', { total });
+
+      return {
+        position: { state: 'completed' },
+        total,
+        label,
+        count: t('workflowExecution.now.track.allSteps', { count: total }),
+        ariaLabel: label,
+      };
+    }
+  }
 }
 
 /**
@@ -357,16 +487,13 @@ export function stepTrack(
 
   const total = outline.stepCount;
   if (outline.current) {
-    return {
-      position: { state: 'current', step: outline.current.position },
+    return positionTrack(t, {
+      kind: 'current',
+      position: outline.current.position,
       total,
-      label: progressLine(t, outline) ?? '',
-      ariaLabel: t('workflowExecution.now.track.current', {
-        position: outline.current.position,
-        total,
-        title: outline.current.title,
-      }),
-    };
+      title: outline.current.title,
+      ...(outline.next ? { next: outline.next.title } : {}),
+    });
   }
 
   const firstStepTitle =
@@ -374,21 +501,12 @@ export function stepTrack(
       ? position.preview?.firstStepTitle
       : undefined;
   if (firstStepTitle !== undefined) {
-    return {
-      position: { state: 'not-started' },
-      total,
-      label: t('workflowExecution.now.firstStep', { title: firstStepTitle }),
-      ariaLabel: t('workflowExecution.now.track.notStarted', { total, title: firstStepTitle }),
-    };
+    return positionTrack(t, { kind: 'not-started', total, firstStep: firstStepTitle });
   }
 
-  if (position.kind === 'terminal' && position.outcome === 'completed') {
-    const label = t('workflowExecution.now.track.completed', { total });
-
-    return { position: { state: 'completed' }, total, label, ariaLabel: label };
-  }
-
-  return undefined;
+  return position.kind === 'terminal' && position.outcome === 'completed'
+    ? positionTrack(t, { kind: 'completed', total })
+    : undefined;
 }
 
 /**

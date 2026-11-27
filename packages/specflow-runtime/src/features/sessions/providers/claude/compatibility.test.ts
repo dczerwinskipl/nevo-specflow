@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createClaudeDriver } from './driver';
+import { CLAUDE_PROBE_REFRESH_MS, CLAUDE_REVALIDATE_MS, createClaudeDriver } from './driver';
 import type { probeClaude } from './probe';
 import { ProviderUnavailableError } from '../unavailable';
 import { bundledClaudeBuild } from '../compatibility/catalogue';
@@ -19,7 +19,7 @@ vi.mock('../process', async (original) => ({
 
 type Installation = Awaited<ReturnType<typeof inspectClaudeInstallation>>;
 const models = [{ modelId: 'default', title: 'Native default', efforts: ['low'] }];
-function fixture(managedWrites = false) {
+function fixture(managedWrites = false, now?: () => number) {
   let installation: Installation = {
     executable: resolve('claude.exe'),
     sha256: bundledClaudeBuild.sha256,
@@ -39,7 +39,7 @@ function fixture(managedWrites = false) {
       environment: { values: {}, sources: {} },
       managedWrites,
     },
-    { inspect, probe },
+    { inspect, probe, ...(now ? { now } : {}) },
   );
 
   return {
@@ -82,6 +82,41 @@ it('discovers native writable modes independently and uses the native default mo
   ).rejects.toThrow('matching effect authority');
   expect(f.probe).toHaveBeenCalledTimes(5);
 });
+it('refuses before launch a model that has no native auto mode, and defaults a writable Turn to acceptEdits', async () => {
+  const f = fixture(true);
+  f.probe.mockImplementation((options) =>
+    Promise.resolve({
+      models:
+        options.selection?.providerModeId === 'auto'
+          ? [{ modelId: 'haiku', title: 'Haiku', efforts: [] }]
+          : [
+              { modelId: 'haiku', title: 'Haiku', efforts: [] },
+              { modelId: 'claude-haiku-4-5-20251001', title: 'Haiku 4.5', efforts: [] },
+            ],
+      version: '2.1.312',
+    }),
+  );
+  const auto = { providerId: 'claude', mode: 'workspace-write', providerModeId: 'auto' } as const;
+  await f.driver.validate({ ...auto, modelId: 'haiku' });
+  await expect(
+    f.driver.validate({ ...auto, modelId: 'claude-haiku-4-5-20251001' }),
+  ).rejects.toThrow('no auto mode for this model');
+  await expect(
+    f.driver.validate({ ...auto, modelId: 'claude-haiku-4-5-20251001' }),
+  ).rejects.toMatchObject({
+    code: 'MODEL_UNSUPPORTED',
+    details: { reason: 'mode-model-unsupported', field: 'providerModeId' },
+  });
+  // The catalogue names the models auto runs, so a client offers no pair validate refuses.
+  const modes = f.driver.describe().providerModes;
+  expect(modes?.find((mode) => mode.modeId === 'auto')?.modelIds).toEqual(['haiku']);
+  expect(modes?.find((mode) => mode.modeId === 'acceptEdits')?.modelIds).toBeUndefined();
+  await f.driver.validate({
+    providerId: 'claude',
+    mode: 'workspace-write',
+    modelId: 'claude-haiku-4-5-20251001',
+  });
+});
 it('requires external login when a writable-mode probe rejects authentication after Plan initialized', async () => {
   const f = fixture(true);
   f.probe.mockImplementation(({ selection }) =>
@@ -119,8 +154,12 @@ it('labels only the known build with matching integration evidence as tested', a
   expect(f.driver.describe().compatibility?.classification).toBe('tested');
   f.probe.mockResolvedValue({ models });
   f.change({ fingerprint: 'recheck' });
-  await f.driver.refresh!(new AbortController().signal);
-  expect(f.driver.describe().compatibility?.classification).toBe('provisional');
+  // The read answers at once with what it knew; the changed installation is probed behind it.
+  const served = await f.driver.refresh!(new AbortController().signal);
+  expect(served.compatibility?.classification).toBe('tested');
+  await vi.waitFor(() =>
+    expect(f.driver.describe().compatibility?.classification).toBe('provisional'),
+  );
 });
 
 it('reprobes changed binary or profile configuration instead of trusting a fresh cache', async () => {
@@ -230,4 +269,74 @@ it('keeps a cancelled probe unavailable without inventing tested or unsupported 
   expect(await result).toMatchObject({ readiness: 'unavailable', reasonCode: 'PROBE_FAILED' });
   expect(f.driver.describe().compatibility).toBeUndefined();
   expect(JSON.stringify(f.driver.describe())).not.toContain('Private native detail');
+});
+
+it('answers a catalogue read at once after the first probe and probes again only behind it', async () => {
+  const clock = { now: 1_000_000 };
+  const f = fixture(false, () => clock.now);
+  const signal = new AbortController().signal;
+  // The first read after start waits for the first probe.
+  expect((await f.driver.refresh!(signal)).readiness).toBe('ready');
+  expect(f.probe).toHaveBeenCalledTimes(1);
+
+  // Unchanged and fresh: a read checks the installation in the background, and probes nothing.
+  clock.now += CLAUDE_REVALIDATE_MS;
+  await f.driver.refresh!(signal);
+  await vi.waitFor(() => expect(f.inspect.mock.calls.length).toBeGreaterThan(2));
+  expect(f.probe).toHaveBeenCalledTimes(1);
+
+  // The binary changed: the read does not wait for the probe it starts.
+  let release!: () => void;
+  f.probe.mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        release = () => done({ models: [], version: '2.1.297' });
+      }),
+  );
+  f.change({ fingerprint: 'updated', sha256: 'b'.repeat(64) });
+  clock.now += CLAUDE_REVALIDATE_MS;
+  const served = await f.driver.refresh!(signal);
+  expect(served).toMatchObject({ readiness: 'ready', models });
+  await vi.waitFor(() => expect(f.probe).toHaveBeenCalledTimes(2));
+  release();
+  await vi.waitFor(() => expect(f.driver.describe().models).toEqual([]));
+
+  // An old probe is refreshed behind a read, never before it.
+  const calls = f.probe.mock.calls.length;
+  clock.now += CLAUDE_PROBE_REFRESH_MS;
+  expect((await f.driver.refresh!(signal)).models).toEqual([]);
+  await vi.waitFor(() => expect(f.probe.mock.calls.length).toBeGreaterThan(calls));
+
+  // Check again is the owner's: it probes now and is awaited.
+  await vi.waitFor(() => expect(f.driver.describe().models).toEqual(models));
+  f.probe.mockResolvedValueOnce({ models: [], version: '2.1.296' });
+  f.change({ fingerprint: 'rechecked' });
+  expect((await f.driver.refresh!(signal, { recheck: true })).models).toEqual([]);
+});
+
+it('aborts an in-flight probe at close and resolves only once it settled', async () => {
+  const f = fixture();
+  const events: string[] = [];
+  f.probe.mockImplementationOnce(
+    (options) =>
+      new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => {
+          // The probe disposes its process tree before it settles.
+          setTimeout(() => {
+            events.push('probe settled');
+            reject(new Error('aborted'));
+          }, 20);
+        });
+      }),
+  );
+  const reading = f.driver.refresh!(new AbortController().signal);
+  await vi.waitFor(() => expect(f.probe).toHaveBeenCalledTimes(1));
+
+  await f.driver.close!().then(() => events.push('closed'));
+
+  expect(events).toEqual(['probe settled', 'closed']);
+  await reading;
+  // After close a read starts no probe.
+  await f.driver.refresh!(new AbortController().signal);
+  expect(f.probe).toHaveBeenCalledTimes(1);
 });

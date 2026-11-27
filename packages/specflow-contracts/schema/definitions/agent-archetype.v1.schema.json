@@ -51,6 +51,9 @@
       "maxLength": 16384,
       "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
     },
+    "independent": {
+      "type": "boolean"
+    },
     "preferredProvider": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]{0,31}$"
@@ -76,6 +79,25 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 64
+          },
+          "permissions": {
+            "type": "object",
+            "required": [
+              "allow"
+            ],
+            "properties": {
+              "allow": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "maxItems": 64,
+                "uniqueItems": true
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false

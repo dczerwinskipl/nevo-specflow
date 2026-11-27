@@ -1,5 +1,6 @@
 import {
   AgentArchetypeDefinitionFileSchema,
+  checkAgentPermissionRule,
   TaskTypeDefinitionFileSchema,
   WorkflowDefinitionFileSchema,
   findAgentArchetypeFileLimitViolations,
@@ -32,7 +33,7 @@ import {
   type WorkflowStep,
   type WorkflowTransition,
 } from './model';
-import { checkWorkflow, stepGates } from './workflow-rules';
+import { checkWorkflow, independentSessionIssues, stepGates } from './workflow-rules';
 
 /** Definitions of one kind that load per project. */
 const WORKFLOWS_MAX = 50;
@@ -76,6 +77,7 @@ function parseTransition(file: WorkflowTransitionFile): WorkflowTransition {
       session: file.session ?? 'fresh',
       effects: file.effects ?? [],
       escalate: file.escalate ?? false,
+      ...(file.confirmation !== undefined ? { confirmation: file.confirmation } : {}),
     },
   };
 }
@@ -190,7 +192,9 @@ export function parseWorkflowFile(file: WorkflowDefinitionFile): WorkflowDefinit
 export const workflowKind = defineDefinitionKind<WorkflowDefinitionFile, WorkflowDefinition>({
   kind: WORKFLOW_KIND,
   auxiliaryDirectories: [],
-  dependsOn: [DOCUMENT_TYPE_KIND],
+  // Archetypes are looked up only to know which are independent; a missing or invalid one is not a
+  // problem of the workflow (see above).
+  dependsOn: [AGENT_ARCHETYPE_KIND, DOCUMENT_TYPE_KIND],
   schemaVersions: [1],
   maxEntities: WORKFLOWS_MAX,
   schema: () => WorkflowDefinitionFileSchema,
@@ -200,6 +204,11 @@ export const workflowKind = defineDefinitionKind<WorkflowDefinitionFile, Workflo
   check: (workflow, context) => [
     ...checkWorkflow(workflow),
     ...gateDocumentTypeIssues(workflow, context),
+    ...independentSessionIssues(workflow, (id) => {
+      const found = context.lookup(AGENT_ARCHETYPE_KIND, id);
+
+      return found.state === 'valid' && (found.entity as AgentArchetype).independent === true;
+    }),
   ],
   references: (workflow) => [
     ...[
@@ -243,10 +252,15 @@ export const agentArchetypeKind = defineDefinitionKind<
     ...(file.profile !== undefined ? { profile: file.profile } : {}),
     ...(file.instructions !== undefined ? { instructions: file.instructions } : {}),
     ...(file.preferredProvider !== undefined ? { preferredProvider: file.preferredProvider } : {}),
+    // Omitted when absent: an archetype without the facet keeps its revision.
+    ...(file.independent === true ? { independent: true } : {}),
     providers: file.providers.map((entry) => ({
       provider: entry.provider,
       ...(entry.model !== undefined ? { model: entry.model } : {}),
       ...(entry.effort !== undefined ? { effort: entry.effort } : {}),
+      ...(entry.permissions !== undefined
+        ? { permissions: { allow: [...entry.permissions.allow] } }
+        : {}),
     })),
   }),
   check: (archetype) => {
@@ -262,6 +276,17 @@ export const agentArchetypeKind = defineDefinitionKind<
       }
 
       seen.add(entry.provider);
+      // An over-broad rule (a write tool, an unrestricted shell) is refused, not ignored (D20).
+      entry.permissions?.allow.forEach((rule, ruleIndex) => {
+        const check = checkAgentPermissionRule(rule);
+        if (check.kind === 'over-broad') {
+          issues.push({
+            code: 'schema-invalid',
+            location: `/providers/${index}/permissions/allow/${ruleIndex}`,
+            message: `The permission rule "${rule}" is too broad: ${check.reason}`,
+          });
+        }
+      });
     });
     if (archetype.preferredProvider !== undefined && !seen.has(archetype.preferredProvider)) {
       issues.push({

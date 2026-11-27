@@ -18,6 +18,7 @@ related:
   - architecture.workflow.workflow-tasks
   - architecture.workflow.workflow-continuation-and-attention
   - adr.0017-definitions-as-project-data
+  - architecture.workflow.workflow-agent-attempts
 ---
 
 # Workflow definitions and gates
@@ -27,12 +28,12 @@ related:
 Each kind of definition is a directory under `.nevo/definitions/`. The product ships seeds of each kind
 in `packages/specflow-engine/definitions/`.
 
-| Kind                      | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `workflow`                | `subject: specification \| task`, `entryStep`, `steps[]`, `returns[]`. A step is `work` (fields `executors: [agent, human]` (one or both), `archetype`, `interaction`, optional `produces: tasks`, `entryGates`, `exitGates`; see "Gates") or `wait-for-tasks`. A transition has `result?`, `to: {step} \| {terminal}`, `continuation: auto \| owner-action`, `session: fresh \| reuse`, `feedback`, `effects`, in a Task workflow `escalate`, and on a wait step `on`. |
-| `agent-archetype`         | Who works on a step: an optional agent `profile`, `instructions`, `preferredProvider`, and `providers[]` with an optional `model` and `effort` each. An entry without a model means "known provider, model not chosen yet".                                                                                                                                                                                                                                             |
-| `task-type`               | What a Task is (`description`, `useWhen`, `instructions`) and the Task `workflow` it runs.                                                                                                                                                                                                                                                                                                                                                                              |
-| `specification-archetype` | Gains an optional `execution: {workflow, taskTypes?}`. `taskTypes` defaults to `['*']`, meaning every task type is allowed. Resolved when execution starts.                                                                                                                                                                                                                                                                                                             |
+| Kind                      | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflow`                | `subject: specification \| task`, `entryStep`, `steps[]`, `returns[]`. A step is `work` (fields `executors: [agent, human]` (one or both), `archetype`, `interaction`, optional `produces: tasks`, `entryGates`, `exitGates`; see "Gates") or `wait-for-tasks`. A transition has `result?`, `to: {step} \| {terminal}`, `continuation: auto \| owner-action`, `session: fresh \| reuse`, `feedback`, `effects`, `confirmation: owner`, in a Task workflow `escalate`, and on a wait step `on`. |
+| `agent-archetype`         | Who works on a step: an optional agent `profile`, `instructions`, `independent` (a review facet: always a fresh Session), `preferredProvider`, and `providers[]` with an optional `model`, `effort` and `permissions.allow` (the provider allowlist of an agent step Turn, opaque to the Engine) each. An entry without a model means "known provider, model not chosen yet".                                                                                                                  |
+| `task-type`               | What a Task is (`description`, `useWhen`, `instructions`) and the Task `workflow` it runs.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `specification-archetype` | Gains an optional `execution: {workflow, taskTypes?}`. `taskTypes` defaults to `['*']`, meaning every task type is allowed. Resolved when execution starts.                                                                                                                                                                                                                                                                                                                                    |
 
 A workflow and a Specification archetype are separate definitions. The archetype only refers to a
 workflow. The adapter compiles a workflow file into a core definition (`definitions/model.ts`): a
@@ -47,7 +48,9 @@ fails closed with `WORKFLOW_STATE_CORRUPT`, and nothing reads or migrates it.
 **No cascade.** A broken definition never takes the definitions that refer to it down:
 
 - A workflow does not check the agent archetypes of its steps. They are resolved when a step is
-  continued, and a missing or invalid one gives the attention reason `archetype-missing`.
+  continued, and a missing or invalid one gives the attention reason `archetype-missing`. The only
+  archetype fact a workflow reads at load is whether a valid one is `independent` (for the
+  `session: reuse` rule below); a missing or invalid archetype is not a problem of the workflow.
 - A Specification archetype does not check its execution binding, so its document templates keep
   working. `startSpecificationExecution` resolves the binding (`resolveSpecificationExecution`). It
   fails with `WORKFLOW_NOT_CONFIGURED` when the workflow is missing or does not drive a Specification,
@@ -63,7 +66,7 @@ A task type still requires its workflow to load, because a Task cannot exist wit
 Validate each workflow at load. Reject the complete invalid workflow, not the rest of the catalogue.
 
 - **Graph:** unique IDs, all targets present; each step has one unconditional transition or distinct result labels.
-- **Executors:** agent-capable steps name an archetype; human-only steps do not. `session: reuse` must target an agent-capable step.
+- **Executors:** agent-capable steps name an archetype; human-only steps do not. `session: reuse` must target an agent-capable step, and never a step whose archetype is `independent` (D18; the shipped `reviewer` is). `confirmation: owner` is allowed on work-step transitions only.
 - **Kind:** only Specification workflows produce or wait for Tasks or apply Task effects. Only Task workflows may escalate; escalation requires `feedback: required` and a step target.
 - **Wait steps:** entered only by Engine, never as an entry/return target. Transitions select Task events (`on: tasks-finished | task-escalated`), not results. Missing `on` means `tasks-finished` for legacy definitions. Require exactly one `tasks-finished` without required feedback; allow at most one `task-escalated`, with required feedback and a work-step target. No Session reuse, result or wait-to-wait transition.
 - **Titles:** nonblank single-line titles for workflows, steps, transitions and returns. Projection carries stable ID plus `title`, `firstStepTitle`, `targetTitle` or `stepTitle` as appropriate; Task reads also display titles.
@@ -92,14 +95,24 @@ The rules:
   finishes an agent's attempt and an agent never a person's.
 - The adapter adds that an active agent attempt started in a Session (its actor carries a
   `sessionId`) can be resumed and finished only by the same provider and Session id.
-- The attempt records who started it (`actor`) and who finished it (`finishedBy`).
-- The owner operations `returnToStep`, `setTaskStatus`, the Task resource commands and
-  `abandonSpecification` take an `OwnerActor` (`assertOwner`); anything else, including no actor, is
-  refused the same way.
+- The attempt records who started it (`actor`) and who finished it (`finishedBy`), and the host's
+  opaque `hostData` given at its start (an agent attempt's binding, see
+  [agent attempts](workflow-agent-attempts.md)); the core keeps it and never interprets it.
+- The owner operations `returnToStep`, `setTaskStatus`, the Task resource commands,
+  `abandonSpecification`, Confirm, Reject, Take over and Retry commit take an `OwnerActor`
+  (`assertOwner`); anything else, including no actor, is refused the same way. Task create and edit
+  accept an `AgentActor` only as the owned execution of an agent attempt Turn of a step that
+  produces Tasks.
+- **Effect authority** (`definitions/effect-authority.ts`, exhaustive over the effects): an effect is
+  `agent` or `owner` authority; `approve-draft-tasks` is `owner`. An agent finish whose transition
+  has an owner-authority effect or `confirmation: owner`, or that carries `taskDecisions`, takes a
+  decision only the owner takes: inside an agent attempt it waits for the owner's confirmation;
+  any other agent finish taking one is refused (`WORKFLOW_OWNER_DECISION_REQUIRED`). A person's own
+  finish needs no confirmation.
 
-Breaking a rule fails with `WORKFLOW_EXECUTOR_NOT_ALLOWED` before anything changes. Handing an active
-agent step over to the owner (owner takeover) is not supported; it would be an explicit operation of
-its own, not a finish. No dispatch preference is stored: whether a person or an agent
+Breaking a rule fails with `WORKFLOW_EXECUTOR_NOT_ALLOWED` before anything changes. The owner takes
+an agent attempt over only through the explicit Take over operation (F17, the core command
+`take-over`), never through a finish. No dispatch preference is stored: whether a person or an agent
 does the next step is chosen when it starts.
 
 **After a manual step, no Session to reuse.** When a person finishes into a `session: reuse`

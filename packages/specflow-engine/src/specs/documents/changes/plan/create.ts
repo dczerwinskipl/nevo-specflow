@@ -33,6 +33,29 @@ import type { PlanningOptions, PlanningSnapshot } from './snapshot';
 const CATALOGUE_ID = new RegExp(CATALOGUE_ID_PATTERN, 'u');
 
 /**
+ * The folder every Specification lives under. A new document path that starts with it is a
+ * repository-relative path given where a container-relative one belongs (it would nest the
+ * Specification inside itself: `specs/active/<slug>/specs/active/<slug>/x.md`), so it is refused.
+ */
+const SPECIFICATIONS_FOLDER = 'specs';
+
+function assertContainerRelative(path: string): void {
+  const [first] = path.split('/');
+  if (first !== undefined && path.includes('/') && foldPathKey(first) === SPECIFICATIONS_FOLDER) {
+    throw documentChangeError(
+      'path-invalid',
+      `Document paths are relative to the Specification folder (or the Task folder): give "${path
+        .split('/')
+        .at(-1)!
+        .slice(
+          0,
+          120,
+        )}" or a folder below the Specification, not a path that starts with "specs/".`,
+    );
+  }
+}
+
+/**
  * Plan of a create: new files (content or rendered templates), registry entries for the typed ones
  * and explicit folders. Ids are allocated deterministically in request order, so a replay of the same
  * request on the same registry allocates the same ids.
@@ -78,6 +101,7 @@ export function planCreate(
   const draft = newDraft();
 
   for (const entry of documents) {
+    assertContainerRelative(entry.path);
     if (!isCreatablePath(snapshot.container, entry.path)) {
       throw documentChangeError('path-invalid', 'The document path is not allowed.');
     }
@@ -130,6 +154,7 @@ export function planCreate(
 
   const explicit = [...snapshot.manifest.folders];
   for (const folder of request.folders) {
+    assertContainerRelative(folder + '/');
     if (!validateFolderPath(folder).ok) {
       throw documentChangeError('path-invalid', 'The folder path is not allowed.');
     }

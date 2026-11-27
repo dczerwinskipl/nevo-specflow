@@ -6,11 +6,87 @@ import type {
   CurrentSpecSignal,
   CurrentSpecSignalKind,
   CurrentSpecTarget,
+  CurrentSpecWorkflow,
   SpecsCollection,
   SpecsOverview,
 } from '../../../src/features/specs/overview/model';
 
 const specTarget = (specId: string): CurrentSpecTarget => ({ kind: 'specification', specId });
+
+/** The seven steps of the feature workflow the fixtures stand in, by their place in it. */
+const step = (position: number, title: string) => ({ title, position, count: 7 });
+
+/** A Specification whose run waits for its Tasks (step 6 of 7), with the Overview's Task counts. */
+export function waitingForTasks(
+  tasks: Partial<{ open: number; total: number; inProgress: number; readyToStart: number }> = {},
+): CurrentSpecWorkflow {
+  return {
+    kind: 'step',
+    state: 'waiting',
+    step: step(6, 'Waiting for Tasks'),
+    tasks: { open: 12, total: 12, inProgress: 0, readyToStart: 5, ...tasks },
+  };
+}
+
+const agentActor = {
+  class: 'agent',
+  details: { provider: 'claude', model: 'claude-opus-5-5', sessionId: 'session-a' },
+} as const;
+const ownerActor = {
+  class: 'human',
+  details: { actorId: 'runtime:trusted-local', trust: 'local' },
+} as const;
+
+/**
+ * The first workflow attention item of a Specification as its Overview lists it: the review of the
+ * breakdown waits for its start (step 5 of 7).
+ */
+export const startReviewAttention = {
+  first: {
+    id: 'specification-attention',
+    kind: 'specification',
+    title: 'Review the breakdown',
+    reason: 'The owner starts Review the breakdown.',
+    priority: 'normal',
+    code: 'owner-action',
+    stepTitle: 'Review the breakdown',
+    actor: 'owner',
+    action: 'start-step',
+  },
+} as const satisfies CurrentSpecOverviewItem['attention'];
+
+export const workflowFixtures = {
+  notStarted: { kind: 'not-started', stepCount: 7, firstStep: 'Gather requirements' },
+  agentWorking: {
+    kind: 'step',
+    state: 'active',
+    step: step(4, 'Break the solution down'),
+    attempt: { number: 1, startedAt: '2026-11-25T09:18:00Z', actor: agentActor },
+  },
+  ownerWorking: {
+    kind: 'step',
+    state: 'active',
+    step: step(3, 'Design the solution'),
+    attempt: { number: 1, startedAt: '2026-11-25T08:05:00Z', actor: ownerActor },
+  },
+  readyForNextStep: { kind: 'step', state: 'ready', step: step(5, 'Review the breakdown') },
+  changesRequested: {
+    kind: 'step',
+    state: 'ready',
+    step: step(4, 'Break the solution down'),
+    handoff: {
+      kind: 'transition',
+      from: { step: 'breakdown-review', attempt: 1, title: 'Review the breakdown' },
+      transition: 'changes',
+      label: 'Changes requested',
+      result: 'fail',
+      artifacts: [],
+    },
+  },
+  waiting: waitingForTasks(),
+  completed: { kind: 'ended', outcome: 'completed', stepCount: 7 },
+  abandoned: { kind: 'ended', outcome: 'abandoned', abandonedAt: '2026-11-20T15:40:00Z' },
+} as const satisfies Record<string, CurrentSpecWorkflow>;
 
 function signal(
   specId: string,
@@ -41,7 +117,8 @@ export function createSpecItem(
   return {
     id: 'admission',
     title: 'Deterministic admission and execution boundaries',
-    classification: { section: 'draft' },
+    workflow: workflowFixtures.notStarted,
+    classification: { section: 'not-started' },
     updatedAt: '2026-10-01T12:00:00Z',
     progress: { completed: 5, total: 9 },
     signals: [],
@@ -109,10 +186,11 @@ export function createSpecsFixture(collection: SpecsCollection = 'current'): Spe
   return {
     revision: 'current-fixture-1',
     collection,
-    sections: ['requires-attention', 'active', 'ready', 'draft'],
+    sections: ['requires-attention', 'in-progress', 'not-started', 'ended'],
     items: [
       createSpecItem({
         key: 'UI-1234',
+        workflow: waitingForTasks({ open: 4, total: 9, inProgress: 2, readyToStart: 0 }),
         classification: { section: 'requires-attention', reason: 'input' },
         pullRequests: [{ number: 27, url: 'https://example.test/pull/27' }],
         tags: ['Auth'],
@@ -153,6 +231,7 @@ export function createSpecsFixture(collection: SpecsCollection = 'current'): Spe
       }),
       createSpecItem({
         id: 'security',
+        workflow: workflowFixtures.readyForNextStep,
         classification: { section: 'requires-attention', reason: 'decision' },
         key: 'RT-1235',
         tags: ['Runtime'],
@@ -173,6 +252,7 @@ export function createSpecsFixture(collection: SpecsCollection = 'current'): Spe
       }),
       createSpecItem({
         id: 'review',
+        workflow: waitingForTasks({ open: 4, total: 10, inProgress: 3, readyToStart: 0 }),
         classification: { section: 'requires-attention', reason: 'review', count: 3 },
         key: 'CORE-1236',
         title: 'Review evidence and verification handover',
@@ -193,7 +273,8 @@ export function createSpecsFixture(collection: SpecsCollection = 'current'): Spe
       }),
       createSpecItem({
         id: 'packaging',
-        classification: { section: 'ready' },
+        workflow: waitingForTasks({ open: 2, total: 6, readyToStart: 2 }),
+        classification: { section: 'in-progress' },
         key: 'CORE-1237',
         tags: ['Core'],
         title: 'Single-artifact packaging and installation',
@@ -202,7 +283,8 @@ export function createSpecsFixture(collection: SpecsCollection = 'current'): Spe
       }),
       createSpecItem({
         id: 'providers',
-        classification: { section: 'active' },
+        workflow: workflowFixtures.agentWorking,
+        classification: { section: 'in-progress' },
         key: 'RT-104',
         pullRequests: [{ number: 31, url: 'https://example.test/pull/31' }],
         tags: ['Provider'],
@@ -219,7 +301,8 @@ export function createSpecsFixture(collection: SpecsCollection = 'current'): Spe
       }),
       createSpecItem({
         id: 'recovery',
-        classification: { section: 'ready' },
+        workflow: workflowFixtures.ownerWorking,
+        classification: { section: 'in-progress' },
         key: 'RT-105',
         tags: ['Provider'],
         title: 'Provider process recovery',
@@ -238,12 +321,21 @@ export function createSpecsFixture(collection: SpecsCollection = 'current'): Spe
       }),
       createSpecItem({
         id: 'localization',
-        classification: { section: 'draft' },
+        workflow: workflowFixtures.notStarted,
+        classification: { section: 'not-started' },
         key: 'UI-1238',
         tags: ['UI'],
         title: 'Localization and account preferences',
         progress: { completed: 0, total: 5 },
         signals: [signal('localization', 'quiet', 'quiet', 'No immediate action', 10)],
+      }),
+      createSpecItem({
+        id: 'delivery',
+        workflow: workflowFixtures.completed,
+        classification: { section: 'ended' },
+        key: 'CORE-1239',
+        title: 'Release notes and delivery checklist',
+        progress: { completed: 4, total: 4 },
       }),
     ],
   };

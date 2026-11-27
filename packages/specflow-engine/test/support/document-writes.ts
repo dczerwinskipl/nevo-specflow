@@ -70,7 +70,7 @@ export async function writableProject(
  * checkout stays clean); `undefined` removes the file.
  */
 export async function setLocalAutoCommit(
-  project: WritableProject,
+  project: Pick<WritableProject, 'root'>,
   documents: boolean | undefined,
 ): Promise<void> {
   await writeLocalAutoCommit(project.root, documents);

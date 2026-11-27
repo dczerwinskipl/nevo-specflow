@@ -17,6 +17,7 @@ import { transitionWork } from '../lifecycle/reducer';
 import {
   countActionOpened,
   countActionTransition,
+  countNotice,
   countWorkOpened,
   countWorkTransition,
   hasToolActions,
@@ -51,6 +52,8 @@ interface FactDependencies extends Pick<StoreDatabase, 'get' | 'run'> {
     workId?: string,
     existing?: string,
     digest?: WorkDigest,
+    error?: ConversationEntry['error'],
+    notice?: ConversationEntry['notice'],
   ): ConversationEntry;
   reviseWorkDigest(this: void, session: StoredSession, turn: StoredTurn): void;
 }
@@ -202,6 +205,8 @@ export function createProviderFacts({
         kind: f.workKind,
         state: 'active',
         title: { text: f.title, complete: true },
+        ...(f.operation ? { operation: f.operation } : {}),
+        ...(f.subject ? { subject: f.subject } : {}),
         createdAt: now(),
         updatedAt: now(),
       };
@@ -275,6 +280,7 @@ export function createProviderFacts({
         state: 'active',
         title: { text: f.title, complete: true },
         operation: f.operation ?? 'other',
+        ...(f.subject ? { subject: f.subject } : {}),
         createdAt: now(),
         updatedAt: now(),
       };
@@ -289,6 +295,14 @@ export function createProviderFacts({
         JSON.stringify(action),
       );
       w.actionCount = (w.actionCount ?? 0) + 1;
+      // The Work is named by its first ToolAction.
+      if (w.actionCount === 1) {
+        w.operation = action.operation;
+        if (action.subject) {
+          w.subject = action.subject;
+        }
+      }
+
       w.revision++;
       w.updatedAt = now();
       run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
@@ -317,12 +331,25 @@ export function createProviderFacts({
         }
 
         action.state = f.state;
+        if (f.state === 'failed' && f.error) {
+          action.error = f.error;
+        }
+
         action.revision++;
         action.updatedAt = now();
         run('UPDATE actions SET data=? WHERE id=?', JSON.stringify(action), action.actionId);
       }
 
       const w = decode<WorkSummary>(get('SELECT data FROM work WHERE id=?', String(row!.work)));
+      // The Work's first failure names what failed and why, so its row can say it.
+      if (action.state === 'failed' && f.error && !w.failure) {
+        w.failure = {
+          ...(action.subject ? { subject: action.subject } : {}),
+          message: f.error.message,
+          ...(f.error.reason ? { reason: f.error.reason } : {}),
+        };
+      }
+
       w.revision++;
       w.updatedAt = now();
       run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
@@ -378,7 +405,18 @@ export function createProviderFacts({
           fail('SESSION_INPUT_INVALID', 'Cannot append text to settled Work.');
         }
 
+        // SpecFlow's own note (its first text carries the notice): counted apart from the agent's
+        // progress notes.
+        if (!existing && f.notice && w.kind === 'commentary' && t.work) {
+          t.work = countNotice(t.work);
+        }
+
         w.content = ref;
+        // Narration Work reads as its own words (Work history shows its title), never a kind.
+        if (w.kind === 'commentary' || w.kind === 'reasoning') {
+          w.title = preview(ref);
+        }
+
         w.revision++;
         w.updatedAt = now();
         run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
@@ -393,6 +431,9 @@ export function createProviderFacts({
           preview(ref),
           undefined,
           entryId,
+          undefined,
+          undefined,
+          f.notice ? { severity: f.notice } : undefined,
         ).id;
         if (f.channel === 'answer') {
           t.summary.finalAnswer = preview(ref);
@@ -456,6 +497,11 @@ export function createProviderFacts({
         workId: w.workId,
         revision: 1,
       };
+      // The Work says which kind of request it is (a client never guesses it from a title).
+      w.interaction = f.interaction.kind === 'permission' ? 'permission' : 'question';
+      w.revision++;
+      run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);
+      emit(s, 'work', { turnId: c.turnId, items: [w] });
       run(
         'INSERT INTO interactions VALUES(?,?,?,?,?,?)',
         i.interactionId,

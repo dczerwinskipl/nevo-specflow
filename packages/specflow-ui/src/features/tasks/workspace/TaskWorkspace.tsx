@@ -14,6 +14,7 @@ import { TaskWorkspacePrimary } from './TaskWorkspacePrimary';
 import { TaskWorkspaceHistory } from './TaskWorkspaceHistory';
 import { taskWorkspaceHistoryStack, taskWorkspaceMaterialStack } from './taskWorkspaceStack';
 import type { TaskWorkspaceData } from './taskWorkspaceModel';
+import { productIcons } from '../../../shared/product-icons';
 
 /** Presentation-only workspace. Data and real execution belong to the application boundary. */
 export function TaskWorkspace({
@@ -57,7 +58,7 @@ function Workspace({ onBack }: { readonly onBack?: () => void }) {
         header={
           <WorkspaceHeader
             title={`${data.specification} / ${data.id}`}
-            icon="list-checks"
+            icon={productIcons.task.item}
             as="span"
           />
         }
@@ -79,7 +80,11 @@ function Workspace({ onBack }: { readonly onBack?: () => void }) {
       </AppWorkspace.Primary>
       <AppWorkspace.Secondary
         header={
-          <WorkspaceHeader title={t('taskWorkspace.history')} icon="clock" headingLevel={2} />
+          <WorkspaceHeader
+            title={t('taskWorkspace.history')}
+            icon={productIcons.history}
+            headingLevel={2}
+          />
         }
       >
         <AppContent className="w-full max-w-full">

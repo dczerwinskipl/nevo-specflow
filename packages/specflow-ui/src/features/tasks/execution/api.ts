@@ -1,13 +1,27 @@
 import type {
   AbandonSpecificationResult,
+  AgentStepExecutionCheck,
+  AgentStepExecutionRequest,
+  AgentStepExecutionResult,
+  ConfirmWorkflowRequest,
+  ConfirmWorkflowResult,
   FinishWorkflowRequest,
   FinishWorkflowResult,
   ReevaluateWaitRequest,
   ReevaluateWaitResult,
+  RejectWorkflowRequest,
+  RejectWorkflowResult,
+  RetryAttemptCommitRequest,
+  RetryAttemptCommitResult,
   ReturnWorkflowRequest,
   ReturnWorkflowResult,
   StartWorkflowRequest,
   StartWorkflowResult,
+  StopAgentStepExecutionRequest,
+  TakeOverAgentStepExecutionRequest,
+  TakeOverAgentStepExecutionResult,
+  WorkflowHistory,
+  StopAgentStepExecutionResult,
 } from '@nevo/specflow-contracts/workflow';
 import type { CloseOccupancy, ClosePreview } from '@nevo/specflow-contracts/specs';
 import type { ApiTransport, ErrorCodeTable } from '../../../api';
@@ -45,6 +59,47 @@ export interface WorkflowExecutionApi {
   ): Promise<ReturnWorkflowResult>;
   reevaluateWait(specId: string, input: ReevaluateWaitRequest): Promise<ReevaluateWaitResult>;
   abandon(specId: string, reason: string): Promise<AbandonSpecificationResult>;
+  /**
+   * Whether an agent can run the step now, with every reason a start would refuse with, the
+   * checkout's baseline included (`GET .../workflow/agent-execution/check`). The dialog reads it
+   * when it opens.
+   */
+  checkAgentExecution(
+    subject: WorkflowSubjectRef,
+    signal?: AbortSignal,
+  ): Promise<AgentStepExecutionCheck>;
+  /** Run the step the owner was shown with an agent (`POST .../workflow/agent-execution`). */
+  startAgentExecution(
+    subject: WorkflowSubjectRef,
+    input: AgentStepExecutionRequest,
+  ): Promise<AgentStepExecutionResult>;
+  /** Stop the agent of the active agent attempt (`POST .../workflow/agent-execution/stop`). */
+  stopAgentExecution(
+    subject: WorkflowSubjectRef,
+    input: StopAgentStepExecutionRequest,
+  ): Promise<StopAgentStepExecutionResult>;
+  /** Retry the failed commit of a finished agent attempt (`POST .../workflow/attempt-commit/retry`). */
+  retryAttemptCommit(
+    subject: WorkflowSubjectRef,
+    input: RetryAttemptCommitRequest,
+  ): Promise<RetryAttemptCommitResult>;
+  /** Confirm the agent's result that waits for the owner (`POST .../workflow/confirmation/confirm`). */
+  confirmResult(
+    subject: WorkflowSubjectRef,
+    input: ConfirmWorkflowRequest,
+  ): Promise<ConfirmWorkflowResult>;
+  /** Reject it, with the owner's feedback (`POST .../workflow/confirmation/reject`). */
+  rejectResult(
+    subject: WorkflowSubjectRef,
+    input: RejectWorkflowRequest,
+  ): Promise<RejectWorkflowResult>;
+  /** Take over the agent's attempt once its process is proven ended (`POST .../workflow/agent-execution/take-over`). */
+  takeOverAgentExecution(
+    subject: WorkflowSubjectRef,
+    input: TakeOverAgentStepExecutionRequest,
+  ): Promise<TakeOverAgentStepExecutionResult>;
+  /** Every attempt and return of the subject's run, with the agent attempts' work (`GET .../workflow/history`). */
+  history(subject: WorkflowSubjectRef, signal?: AbortSignal): Promise<WorkflowHistory>;
   closePreview(specId: string, signal?: AbortSignal): Promise<ClosePreviewResult>;
   /** What else holds the checkout a Close would remove (running agent Turns), without planning it. */
   closeOccupancy(specId: string, signal?: AbortSignal): Promise<CloseOccupancy>;
@@ -80,6 +135,40 @@ export function createRuntimeWorkflowExecutionApi(transport: ApiTransport): Work
         { reason },
         { operation: 'workflow.abandon' },
       ),
+    checkAgentExecution: (subject, signal) =>
+      transport.get(`${workflowBase(subject)}/agent-execution/check`, {
+        signal,
+        operation: 'workflow.agent-execution-check',
+      }),
+    startAgentExecution: (subject, input) =>
+      transport.post(`${workflowBase(subject)}/agent-execution`, input, {
+        operation: 'workflow.agent-execution',
+      }),
+    stopAgentExecution: (subject, input) =>
+      transport.post(`${workflowBase(subject)}/agent-execution/stop`, input, {
+        operation: 'workflow.agent-execution-stop',
+      }),
+    retryAttemptCommit: (subject, input) =>
+      transport.post(`${workflowBase(subject)}/attempt-commit/retry`, input, {
+        operation: 'workflow.attempt-commit-retry',
+      }),
+    confirmResult: (subject, input) =>
+      transport.post(`${workflowBase(subject)}/confirmation/confirm`, input, {
+        operation: 'workflow.confirm',
+      }),
+    rejectResult: (subject, input) =>
+      transport.post(`${workflowBase(subject)}/confirmation/reject`, input, {
+        operation: 'workflow.reject',
+      }),
+    takeOverAgentExecution: (subject, input) =>
+      transport.post(`${workflowBase(subject)}/agent-execution/take-over`, input, {
+        operation: 'workflow.agent-execution-take-over',
+      }),
+    history: (subject, signal) =>
+      transport.get(`${workflowBase(subject)}/history`, {
+        signal,
+        operation: 'workflow.history',
+      }),
     closePreview: (specId, signal) =>
       transport.get(`${specBase(specId)}/close/preview`, {
         signal,

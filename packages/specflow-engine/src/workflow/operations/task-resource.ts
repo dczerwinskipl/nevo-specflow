@@ -3,6 +3,8 @@ import {
   TaskManifestFileSchema,
 } from '@nevo/specflow-contracts/documents';
 import { Value } from 'typebox/value';
+import { activeAttempt, findStep } from '@nevo/workflow';
+import { isDeepStrictEqual } from 'node:util';
 
 import { foldPathKey } from '../../specs/document-rules/document-paths';
 import {
@@ -21,15 +23,22 @@ import { WorkflowError } from '../errors';
 import { isValidTaskId, TASKS_PER_SPECIFICATION_MAX } from '../limits';
 import { dependencyRule, dependencyView } from './task-dependencies';
 import {
+  agentAttemptBindingOf,
   taskPosition,
+  type AgentActor,
   type ExecutionTask,
   type OwnerActor,
   type WorkflowSubject,
 } from '../state/model';
 import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
-import { resolveTaskType } from '../tasks/tasks';
+import { ownsDraft, resolveTaskType } from '../tasks/tasks';
 import { assertOwner } from './actors';
-import { executionTasks, loadTask, type WorkflowDependencies } from './loaded-execution';
+import {
+  executionTasks,
+  loadSubject,
+  loadTask,
+  type WorkflowDependencies,
+} from './loaded-execution';
 import {
   assertContextInputs,
   assertContextResolved,
@@ -73,8 +82,18 @@ export interface CreateTaskInput {
   readonly context?: readonly TaskContextEntry[];
   /** The first text of `task.md`; absent: the title and summary (`initialTaskDocument`). */
   readonly document?: string;
-  /** The owner, from trusted Runtime/CLI context. */
-  readonly actor: OwnerActor;
+  /**
+   * The owner, from trusted Runtime/CLI context; or the agent of the attempt `agentAttempt` of a
+   * producing step, from the trusted Runtime broker binding (D11 point 7, never from a request).
+   */
+  readonly actor: OwnerActor | AgentActor;
+  /** With an agent actor: the agent attempt whose Turn drafts the Task. */
+  readonly agentAttempt?: AgentDraftAttempt;
+}
+
+/** The agent attempt of a producing step a Task draft is made in (named by the trusted host). */
+export interface AgentDraftAttempt {
+  readonly attemptId: string;
 }
 
 export interface EditTaskInput {
@@ -91,7 +110,9 @@ export interface EditTaskInput {
   readonly context?: readonly TaskContextEntry[] | null;
   /** The type is immutable: naming another type is refused (`WORKFLOW_TASK_TYPE_IMMUTABLE`). */
   readonly type?: string;
-  readonly actor: OwnerActor;
+  /** The owner; or the agent of `agentAttempt`, which edits only the drafts its step owns. */
+  readonly actor: OwnerActor | AgentActor;
+  readonly agentAttempt?: AgentDraftAttempt;
 }
 
 export interface RemoveTaskInput {
@@ -99,7 +120,9 @@ export interface RemoveTaskInput {
   readonly taskId: string;
   /** The manifest revision the removal was planned against. */
   readonly expectedRevision: string;
-  readonly actor: OwnerActor;
+  /** The owner; or the agent of `agentAttempt`, which removes only the drafts its step owns. */
+  readonly actor: OwnerActor | AgentActor;
+  readonly agentAttempt?: AgentDraftAttempt;
 }
 
 function invalid(message: string): never {
@@ -133,6 +156,109 @@ function assertManifest(manifest: TaskManifest): void {
   if (problem !== undefined) {
     invalid(`The Task "${manifest.id}" is not valid: ${problem}.`);
   }
+}
+
+/**
+ * The producing attempt an agent's Task write is made in, or `undefined` for the owner's (asserted).
+ * An agent drafts Tasks only in the active agent attempt `agentAttempt` of the Specification, whose
+ * step declares `produces: tasks`, as that attempt's own agent (D11 points 6 and 7); the draft gets
+ * the origin `produced` by that step and attempt, so the finish and D06 treat it as the step's draft.
+ */
+function draftingAttempt(
+  dependencies: Pick<WorkflowDependencies, 'catalogue'>,
+  snapshot: ExecutionSnapshot,
+  input: {
+    readonly specId: string;
+    readonly actor: OwnerActor | AgentActor;
+    readonly agentAttempt?: AgentDraftAttempt;
+  },
+  action: string,
+): { readonly step: string; readonly attempt: number } | undefined {
+  if (input.actor.class !== 'agent') {
+    assertOwner(input.actor, action);
+
+    return undefined;
+  }
+
+  const refuse = (why: string): never => {
+    throw new WorkflowError('WORKFLOW_EXECUTOR_NOT_ALLOWED', `An agent ${action} only ${why}.`);
+  };
+
+  if (input.agentAttempt === undefined || snapshot.specification === undefined) {
+    refuse('in an agent attempt of a step that produces Tasks');
+  }
+
+  const loaded = loadSubject(dependencies.catalogue, snapshot, {
+    kind: 'specification',
+    specId: input.specId,
+  });
+  const position = loaded.run.position;
+  const active = activeAttempt(loaded.run);
+  const step = position.state === 'active' ? findStep(loaded.definition, position.step) : undefined;
+  if (
+    position.state !== 'active' ||
+    agentAttemptBindingOf(active)?.attemptId !== input.agentAttempt!.attemptId ||
+    !isDeepStrictEqual(active?.actor, input.actor)
+  ) {
+    refuse('in the active attempt it works on');
+  }
+
+  if (step?.kind !== 'work' || step.annotations.produces !== 'tasks') {
+    refuse('in a step that produces Tasks');
+  }
+
+  return position.state === 'active'
+    ? { step: position.step, attempt: position.attempt }
+    : refuse('in the active attempt it works on');
+}
+
+/**
+ * An agent of a producing step changes only the drafts its step owns (`ownsDraft`, any attempt of
+ * the step: a later attempt reworks the drafts of an earlier one). A Task that is approved or started
+ * is never changed silently: the agent proposes closing it in its finish instead (`taskDecisions`),
+ * which the owner confirms.
+ */
+function assertOwnedDraft(
+  producing: { readonly step: string },
+  task: ExecutionTask,
+  action: string,
+): void {
+  if (ownsDraft(producing, task)) {
+    return;
+  }
+
+  throw new WorkflowError(
+    'WORKFLOW_EXECUTOR_NOT_ALLOWED',
+    task.status !== 'draft'
+      ? `An agent ${action} only a draft Task of the step "${producing.step}"; "${task.taskId}" is ${task.status}, so leave it as it is. To drop it, propose closing it in your finish (a task decision with the status cancelled); the owner confirms that decision.`
+      : `An agent ${action} only the draft Tasks its step "${producing.step}" drafted; "${task.taskId}" is not one. Ask the owner to change it.`,
+  );
+}
+
+/**
+ * Refuses an agent's document write of the Task `taskId` unless it is a draft its producing step
+ * owns, written in that step's active agent attempt (D11 points 6 and 7): the broker asks this
+ * before it writes a Task draft's documents (`draftTask` of the scope decision).
+ */
+export async function assertAgentDraftTask(
+  dependencies: Pick<WorkflowDependencies, 'catalogue' | 'store'>,
+  input: {
+    readonly specId: string;
+    readonly taskId: string;
+    readonly actor: AgentActor;
+    readonly agentAttempt: AgentDraftAttempt;
+  },
+): Promise<void> {
+  const snapshot = await dependencies.store.read(input.specId);
+  const producing = draftingAttempt(
+    dependencies,
+    snapshot,
+    input,
+    "changes a Task draft's documents",
+  );
+  assertSpecificationOpen(snapshot);
+  const { task } = loadTask(dependencies.catalogue, snapshot, input.taskId);
+  assertOwnedDraft(producing!, task, 'changes the documents of');
 }
 
 /** Title and summary as stored: trimmed, an empty summary is none. */
@@ -209,12 +335,12 @@ export function createTask(
   input: CreateTaskInput,
 ): Promise<TaskResourceResult> {
   return dependencies.serialize(async () => {
-    assertOwner(input.actor, 'creates a Task');
+    const snapshot = await dependencies.store.read(input.specId);
+    const producing = draftingAttempt(dependencies, snapshot, input, 'creates a Task');
     if (!isValidTaskId(input.taskId)) {
       invalid(`The Task id "${input.taskId.slice(0, 80)}" is not a valid id.`);
     }
 
-    const snapshot = await dependencies.store.read(input.specId);
     assertSpecificationOpen(snapshot);
     const ids = snapshot.index?.value.tasks.map((entry) => entry.id) ?? [];
     if (
@@ -247,7 +373,9 @@ export function createTask(
       type: type.id,
       status: 'draft',
       dependsOn: [...(input.dependsOn ?? [])],
-      origin: { kind: 'manual', actorId: input.actor.details.actorId },
+      origin: producing
+        ? { kind: 'produced', step: producing.step, attempt: producing.attempt }
+        : { kind: 'manual', actorId: (input.actor as OwnerActor).details.actorId },
       documents: [
         input.document === undefined ? generatedTaskMainDocument(text) : { ...TASK_MAIN_DOCUMENT },
       ],
@@ -293,10 +421,14 @@ export function editTask(
   input: EditTaskInput,
 ): Promise<TaskResourceResult> {
   return dependencies.serialize(async () => {
-    assertOwner(input.actor, 'edits a Task');
     const snapshot = await dependencies.store.read(input.specId);
+    const producing = draftingAttempt(dependencies, snapshot, input, 'edits a Task');
     assertSpecificationOpen(snapshot);
     const { task, manifest: stored } = loadTask(dependencies.catalogue, snapshot, input.taskId);
+    if (producing) {
+      assertOwnedDraft(producing, task, 'edits');
+    }
+
     if (stored.revision !== input.expectedRevision) {
       throw new WorkflowError(
         'WORKFLOW_TASK_REVISION_CONFLICT',
@@ -395,11 +527,15 @@ export function removeTask(
   input: RemoveTaskInput,
 ): Promise<{ readonly subject: WorkflowSubject }> {
   return dependencies.serialize(async () => {
-    assertOwner(input.actor, 'removes a Task');
     const snapshot = await dependencies.store.read(input.specId);
+    const producing = draftingAttempt(dependencies, snapshot, input, 'removes a Task');
     // Abandoned or completed work stays readable for audit: an ended Specification keeps its Tasks.
     assertSpecificationOpen(snapshot);
-    const { manifest, run } = loadTask(dependencies.catalogue, snapshot, input.taskId);
+    const { manifest, run, task } = loadTask(dependencies.catalogue, snapshot, input.taskId);
+    if (producing) {
+      assertOwnedDraft(producing, task, 'removes');
+    }
+
     if (manifest.revision !== input.expectedRevision) {
       throw new WorkflowError(
         'WORKFLOW_TASK_REVISION_CONFLICT',

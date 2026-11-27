@@ -14,6 +14,10 @@ export * from './tree';
 export * from './uncommitted';
 export * from './vocabulary';
 export * from './workflow-definition-files';
+export * from './agent-permission-rules';
+export * from './agent-shell-command';
+export * from './agent-commands';
+export * from './agent-command-usage';
 
 export const SpecificationDocumentParamsSchema = Type.Object(
   { specId: SpecIdSchema, documentId: IdSchema },

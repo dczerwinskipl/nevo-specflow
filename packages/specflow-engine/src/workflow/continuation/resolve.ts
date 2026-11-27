@@ -85,7 +85,8 @@ export function resolveAgentLaunch(
     return { kind: 'unresolved', reason: 'archetype-missing', archetype: archetypeId };
   }
 
-  if (session === 'reuse') {
+  // An independent archetype never continues a Session, whatever the transition says (D18).
+  if (session === 'reuse' && archetype.independent !== true) {
     if (!finishing?.sessionId) {
       return { kind: 'unresolved', reason: 'session-unavailable', archetype: archetype.id };
     }
@@ -135,8 +136,14 @@ export function resolveAgentLaunch(
 }
 
 export type ContinuationDecision =
-  /** `on-hold`: the Task's status does not allow its next step to start. */
-  | { readonly kind: 'none'; readonly reason: 'terminal' | 'waiting-for-tasks' | 'on-hold' }
+  /**
+   * `on-hold`: the Task's status does not allow its next step to start; `awaiting-confirmation`: an
+   * agent's result waits for the owner's Confirm or Reject (D17).
+   */
+  | {
+      readonly kind: 'none';
+      readonly reason: 'terminal' | 'waiting-for-tasks' | 'on-hold' | 'awaiting-confirmation';
+    }
   | { readonly kind: 'continue'; readonly step: string; readonly launch: AgentLaunch }
   | {
       readonly kind: 'attention';

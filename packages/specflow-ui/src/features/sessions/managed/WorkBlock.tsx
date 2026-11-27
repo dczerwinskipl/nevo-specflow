@@ -1,31 +1,30 @@
 import { useTranslation } from 'react-i18next';
-import { Wrench } from 'lucide-react';
 import { Icon, Spinner, Typography, cn } from '@nevo/ui';
 import type { WorkBlockModel } from './workBlockModel';
 import { describeWorkBlock } from './workDigest';
+import { workOperationIcon } from './workOperationIcon';
 import { workStateTextClassName } from './workStatus';
 
 /**
- * One Turn's Work in the Conversation (full-session.md "Work block", owner direction: "widzę co
- * aktualnie robi, widzę ile już zrobił"). Top line: cumulative work so far by kind; under it, while
- * the Turn is live, what is happening right now with a spinner; once settled, the Turn's terminal
- * outcome if it was not a plain completion. The whole block is the one click target into the Turn's
- * Work history (chevron + hover, no extra visible label).
+ * The agent-work element of one work stage in the Conversation (full-session.md "Work block"),
+ * right under that stage's Commentary: one light row, "[icon] 5 commands ›" (owner, 2026-11-26:
+ * the transcript is first a conversation, the work a quiet way into it). It says what was done by
+ * kind ("5 commands", "1 command · 2 reads"), failed tool actions on their own line in the error
+ * tone (always visible in the transcript) and, on the active Turn's last stage, what is happening
+ * right now with a spinner. How the Turn ended is never said here (`TurnOutcomeEvent` says it once).
  *
- * The leading icon sits in a small tile so the block does not drown in conversation text, without
- * a container at rest (layout-and-containment: borderless-first; hover/focus show the surface).
- * Colour is used only for exceptions: failed tool actions and a failed/stopped/interrupted Turn.
+ * No surface of its own: the leading icon is the kind the stage did most (`workOperationIcon`, the
+ * icons Work history uses too) and colour marks only the exception. The whole row is the touch
+ * target, full width, and opens Work history at this stage, expanded and scrolled to; the chevron
+ * right means "opens", and Back returns to the same place in the conversation.
  */
 export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspect: () => void }) {
   const { t } = useTranslation();
   const text = describeWorkBlock(block, t);
-  // Icon follows the Turn's OWN state, not a mid-Turn failure line: while `block.live` is set the
-  // Turn is still running (work may yet succeed), so the icon stays the spinner even when a tool
-  // has already failed — only `text.outcome` (set once the Turn settles, never while live, see
-  // `workBlockModel.ts`) promotes the icon to alert. The red failure LINE itself still renders
-  // immediately below, independent of the icon.
-  const danger = !block.live && (!!text.failed || text.outcome?.tone === 'danger');
-  const attention = !block.live && !danger && text.outcome?.tone === 'attention';
+  // While `block.live` is set the Turn is still running, so the icon stays the spinner even when a
+  // tool has already failed; the red failure line itself renders below either way.
+  const danger = !block.live && !!text.failed;
+  const line = text.summary ?? text.title;
 
   return (
     <article data-entry-id={block.id} data-work-block="" className="grid min-w-0">
@@ -33,31 +32,36 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
       <button
         type="button"
         onClick={onInspect}
-        className="group/work flex w-full min-w-0 cursor-pointer items-start gap-3 rounded-control px-2 py-2 text-left outline-none transition-colors hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus-ring"
+        className={cn(
+          // Full width and at least the target height; the hover surface bleeds into the gutter so
+          // the icon stays on the prose's left edge.
+          'group/work -mx-2 grid min-h-(--target-size) w-[calc(100%+1rem)] min-w-0 cursor-pointer grid-cols-[var(--spacing-icon-sm)_minmax(0,1fr)] items-start gap-x-2 rounded-control px-2 py-1 text-left outline-none transition-colors hover:bg-surface-hover active:bg-surface-selected focus-visible:outline-2 focus-visible:outline-focus-ring',
+        )}
       >
         <span
           aria-hidden="true"
           className={cn(
-            'inline-flex size-7 shrink-0 items-center justify-center rounded-control bg-surface-control',
-            workStateTextClassName(danger ? 'danger' : attention ? 'attention' : 'neutral'),
+            'flex h-[var(--text-body-sm--line-height)] items-center justify-center',
+            danger ? workStateTextClassName('danger') : 'text-content-muted',
           )}
         >
           {block.live ? (
             <Spinner size="sm" />
-          ) : danger || attention ? (
+          ) : danger ? (
             <Icon name="circle-alert" size="sm" />
           ) : (
-            <Icon name={Wrench} size="sm" />
+            <Icon name={workOperationIcon(text.operation)} size="sm" />
           )}
         </span>
-        <span className="grid min-w-0 flex-1 gap-1 pt-1 [overflow-wrap:anywhere]">
-          {/* `body-md` (14px, the conversation's own reading size) for the aggregate itself, one
-              step quieter in colour than the answer; the exception/live lines below stay
-              `body-sm` supporting text. Tones come from the shared state vocabulary
-              (`workStatus.ts`) Work history also uses for the very same operations. */}
-          {text.summary && (
-            <Typography as="span" variant="body-md" className="text-content-secondary">
-              {text.summary}
+        <span data-work-block-text="" className="grid min-w-0 gap-0.5 [overflow-wrap:anywhere]">
+          {line && (
+            <Typography
+              as="span"
+              variant="body-sm"
+              className="inline-flex min-w-0 items-center gap-1 text-content-muted transition-colors group-hover/work:text-content-primary"
+            >
+              <span className="min-w-0">{line}</span>
+              <Icon name="chevron-right" size="sm" aria-hidden="true" className="shrink-0" />
             </Typography>
           )}
           {text.failed && (
@@ -69,33 +73,15 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
               {text.failed}
             </Typography>
           )}
-          {text.outcome && (
-            <Typography
-              as="span"
-              variant="body-sm"
-              className={cn('font-medium', workStateTextClassName(text.outcome.tone))}
-            >
-              {text.outcome.text}
-            </Typography>
-          )}
-          {text.outcome?.reason && (
-            <Typography as="span" variant="body-sm" className="text-content-secondary">
-              {text.outcome.reason}
-            </Typography>
-          )}
-          {/* Visible, but `aria-hidden` — the live announcement itself lives in the sr-only sibling
-              region below, OUTSIDE this `button` (a `role="status"` live
-              region nested INSIDE a button becomes part of that button's own accessible name, so
-              every live-text change would re-announce the WHOLE control, not just the update).
-              The leading icon tile
-              already carries the spinner while live (see above), so this line doesn't repeat one of
-              its own. */}
+          {/* Visible, but `aria-hidden`: the live announcement lives in the sr-only sibling region
+              below, OUTSIDE this `button` (a live region inside a button becomes part of its
+              accessible name, so every change would re-announce the whole control). */}
           {text.live && (
             <Typography
               as="span"
               variant="body-sm"
               aria-hidden="true"
-              className="line-clamp-2 text-content-secondary"
+              className="line-clamp-2 text-content-muted"
               title={text.live}
             >
               {text.live}
@@ -103,15 +89,7 @@ export function WorkBlock({ block, onInspect }: { block: WorkBlockModel; onInspe
           )}
           <span className="sr-only">{t('managedSession.workSummary.open')}</span>
         </span>
-        <Icon
-          name="chevron-right"
-          size="sm"
-          className="mt-1.5 shrink-0 text-content-muted transition-colors group-hover/work:text-content-secondary"
-        />
       </button>
-      {/* The live region itself: a sibling of the button, never part of its accessible name, so a
-          live-text change is announced on its own instead of re-announcing the whole "open Work
-          history" control. */}
       {text.live && (
         <span role="status" aria-live="polite" className="sr-only">
           {t('managedSession.workSummary.running')} {text.live}

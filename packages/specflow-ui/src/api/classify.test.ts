@@ -265,14 +265,10 @@ describe('classifyHttpError', () => {
     });
   });
 
-  it('maps 503 specification_source_unavailable to a permanent not-in-runtime unavailability', () => {
+  it('maps 503 specification_source_unavailable to a transient, retryable unavailability', () => {
     const error = classify(http(503, { error: 'specification_source_unavailable' }), 'GET');
-    expect(error).toMatchObject({
-      kind: 'unavailable',
-      reason: 'not-in-runtime',
-      retryable: false,
-      outcome: 'not-applied',
-    });
+    expect(error).toMatchObject({ kind: 'unavailable', retryable: true, outcome: 'not-applied' });
+    expect(error).not.toHaveProperty('reason', 'not-in-runtime');
   });
 
   it('classifies a transient 503 without a code as retryable unavailability', () => {

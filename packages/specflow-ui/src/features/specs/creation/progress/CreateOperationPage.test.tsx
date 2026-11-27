@@ -460,8 +460,9 @@ describe('CreateOperationPage', () => {
     const get = vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND'));
     const { onOpen } = renderPage({ post, get });
     expect(await heading('Specification created')).toBeTruthy();
-    // The completion page is the durable confirmation; a toast would repeat its heading.
-    expect(screen.queryByText('Specification created')).toBeNull();
+    // The completion page is the durable confirmation; a toast would repeat its heading. The only
+    // plain "Specification created" is the top bar naming the finished page.
+    expect(screen.getAllByText('Specification created')).toHaveLength(1);
     const items = within(
       screen.getByRole('group', { name: 'Specification creation progress' }),
     ).getAllByRole('listitem');
@@ -611,6 +612,52 @@ describe('CreateOperationPage', () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
+  it('says why the result is not confirmed when the Runtime was busy', async () => {
+    store();
+    const post = vi.fn().mockRejectedValue(httpError(503, 'CONTROL_LOCK_BUSY'));
+    const get = vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND'));
+    renderPage({ post, get });
+    expect(await heading('Result not confirmed yet')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'SpecFlow was busy or recovering from a stop and did not confirm the result.',
+        { selector: 'p:not(.sr-only)' },
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Check the result' })).toBeTruthy();
+  });
+
+  it('sends a lost operation again with Retry, under the same id', async () => {
+    store();
+    const post = vi.fn().mockResolvedValue(accepted);
+    // Unknown at first (sent), unknown after it was accepted (lost), unknown on Retry (sent again).
+    const get = vi
+      .fn()
+      .mockRejectedValueOnce(httpError(404, 'CREATE_NOT_FOUND'))
+      .mockRejectedValueOnce(httpError(404, 'CREATE_NOT_FOUND'))
+      .mockRejectedValueOnce(httpError(404, 'CREATE_NOT_FOUND'))
+      .mockResolvedValue(created);
+    renderPage({ post, get });
+    expect(await heading('Result not confirmed yet')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'SpecFlow has no record of this operation: it may have stopped before starting it.',
+        { selector: 'p:not(.sr-only)' },
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Check the result' })).toBeNull();
+    // The whole page agrees the operation is gone: no "checking", no "continues on the server".
+    expect(screen.getByText('This operation is gone')).toBeTruthy();
+    expect(screen.queryByText(/continues on the server/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Back to Create' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Open specification' })).toBeTruthy(),
+    );
+    expect(post).toHaveBeenCalledTimes(2);
+    expect(post.mock.calls[1]?.[1]).toMatchObject({ operationId });
+  });
+
   it('says it is still working, calmly, after a while', async () => {
     store();
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -648,6 +695,36 @@ describe('CreateOperationPage', () => {
       expect(onOpen).toHaveBeenCalledWith(created);
     });
 
+    it('offers Try again and Back to form for a Create the Runtime stopped before it existed', async () => {
+      store();
+      const post = vi.fn().mockResolvedValue(accepted);
+      renderPage({
+        post,
+        get: vi
+          .fn()
+          .mockResolvedValue({ ...accepted, status: 'failed', code: 'CREATE_INTERRUPTED' }),
+      });
+      expect(await screen.findByText('Creation stopped with the Runtime')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Back to form' })).toBeTruthy();
+    });
+
+    it('names the cause and the exact command when Git of the stopped Create may still run', async () => {
+      renderPage({
+        get: vi.fn().mockResolvedValue({
+          ...accepted,
+          status: 'recovery-required',
+          code: 'CREATE_GIT_UNSETTLED',
+        }),
+      });
+      expect(await screen.findByText(/while Git was working on this specification/)).toBeTruthy();
+      expect(
+        screen.getByText(
+          `nevo-specflow specs recover ${operationId} --confirmed-stopped --confirmed-git-stopped`,
+        ),
+      ).toBeTruthy();
+    });
+
     it('shows a failure the server reports', async () => {
       renderPage({
         get: vi
@@ -668,8 +745,27 @@ describe('CreateOperationPage', () => {
       expect(screen.getByText('This operation does not exist')).toBeTruthy();
       fireEvent.click(screen.getByRole('button', { name: 'Back to Create' }));
       expect(onBackToForm).toHaveBeenCalledOnce();
+      expect(onBackToForm).toHaveBeenCalledWith(undefined);
       expect(post).not.toHaveBeenCalled();
       expect(screen.queryByRole('alert')).toBeNull();
+      // No hidden "retry the same operation" text: nothing here can be sent again.
+      expect(screen.queryByText(/Retry the same operation/)).toBeNull();
+    });
+
+    it('keeps the draft this browser holds for an operation the server does not know', async () => {
+      storage().saveDraft({
+        operationId,
+        title: 'Payment limits',
+        goal: 'Goal',
+        choice: initialWorkspaceChoice,
+      });
+      const { onBackToForm } = renderPage({
+        get: vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND')),
+      });
+      expect(await heading('Operation not found', false)).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Back to Create' }));
+      expect(onBackToForm).toHaveBeenCalledWith(operationId);
+      expect(storage().loadDraft(operationId)).toMatchObject({ title: 'Payment limits' });
     });
   });
 

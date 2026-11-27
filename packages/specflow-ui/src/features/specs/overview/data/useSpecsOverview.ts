@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { asApiError } from '../../../../api';
+import { unreadableCauseOf } from '../../../../shared/unreadable/unreadable';
 
 import type { SpecsCollection, SpecsOverviewState } from '../model';
 import { specsOverviewOperation, type SpecsOverviewApi } from './api';
@@ -20,6 +21,7 @@ export function useSpecsOverview(api: SpecsOverviewApi, collection: SpecsCollect
     paused: query.isPending && query.fetchStatus === 'paused',
     refreshing: query.isRefetching,
     error: query.isError,
+    ...(query.isError ? { errorCause: unreadableCauseOf(query.error) } : {}),
     accessDenied: failure?.kind === 'forbidden',
   };
 

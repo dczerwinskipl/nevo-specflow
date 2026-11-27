@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { IconName } from '@nevo/ui';
+import type { IconGlyph } from '@nevo/ui';
 import { defineUiExtensionPoint, type UiContribution } from '../../../app/ui-modules/contracts';
 import type { Message } from '../../../i18n/message';
 import type { AttentionItem } from '../read-model/model';
@@ -22,7 +22,7 @@ export interface SpecificationAttentionAction {
 /** A module contributes presentation/actions for attention sourced from the Runtime snapshot. */
 export interface SpecificationAttentionEntry {
   readonly item: AttentionItem;
-  readonly icon: IconName;
+  readonly icon: IconGlyph;
   /** A leading mark of its own (a Session's provider); otherwise `icon`. */
   readonly leading?: ReactNode;
   /** What the item is about, after its title (`T-02 · Backend`, `Session · Claude`). */
@@ -32,7 +32,7 @@ export interface SpecificationAttentionEntry {
   readonly reason?: Message;
   /** How the reason reads (never colour alone: it carries `reasonIcon` or words). */
   readonly tone?: 'attention' | 'danger' | 'neutral';
-  readonly reasonIcon?: IconName;
+  readonly reasonIcon?: IconGlyph;
   readonly action?: SpecificationAttentionAction;
   /** An alternative to `action` (for example Cancel task). */
   readonly secondaryAction?: SpecificationAttentionAction;

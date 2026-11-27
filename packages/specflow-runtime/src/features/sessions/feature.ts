@@ -1,4 +1,5 @@
 import { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
+import type { AgentStepOrigins } from './http/agent-step';
 
 import type { RuntimeFeature } from '../runtime-feature';
 import type { SessionsFeatureConfig } from './configuration';
@@ -17,10 +18,16 @@ import { homedir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import type { SpecFlowEngine } from '@nevo/specflow-engine';
-import { createEngineSessionEffects, workspaceExecutionIdentity } from './effects/engine';
+import {
+  createEngineSessionEffects,
+  workspaceExecutionIdentity,
+  type AgentAttemptSettlement,
+  type AgentTurnAdmission,
+} from './effects/engine';
 import type { SessionCoordinator } from './lifecycle/coordinator';
 import { createSpecificationWorkspaceResolver } from './workspace/specification-workspace';
 import { withheldProviderDescriptor } from './providers/withheld';
+import type { InvocationCapabilities } from './lifecycle/invocation-capabilities';
 
 /**
  * The registered Sessions runtime, read at request time by the features composed over it (the
@@ -46,6 +53,14 @@ export function createSessionsFeature(
     workspaceOccupancy?: {
       beginTurn(workspaceId: string, sessionId: string): { end(): void } | undefined;
     };
+    /** The invocation capabilities of write Turns (the agent-execution feature, D11). */
+    invocationCapabilities?: InvocationCapabilities;
+    /** The finalize that settles a Turn of an agent attempt (the agent-execution feature, D12). */
+    settleAgentAttempt?: AgentAttemptSettlement;
+    /** The admission and abandon judgement of agent attempt Turns (the agent-execution feature). */
+    agentTurns?: AgentTurnAdmission;
+    /** The step and attempt of agent step execution Sessions (the agent-execution feature). */
+    agentStepOrigins?: AgentStepOrigins;
   } = {},
 ): RuntimeFeature & { readonly runtime: SessionsRuntime } {
   let registered: SessionCoordinator | undefined;
@@ -88,7 +103,12 @@ export function createSessionsFeature(
         options.engine &&
         options.storage?.workspace === options.engine.workspace.root &&
         options.storage.projectId === options.engine.context.project.projectId
-          ? createEngineSessionEffects(options.engine)
+          ? createEngineSessionEffects(options.engine, {
+              ...(options.settleAgentAttempt
+                ? { settleAgentAttempt: options.settleAgentAttempt }
+                : {}),
+              ...(options.agentTurns ? { agentTurns: options.agentTurns } : {}),
+            })
           : undefined;
       if (options.config?.providers.mock.enabled) {
         drivers.push(createMockDriver());
@@ -101,6 +121,7 @@ export function createSessionsFeature(
             temporaryRoot: join(options.storage!.directory, 'provider-temporary'),
             executable: claude.executable,
             managedWrites: effects !== undefined,
+            logRejection: (reason) => app.log.warn({ provider: 'claude' }, reason),
           }),
         );
       }
@@ -172,6 +193,7 @@ export function createSessionsFeature(
               ? createSpecificationWorkspaceResolver(options.engine)
               : undefined,
             options.workspaceOccupancy,
+            options.invocationCapabilities,
           )
         : undefined;
       if (coordinator) {
@@ -184,8 +206,10 @@ export function createSessionsFeature(
         await coordinator.recoverEffects();
       }
 
+      // The first probe of each provider starts now, in the background: startup does not wait for
+      // it, and the first catalogue read waits only for what is still running of it.
       if (coordinator && (claude?.enabled || codex?.enabled || antigravity?.enabled)) {
-        await coordinator.providers();
+        void coordinator.providers().catch(() => undefined);
       }
 
       registerSessionRoutes(app, {
@@ -196,6 +220,10 @@ export function createSessionsFeature(
           : {}),
         ...(options.demoList ? { demoList: options.demoList } : {}),
         ...(options.demoReads ? { demoReads: options.demoReads } : {}),
+        ...(options.agentStepOrigins ? { agentStepOrigins: options.agentStepOrigins } : {}),
+        ...(options.agentTurns?.ownerTurnHold
+          ? { ownerTurnHold: options.agentTurns.ownerTurnHold.bind(options.agentTurns) }
+          : {}),
       });
     },
   };

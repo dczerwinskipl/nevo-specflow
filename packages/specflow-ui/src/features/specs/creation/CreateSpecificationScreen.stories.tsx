@@ -333,28 +333,13 @@ export const Default: Story = {
     createDelayMs: { control: { type: 'number', min: 0, step: 100 } },
   },
 };
-/** Picks a model in the labelled Model field of the agent section. */
-async function chooseModel(
-  canvas: StoryContext['canvas'],
-  userEvent: StoryContext['userEvent'],
-  name: string,
-) {
-  await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
-  await userEvent.click(await within(document.body).findByRole('option', { name }));
-  await waitFor(() => expect(within(document.body).queryByRole('listbox')).toBeNull());
-  // The listbox closes before the form re-renders for the new model: wait for the choice itself.
-  await waitFor(() =>
-    expect(canvas.getByRole('combobox', { name: 'Model' })).toHaveTextContent(name),
-  );
-}
-
 export const ChoiceAndConfiguration: Story = {
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('button', { name: /Z agentem/ });
     await settleViewport();
     const cards = [
       canvas.getByRole('button', { name: /Z agentem/ }),
-      canvas.getByRole('button', { name: /Samodzielnie/ }),
+      canvas.getByRole('button', { name: /^Ręcznie/ }),
     ];
     await expect(
       Math.abs(cards[0]!.getBoundingClientRect().width - cards[1]!.getBoundingClientRect().width),
@@ -364,7 +349,7 @@ export const ChoiceAndConfiguration: Story = {
     }
 
     await settleViewport(390, 844);
-    await userEvent.click(canvas.getByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(canvas.getByRole('button', { name: /^Ręcznie/ }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Logowanie SSO',
@@ -381,12 +366,12 @@ export const ChoiceAndConfiguration: Story = {
     await settleViewport(390, 844, () =>
       canvas.getByRole('button', { name: 'Utwórz specyfikację' }),
     );
-    await userEvent.click(canvas.getByRole('button', { name: /Zmień sposób pracy/ }));
+    await userEvent.click(canvas.getByRole('button', { name: /Wróć do sposobów rozpoczęcia/ }));
     await userEvent.click(canvas.getByRole('button', { name: /Z agentem/ }));
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(
       'Logowanie SSO',
     );
-    await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeVisible();
+    await expect(canvas.getByText('Nowa sesja')).toBeVisible();
     await settleViewport();
     await settleViewport(390, 844);
     await settleViewport(390, 844, () =>
@@ -394,36 +379,16 @@ export const ChoiceAndConfiguration: Story = {
     );
   },
 };
+/** The agent picker of Run with agent over the demo catalogue: the first agent that can start, its first model and the work mode it runs in. */
 export const ExplicitModelCapabilities: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /Z agentem/ }));
-    canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }).focus();
-    // Name -> archetype radio group -> the two suggested documents -> first provider.
-    await userEvent.tab();
-    await userEvent.tab();
-    await userEvent.tab();
-    await userEvent.tab();
-    const focusedProvider = canvas.getByRole('radio', { name: /Codex/ });
-    await expect(focusedProvider).toHaveFocus();
-    await expect(
-      Number.parseFloat(getComputedStyle(focusedProvider.closest('label')!).outlineWidth),
-    ).toBeGreaterThanOrEqual(2);
-    await settleViewport();
-    await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
-    await chooseModel(canvas, userEvent, 'codex model B');
-    // A model without efforts leaves Effort disabled at the provider default.
-    await expect(canvas.getByRole('combobox', { name: 'Effort' })).toBeDisabled();
-    await expect(canvas.getByRole('combobox', { name: 'Effort' })).toHaveTextContent('Domyślny');
-    // Only the modes this model runs, under the provider's own names.
-    const modes = within(canvas.getByRole('radiogroup', { name: 'Tryb pracy' })).getAllByRole(
-      'radio',
-    );
-    await expect(modes.map((mode) => mode.textContent)).toEqual(['Ask', 'Agent']);
+    await expect(await canvas.findByRole('radio', { name: /Codex/ })).toBeChecked();
+    await expect(canvas.getByText(/Agent pracuje w trybie/)).toBeVisible();
     await userEvent.click(canvas.getByRole('radio', { name: /Claude/ }));
-    // Changing the provider resets everything below it.
-    await expect(canvas.getByRole('combobox', { name: 'Model' })).toHaveTextContent(
-      'Wybierz model',
-    );
+    await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeChecked();
+    // Never "Preselected from the settings": nothing preselects a Create's agent.
+    await expect(canvas.queryByText(/Wstępnie wybrane/)).toBeNull();
   },
 };
 
@@ -435,10 +400,8 @@ export const LostCreateAcknowledgement: Story = {
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'SSO recovery',
     );
-    await chooseModel(canvas, userEvent, 'codex model A');
     await userEvent.click(canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' }));
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toBeDisabled();
-    await expect(canvas.getByRole('combobox', { name: 'Model' })).toBeDisabled();
     await expect(canvas.getByRole('radio', { name: 'Nowe środowisko pracy' })).toBeDisabled();
     await expect(canvas.getByRole('radio', { name: /Claude/ })).toBeDisabled();
     await userEvent.click(canvas.getByRole('button', { name: 'Sprawdź wynik' }));
@@ -448,7 +411,7 @@ export const LostCreateAcknowledgement: Story = {
 export const CatalogueFailureKeepsDraft: Story = {
   render: () => <Fixture catalogueFailure />,
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Zachowany szkic',
@@ -553,12 +516,14 @@ async function expectEqualRows(canvas: Canvas) {
 export const ZeroProviders: Story = {
   render: () => <Fixture catalogue={withProviders([])} />,
   play: async ({ canvas, userEvent }) => {
-    await openAgentForm(canvas, userEvent);
-    await expect(canvas.getByText('Brak dostępnych agentów.')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    // No agent can start: the tile is disabled, with why under it (owner, 2026-11-26).
+    const tile = await canvas.findByRole('button', { name: /Z agentem/ });
+    await expect(tile).toHaveAttribute('aria-disabled', 'true');
+    await expect(
+      canvas.getByText('Żaden agent nie może wystartować: ten serwer nie ma żadnych agentów.'),
+    ).toBeVisible();
+    await userEvent.click(tile);
+    await expect(canvas.queryByRole('heading', { name: 'Nowa specyfikacja' })).toBeNull();
     for (const width of [390, 1440]) {
       await expectNoOverflow(width);
     }
@@ -714,21 +679,18 @@ export const SingleModeModel: Story = {
   ),
   play: async ({ canvas, userEvent }) => {
     await openAgentForm(canvas, userEvent);
-    await chooseModel(canvas, userEvent, 'Solo model');
-    // The only mode is shown as the chosen one; there is nothing else to pick.
-    const modes = () =>
-      within(canvas.getByRole('radiogroup', { name: 'Tryb pracy' })).getAllByRole('radio');
-    await waitFor(() => expect(modes()).toHaveLength(1));
-    await expect(modes()[0]).toBeChecked();
+    // The only mode the model runs is the one its Session starts in: a sentence, not a setting.
+    await expect(canvas.queryByRole('radiogroup', { name: 'Tryb pracy' })).toBeNull();
+    await expect(canvas.getByText(/Agent pracuje w trybie/)).toBeVisible();
   },
 };
 export const SeparatorsOnlyBetweenRenderedSections: Story = {
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     // Manual mode has no agent section: basics | archetype | git, then the divider above the pinned
     // footer.
     await expect(canvas.getAllByRole('separator')).toHaveLength(3);
-    await userEvent.click(canvas.getByRole('button', { name: /Zmień sposób pracy/ }));
+    await userEvent.click(canvas.getByRole('button', { name: /Wróć do sposobów rozpoczęcia/ }));
     await userEvent.click(canvas.getByRole('button', { name: /Z agentem/ }));
     await expect(canvas.getAllByRole('separator')).toHaveLength(4);
   },
@@ -740,7 +702,7 @@ async function openManualForm(
   userEvent: UserEvent,
   name = 'Nowa obsługa płatności',
 ) {
-  await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+  await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
   await userEvent.type(await canvas.findByRole('textbox', { name: 'Nazwa specyfikacji' }), name);
   await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
 }
@@ -846,7 +808,7 @@ export const AgentPathKeepsAcceptedSectionOrderAndCta: Story = {
 export const OptionsLoadingBlocksCreateButNotTheName: Story = {
   render: () => <Fixture optionsBehavior="loading" />,
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     const name = await canvas.findByRole('textbox', { name: 'Nazwa specyfikacji' });
     await userEvent.type(name, 'Szkic');
     await expect(name).toHaveValue('Szkic');
@@ -862,7 +824,7 @@ export const OptionsLoadingBlocksCreateButNotTheName: Story = {
 export const OptionsErrorKeepsTheDraft: Story = {
   render: () => <Fixture optionsBehavior="error" />,
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await userEvent.type(
       await canvas.findByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Szkic',
@@ -877,7 +839,7 @@ export const OptionsErrorKeepsTheDraft: Story = {
 export const OptionsForbiddenMakesTheFormReadOnly: Story = {
   render: () => <Fixture optionsBehavior="forbidden" />,
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await canvas.findByText('Nie masz uprawnień do tworzenia specyfikacji', { selector: 'div' });
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toBeDisabled();
     await expect(submit(canvas)).toBeDisabled();
@@ -1661,7 +1623,7 @@ export const BlockedCreateLeadsToTheFirstFaultyFieldAndSendsNothing: Story = {
   render: () => <Fixture />,
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await canvas.findByRole('radio', { name: 'Nowe środowisko pracy' });
     const name = canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' });
     await expect(name).not.toHaveAttribute('aria-invalid');
@@ -1672,7 +1634,7 @@ export const BlockedCreateLeadsToTheFirstFaultyFieldAndSendsNothing: Story = {
     await waitFor(() => expect(name).toHaveFocus());
     await expect(name).toHaveAttribute('aria-invalid', 'true');
     await expect(
-      canvas.getByText('Podaj nazwę specyfikacji.', { selector: '.field-error' }),
+      canvas.getByText('Wpisz nazwę, aby utworzyć specyfikację.', { selector: '.field-error' }),
     ).toBeVisible();
     // With the name typed, Enter in it leads on to the next problem: an emptied branch name.
     await userEvent.type(name, 'Nowa obsługa płatności');

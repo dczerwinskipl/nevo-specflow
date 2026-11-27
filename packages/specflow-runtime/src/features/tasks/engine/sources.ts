@@ -103,11 +103,16 @@ export function createProjectTaskEngine(
  */
 export class TaskSourceUnavailableError extends Error {
   readonly retryable: boolean;
+  /** The lock is held by a process nothing proves stopped (or is corrupt): only recovery helps. */
+  readonly recovery: boolean;
 
   constructor(cause: unknown) {
     super('The Task source is unavailable.', { cause });
     this.name = 'TaskSourceUnavailableError';
     this.retryable = cause instanceof ProjectControlLockError && cause.code === 'CONTROL_LOCK_BUSY';
+    this.recovery =
+      cause instanceof ProjectControlLockError &&
+      (cause.code === 'CONTROL_LOCK_RECOVERY_REQUIRED' || cause.code === 'CONTROL_LOCK_CORRUPT');
   }
 }
 

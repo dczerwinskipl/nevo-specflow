@@ -41,7 +41,7 @@ describe('recorded actor labels', () => {
   it('names an agent by provider and model', () => {
     expect(
       actorLabel(t, { class: 'agent', details: { provider: 'claude', model: 'opus' } }, ann),
-    ).toBe('claude · opus');
+    ).toBe('Claude · opus');
     expect(
       actorLabel(
         t,

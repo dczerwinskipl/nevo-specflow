@@ -1,6 +1,6 @@
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../../i18n/message';
-import type { CreateFailure } from '../errors/createFailure';
+import type { CreateFailure, UncertainCause } from '../errors/createFailure';
 import type { CreateOperationState } from '../operation/createOperationReducer';
 import type { CreateSettingsFacts, FactWorkspace } from '../workspace/model/createFacts';
 
@@ -75,6 +75,12 @@ const nothingCreatedKinds: ReadonlySet<CreateFailure['kind']> = new Set([
   'catalogue-stale',
 ]);
 
+const unconfirmedKeys = {
+  busy: 'create.page.status.unconfirmed.busy',
+  lost: 'create.page.status.unconfirmed.lost',
+  'no-answer': 'create.page.status.unconfirmed.noAnswer',
+} as const satisfies Record<UncertainCause, string>;
+
 /** What the page needs to say what is going on now. */
 export interface CreateStatusInput {
   readonly view: CreatePageView;
@@ -91,6 +97,8 @@ export interface CreateStatusInput {
   readonly newWorkspace: boolean;
   /** The Create finished without committing its files (Git is disabled in the project). */
   readonly uncommitted?: boolean;
+  /** Create with an agent: what became of the agent start, and the step it starts. */
+  readonly firstStep?: { readonly title: string; readonly started: boolean } | undefined;
 }
 
 /**
@@ -101,6 +109,12 @@ export function createPageStatus(input: CreateStatusInput): Message | undefined 
   const { view, failure } = input;
   switch (view) {
     case 'completed':
+      if (input.firstStep) {
+        return input.firstStep.started
+          ? message('create.page.status.agentStarted', { step: input.firstStep.title })
+          : message('create.page.status.agentNotStarted');
+      }
+
       return message(
         input.uncommitted
           ? 'create.page.status.completedUncommitted'
@@ -111,9 +125,16 @@ export function createPageStatus(input: CreateStatusInput): Message | undefined 
         ? message('create.page.notCreated')
         : undefined;
     case 'unknown':
-      return failure?.kind === 'recovery-required' && failure.committed
-        ? message('create.page.createdNotCommitted')
-        : undefined;
+      if (failure?.kind === 'recovery-required') {
+        return failure.committed ? message('create.page.createdNotCommitted') : undefined;
+      }
+
+      // Why the result is not confirmed, in one line under the heading.
+      return message(
+        failure?.kind === 'uncertain' && failure.cause
+          ? unconfirmedKeys[failure.cause]
+          : 'create.page.status.unconfirmed.unknown',
+      );
     case 'not-found':
       return undefined;
     case 'working':
@@ -178,6 +199,9 @@ export interface CreateSettingsModel {
   readonly documents?: readonly string[];
   /** Git is enabled: the specification files are committed (the branch is `branch` or the workspace's). */
   readonly commit?: true;
+  /** Create with an agent: the agent and model, and the first step it starts (as the form showed them). */
+  readonly agent?: string;
+  readonly firstStep?: string;
 }
 
 export function createSettingsModel(
@@ -186,6 +210,7 @@ export function createSettingsModel(
   facts: CreateSettingsFacts | undefined,
   draftTitle?: string,
   archetype?: { title?: string; documents?: readonly string[] },
+  agent?: { label?: string; firstStepTitle?: string },
 ): CreateSettingsModel | undefined {
   if (!request && !facts) {
     return undefined;
@@ -214,5 +239,7 @@ export function createSettingsModel(
     ...(slug ? { slug } : {}),
     ...(goal ? { goal } : {}),
     ...(facts?.commit ? { commit: true as const } : {}),
+    ...(agent?.label ? { agent: agent.label } : {}),
+    ...(agent?.firstStepTitle ? { firstStep: agent.firstStepTitle } : {}),
   };
 }

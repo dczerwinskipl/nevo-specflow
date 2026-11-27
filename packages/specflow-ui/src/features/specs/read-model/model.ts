@@ -1,6 +1,7 @@
-import type { IconName } from '@nevo/ui';
+import type { IconGlyph } from '@nevo/ui';
 import type { TaskOverview, WorkspaceAttention } from '@nevo/specflow-contracts/specs/workspace';
 import type { DocumentContentState } from '@nevo/specflow-contracts/documents';
+import type { AgentStepOrigin } from '@nevo/specflow-contracts/sessions';
 import { type TaskGroup } from '../../tasks/read-model';
 
 export {
@@ -34,7 +35,7 @@ export interface DocumentItem {
 export interface SessionActivity {
   readonly label: string;
   readonly tone?: 'attention' | 'info' | 'neutral' | 'success';
-  readonly icon?: IconName;
+  readonly icon?: IconGlyph;
   readonly animate?: boolean;
 }
 
@@ -47,6 +48,8 @@ export interface SessionSummary {
   readonly meta?: string;
   /** Associated Tasks; absent or zero shows no count. */
   readonly taskCount?: number;
+  /** The agent step attempt an agent step Session was made for (its title and facts lines). */
+  readonly agentStep?: AgentStepOrigin;
   readonly updatedAt?: string;
   /**
    * The agent: ids from the Session, display titles resolved by the Runtime. Every workspace row
@@ -57,6 +60,8 @@ export interface SessionSummary {
   readonly providerTitle?: string;
   readonly modelId?: string;
   readonly modelTitle?: string;
+  /** The provider mode the Session runs in, by the catalogue's title (Auto, Manual, ...). */
+  readonly providerModeTitle?: string;
   readonly activity?: SessionActivity;
   readonly activityCode?: 'active' | 'attention';
 }
@@ -83,6 +88,8 @@ export interface AttentionItem {
   readonly action?: WorkspaceAttention['action'];
   readonly secondaryAction?: WorkspaceAttention['secondaryAction'];
   readonly taskIds?: readonly string[];
+  /** `dependency-unsatisfiable` with `restore-task`: the broken Tasks among `taskIds`. */
+  readonly brokenTaskIds?: readonly string[];
   readonly blocking?: WorkspaceAttention['blocking'];
   readonly blocks?: WorkspaceAttention['blocks'];
 }
@@ -102,7 +109,10 @@ export interface TaskProgressData {
 /** A missing domain read is not an empty Attention list. */
 export type FeatureAttentionSource =
   | { readonly state: 'available'; readonly items: readonly AttentionItem[] }
-  | { readonly state: 'unavailable'; readonly reason: 'source_unavailable' | 'not_implemented' }
+  | {
+      readonly state: 'unavailable';
+      readonly reason: 'source_unavailable' | 'source_busy' | 'source_recovery' | 'not_implemented';
+    }
   | { readonly state: 'forbidden' };
 
 export interface FeatureAttentionData {
@@ -188,9 +198,17 @@ export type SpecificationSectionState = 'available' | 'unavailable' | 'forbidden
 
 export interface SpecificationWorkspaceData {
   readonly sectionAvailability?: Partial<Record<SpecificationSectionId, SpecificationSectionState>>;
-  /** Why an unavailable section is unavailable: `not_implemented` is permanent for this Runtime. */
+  /**
+   * Why an unavailable section is unavailable: `not_implemented` is permanent for this Runtime,
+   * `source_busy` is a held control lock (busy or recovering from a stop), `source_recovery` a lock
+   * only an operator's recovery releases, `source_unavailable` any
+   * other read failure.
+   */
   readonly sectionUnavailableReason?: Partial<
-    Record<SpecificationSectionId, 'not_implemented' | 'source_unavailable'>
+    Record<
+      SpecificationSectionId,
+      'not_implemented' | 'source_unavailable' | 'source_busy' | 'source_recovery'
+    >
   >;
   readonly id: string;
   /** The registered workspace the Specification is bound to (its documentation is read there). */

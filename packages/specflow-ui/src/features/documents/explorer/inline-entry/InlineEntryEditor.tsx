@@ -2,6 +2,7 @@ import { useId, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Icon, Popover, PopoverAnchor, PopoverContent, TextInput } from '@nevo/ui';
 import type { InlineEntry } from './inlineEntry';
+import { productIcons } from '../../../../shared/product-icons';
 
 /**
  * The name input of a new or renamed tree entry. Enter commits, Escape cancels, leaving the page
@@ -51,7 +52,7 @@ export function InlineEntryEditor({
       <Popover open={Boolean(entry.error)}>
         <PopoverAnchor asChild>
           <div className="flex items-center gap-2">
-            <Icon name={entry.kind === 'folder' ? 'folder' : 'file'} />
+            <Icon name={entry.kind === 'folder' ? 'folder' : productIcons.document.item} />
             <TextInput
               ref={inputRef}
               autoFocus

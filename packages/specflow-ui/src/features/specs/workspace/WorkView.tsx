@@ -109,6 +109,7 @@ export function WorkView({ specId, data }: WorkViewProps) {
     <div key="summary" className={cn('pb-3', twoColumns && 'col-span-2')}>
       <SpecificationSummarySection
         title={data.title}
+        {...(data.key ? { specificationKey: data.key } : {})}
         specId={id}
         intro={data.intro}
         overviewDocumentId={data.overviewDocumentId}
@@ -142,11 +143,14 @@ export function WorkView({ specId, data }: WorkViewProps) {
           return document ? (document.filename ?? document.title) : undefined;
         }}
         progress={data.taskProgress}
+        // The Runtime's "Ready to start" group (default grouping id `ready`), as the Tasks list counts it.
+        ready={data.taskOverview?.rows.find((row) => row.groupId === 'ready')?.count}
         stuck={data.taskOverview?.stuck}
         fullTaskHref={runtime.fullTaskHref}
         onOpenTask={(taskId) => runtime.openTask(taskId)}
         onOpenDocument={(documentId) => runtime.openDoc(documentId)}
         onOpenHistory={runtime.openHistory}
+        onOpenFeedback={runtime.openFeedback}
         fallback={preparationShown ? <PreparationSection startSession={data.startSession} /> : null}
       />
     </div>

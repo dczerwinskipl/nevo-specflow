@@ -7,6 +7,7 @@ import {
   inspectWorkspaceExecution,
   type SpecFlowEngine,
   type WorkspaceExecutionIntent,
+  type WorkspaceExecutionReceipt,
 } from '@nevo/specflow-engine';
 import { createHash } from 'node:crypto';
 import type { SessionEffects, SessionEffectIdentity } from '../lifecycle/effects';
@@ -34,13 +35,90 @@ export function recordedIdentity(
     .digest('hex');
 }
 
-export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffects {
+/**
+ * Settles the claim of a Turn of an agent attempt instead of the bare settlement: the attempt's
+ * finalize (the agent-execution feature), which publishes the step state and settles the claim in
+ * one section (D12). Called with the claim's recorded intent and the native-stop receipt.
+ */
+export type AgentAttemptSettlement = (
+  intent: WorkspaceExecutionIntent & { readonly attempt: { readonly attemptId: string } },
+  receipt: WorkspaceExecutionReceipt,
+) => Promise<void>;
+
+/**
+ * The agent-execution feature's judgement of an agent attempt Turn's claim (D19): `admissible`
+ * prepares (outside the lock) the check that runs inside the claim admission's control-lock section
+ * and refuses a Turn whose attempt the owner took over or returned after it was bound (the check
+ * must not take the lock); `abandoned` applies what such an owner action left waiting once the claim
+ * was abandoned as never dispatched (no finalize runs then).
+ */
+export interface AgentTurnAdmission {
+  admissible(attemptId: string, invocationId: string): Promise<() => Promise<void>>;
+  abandoned(attemptId: string): Promise<void>;
+  /**
+   * Why the owner cannot send a message in this Session now, in plain words with what to do: it is
+   * the Session of an agent attempt that is still open. An owner Turn there would run outside the
+   * attempt (without its scope or baseline): it could not finish the step and its changes would
+   * stop Continue. Undefined: the owner may send.
+   */
+  ownerTurnHold?(specId: string, sessionId: string): Promise<string | undefined>;
+}
+
+export function createEngineSessionEffects(
+  engine: SpecFlowEngine,
+  options: {
+    readonly settleAgentAttempt?: AgentAttemptSettlement;
+    readonly agentTurns?: AgentTurnAdmission;
+  } = {},
+): SessionEffects {
   function intent(identity: SessionEffectIdentity): WorkspaceExecutionIntent {
     return {
       operationId: identity.invocationId,
       ownerId: identity.sessionId,
       binding: identity.binding,
+      ...(identity.attemptId !== undefined ? { attempt: { attemptId: identity.attemptId } } : {}),
     };
+  }
+
+  /**
+   * The intent as the claim recorded it, when it is this identity's: a recovery identity (from the
+   * Session store) does not carry the agent attempt, which the recorded intent does.
+   */
+  async function recordedIntent(
+    identity: SessionEffectIdentity,
+  ): Promise<WorkspaceExecutionIntent> {
+    const expected = intent(identity);
+    const record = await inspectWorkspaceExecution(engine, identity.invocationId);
+    const recorded = record?.intent;
+
+    return recorded?.operationId === expected.operationId &&
+      recorded.ownerId === expected.ownerId &&
+      recorded.binding === expected.binding &&
+      (expected.attempt === undefined || recorded.attempt?.attemptId === expected.attempt.attemptId)
+      ? recorded
+      : expected;
+  }
+
+  /** The settlement of a claim with a native-stop receipt: the attempt's finalize, or the bare one. */
+  async function settleWith(
+    request: WorkspaceExecutionIntent,
+    receipt: WorkspaceExecutionReceipt,
+    target: Parameters<typeof settleWorkspaceExecution>[3],
+  ): Promise<void> {
+    if (request.attempt !== undefined) {
+      if (!options.settleAgentAttempt) {
+        throw new SessionError(
+          'SESSION_RECOVERY_REQUIRED',
+          'An agent attempt Turn settles only through its finalize.',
+        );
+      }
+
+      await options.settleAgentAttempt({ ...request, attempt: request.attempt }, receipt);
+
+      return;
+    }
+
+    await settleWorkspaceExecution(engine, request, receipt, target);
   }
 
   /**
@@ -69,6 +147,10 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
     try {
       return await run();
     } catch (error) {
+      if (error instanceof SessionError) {
+        throw error;
+      }
+
       if ((error as { code?: unknown }).code === 'RESOURCE_CONFLICT') {
         throw new SessionError(
           'TURN_CONFLICT',
@@ -94,7 +176,29 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
       }
 
       const request = intent(identity);
-      const record = await guarded(() => admitWorkspaceExecution(engine, request, target));
+      const { attemptId } = identity;
+      const turns = options.agentTurns;
+      const check =
+        attemptId !== undefined && turns
+          ? await guarded(() => turns.admissible(attemptId, identity.invocationId))
+          : undefined;
+      const admissible = check
+        ? async () => {
+            try {
+              await check();
+            } catch (error) {
+              // The owner ended the attempt or replaced the Turn: refused before any claim, so
+              // the Turn ends as never started.
+              throw new SessionError(
+                'TURN_CONFLICT',
+                error instanceof Error ? error.message : 'The agent attempt cannot run.',
+              );
+            }
+          }
+        : undefined;
+      const record = await guarded(() =>
+        admitWorkspaceExecution(engine, request, target, admissible ? { admissible } : {}),
+      );
       if (record.phase !== 'admitted') {
         throw new SessionError(
           'SESSION_RECOVERY_REQUIRED',
@@ -111,6 +215,11 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
         abandon: () =>
           guarded(async () => {
             await abandonWorkspaceExecutionAdmission(engine, request, target);
+            if (attemptId !== undefined) {
+              // A return recorded while the claim was only admitted applies now (no finalize runs
+              // for a Turn that never started); a failure here is repaired at the next owner read.
+              await turns?.abandoned(attemptId).catch(() => undefined);
+            }
           }),
         unknown: () =>
           guarded(async () => {
@@ -118,12 +227,7 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
           }),
         settle: (evidence) =>
           guarded(async () => {
-            await settleWorkspaceExecution(
-              engine,
-              request,
-              { ...evidence, invocationId: identity.invocationId },
-              target,
-            );
+            await settleWith(request, { ...evidence, invocationId: identity.invocationId }, target);
           }),
       };
     },
@@ -157,9 +261,8 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
           return undefined;
         }
 
-        record = await guarded(() =>
-          abandonWorkspaceExecutionAdmission(engine, intent(identity), target),
-        );
+        const recorded = record.intent;
+        record = await guarded(() => abandonWorkspaceExecutionAdmission(engine, recorded, target));
       }
 
       if (record.phase !== 'settled') {
@@ -187,10 +290,9 @@ export function createEngineSessionEffects(engine: SpecFlowEngine): SessionEffec
         );
       }
 
-      await guarded(() =>
-        settleWorkspaceExecution(
-          engine,
-          intent(identity),
+      await guarded(async () =>
+        settleWith(
+          await recordedIntent(identity),
           { invocationId: identity.invocationId, process: 'stopped', outcome: 'interrupted' },
           target,
         ),

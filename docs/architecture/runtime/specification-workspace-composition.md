@@ -41,8 +41,12 @@ and contribute through narrow ports. Project mode never falls back to demo fixtu
 - Unknown valid Specifications return 404 `specification_not_found`; unavailable canonical
   checkout, manifest, registry or source returns 503 `specification_source_unavailable`.
   The latter cannot distinguish an outage from an unconfigured source. No mock data is substituted.
-- Section states are `available`, `unavailable` (reason `not_implemented` or
-  `source_unavailable`) and `forbidden`. An available empty list means **no items**, not
+- Section states are `available`, `unavailable` (reason `not_implemented`, `source_unavailable`, or
+  `source_busy` while another writer holds the project control lock longer than a read waits, so a
+  retry soon can succeed, or `source_recovery` while the lock is held by a process nothing proves
+  stopped, or is corrupt, so only an operator's recovery helps) and `forbidden`. The Task and Task
+  list reads answer the same lock with 503 `specification_source_unavailable` and the code
+  `CONTROL_LOCK_RECOVERY_REQUIRED`, and the Specs list marks the row `unreadable: recovery`. An available empty list means **no items**, not
   missing integration. An independent read failure degrades only its own section.
 - Repository and changes are explicitly `unavailable/not_implemented` until their owner exposes
   a verified projection. Do not fabricate repository state from manifest data.

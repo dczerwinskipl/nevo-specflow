@@ -31,6 +31,7 @@ import {
   type DocumentContainer,
 } from './changes/plan/container';
 import type { RegistryManifest } from './changes/plan/snapshot';
+import { SPECIFICATION_ROOT } from '../repository';
 
 const MANIFEST_NAME = 'specification.yaml';
 
@@ -107,7 +108,12 @@ export async function loadSpecification(
   }
 
   const { specification, workspaceRoot, workspaceId } = discovered;
-  const specDir = join(workspaceRoot, 'specs', specification.location, specification.slug);
+  const specDir = join(
+    workspaceRoot,
+    SPECIFICATION_ROOT,
+    specification.location,
+    specification.slug,
+  );
   await assertCanonicalDirectory(fs, specDir);
 
   const opened = await openVerifiedFile(fs, specDir, MANIFEST_NAME);

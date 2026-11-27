@@ -12,6 +12,8 @@ import {
   claude,
   memoryDependencies,
   owner,
+  RESTRICTED_ARCHETYPE,
+  restrictTaskTypes,
   runToBreakdown,
   seedDefinitionFiles,
   seedExecutionCatalogue,
@@ -214,6 +216,33 @@ describe('Specification positions', () => {
     });
   });
 
+  it('ready after a review requested changes: the handoff names the review, its outcome and its feedback', async () => {
+    const dependencies = memoryDependencies(catalogue);
+    await runToBreakdown(dependencies);
+    await finishStep(dependencies, {
+      subject: specification,
+      step: 'breakdown',
+      attempt: 1,
+      input: { tasks: TWO_TASKS },
+      actor: claude,
+    });
+    await work(dependencies, specification, { result: 'fail', feedback: 'Split the API Task.' });
+
+    const projection = await project(dependencies, specification);
+    expect(projection.position).toMatchObject({
+      kind: 'ready',
+      next: { step: { id: 'breakdown' } },
+    });
+    expect(projection.handoff).toMatchObject({
+      kind: 'transition',
+      from: { step: 'breakdown-review', attempt: 1, title: 'Review the breakdown' },
+      transition: 'changes-requested',
+      label: 'Changes requested',
+      result: 'fail',
+      feedback: 'Split the API Task.',
+    });
+  });
+
   it('waiting: reports the wait step and the Tasks it waits for', async () => {
     const dependencies = memoryDependencies(catalogue);
     await specificationWithTasks(dependencies);
@@ -271,7 +300,18 @@ describe('Task positions', () => {
           workflowId: 'task-standard',
           firstStep: 'implement',
         }) as unknown,
-        next: expect.objectContaining({ human: true, agent: { kind: 'available' } }) as unknown,
+        next: expect.objectContaining({
+          human: true,
+          agent: {
+            kind: 'available',
+            launch: {
+              archetype: 'implementer',
+              provider: 'claude',
+              model: 'claude-sonnet-5-5',
+              session: { mode: 'fresh' },
+            },
+          },
+        }) as unknown,
       },
       actions: {},
       documentRelations: [],
@@ -471,7 +511,7 @@ describe('Task positions', () => {
     [
       'the type is not allowed by the live policy any more',
       (dependencies: Dependencies) => {
-        dependencies.references.archetypeId = 'architecture';
+        dependencies.references.archetypeId = RESTRICTED_ARCHETYPE;
 
         return dependencies;
       },
@@ -486,7 +526,7 @@ describe('Task positions', () => {
       'definition-missing',
     ],
   ])('refuses a first start when %s', async (_name, change, kind) => {
-    const dependencies = memoryDependencies(catalogue);
+    const dependencies = memoryDependencies(restrictTaskTypes(catalogue));
     await create(dependencies, 'api', { type: 'ui-implementation' });
     await decide(dependencies, 'api', 'ready');
     const projection = await project(change(dependencies), task('api'));

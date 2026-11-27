@@ -25,9 +25,20 @@ The Engine's journal, checkout identity and observed Git effects govern recovery
 A crash, `kill -9`, power loss or a late error after reservation leaves the Create journal non terminal
 (`recovery-required` in the operation panel, or `OPERATION_INTERRUPTED` after 5 minutes without a live
 writer). The journal keeps holding its slug, its branch/worktree path and (for a linked workspace) a
-capacity slot until it is resolved; the 7 day retention only removes `completed` journals. **There is no HTTP
-or UI action to resume or abandon a Create (known gap).** The Runtime never takes a journal over on its own:
-elapsed time proves nothing about a possibly live writer. What the operator can do:
+capacity slot until it is resolved; the 7 day retention only removes `completed` journals.
+
+**Automatic resume after a Runtime crash.** The journal records its executor (PID, start time, host).
+The Runtime records every Create it accepts before the Engine reserves anything and, at its next start only,
+reruns it once with the same operation id when the accepting Runtime is provably gone and the principal may
+still create: a journal whose executor is provably gone (its PID not running, or reused by a process with
+another start or creation time) is taken over and completed, a Create that died before its reservation is
+reserved now, and its first-step agent is started once
+([ADR 0027](../../architecture/decisions/0027-locks-released-only-on-positive-evidence.md)). Anything else is
+settled with a reason (`CREATE_INTERRUPTED`, `CREATE_RESUME_FORBIDDEN`) and offers Try again and Back to form.
+Elapsed time never counts as evidence. What stays for the operator: a journal whose executor cannot be judged
+(another host, no recorded executor), and a journal stopped at `git-initiated`, or at `commit-writing` with a
+Git commit lock still held, where a Git child of the dead process may still run (`CREATE_GIT_UNSETTLED`; the
+Create page shows the reason and the command below). What the operator can do:
 
 1. **Resume (preferred).** Stop whatever may still run the Create, then run
    `nevo-specflow specs recover <operation-id> --confirmed-stopped` (add `--confirmed-git-stopped` when the

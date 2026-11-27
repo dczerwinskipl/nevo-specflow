@@ -9,13 +9,14 @@ read_when:
   - choosing the authoritative workflow contract for a Specification or Task
   - changing neutral workflow extension points or host integration
 summary: >-
-  Entry point to the neutral workflow coordinator and Engine-owned definitions, Runs, Task resources, continuation and durable storage.
+  Entry point to the neutral workflow coordinator and Engine-owned definitions, Runs, Task resources, agent attempts, continuation and durable storage.
 related:
   - architecture.workflow.workflow-definitions-and-gates
   - architecture.workflow.workflow-runs-and-handoffs
   - architecture.workflow.workflow-tasks
   - architecture.workflow.workflow-continuation-and-attention
   - architecture.workflow.workflow-storage-and-recovery
+  - architecture.workflow.workflow-agent-attempts
   - architecture.workflow.deterministic-workflow
   - adr.0023-neutral-workflow-coordinator-and-manual-execution
 ---
@@ -31,6 +32,7 @@ The neutral `@nevo/workflow` coordinator decides transitions. The Engine's SpecF
 | Task identity, preparation or completion      | [Task resources](workflow-tasks.md)                                  |
 | Automatic continuation and attention          | [Continuation and attention](workflow-continuation-and-attention.md) |
 | Persisted Run, journals and crash replay      | [Storage and recovery](workflow-storage-and-recovery.md)             |
+| Agent attempts, owner confirmation, commit    | [Agent attempts](workflow-agent-attempts.md)                         |
 
 ## One core, two entry points
 
@@ -67,7 +69,7 @@ Everything else is shared.
 
 | To add                        | Change                                                                                                                                                                                                                                                                                       |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A Task effect                 | Add a value to `WORKFLOW_EFFECTS` (contracts) and a case to `applyTaskEffects`.                                                                                                                                                                                                              |
+| A Task effect                 | Add a value to `WORKFLOW_EFFECTS` (contracts), a case to `applyTaskEffects` and its authority to `EFFECT_AUTHORITY` (`definitions/effect-authority.ts`).                                                                                                                                     |
 | A Task status change          | Extend `ALLOWED_DECISIONS` in `tasks/tasks.ts`; the store invariants for statuses live in `state/validate.ts`.                                                                                                                                                                               |
 | An attention reason           | A continuation reason: add it to `ATTENTION_REASONS` and give `resolveAgentLaunch` / `resolveContinuation` (or `waitDecision`) the rule that produces it. A state reason: add it to `ATTENTION_ITEM_REASONS` with its action, and derive it in `deriveAttention` or `startBlockerAttention`. |
 | A step kind (e.g. gate)       | Add a union member in the contracts schema and in `definitions/model.ts`, then a rule in `workflow-rules.ts` and handling in `progression` and `advance`.                                                                                                                                    |

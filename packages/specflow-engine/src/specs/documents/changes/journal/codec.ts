@@ -51,6 +51,7 @@ const KEYS = [
   'commit',
   'commitMode',
   'executor',
+  'agent',
   'recoveryPhase',
   'queuedAt',
   'batchId',
@@ -67,6 +68,7 @@ const OPTIONAL_KEYS = [
   'commit',
   'commitMode',
   'executor',
+  'agent',
   'recoveryPhase',
   'queuedAt',
   'batchId',
@@ -110,6 +112,7 @@ export function parseDocumentChangeJournal(
     !exactKeys(value, KEYS, OPTIONAL_KEYS) ||
     !isValidIdentity(context, value, operationId) ||
     !isValidPlanEvidence(value.plan) ||
+    (value.agent !== undefined && !isDocumentChangeAgent(value.agent)) ||
     !isValidStageFields(value) ||
     Buffer.byteLength(JSON.stringify(value), 'utf8') > DOCUMENT_JOURNAL_MAX_BYTES
   ) {
@@ -158,6 +161,50 @@ function isValidIdentity(
     isIsoInstant(value.updatedAt) &&
     isDocumentChangeStage(value.stage) &&
     isCount(value.attempts, ATTEMPTS_MAX)
+  );
+}
+
+const SHORT = (value: unknown): boolean =>
+  typeof value === 'string' && value.length > 0 && value.length <= 256;
+/** A provider or model title, as the workflow's attempt records hold it: 1 to 200 characters. */
+const TITLE = (value: unknown): boolean =>
+  typeof value === 'string' && value.length > 0 && Array.from(value).length <= 200;
+
+/** The agent of an owned write: its execution id and, when recorded, the agent actor. */
+export function isDocumentChangeAgent(value: unknown): boolean {
+  if (!isRecord(value) || !exactKeys(value, ['executionId', 'actor'], ['actor'])) {
+    return false;
+  }
+
+  if (typeof value.executionId !== 'string' || !SPEC_ID.test(value.executionId)) {
+    return false;
+  }
+
+  if (value.actor === undefined) {
+    return true;
+  }
+
+  const actor = value.actor;
+  if (!isRecord(actor) || !exactKeys(actor, ['class', 'details'], []) || actor.class !== 'agent') {
+    return false;
+  }
+
+  const details = actor.details;
+
+  return (
+    isRecord(details) &&
+    exactKeys(
+      details,
+      ['archetype', 'provider', 'providerTitle', 'model', 'modelTitle', 'sessionId'],
+      ['archetype', 'providerTitle', 'model', 'modelTitle', 'sessionId'],
+    ) &&
+    SHORT(details.provider) &&
+    ['archetype', 'model', 'sessionId'].every(
+      (key) => details[key] === undefined || SHORT(details[key]),
+    ) &&
+    ['providerTitle', 'modelTitle'].every(
+      (key) => details[key] === undefined || TITLE(details[key]),
+    )
   );
 }
 

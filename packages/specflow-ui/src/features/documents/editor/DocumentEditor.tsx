@@ -13,6 +13,7 @@ import { useDocumentCatalogue } from '../catalogue/useDocumentCatalogue';
 import { documentKindOf, documentViewOf } from '../content-kinds/documentContentKinds';
 import { DocumentFileView, DocumentImageView } from '../content/DocumentFileViews';
 import { refusalReason } from '../mutationErrors';
+import { AttemptCommitDocumentNote } from './AttemptCommitDocumentNote';
 import { MarkdownSourceEditor } from './MarkdownSourceEditor';
 import { operationRunningCode } from './useDocumentSave';
 import {
@@ -59,6 +60,11 @@ function ReadOnlyLine({ session }: { session: DocumentEditorSession }) {
   const reason = session.readOnlyReason;
   if (!reason) {
     return null;
+  }
+
+  // The agent's work on this document is not committed yet: the note says so, with Retry commit.
+  if (reason === 'attempt-commit' && session.attemptCommit) {
+    return <AttemptCommitDocumentNote specId={session.specId} hold={session.attemptCommit} />;
   }
 
   const remedy = reasonRemedy(reason);
@@ -143,6 +149,15 @@ function SaveRefusal({ session }: { session: DocumentEditorSession }) {
           {t('documents.save.resume')}
         </Button>
       );
+      break;
+    // An agent attempt's commit takes the document: the tree is read again (the save's settle) and
+    // the note above the text says why and offers Retry commit; until it arrives, say only that.
+    case 'DOCUMENT_COMMITS_PENDING':
+      if (session.readOnlyReason === 'attempt-commit') {
+        return null;
+      }
+
+      title = t('documents.save.attemptCommit');
       break;
     case 'DOCUMENT_FILE_MISSING':
       title = t('documents.save.missing');

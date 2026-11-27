@@ -17,6 +17,8 @@ import type {
   SessionInfo,
   ToolOperation,
   SessionListFilter,
+  NoticeSeverity,
+  RequestOrigin,
 } from '@nevo/specflow-contracts/sessions';
 import type { NativeProcessIdentity } from '../providers/process/process-identity';
 import type { WorkAggregate } from '../lifecycle/work-aggregate';
@@ -60,7 +62,15 @@ export type DriverFact =
   | MeasurementFact
   | { kind: 'interaction-expired'; key: string }
   | { kind: 'correlation'; providerSessionId: string }
-  | { kind: 'work-open'; key: string; workKind: WorkSummary['kind']; title: string }
+  | {
+      kind: 'work-open';
+      key: string;
+      workKind: WorkSummary['kind'];
+      title: string;
+      /** A permission: the operation it asks for and its subject (`WorkSummary.subject`). */
+      operation?: ToolOperation;
+      subject?: string;
+    }
   | { kind: 'work-update'; key: string; state: WorkSummary['state'] }
   | {
       kind: 'action-open';
@@ -69,8 +79,16 @@ export type DriverFact =
       title: string;
       /** Only from the provider's own tool identity; Runtime records `other` when absent. */
       operation?: ToolOperation;
+      /** What it acts on (`ToolActionSummary.subject`): workspace-relative, never absolute. */
+      subject?: string;
     }
-  | { kind: 'action-update'; key: string; state: WorkSummary['state'] }
+  | {
+      kind: 'action-update';
+      key: string;
+      state: WorkSummary['state'];
+      /** A failed action: the provider's own short reason, and a stable one when known. */
+      error?: { code: string; message: string; reason?: string };
+    }
   | {
       kind: 'usage';
       sampleId: string;
@@ -84,6 +102,11 @@ export type DriverFact =
       key: string;
       channel: 'commentary' | 'reasoning' | 'answer' | 'tool-input' | 'tool-output';
       text: string;
+      /**
+       * Commentary SpecFlow writes itself (a relayed provider error, a stopped process, a
+       * recovery), never the agent's words: the conversation shows it as a notice of this severity.
+       */
+      notice?: NoticeSeverity;
     }
   | {
       kind: 'interaction';
@@ -98,7 +121,11 @@ export type DriverFact =
             'interactionId' | 'turnId' | 'workId' | 'revision'
           >;
     }
-  | { kind: 'outcome'; outcome: TurnOutcome; error?: { code: string; message: string } }
+  | {
+      kind: 'outcome';
+      outcome: TurnOutcome;
+      error?: { code: string; message: string; reason?: string };
+    }
   | { kind: 'lost'; message: string };
 
 export type StoreCommand =
@@ -111,7 +138,18 @@ export type StoreCommand =
       input: unknown;
     }
   /** `association` is an opaque sidecar written verbatim in the same transaction. */
-  | { op: 'create'; actor: string; input: CreateSession; association?: AssociationWrite }
+  | {
+      op: 'create';
+      actor: string;
+      input: CreateSession;
+      association?: AssociationWrite;
+      /** In-process only (agent step execution): the id the trusted host chose for the Session. */
+      sessionId?: string;
+    }
+  /** `boolean`: a Session with this id exists (archived included). */
+  | { op: 'has-session'; sessionId: string }
+  /** `boolean`: the Session has this Turn (in any state). */
+  | { op: 'has-turn'; sessionId: string; turnId: string }
   | {
       op: 'start';
       actor: string;
@@ -122,6 +160,13 @@ export type StoreCommand =
       nativeContextMode?: 'reserved' | 'provider-assigned';
       nativeWorkspaceIdentity?: string;
       effectBinding?: string;
+      /**
+       * In-process only (agent step execution): the Turn and invocation ids the trusted host chose before the
+       * Turn exists, because the Engine binds them to an agent attempt first. Never from a request.
+       */
+      ids?: { turnId: string; invocationId: string };
+      /** In-process only (agent step execution): the Turn's `request` entry is SpecFlow's brief. */
+      origin?: RequestOrigin;
     }
   | { op: 'dispatch-intent'; sessionId: string; turnId: string; invocationId: string }
   /** The invocation's native-stop evidence, recorded once, before the dispatch barrier. */

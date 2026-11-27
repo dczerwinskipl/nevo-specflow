@@ -337,7 +337,7 @@ describe('durable Session store', () => {
       ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
     }
   });
-  it('does not replay an unconfirmed native dispatch and never silently rebinds correlation', async () => {
+  it('never resumes or rebinds an unconfirmed native dispatch; once its Turn settled, the next Turn starts a new context', async () => {
     const { sessionId } = await create('claude');
     const nativeWorkspace = join(directory, 'workspace');
     const start = await store!.call<StartAdmission>({
@@ -363,6 +363,17 @@ describe('durable Session store', () => {
         fact: { kind: 'correlation', providerSessionId: randomUUID() },
       }),
     ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    const next = {
+      op: 'start' as const,
+      actor: 'user',
+      sessionId,
+      nativeWorkspace,
+      nativeScope: 'account',
+    };
+    // While the dispatched Turn is unsettled its process may run: no second Turn.
+    await expect(
+      store!.call({ ...next, input: { requestId: randomUUID(), message: 'Too early' } }),
+    ).rejects.toMatchObject({ code: 'TURN_CONFLICT' });
     await store!.call({
       op: 'fact',
       sessionId,
@@ -370,16 +381,335 @@ describe('durable Session store', () => {
       driverSeq: 1,
       fact: { kind: 'outcome', outcome: 'failed' },
     });
-    await expect(
-      store!.call({
-        op: 'start',
-        actor: 'user',
-        sessionId,
-        nativeWorkspace,
-        nativeScope: 'account',
-        input: { requestId: randomUUID(), message: 'Unsafe replay' },
+    const second = await store!.call<StartAdmission>({
+      ...next,
+      input: { requestId: randomUUID(), message: 'Next message' },
+    });
+    expect(second.providerContext).toMatchObject({ resume: false, scope: 'account' });
+    expect(second.providerContext!.nativeSessionId).not.toBe(
+      start.providerContext!.nativeSessionId,
+    );
+  });
+  it('marks commentary SpecFlow wrote as a notice and refuses a notice on any other channel', async () => {
+    const { sessionId } = await create();
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Notice' },
+    });
+    const facts: DriverFact[] = [
+      { kind: 'text', key: 'agent', channel: 'commentary', text: 'Agent words.' },
+      {
+        kind: 'text',
+        key: 'provider-error',
+        channel: 'commentary',
+        text: 'SpecFlow stopped the process.',
+        notice: 'error',
+      },
+    ];
+    for (const [index, fact] of facts.entries()) {
+      validateDriverFact(fact);
+      await store!.call({ op: 'fact', sessionId, ...start, driverSeq: index + 1, fact });
+    }
+
+    const entries = (await snap(sessionId)).entries.filter((entry) => entry.kind === 'commentary');
+    expect(entries.map((entry) => entry.notice)).toEqual([undefined, { severity: 'error' }]);
+    expect(sessionValidators.snapshot(await snap(sessionId))).toBe(true);
+    expect(() =>
+      validateDriverFact({
+        kind: 'text',
+        key: 'answer',
+        channel: 'answer',
+        text: 'Not a notice.',
+        notice: 'info',
       }),
-    ).rejects.toMatchObject({ code: 'SESSION_RECOVERY_REQUIRED' });
+    ).toThrow('Only commentary');
+  });
+  it('names tool Work by its first action and keeps the first failure for its row', async () => {
+    const { sessionId } = await create();
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Tools' },
+    });
+    let driverSeq = 0;
+    const emit = (fact: DriverFact) => {
+      validateDriverFact(fact);
+
+      return store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
+    };
+
+    await emit({ kind: 'work-open', key: 'note', workKind: 'commentary', title: 'Commentary' });
+    await emit({
+      kind: 'text',
+      key: 'note',
+      channel: 'commentary',
+      text: 'I will use a scratch dir.',
+    });
+    await emit({ kind: 'work-update', key: 'note', state: 'completed' });
+    await emit({ kind: 'work-open', key: 'tools', workKind: 'tool', title: 'Write' });
+    for (const [key, subject] of [
+      ['a', 'dummy/job.sh'],
+      ['b', 'dummy/test.sh'],
+    ] as const) {
+      await emit({
+        kind: 'action-open',
+        key,
+        parentKey: 'tools',
+        title: 'Write',
+        operation: 'write',
+        subject,
+      });
+    }
+
+    await emit({ kind: 'action-update', key: 'a', state: 'completed' });
+    await emit({
+      kind: 'action-update',
+      key: 'b',
+      state: 'failed',
+      error: { code: 'TOOL_FAILED', message: 'File has not been read yet: dummy/test.sh' },
+    });
+    const work = await store!.call<WorkPage>({
+      op: 'work',
+      sessionId,
+      turnId: start.turnId,
+      actor: 'user',
+      limit: 40,
+    });
+    expect(sessionValidators.work(work)).toBe(true);
+    // The narration reads as its words, not its kind.
+    expect(work.items[0]!.title.text).toBe('I will use a scratch dir.');
+    expect(work.items[1]).toMatchObject({
+      operation: 'write',
+      subject: 'dummy/job.sh',
+      failure: { subject: 'dummy/test.sh', message: 'File has not been read yet: dummy/test.sh' },
+    });
+    const actions = await store!.call<ActionPage>({
+      op: 'actions',
+      sessionId,
+      workId: work.items[1]!.workId,
+      actor: 'user',
+      limit: 40,
+    });
+    expect(actions.items.map((action) => [action.subject, action.error?.code])).toEqual([
+      ['dummy/job.sh', undefined],
+      ['dummy/test.sh', 'TOOL_FAILED'],
+    ]);
+  });
+  it('names Claude Work recorded before subjects from what was stored', async () => {
+    const { sessionId } = await create('claude');
+    const workspace = join(directory, 'workspace');
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      nativeWorkspace: workspace,
+      nativeScope: 'account',
+      input: { requestId: randomUUID(), message: 'Old turn' },
+    });
+    let driverSeq = 0;
+    const emit = (fact: DriverFact) =>
+      store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
+    // Exactly what the adapter recorded before subjects existed.
+    await emit({ kind: 'work-open', key: 'tools', workKind: 'tool', title: 'Claude tools' });
+    for (const [key, name] of [
+      ['a', 'job.sh'],
+      ['b', 'test.sh'],
+    ] as const) {
+      await emit({
+        kind: 'action-open',
+        key,
+        parentKey: 'tools',
+        title: 'Write',
+        operation: 'write',
+      });
+      await emit({
+        kind: 'text',
+        key,
+        channel: 'tool-input',
+        text: JSON.stringify({ file_path: join(workspace, 'dummy', name), content: 'x' }),
+      });
+    }
+
+    await emit({ kind: 'action-update', key: 'a', state: 'completed' });
+    await emit({
+      kind: 'text',
+      key: 'b',
+      channel: 'tool-output',
+      text: '<tool_use_error>File has not been read yet.</tool_use_error>',
+    });
+    await emit({ kind: 'action-update', key: 'b', state: 'failed' });
+    await emit({ kind: 'work-update', key: 'tools', state: 'failed' });
+    await emit({
+      kind: 'work-open',
+      key: 'note',
+      workKind: 'commentary',
+      title: 'Claude commentary',
+    });
+    await emit({
+      kind: 'text',
+      key: 'note',
+      channel: 'commentary',
+      text: 'I will use a scratch dir.',
+    });
+    await emit({ kind: 'work-update', key: 'note', state: 'completed' });
+    await emit({
+      kind: 'work-open',
+      key: 'ask',
+      workKind: 'interaction',
+      title: 'Claude permission',
+    });
+    await emit({
+      kind: 'interaction',
+      key: 'ask',
+      interaction: {
+        kind: 'permission',
+        prompt: 'Allow this command once?',
+        actionSummary: 'Run command:\nrm -rf dummy',
+      },
+    });
+
+    const work = await store!.call<WorkPage>({
+      op: 'work',
+      sessionId,
+      turnId: start.turnId,
+      actor: 'user',
+      limit: 40,
+    });
+    expect(sessionValidators.work(work)).toBe(true);
+    expect(work.items.map((item) => [item.title.text, item.operation, item.subject])).toEqual([
+      ['Write', 'write', 'dummy/job.sh'],
+      ['I will use a scratch dir.', undefined, undefined],
+      ['Bash', 'command', 'rm -rf dummy'],
+    ]);
+    expect(work.items[0]!.failure).toEqual({
+      subject: 'dummy/test.sh',
+      message: 'File has not been read yet.',
+    });
+    const actions = await store!.call<ActionPage>({
+      op: 'actions',
+      sessionId,
+      workId: work.items[0]!.workId,
+      actor: 'user',
+      limit: 40,
+    });
+    expect(actions.items.map((item) => item.subject)).toEqual(['dummy/job.sh', 'dummy/test.sh']);
+  });
+  it('infers an old permission decision from its tool call, never from nothing', async () => {
+    const { sessionId } = await create('claude');
+    const workspace = join(directory, 'workspace');
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      nativeWorkspace: workspace,
+      nativeScope: 'account',
+      input: { requestId: randomUUID(), message: 'Old permission' },
+    });
+    let driverSeq = 0;
+    const emit = (fact: DriverFact) =>
+      store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
+    await emit({ kind: 'work-open', key: 'tools', workKind: 'tool', title: 'Claude tools' });
+    await emit({ kind: 'action-open', key: 'a', parentKey: 'tools', title: 'Bash' });
+    await emit({
+      kind: 'text',
+      key: 'a',
+      channel: 'tool-input',
+      text: JSON.stringify({ command: 'mkdir -p scratch' }),
+    });
+    await emit({
+      kind: 'work-open',
+      key: 'ask',
+      workKind: 'interaction',
+      title: 'Claude permission',
+    });
+    await emit({
+      kind: 'interaction',
+      key: 'ask',
+      interaction: {
+        kind: 'permission',
+        prompt: 'Allow?',
+        actionSummary: ['Run command:', 'mkdir -p scratch'].join(String.fromCharCode(10)),
+      },
+    });
+    const read = async () =>
+      (
+        await store!.call<WorkPage>({
+          op: 'work',
+          sessionId,
+          turnId: start.turnId,
+          actor: 'user',
+          limit: 40,
+        })
+      ).items[1]!;
+    // Still pending: waiting, no decision invented.
+    expect((await read()).decision).toBeUndefined();
+    await emit({ kind: 'work-update', key: 'ask', state: 'completed' });
+    expect((await read()).decision).toBeUndefined();
+    // The same call ran to completion: it was allowed.
+    await emit({ kind: 'action-update', key: 'a', state: 'completed' });
+    expect(await read()).toMatchObject({ decision: 'allowed', subject: 'mkdir -p scratch' });
+  });
+  it('records the answered question with the chosen option and the free text on its Work', async () => {
+    const { sessionId } = await create();
+    const start = await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: 'Ask me' },
+    });
+    let driverSeq = 0;
+    const emit = (fact: DriverFact) =>
+      store!.call({ op: 'fact', sessionId, ...start, driverSeq: ++driverSeq, fact });
+    await emit({ kind: 'work-open', key: 'q', workKind: 'interaction', title: 'Question' });
+    await emit({
+      kind: 'interaction',
+      key: 'q',
+      interaction: {
+        kind: 'question',
+        header: 'Scope',
+        prompt: 'Which batches?\n\nSelect one option or enter your answer.',
+        allowText: true,
+        maxSelections: 1,
+        options: [
+          { id: 'a', label: 'All' },
+          { id: 'b', label: 'Some' },
+        ],
+      },
+    });
+    const read = async () =>
+      (
+        await store!.call<WorkPage>({
+          op: 'work',
+          sessionId,
+          turnId: start.turnId,
+          actor: 'user',
+          limit: 40,
+        })
+      ).items[0]!;
+    expect((await read()).question).toBeUndefined();
+    await store!.call({
+      op: 'respond',
+      actor: 'user',
+      sessionId,
+      interactionId: (await snap(sessionId)).interaction!.interactionId,
+      input: {
+        requestId: randomUUID(),
+        kind: 'question',
+        answer: { optionIds: ['a'], text: 'Sessions last' },
+      },
+    });
+    expect((await read()).question).toEqual({
+      header: 'Scope',
+      text: 'Which batches?',
+      options: [
+        { id: 'a', label: 'All' },
+        { id: 'b', label: 'Some' },
+      ],
+      answer: { optionIds: ['a'], text: 'Sessions last' },
+    });
   });
   it('checks single-selection answers before durable admission and expires native-cancelled questions', async () => {
     const { sessionId } = await create();
@@ -1154,5 +1484,37 @@ describe('native-stop evidence record', () => {
     await expect(
       store!.call<unknown[]>({ op: 'effect-candidates', sessionId, turnId: start.turnId }),
     ).resolves.toEqual([]);
+  });
+});
+
+describe("SpecFlow's own request", () => {
+  it('keeps the brief as the request text and marks it with its origin', async () => {
+    const { sessionId } = await create();
+    const origin = {
+      kind: 'specflow-step-brief' as const,
+      specId: 'spec-1',
+      step: { id: 'breakdown', title: 'Break the solution down' },
+      attempt: 2,
+      handoff: {
+        kind: 'transition' as const,
+        from: { step: 'breakdown-review', attempt: 1 },
+        transition: 'changes-requested',
+        result: 'fail',
+        feedback: 'Split the API Task.',
+        artifacts: [],
+      },
+    };
+    await store!.call<StartAdmission>({
+      op: 'start',
+      actor: 'user',
+      sessionId,
+      input: { requestId: randomUUID(), message: '# Brief: Break the solution down' },
+      origin,
+    });
+
+    const snapshot = await snap(sessionId);
+    const request = snapshot.entries.find((entry) => entry.kind === 'request');
+    expect(request).toMatchObject({ text: { text: '# Brief: Break the solution down' }, origin });
+    expect(sessionValidators.snapshot(snapshot)).toBe(true);
   });
 });

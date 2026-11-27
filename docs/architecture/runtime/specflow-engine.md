@@ -116,7 +116,8 @@ See [Workflow kernel](../workflow/workflow-kernel.md), [Specification workflow H
 
 - Verified Project Home supplies local state and committed Git policy, never arbitrary caller cwd.
 - Registered `specId -> workspaceId` binding selects the canonical Specification source.
-- Verified checkout `specification.yaml` holds canonical metadata/status; generated indexes,
+- Verified checkout `specification.yaml` holds canonical metadata (no status: progress is the
+  workflow run, active/archived is the location); generated indexes,
   branch naming and unregistered duplicate files are not alternative binding authority.
 - Unavailable or physically mismatched bound sources fail closed, without primary/fixture fallback.
 - Snapshot read projections are not reservations: write admission independently revalidates them.

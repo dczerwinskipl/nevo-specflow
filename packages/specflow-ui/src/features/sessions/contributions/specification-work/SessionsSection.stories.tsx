@@ -30,14 +30,13 @@ function factTexts(root: HTMLElement) {
   );
 }
 
-/** The mark is on the title line, at the top of the row however many lines it wraps to. */
-async function expectMarkOnTitleLine(root: HTMLElement) {
+/** The mark is centred on the row: its title and the lines under it. */
+async function expectMarkCentred(root: HTMLElement) {
   const row = root.querySelector('li')!;
   const mark = row.firstElementChild!.firstElementChild!.firstElementChild!.getBoundingClientRect();
-  const title = row.querySelector('[data-spec-title]')!.getBoundingClientRect();
+  const text = row.querySelector('[data-spec-title]')!.parentElement!.getBoundingClientRect();
   const centre = (box: DOMRect) => box.top + box.height / 2;
-  // The title's first line is 20 px high; a wrapped title only grows below it.
-  await expect(Math.abs(centre(mark) - (title.top + 10))).toBeLessThanOrEqual(1.5);
+  await expect(Math.abs(centre(mark) - centre(text))).toBeLessThanOrEqual(1.5);
 }
 
 /**
@@ -76,11 +75,13 @@ export const ContinueSessionRow: Story = {
     await expect(factTexts(canvasElement)).toEqual(['5 minut temu', 'Opus 4.1', '3 zadania']);
     await expect(canvas.getByText('Claude, model Opus 4.1')).toBeInTheDocument();
     await expect(canvas.getByText('Wymaga uwagi')).toBeVisible();
+    // New session is visible beside the rows, like the Tasks section's New task.
+    await expect(canvas.getByRole('button', { name: 'Nowa sesja' })).toBeVisible();
     // Wide: the status is the last inline item, on the facts' line box.
     const age = canvasElement.querySelector('[data-inline-fact]')!.getBoundingClientRect();
     const status = canvasElement.querySelector('[data-inline-status]')!.getBoundingClientRect();
     await expect(Math.abs(status.top - age.top)).toBeLessThanOrEqual(0.5);
-    await expectMarkOnTitleLine(canvasElement);
+    await expectMarkCentred(canvasElement);
   },
 };
 
@@ -104,6 +105,27 @@ export const ContinueSessionSignInRequired: Story = {
   },
 };
 
+/** A provider SpecFlow has not confirmed: says so and that opening the Session checks it. */
+export const ContinueSessionUnconfirmedProvider: Story = {
+  args: {
+    sessions: [
+      {
+        ...attention,
+        navigationStatus: 'unknown',
+        activityCode: undefined,
+        activity: undefined,
+        taskCount: 0,
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const status = await canvas.findByText(
+      'SpecFlow nie potwierdził, że Claude może ją prowadzić; otwórz sesję, aby to sprawdzić',
+    );
+    await expect(status.closest('.text-content-muted')).not.toBeNull();
+  },
+};
+
 export const ContinueSessionRowMobile: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvasElement, canvas }) => {
@@ -113,7 +135,75 @@ export const ContinueSessionRowMobile: Story = {
     await expect(status.top).toBeGreaterThanOrEqual(
       facts.at(-1)!.getBoundingClientRect().bottom - 0.5,
     );
-    await expectMarkOnTitleLine(canvasElement);
+    await expectMarkCentred(canvasElement);
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  },
+};
+
+/**
+ * Agent step Sessions by their step, with the Task for a Task's step, and "Attempt n · model · age"
+ * under it (the Runtime's `agentStep`; dogfood #189: every one read "Agent step execution"). A
+ * long title wraps under its mark on a phone, never widening the page; a title the owner gave a
+ * Session stays.
+ */
+export const AgentStepSessionTitlesMobile: Story = {
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: {
+    sessions: [
+      {
+        ...attention,
+        id: 'review-1',
+        title: 'Review the breakdown · attempt 1',
+        agentStep: { stepId: 'review-breakdown', stepTitle: 'Review the breakdown', attempt: 1 },
+        navigationStatus: 'quiet',
+        activityCode: undefined,
+        activity: undefined,
+        taskCount: 0,
+      },
+      {
+        ...attention,
+        id: 'breakdown-2',
+        title: 'Agent step execution',
+        agentStep: { stepId: 'breakdown', stepTitle: 'Break down the solution', attempt: 2 },
+        navigationStatus: 'quiet',
+        activityCode: undefined,
+        activity: undefined,
+        taskCount: 0,
+      },
+      {
+        ...attention,
+        id: 'implement-1',
+        title: 'Implementation · attempt 1 · First step per archetype in the archetype catalogue',
+        agentStep: {
+          stepId: 'implement',
+          stepTitle: 'Implementation',
+          attempt: 1,
+          taskId: 'T-03',
+          taskTitle: 'First step per archetype in the archetype catalogue',
+        },
+        navigationStatus: 'quiet',
+        activityCode: undefined,
+        activity: undefined,
+        taskCount: 1,
+      },
+    ],
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('button', { name: 'Review the breakdown' });
+    await expect(canvas.getByRole('button', { name: 'Break down the solution' })).toBeVisible();
+    await expect(
+      canvas.getByRole('button', {
+        name: 'Implementation · First step per archetype in the archetype catalogue',
+      }),
+    ).toBeVisible();
+    // The attempt leads the facts line, then the model and the age.
+    const rows = [...canvasElement.querySelectorAll('[data-focus-key^="session:"]')];
+    // This story reads in Polish: "Próba 1 · Opus 4.1 · 5 minut temu".
+    await expect(rows.map((row) => row.textContent)).toEqual([
+      'Review the breakdown·Próba 1·Opus 4.1Claude, model Opus 4.1·5 minut temu',
+      'Break down the solution·Próba 2·Opus 4.1Claude, model Opus 4.1·5 minut temu',
+      'Implementation · First step per archetype in the archetype catalogue·Próba 1·Opus 4.1Claude, model Opus 4.1·5 minut temu',
+    ]);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   },
 };

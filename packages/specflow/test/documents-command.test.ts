@@ -119,7 +119,13 @@ function stubApi(overrides: Partial<DocumentsEngineApi> = {}): {
     abandon: record('abandon', () => Promise.resolve([])),
     recover: record('recover', () => Promise.resolve([])),
     takeOver: record('takeOver', () =>
-      Promise.resolve({ lock: { status: 'free' }, writes: [], manualCommits: [], passes: [] }),
+      Promise.resolve({
+        breaker: 'absent',
+        lock: { status: 'free' },
+        writes: [],
+        manualCommits: [],
+        passes: [],
+      }),
     ),
     resolve: record('resolve', () => Promise.resolve({ resolved: [], stillUncommitted: [] })),
     ...overrides,
@@ -490,6 +496,7 @@ describe('queue commands', () => {
     const refused = stubApi({
       takeOver: () =>
         Promise.resolve({
+          breaker: 'absent',
           lock: { status: 'refused', reason: 'holder-alive' },
           writes: [],
           manualCommits: [],

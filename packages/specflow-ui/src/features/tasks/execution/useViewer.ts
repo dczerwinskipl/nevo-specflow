@@ -12,7 +12,7 @@ const noSubscription = () => () => undefined;
  * component render).
  */
 export function useViewer(): Viewer {
-  const authStore = useRouter({ warn: false })?.options.context.services?.authStore;
+  const authStore = useRouter({ warn: false })?.options.context?.services?.authStore;
   const subscribe = useCallback(
     (listener: () => void) => authStore?.subscribe(listener) ?? noSubscription(),
     [authStore],

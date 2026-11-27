@@ -4,7 +4,11 @@ import {
   createArchiveItem,
   createSpecItem,
   createSpecsFixture,
+  startReviewAttention,
+  waitingForTasks,
+  workflowFixtures,
 } from '../../../../test-support/specs/overview/fixtures';
+import { mapAttentionItem } from '../read-model';
 import { sectionTranslationKey } from './model';
 import {
   archiveRow,
@@ -62,7 +66,10 @@ describe('Specs Overview presentation boundary', () => {
 
     expect(row.sectionId).toBe('requires-attention');
     expect(row.summary).toEqual({ kind: 'attention', reason: 'input' });
-    expect(row.qualifier).toEqual({ executionCount: 1 });
+    // The workflow position is the one qualifier under attention; it wins over the Session count.
+    expect(row.workflow).toEqual(source.workflow);
+    expect(row.qualifier).toBeUndefined();
+    expect(currentRow({ ...source, workflow: null }).qualifier).toEqual({ executionCount: 1 });
     expect(row).not.toHaveProperty('signals');
     expect(row).not.toHaveProperty('currentExecutions');
     expect(JSON.stringify(row)).not.toContain('TASK-');
@@ -70,15 +77,80 @@ describe('Specs Overview presentation boundary', () => {
     expect(
       currentRow({
         ...source,
-        classification: { section: 'draft' },
+        workflow: workflowFixtures.notStarted,
+        classification: { section: 'not-started' },
         currentExecutions: [],
       }).sectionId,
-    ).toBe('draft');
+    ).toBe('not-started');
+  });
+
+  it('says where the workflow stands, never what the manifest status says', () => {
+    const summary = (
+      workflow: NonNullable<ReturnType<typeof createSpecItem>['workflow']>,
+      section = 'in-progress',
+    ) =>
+      currentRow(
+        createSpecItem({
+          workflow,
+          classification: { section } as ReturnType<typeof createSpecItem>['classification'],
+        }),
+      ).summary;
+
+    for (const [workflow, section] of [
+      [workflowFixtures.notStarted, 'not-started'],
+      [waitingForTasks(), 'in-progress'],
+      [workflowFixtures.completed, 'ended'],
+    ] as const) {
+      expect(summary(workflow, section)).toEqual({ kind: 'workflow', workflow });
+    }
+  });
+
+  it('leads a row that requires attention with the item its Overview lists first', () => {
+    const row = currentRow(
+      createSpecItem({
+        workflow: workflowFixtures.readyForNextStep,
+        classification: { section: 'requires-attention', count: 2 },
+        attention: startReviewAttention,
+      }),
+    );
+    expect(row.summary).toEqual({
+      kind: 'workflow',
+      workflow: workflowFixtures.readyForNextStep,
+      attention: { first: mapAttentionItem(startReviewAttention.first), count: 2 },
+    });
+  });
+
+  it('says a workflow could not be read, and shows no Task progress for an abandoned run', () => {
+    expect(
+      currentRow(
+        createSpecItem({
+          workflow: null,
+          classification: { section: 'unknown' },
+          unreadable: { reason: 'invalid' },
+        }),
+      ).summary,
+    ).toEqual({ kind: 'unreadable', reason: 'invalid' });
+    const abandoned = currentRow(
+      createSpecItem({
+        workflow: workflowFixtures.abandoned,
+        classification: { section: 'ended' },
+      }),
+    );
+    expect(abandoned.hideProgress).toBe(true);
+    expect(
+      currentRow(
+        createSpecItem({
+          workflow: workflowFixtures.completed,
+          classification: { section: 'ended' },
+        }),
+      ).hideProgress,
+    ).toBeUndefined();
   });
 
   it('keeps unknown status and progress explicit in the presentation model', () => {
     const row = currentRow(
       createSpecItem({
+        workflow: null,
         classification: { section: 'unknown' },
         progress: null,
         signals: null,
@@ -104,17 +176,18 @@ describe('Specs Overview presentation boundary', () => {
   it('maps stable Current section IDs to frontend-owned translations', () => {
     expect(sectionTranslationKey).toEqual({
       'requires-attention': 'specifications.sections.requiresAttention',
-      active: 'specifications.sections.active',
-      ready: 'specifications.sections.ready',
-      draft: 'specifications.sections.draft',
+      'in-progress': 'specifications.sections.inProgress',
+      'not-started': 'specifications.sections.notStarted',
+      ended: 'specifications.sections.ended',
       unknown: 'specifications.sections.unknown',
     });
   });
 
-  it('derives Active execution count from current executions instead of duplicated backend data', () => {
+  it('counts the executing Sessions when the workflow position is not known', () => {
     const row = currentRow(
       createSpecItem({
-        classification: { section: 'active' },
+        workflow: null,
+        classification: { section: 'in-progress' },
         currentExecutions: [
           { sessionId: 'one', agentRole: 'Implementer', taskIds: ['TASK-1'] },
           { sessionId: 'two', agentRole: 'Reviewer', taskIds: ['TASK-2'] },
@@ -122,7 +195,7 @@ describe('Specs Overview presentation boundary', () => {
       }),
     );
 
-    expect(row.summary).toEqual({ kind: 'active', executionCount: 2 });
+    expect(row.summary).toEqual({ kind: 'sessions', executionCount: 2 });
     expect(row.qualifier).toBeUndefined();
   });
 
@@ -199,6 +272,7 @@ describe('Specs Overview capabilities', () => {
   const unknown = (id: string) =>
     createSpecItem({
       id,
+      workflow: null,
       classification: { section: 'unknown' },
       progress: null,
       signals: null,
@@ -229,6 +303,18 @@ describe('Specs Overview capabilities', () => {
         items: [{ ...unknown('a'), progress: { completed: 1, total: 2 } }],
       }),
     ).toEqual({ status: false, progress: true });
+  });
+
+  it('has status when the Runtime says why it could not read every workflow (busy)', () => {
+    expect(
+      overviewCapabilities({
+        ...createSpecsFixture(),
+        items: [
+          { ...unknown('a'), unreadable: { reason: 'busy' } },
+          { ...unknown('b'), unreadable: { reason: 'busy' } },
+        ],
+      }),
+    ).toEqual({ status: true, progress: false });
   });
 
   it('keeps the full layout for an empty list and the archive', () => {

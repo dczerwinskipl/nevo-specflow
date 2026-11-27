@@ -16,6 +16,7 @@ import { runGitFreeMutation } from '../../project/request-verification-memo';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import type { GitWorktreePolicy } from '../../version-control/worktrees/policy';
 import { resolveSpecification } from '../discovery';
+import { foldPathKey } from '../document-rules/document-paths';
 import { listWorkspaceSpecifications } from '../repository';
 import { isExecutionStatePathOf } from '../execution-paths';
 import { isValidSpecificationId } from '../model';
@@ -37,6 +38,12 @@ import {
 import { sortedResources } from './resources';
 import { readIntegrationCandidates } from './integration-candidates';
 import { closeRepositoryMode, type CloseRepositoryMode } from './repository-mode';
+import { readableAttemptCommitHolds } from '../documents/attempt-commit-hold';
+import {
+  attemptsHolding,
+  waitingAttemptCommits,
+  type ReadableAttemptCommitHolds,
+} from '../uncommitted/attempts';
 
 export type CloseRequest =
   | {
@@ -223,6 +230,14 @@ export interface CleanTreeCheck {
    * carries its {@link CloseRepositoryBlocker} for that checkout.
    */
   readonly role?: CloseCheckoutRole;
+  /**
+   * The agent attempt commit holds of this checkout (D15, `SpecFlowEngine.attemptCommitHolds`): a
+   * path a waiting attempt commit (pending or failed) takes is never accepted, whatever the options
+   * above say, so no archive commit takes the agent's work along; the blocker lists those dirty
+   * paths under each attempt (retry the attempt commit) and leaves them out of its `paths` and
+   * counts.
+   */
+  readonly holds?: ReadableAttemptCommitHolds;
 }
 
 /** One other active Specification's own directory, exempted from a sibling Close's clean-tree check. */
@@ -285,12 +300,19 @@ export function scopedPaths(
  * Whether a dirty path is already known-safe, accepted underneath `CleanTreeCheck`'s
  * `specification`/`other` reporting (#181 A1): the closing Specification's own execution state
  * (`acceptExecutionState`), or execution-state of one of `siblingDirectories` — another active
- * Specification's own directory, never a foreign/client-supplied one. Pre-filters the unclean list
- * before `scopedPaths`'s labelling ever sees it, so a sibling's exempted path never reaches a
- * reported blocker's `paths`/`count`.
+ * Specification's own directory, never a foreign/client-supplied one; never a path a waiting agent
+ * attempt commit takes (`holds`). Pre-filters the unclean list before `scopedPaths`'s labelling ever
+ * sees it, so a sibling's exempted path never reaches a reported blocker's `paths`/`count`.
  */
 export function isAcceptedDirtyPath(path: string, check: CleanTreeCheck): boolean {
   const { specificationDirectory: directory, acceptExecutionState, siblingDirectories } = check;
+  // Folded like every other held-path check (`attemptCommitHeld`): a spelling that differs in case
+  // only is the same file on a case-insensitive file system.
+  const key = foldPathKey(path);
+  if (check.holds?.holds.some((hold) => hold.paths.some((held) => foldPathKey(held) === key))) {
+    return false;
+  }
+
   if (acceptExecutionState && directory !== undefined && isExecutionStatePathOf(directory, path)) {
     return true;
   }
@@ -319,8 +341,16 @@ export async function inspectCleanGitWorkspace(
     .filter((path) => !isAcceptedDirtyPath(path, check));
   if (unclean.length > 0) {
     // One order everywhere: the Specification's own paths first (message, `paths`, blocker).
-    const scoped = scopedPaths(unclean, directory);
-    const ordered = scoped.map((entry) => entry.path);
+    const failed = attemptsHolding(
+      check.holds !== undefined ? waitingAttemptCommits(check.holds) : [],
+      unclean,
+      UNCLEAN_PATHS_NAMED,
+    );
+    const scoped = scopedPaths(
+      unclean.filter((path) => !failed.taken.has(path)),
+      directory,
+    );
+    const ordered = scopedPaths(unclean, directory).map((entry) => entry.path);
     const named = ordered.slice(0, UNCLEAN_PATHS_NAMED).join(', ');
     const more =
       unclean.length > UNCLEAN_PATHS_NAMED
@@ -340,9 +370,10 @@ export async function inspectCleanGitWorkspace(
                   checkout: role,
                   workspaceId: workspace.workspaceId,
                   paths: scoped.slice(0, UNCLEAN_PATHS_NAMED),
-                  count: unclean.length,
+                  count: scoped.length,
                   specificationCount: scoped.filter((entry) => entry.scope === 'specification')
                     .length,
+                  ...(failed.attempts.length > 0 ? { attempts: failed.attempts.slice(0, 8) } : {}),
                 },
               ],
             }
@@ -689,6 +720,7 @@ async function previewGitClose(
       acceptExecutionState: request.kind === 'specification-close',
       siblingDirectories: siblings.map((entry) => entry.directory),
       role: 'specification',
+      holds: await readableAttemptCommitHolds(engine, sourceWorkspace.workspaceId),
     });
   } catch (error) {
     // Only a refusal that names repository preconditions takes the missing branch along; any other
@@ -934,7 +966,6 @@ async function previewWorkspaceClose(
       specId: binding.specId,
       slug: manifest.slug,
       location: manifest.location,
-      status: manifest.status,
       bindingGeneration: binding.generation,
     } as const;
   });

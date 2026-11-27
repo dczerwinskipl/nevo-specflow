@@ -7,7 +7,7 @@ import { useAppServices } from '../../../app/useAppServices';
 import { useRuntimeInfo } from '../../../app/useRuntimeMode';
 import { demoCreationKeys } from './api/api.demo';
 import { CreateDemoForm } from './form/CreateDemoForm';
-import { CreateProjectForm } from './form/CreateProjectForm';
+import { CreateStartFlow } from './start/CreateStartFlow';
 import { CreateFallback, CreateRuntimeGate } from './CreateRuntimeGate';
 
 interface Props {
@@ -42,7 +42,7 @@ export function CreateSpecificationScreen(props: Props) {
             <FeatureUnavailable onBack={props.onBack} />
           </CreateFallback>
         ) : (
-          <CreateProjectForm
+          <CreateStartFlow
             key={props.restoreDraftOf ?? 'new'}
             onStarted={props.onProjectStarted}
             restoreDraftOf={props.restoreDraftOf}

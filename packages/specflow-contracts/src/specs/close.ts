@@ -1,6 +1,6 @@
 import { Type, type Static } from 'typebox';
 
-import { DocumentErrorDetailsSchema } from '../documents/errors';
+import { DocumentErrorDetailsSchema, UncommittedAttemptSchema } from '../documents/errors';
 import { ExitBlockerSchema } from '../workflow/projection';
 import { WorkspaceIdSchema } from '../identifiers';
 import { OperationIdSchema } from '../operations/progress';
@@ -318,9 +318,15 @@ export const RepositoryBlockerSchema = Type.Union([
       workspaceId: WorkspaceIdSchema,
       /** The Specification's own paths first, then the others, each group in Git's order. */
       paths: Type.Array(UncommittedPathSchema, { maxItems: 10 }),
-      count: Type.Integer({ minimum: 1 }),
+      /** The dirty paths but those of `attempts`; 0 when every one is an attempt's. */
+      count: Type.Integer({ minimum: 0 }),
       /** How many of the `count` paths are the Specification's own (`scope: 'specification'`). */
       specificationCount: Type.Integer({ minimum: 0 }),
+      /**
+       * Agent attempts whose commit failed (D15), each with its dirty paths: their remedy is to
+       * retry the attempt commit; those paths are not in `paths` or `count`.
+       */
+      attempts: Type.Optional(Type.Array(UncommittedAttemptSchema, { maxItems: 8 })),
     },
     { additionalProperties: false },
   ),
@@ -410,7 +416,6 @@ export const CloseWorkspacePreviewSchema = Type.Object(
           specId: CloseUuidSchema,
           slug: Type.String(),
           location: Type.Union([Type.Literal('active'), Type.Literal('archive')]),
-          status: Type.String(),
         },
         { additionalProperties: false },
       ),

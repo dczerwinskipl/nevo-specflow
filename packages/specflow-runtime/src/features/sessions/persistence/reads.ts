@@ -1,9 +1,15 @@
-import type { ConversationEntry, SessionChange } from '@nevo/specflow-contracts/sessions';
+import type {
+  ConversationEntry,
+  SessionChange,
+  ToolActionSummary,
+  WorkSummary,
+} from '@nevo/specflow-contracts/sessions';
 import type { StoreCommand, StoredSession, StoredTurn } from './protocol';
 import type { StoreDatabase } from './database';
 import type { createSessionCursors } from './cursors';
 import type { createContentStorage } from './content';
 import { boundedPage, decode, fail } from './encoding';
+import { createLegacyWork } from './legacy-work';
 
 interface ReadDependencies extends StoreDatabase {
   session(this: void, id: string): StoredSession;
@@ -20,6 +26,7 @@ export function createSessionReads({
   content,
 }: ReadDependencies) {
   const { cursor, boundary } = cursors;
+  const legacy = createLegacyWork({ get, all }, content);
   function history<Envelope extends object>(
     sid: string,
     actor: string,
@@ -98,10 +105,17 @@ export function createSessionReads({
             upper,
             c.limit + 1,
           );
-      const items = rows
-          .slice(0, c.limit)
-          .map((r) => decode<{ ordinal: number }>(r))
-          .reverse(),
+      const decoded = rows.slice(0, c.limit).reverse();
+      // Claude Work recorded before it carried its own subject is named from what was stored.
+      const items: { ordinal: number }[] = isWork
+          ? legacy.work(
+              c.sessionId,
+              decoded.map((r) => decode<WorkSummary>(r)),
+            )
+          : legacy.actions(
+              c.sessionId,
+              decoded.map((r) => decode<ToolActionSummary>(r)),
+            ),
         hasOlder = rows.length > c.limit;
       const stored = isWork ? turn(parent, c.sessionId) : undefined;
       // The aggregate is maintained with every Work write; omitted for Turns that predate it.

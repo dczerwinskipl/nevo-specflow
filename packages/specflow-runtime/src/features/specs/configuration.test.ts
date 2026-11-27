@@ -8,14 +8,14 @@ describe('Specs feature configuration', () => {
       parseSpecsFeatureConfig({
         overview: {
           current: {
-            sections: ['draft', 'ready'],
+            sections: ['not-started', 'ended'],
           },
         },
       }),
     ).toEqual({
       overview: {
         current: {
-          sections: ['draft', 'ready'],
+          sections: ['not-started', 'ended'],
         },
       },
     });

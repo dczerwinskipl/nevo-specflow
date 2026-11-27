@@ -352,7 +352,8 @@ export function taskDecisionRefusal(
     return 'status';
   }
 
-  return (status === 'cancelled' || status === 'on-hold') && state === 'active'
+  return (status === 'cancelled' || status === 'on-hold') &&
+    (state === 'active' || state === 'awaiting-confirmation')
     ? 'active-attempt'
     : undefined;
 }
@@ -556,7 +557,8 @@ export function openTasks(tasks: readonly ExecutionTask[], broken: readonly stri
       continue;
     }
 
-    if (taskPosition(task).state === 'active') {
+    const state = taskPosition(task).state;
+    if (state === 'active' || state === 'awaiting-confirmation') {
       found.push({ taskId: task.taskId, cause: 'active' });
       continue;
     }

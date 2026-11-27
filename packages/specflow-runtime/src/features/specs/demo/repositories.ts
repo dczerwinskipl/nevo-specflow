@@ -6,7 +6,10 @@ import type {
 import { createSampleSpecsOverviewRepository } from '../overview/repository/sample-repository';
 import type { SpecsOverviewRepository } from '../overview/repository/read-repository';
 import type { CurrentSpecRecord, ArchivedSpecRecord } from '../overview/repository/model';
-import type { OverviewTaskProgress } from '../overview/repository/engine-repository';
+import {
+  workflowAttentionSignal,
+  type OverviewExecution,
+} from '../overview/repository/engine-repository';
 import { createDemoSessions, type DemoSessions } from '../../sessions';
 import { createDemoDocuments, type DemoDocuments } from '../../documents';
 import type { DemoCatalogue, DemoSpecification } from '../../demo-catalogue';
@@ -23,16 +26,11 @@ function normalizeDemoSpec(record: CurrentSpecRecord | ArchivedSpecRecord): Demo
     progress: record.progress ?? { completed: 0, total: 0 },
     ...('currentExecutions' in record
       ? {
-          readyForWork: record.readyForWork ?? false,
           currentExecutions: record.currentExecutions ?? [],
           signals: record.signals ?? [],
         }
       : {}),
   };
-}
-
-function isCurrent(record: DemoSpec): boolean {
-  return record.currentExecutions !== undefined;
 }
 
 function buildSpecification(record: DemoSpec): SpecificationReadModel {
@@ -46,12 +44,7 @@ function buildSpecification(record: DemoSpec): SpecificationReadModel {
       title: record.title,
       summary: record.title,
       // The Tasks contribution replaces it with the state the Tasks imply, as in a project.
-      preparationState:
-        record.progress.total === 0
-          ? 'empty'
-          : isCurrent(record) && !record.readyForWork
-            ? 'preparing'
-            : 'prepared',
+      preparationState: record.progress.total === 0 ? 'empty' : 'prepared',
       // As in a project, what needs a person is the workflow's attention (the Tasks section).
       attention: [],
     },
@@ -72,11 +65,12 @@ export interface DemoSpecsRepositoriesDeps {
   readonly sessions: Pick<DemoSessions, 'contribution'>;
   /**
    * The Tasks owner over the demo workflow: the workspace `tasks` section and the Specs Overview
-   * progress, as the Engine projects them in a project. Without it there are no Tasks.
+   * execution (progress, workflow position, attention), as the Engine projects them in a project.
+   * Without it there are no Tasks.
    */
   readonly tasks?: {
     readonly section: NonNullable<WorkspaceContributions['tasks']>;
-    readonly progress: OverviewTaskProgress;
+    readonly execution: OverviewExecution;
   };
 }
 
@@ -92,7 +86,8 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
   const documents = deps?.documents ?? createDemoDocuments(empty!);
   const sessions = deps?.sessions ?? createDemoSessions(empty!);
   const seeded = createSampleSpecsOverviewRepository();
-  // The catalogue records as seeded and created; the Overview's progress is the Tasks owner's.
+  // The catalogue records as seeded and created; the Overview's progress, workflow position and
+  // workflow attention are the workflow owner's.
   const records: SpecsOverviewRepository = {
     async readCurrent() {
       const snapshot = await seeded.readCurrent();
@@ -117,14 +112,26 @@ export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
         return current;
       }
 
-      const progress = await tasks.progress(current.items.map((item) => item.id));
+      const executions = await tasks.execution(current.items.map((item) => item.id));
 
       return {
         ...current,
         items: current.items.map((item) => {
-          const counted = progress.get(item.id);
+          const execution = executions.get(item.id);
+          if (execution?.kind !== 'read') {
+            return execution ? { ...item, unreadable: { reason: execution.reason } } : item;
+          }
 
-          return counted ? { ...item, progress: counted } : item;
+          const attention = workflowAttentionSignal(item.id, execution.attention);
+
+          return {
+            ...item,
+            progress: execution.progress,
+            workflow: execution.workflow,
+            ...(execution.firstAttention ? { attention: execution.firstAttention } : {}),
+            // The seeded Session signals stay; the workflow's own attention joins them.
+            signals: attention ? [...(item.signals ?? []), attention] : item.signals,
+          };
         }),
       };
     },

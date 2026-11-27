@@ -1,10 +1,12 @@
 import type { SpecFlowEngine } from '../../../application';
+import { readableAttemptCommitHolds } from '../attempt-commit-hold';
 import { documentChangeError } from '../changes/errors';
 import type { DocumentChangeJournal } from '../changes/journal/model';
 import type { DocumentChangeStage } from '../changes/journal/stages';
 import { listDocumentChangeJournals } from '../write/journal-store';
 import { listManualCommitJournals } from '../../manual-commit';
 import {
+  UNCOMMITTED_ATTEMPTS_MAX,
   UNCOMMITTED_HOLD_OWNERS_MAX,
   type UncommittedHoldDetails,
 } from '@nevo/specflow-contracts/documents';
@@ -126,7 +128,12 @@ export async function readCloseHold(
   }
 
   await pruneUncommitted(engine, { workspaceId }).catch(() => undefined);
-  const ledger = await readUncommittedHold(engine, workspaceId, allowance);
+  const ledger = await readUncommittedHold(
+    engine,
+    workspaceId,
+    allowance,
+    await readableAttemptCommitHolds(engine, workspaceId),
+  );
 
   return ledger !== undefined ? uncommittedHoldOf(ledger) : undefined;
 }
@@ -173,6 +180,13 @@ function uncommittedDetails(hold: UncommittedHold): UncommittedHoldDetails {
     owners: hold.owners
       .slice(0, UNCOMMITTED_HOLD_OWNERS_MAX)
       .map((owner) => ({ ...owner, paths: [...owner.paths] })),
+    ...(hold.attempts !== undefined && hold.attempts.length > 0
+      ? {
+          attempts: hold.attempts
+            .slice(0, UNCOMMITTED_ATTEMPTS_MAX)
+            .map((attempt) => ({ ...attempt, paths: [...attempt.paths] })),
+        }
+      : {}),
     unreadable: hold.unreadable,
   };
 }
@@ -442,7 +456,12 @@ export async function assertNoUncommittedHold(
   allowance?: UncommittedAllowance,
 ): Promise<void> {
   for (const workspaceId of new Set(workspaceIds)) {
-    const hold = await readUncommittedHold(engine, workspaceId, allowance);
+    const hold = await readUncommittedHold(
+      engine,
+      workspaceId,
+      allowance,
+      await readableAttemptCommitHolds(engine, workspaceId),
+    );
     if (hold !== undefined) {
       throw documentCommitsPendingError(uncommittedHoldOf(hold));
     }

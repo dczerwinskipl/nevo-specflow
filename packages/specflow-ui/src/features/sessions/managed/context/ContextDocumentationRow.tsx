@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { ContextNavigationRow } from './ContextNavigationRow';
+import { productIcons } from '../../../../shared/product-icons';
 
 /**
  * The project documentation as it is in this Session's workspace (the Runtime's own checkout,
@@ -10,7 +11,7 @@ export function ContextDocumentationRow({ onOpen }: { onOpen: () => void }) {
 
   return (
     <ContextNavigationRow
-      icon="book-open"
+      icon={productIcons.documentation}
       label={t('sessions.context.documentation.open')}
       secondary={t('sessions.context.documentation.workspace')}
       onClick={onOpen}

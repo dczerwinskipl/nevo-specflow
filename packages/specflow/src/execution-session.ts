@@ -1,5 +1,6 @@
 import {
   GateUnsatisfiedError,
+  SpecificationBusyError,
   TaskContextInvalidError,
   TaskContextUnresolvedError,
   TasksOpenError,
@@ -11,6 +12,7 @@ import {
   type InvalidContextEntry,
   type OpenTask,
   type SpecFlowEngine,
+  type SpecificationBusy,
   type UnresolvedContextEntry,
   type WorkflowDependencies,
 } from '@nevo/specflow-engine';
@@ -91,6 +93,8 @@ interface CodedError {
   readonly invalidContext?: readonly InvalidContextEntry[];
   /** `WORKFLOW_TASKS_OPEN`: the open Tasks a completion waits for, with why each is open. */
   readonly openTasks?: readonly OpenTask[];
+  /** `WORKFLOW_SPECIFICATION_BUSY`: what holds the Specification (an agent Turn names its Session). */
+  readonly busy?: SpecificationBusy;
 }
 
 /**
@@ -124,6 +128,7 @@ function workflowRefusal(error: unknown): CodedError | undefined {
         : {}),
       ...(error instanceof TaskContextInvalidError ? { invalidContext: error.invalidContext } : {}),
       ...(error instanceof TasksOpenError ? { openTasks: error.openTasks } : {}),
+      ...(error instanceof SpecificationBusyError ? { busy: error.busy } : {}),
     };
   }
 
@@ -147,6 +152,8 @@ const HINTS: Readonly<Record<string, string>> = {
     'The step is not allowed for the owner, or an agent attempt is still active.',
   WORKFLOW_GATE_UNSATISFIED:
     'Create or complete the documents the gates name (see "nevo-specflow workflow actions"), then repeat.',
+  WORKFLOW_ATTEMPT_COMMIT_REQUIRED:
+    'The commit of an agent attempt of this Specification has not run or failed, and nothing of its workflow changes until it is committed. Retry it with "nevo-specflow workflow retry-commit <spec-id> [--task <task-id>] --step <step-id> --attempt <n>" (the message and "nevo-specflow workflow actions" name the attempt), then repeat.',
   WORKFLOW_TASKS_OPEN:
     'Finish or cancel the open Tasks (see "nevo-specflow tasks list"), or abandon the Specification, then repeat.',
 };
@@ -219,6 +226,7 @@ export async function reportingWorkflowRefusals<T>(
             ...(refusal.awaited && refusal.awaited.length > 0 ? { awaited: refusal.awaited } : {}),
             ...(refusal.invalidContext ? { invalidContext: refusal.invalidContext } : {}),
             ...(refusal.openTasks ? { openTasks: refusal.openTasks } : {}),
+            ...(refusal.busy ?? {}),
             ...(effectiveHint ? { hint: effectiveHint } : {}),
           },
         }),

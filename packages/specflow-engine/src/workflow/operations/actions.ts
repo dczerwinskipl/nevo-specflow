@@ -1,5 +1,6 @@
 import {
   activeAttempt,
+  awaitingAttempt,
   findStep,
   handoffOf,
   newRun,
@@ -9,6 +10,7 @@ import {
 import {
   resolveContinuation,
   type AttentionReason,
+  type AgentLaunch,
   type ContinuationDecision,
   type LaunchBlocker,
 } from '../continuation/resolve';
@@ -18,11 +20,12 @@ import type { TaskTypes, WorkflowDefinition, WorkflowStep } from '../definitions
 import { WorkflowError } from '../errors';
 import type { TaskProposal } from '../tasks/tasks';
 import type { TaskResourceIssue } from '../../tasks/resource/validate';
-import {
-  type ExecutionTask,
-  type WorkflowActor,
-  type WorkflowRun,
-  type WorkflowSubject,
+import type {
+  ExecutionTask,
+  PendingOwnerDecisions,
+  WorkflowActor,
+  WorkflowRun,
+  WorkflowSubject,
 } from '../state/model';
 import type { ExecutionSnapshot } from '../state/store';
 import {
@@ -38,6 +41,7 @@ import {
   type OpenTask,
 } from '../tasks/tasks';
 import { continuationOf, waitDecision } from './advance';
+import { confirmsDigestOf, resultConfirmsOf } from './confirms';
 import { deriveAttention, startBlockerAttention } from './attention';
 import type { AttentionItem } from '../attention/model';
 import type { BlockingTask } from '../tasks/tasks';
@@ -45,9 +49,14 @@ import {
   executionTasks,
   loadTask,
   pinnedDefinitionIfUnchanged,
+  type ExecutionHolds,
   type ExecutionTasks,
   type WorkflowDependencies,
 } from './loaded-execution';
+import type {
+  AttemptCommitWait,
+  SpecificationAttemptCommitWait,
+} from '../../specs/uncommitted/attempts';
 import {
   describeStep,
   describeTransitions,
@@ -74,7 +83,7 @@ import {
   type RelationSteps,
 } from '../gates/document-relations';
 import { onlyTarget, outlineOf, type OutlinePosition, type WorkflowOutline } from './outline';
-import { forOneRead } from './task-references';
+import { forOneRead, type TaskReferences } from './task-references';
 
 export type { StartBlocker } from './start-blockers';
 export type {
@@ -129,12 +138,207 @@ export const AGENT_UNAVAILABLE_REASONS = [
   /** D10: the transition reuses the Session, but a person finished the previous attempt. */
   'session-unavailable',
 ] as const satisfies readonly (LaunchBlocker | 'not-an-executor')[];
-export type AgentUnavailableReason = (typeof AGENT_UNAVAILABLE_REASONS)[number];
 
-/** Whether an agent could do the step. Only reported in this feature, never dispatched. */
+/**
+ * The reasons only the Runtime knows, which it adds to the projection it serves (explain before
+ * action; the contracts' `AGENT_UNAVAILABLE_REASONS` documents each). The Engine never reports them.
+ */
+export const RUNTIME_AGENT_UNAVAILABLE_REASONS = [
+  'provider-not-ready',
+  'dirty-baseline',
+  'baseline-changed',
+  'owner-work-uncommitted',
+  'project-busy',
+  'demo',
+] as const;
+/**
+ * With Git on, an agent attempt of the Specification waits for its own commit (D15): a new agent
+ * start is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` meanwhile (`detail`: the failure's code).
+ */
+export const ATTEMPT_COMMIT_AGENT_UNAVAILABLE_REASONS = [
+  'attempt-commit-pending',
+  'attempt-commit-failed',
+] as const;
+export type AgentUnavailableReason =
+  | (typeof AGENT_UNAVAILABLE_REASONS)[number]
+  | (typeof RUNTIME_AGENT_UNAVAILABLE_REASONS)[number]
+  | (typeof ATTEMPT_COMMIT_AGENT_UNAVAILABLE_REASONS)[number];
+
+/**
+ * Whether an agent could do the step, and how agent step execution would launch it: the agent role, provider,
+ * model and Session the kernel's continuation resolves (D18), `independent` for a step whose
+ * archetype is independent (always a fresh Session). The owner may change provider and model only
+ * for a fresh Session. Never dispatched by the Engine itself.
+ */
 export type AgentOption =
-  | { readonly kind: 'available' }
-  | { readonly kind: 'unavailable'; readonly reason: AgentUnavailableReason };
+  | {
+      readonly kind: 'available';
+      readonly launch: AgentLaunch;
+      readonly independent?: true;
+      /**
+       * The Runtime did not read the checkout for this answer (`unchecked`: the projection never runs
+       * Git); its explicit check and the start judge the baseline.
+       */
+      readonly baseline?: 'unchecked';
+      /**
+       * The provider does not offer the model the definitions configure, so no model is assigned
+       * (`launch.model` is empty): the owner chooses one of the provider's models before the start.
+       * Only the Runtime sets it.
+       */
+      readonly modelRequired?: true;
+      /**
+       * The provider work mode a fresh Session would run in (Claude: `auto` when the model has
+       * it, else `acceptEdits`), with its title. Only the Runtime sets it.
+       */
+      readonly workMode?: { readonly providerModeId: string; readonly title: string };
+    }
+  | {
+      readonly kind: 'unavailable';
+      readonly reason: AgentUnavailableReason;
+      /** Runtime reasons: what precisely blocks it (the provider's readiness, the holder). */
+      readonly detail?: string;
+      /** `dirty-baseline`, `baseline-changed`, `owner-work-uncommitted`: the first paths of `count`. */
+      readonly paths?: readonly string[];
+      readonly count?: number;
+      /** The launch once the blocker is resolved (a Runtime reason over a resolved launch). */
+      readonly launch?: AgentLaunch;
+      readonly independent?: true;
+    };
+
+/**
+ * What an agent attempt left (partial work is never rolled back, D19): what SpecFlow wrote for it
+ * and has not committed, the Task drafts it produced, the files it declared and what was changed in
+ * the checkout when its last Turn ended, and whether its own commit ran. Git-free: read from the
+ * attempt's journal, the uncommitted-changes ledger and the Task manifests.
+ *
+ * - `documents`: uncommitted files SpecFlow wrote only for the attempt's Turns (documents and Task
+ *   files), checkout-relative and sorted; `mixed`: those someone else changed too;
+ * - `tasks`: the Task drafts the attempt's step produced in this attempt, in id order;
+ * - `declared`: the changed files outside SpecFlow's folders its proposal declared;
+ * - `changed`: what was uncommitted in the checkout when its last Turn's claim settled;
+ * - `commit`: its attempt commit (D15): `none` (it did not finish with its own result: returned,
+ *   taken over or still active), `pending`, `committed` or `failed` (with the code, retry possible);
+ * - `changes`: everything the attempt itself changed, committed or not, by what it is
+ *   ({@link AgentAttemptChanges}); absent where the Specification's registry was not read.
+ */
+export interface AgentAttemptWork {
+  readonly documents: readonly string[];
+  readonly mixed: readonly string[];
+  readonly tasks: readonly string[];
+  readonly declared: readonly string[];
+  readonly changed?: { readonly paths: readonly string[]; readonly truncated?: true };
+  readonly commit: {
+    readonly state: 'none' | 'pending' | 'committed' | 'failed';
+    readonly code?: string;
+    /** How many times it ran (a retry is a run). */
+    readonly runs?: number;
+    /**
+     * `committed` with a commit: its sha (absent when every path already equalled HEAD), and how many
+     * of its paths are SpecFlow's (`documents`) and the agent's declared files (`files`).
+     */
+    readonly sha?: string;
+    readonly documents?: number;
+    readonly files?: number;
+  };
+  readonly changes?: AgentAttemptChanges;
+}
+
+/**
+ * What one agent attempt changed, committed or still uncommitted: the files SpecFlow wrote for its
+ * Turns (the ledger, else what its commit held) and the files its proposal declared, never the rest
+ * of the checkout. Each path is in one group, checkout-relative and sorted:
+ *
+ * - `documents`: registered documents of the Specification (and, for a Task, of that Task);
+ * - `tasks`: the Task drafts the attempt produced, with their titles (their files are `state`);
+ * - `files`: any other file: the agent's declared files, an unregistered file of the Specification;
+ * - `state`: SpecFlow's own records: execution state (`.execution/**`), Task resources (`tasks/**`
+ *   but a Task's registered documents) and the Specification manifest.
+ *
+ * `directory`: the Specification's folder, checkout-relative (paths read relative to it);
+ * `truncated`: the commit held more paths than its journal names.
+ */
+export interface AgentAttemptChanges {
+  readonly directory?: string;
+  readonly documents: readonly string[];
+  readonly tasks: readonly { readonly id: string; readonly title: string }[];
+  readonly files: readonly string[];
+  readonly state: readonly string[];
+  readonly truncated?: true;
+}
+
+/**
+ * The agent attempt of the active step (agent step execution), as the Runtime serves it: the Engine journal of
+ * the attempt and the state of its current Turn's claim. Only the Runtime adds it.
+ */
+export interface AgentAttemptView {
+  readonly attemptId: string;
+  readonly step: string;
+  readonly attempt: number;
+  readonly sessionId: string;
+  readonly provider: string;
+  readonly model?: string;
+  readonly turn: {
+    readonly turnId: string;
+    readonly state: 'working' | 'stopping' | 'unknown' | 'ended' | 'session-missing';
+    readonly boundAt: string;
+    readonly endedAt?: string;
+    /**
+     * The working Turn waits for the owner: a question or a permission of its Session is pending
+     * (the Session's `interaction`), so nothing moves until the owner answers it.
+     */
+    readonly waitingForOwner?: {
+      readonly kind: 'question' | 'permission';
+      readonly interactionId: string;
+    };
+  };
+  readonly turns: number;
+  readonly proposal?: {
+    readonly transition: string;
+    readonly state: 'pending' | 'refused' | 'finalized';
+    readonly submittedAt: string;
+    readonly refusal?: {
+      readonly code: string;
+      readonly message: string;
+      readonly paths?: readonly string[];
+    };
+  };
+  /** Whether Continue can start now. */
+  readonly continue: AgentOption;
+  /**
+   * The owner's return during the attempt (D19, A2): `requested` while the Turn may still run (it is
+   * applied once the agent's process is proven stopped), `refused` when applying it was refused.
+   */
+  readonly returnRequest?: {
+    readonly to: string;
+    readonly requestedAt: string;
+    readonly state: 'requested' | 'refused';
+    readonly refusal?: { readonly code: string; readonly message: string };
+    /**
+     * While `requested`: the Turn is stopping (`sent`), or it still runs or cannot be told
+     * (`failed`: the owner can Stop again).
+     */
+    readonly stop?: 'sent' | 'failed';
+    /**
+     * While `requested` and no Turn runs any more (it was abandoned before it ran): the return
+     * applies at the owner's next action on the attempt (Return, Take over); nothing is written on
+     * a read.
+     */
+    readonly appliesOn?: 'next-action';
+  };
+  /**
+   * Whether Take over (F17) is possible now: only once the agent's process is proven ended
+   * (`agent-working`: its Turn runs or is stopping; `outcome-unknown`: SpecFlow cannot tell whether
+   * it still runs; `return-requested`: the owner's return waits to apply).
+   */
+  readonly takeOver:
+    | { readonly kind: 'available' }
+    | {
+        readonly kind: 'unavailable';
+        readonly reason: 'agent-working' | 'outcome-unknown' | 'return-requested';
+      };
+  /** What the attempt left so far (nothing is rolled back). */
+  readonly work: AgentAttemptWork;
+}
 
 /** The step a start would activate, with who may do it. */
 export interface StartableStep {
@@ -156,6 +360,10 @@ export type ActionPosition =
         readonly number: number;
         readonly startedAt: string;
         readonly actor: WorkflowActor;
+        /** The owner's attempt started by taking over the step's previous agent attempt (Take over, F17). */
+        readonly takenOverFrom?: { readonly attempt: number };
+        /** The agent's attempt started by the owner handing their attempt to it (Hand to agent). */
+        readonly handedOverFrom?: { readonly attempt: number };
       };
       /**
        * What finishes the step, read for everyone whoever runs the attempt: each result with where
@@ -177,6 +385,37 @@ export type ActionPosition =
         /** For `tasks-stuck`: why each Task of `taskIds` blocks. */
         readonly blocking?: readonly BlockingTask[];
       };
+    }
+  /**
+   * An agent's result waits for the owner's Confirm or Reject (D17): the attempt ended (who did it,
+   * when), the agent's proposal, and what Confirm applies besides taking the transition.
+   */
+  | {
+      readonly kind: 'awaiting-confirmation';
+      readonly step: StepDescription;
+      readonly attempt: {
+        readonly number: number;
+        readonly startedAt: string;
+        readonly endedAt?: string;
+        readonly actor: WorkflowActor;
+      };
+      readonly proposal: {
+        /** The result the agent chose: where it goes and the exit gates it needs, evaluated now. */
+        readonly transition: StepExit;
+        readonly feedback?: string;
+        readonly artifacts: readonly string[];
+      };
+      readonly confirms: {
+        /** `approve-draft-tasks`: the drafts it approves, as they are now, in id order. */
+        readonly approvesDrafts?: readonly string[];
+        /** The agent's Task status decisions, applied on Confirm. */
+        readonly taskDecisions?: PendingOwnerDecisions['taskDecisions'];
+      };
+      /**
+       * The digest of `confirms` with the content revisions of each draft's manifest and documents: Confirm names it, and is
+       * refused (`WORKFLOW_CONFIRMATION_CHANGED`) when what it would apply changed since.
+       */
+      readonly confirmsDigest: string;
     }
   /** The subject has not started or is ready, but its next step cannot start. */
   | {
@@ -227,6 +466,13 @@ export interface WorkflowActions {
     readonly firstStart: boolean;
     /** First Task start: send it with the start (`StartTaskInput.expectedWorkflowRevision`). */
     readonly expectedWorkflowRevision?: string;
+    /**
+     * With Git on, an agent attempt of the Specification waits for its own commit (D15): every
+     * workflow write of the Specification is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` until it
+     * ran (`ActionProjection.attemptCommit` names the attempt). The same on `finish`, `return`,
+     * `confirm` and `reject`.
+     */
+    readonly unavailable?: AttemptCommitWait;
   };
   /** The active attempt is the owner's: finish it with one of these results. */
   readonly finish?: {
@@ -265,6 +511,39 @@ export interface WorkflowActions {
      * unchanged proposals. A finish lists those to keep; an owned draft it leaves out is cancelled.
      */
     readonly drafts?: readonly TaskProposal[];
+    /** As `start.unavailable`. */
+    readonly unavailable?: AttemptCommitWait;
+  };
+  /**
+   * An agent's result waits for the owner (`awaiting-confirmation`): Confirm applies it, Reject
+   * returns to its step with the owner's feedback. Both name the attempt.
+   */
+  readonly confirm?: {
+    readonly step: string;
+    readonly attempt: number;
+    /**
+     * With Git on, the attempt's own commit (D15) still waits: not run yet, or failed (`code`;
+     * retry the commit first). Confirm is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` meanwhile.
+     */
+    readonly unavailable?: AttemptCommitWait;
+  };
+  /** As `confirm`: Reject is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` while the commit waits. */
+  readonly reject?: {
+    readonly step: string;
+    readonly attempt: number;
+    readonly unavailable?: AttemptCommitWait;
+  };
+  /**
+   * Hand to agent: the active attempt is the owner's and the step's executors include an agent. It
+   * ends the owner's attempt and starts the agent's next attempt of the step (agent step execution,
+   * `expected.handOver`). `agent` is the agent that would run, or why none can, as for a start; the
+   * projection never reads the checkout (`baseline: unchecked`), so the owner's uncommitted work
+   * (`owner-work-uncommitted`) is known from the explicit check and the hand itself.
+   */
+  readonly handToAgent?: {
+    readonly step: string;
+    readonly attempt: number;
+    readonly agent: AgentOption;
   };
   /** Declared returns to steps the run reached. */
   readonly return?: {
@@ -276,6 +555,8 @@ export interface WorkflowActions {
       /** Whether the return needs a reason (its feedback). */
       readonly feedback: 'required' | 'optional';
     }[];
+    /** As `start.unavailable`. */
+    readonly unavailable?: AttemptCommitWait;
   };
 }
 
@@ -306,7 +587,7 @@ export interface TaskTypeOption {
 
 export interface SpecificationLevelActions {
   /** `specification-ended`: the Specification's workflow completed or was abandoned. */
-  readonly createTask: Availability<'task-limit' | 'specification-ended'>;
+  readonly createTask: Availability<'task-limit' | 'specification-ended' | 'attempt-commit'>;
   /**
    * The task types a new Task may have, in catalogue order; empty when none is allowed or defined.
    * A type whose workflow is not a defined Task workflow is left out (its creation is refused).
@@ -314,6 +595,13 @@ export interface SpecificationLevelActions {
   readonly taskTypes: readonly TaskTypeOption[];
   /** Absent when no Close/Abandon port is given (`openWorkflow` wires it). */
   readonly exit?: SpecificationExitActions;
+}
+
+/** The agent holding the whole project, working on another subject (`ActionProjection.projectHold`). */
+export interface ProjectHold {
+  readonly kind: 'agent-working' | 'agent-outcome-unknown';
+  readonly subject: { readonly specId: string; readonly taskId?: string; readonly title: string };
+  readonly sessionId: string;
 }
 
 export interface ActionProjection {
@@ -340,6 +628,19 @@ export interface ActionProjection {
    * ended. A read of several Tasks never computes it.
    */
   readonly documentRelations?: readonly DocumentRelation[];
+  /** The agent attempt of the active step; only the Runtime adds it (agent step execution). */
+  readonly agentAttempt?: AgentAttemptView;
+  /**
+   * With Git on, the finished agent attempt of the Specification (of the subject or of another
+   * subject of it) whose own commit (D15) still waits: every action that writes is `unavailable`
+   * until it ran (`withAttemptCommitWait`); Retry commit names its `subject` and `step#attempt`.
+   */
+  readonly attemptCommit?: SpecificationAttemptCommitWait;
+  /**
+   * An agent working on another subject holds the project (its Turn runs, or SpecFlow cannot tell
+   * whether its process still runs); only the Runtime adds it.
+   */
+  readonly projectHold?: ProjectHold;
   /**
    * For a Task subject that is not broken, in the projection of that one Task (`inspectActions`):
    * its effective context and dependency candidates. A read of several Tasks (`readExecution`,
@@ -359,7 +660,95 @@ export type ActionDependencies = Pick<
   'store' | 'serialize' | 'catalogue' | 'references'
 > & {
   readonly specificationExit?: SpecificationExitPort;
+  /** Whether an agent attempt of the Specification waits for its commit; absent: none waits. */
+  readonly holds?: Pick<ExecutionHolds, 'attemptCommit'>;
 };
+
+/**
+ * The projection while an agent attempt of the Specification waits for its own commit (D15, Git
+ * on): every workflow write of the Specification is refused `WORKFLOW_ATTEMPT_COMMIT_REQUIRED`
+ * (`attempt-commit-admission.ts`), so each action that writes says so before the click: `start`,
+ * `finish`, `return`, `confirm` and `reject` carry `unavailable` (the wait's reason and code), the
+ * next step's agent option is unavailable with that reason, the Task actions and New task are
+ * unavailable (`attempt-commit`), and `attemptCommit` names the attempt (Retry commit).
+ */
+export function withAttemptCommitWait<P extends ActionProjection>(
+  projection: P,
+  wait: SpecificationAttemptCommitWait | undefined,
+): P {
+  if (wait === undefined) {
+    return projection;
+  }
+
+  const waiting: AttemptCommitWait = {
+    reason: wait.reason,
+    ...(wait.code !== undefined ? { code: wait.code } : {}),
+  };
+  const { actions, position } = projection;
+  const held = <T extends object>(action: T): T => ({ ...action, unavailable: waiting });
+  // An available agent waits for the commit too: a start and a hand to the agent are refused.
+  const heldOption = (agent: AgentOption): AgentOption =>
+    agent.kind === 'available'
+      ? {
+          kind: 'unavailable',
+          reason: waiting.reason,
+          ...(waiting.code !== undefined ? { detail: waiting.code } : {}),
+          launch: agent.launch,
+          ...(agent.independent ? { independent: true as const } : {}),
+        }
+      : agent;
+  const heldActions: WorkflowActions = {
+    ...(actions.start ? { start: held(actions.start) } : {}),
+    ...(actions.finish ? { finish: held(actions.finish) } : {}),
+    ...(actions.confirm ? { confirm: held(actions.confirm) } : {}),
+    ...(actions.reject ? { reject: held(actions.reject) } : {}),
+    ...(actions.return ? { return: held(actions.return) } : {}),
+    ...(actions.handToAgent
+      ? { handToAgent: { ...actions.handToAgent, agent: heldOption(actions.handToAgent.agent) } }
+      : {}),
+  };
+  const heldAgent = (next: StartableStep): StartableStep => ({
+    ...next,
+    agent: heldOption(next.agent),
+  });
+  const heldPosition: ActionPosition =
+    position.kind === 'not-started' || position.kind === 'ready'
+      ? { ...position, next: heldAgent(position.next) }
+      : position.kind === 'blocked' && position.next
+        ? { ...position, next: heldAgent(position.next) }
+        : position;
+  const blocked = unavailable('attempt-commit' as const);
+  const task = projection.task;
+  const heldTask: TaskLifecycleActions | undefined = task && {
+    ...task,
+    approve: task.approve.kind === 'allowed' ? blocked : task.approve,
+    hold: task.hold.kind === 'allowed' ? blocked : task.hold,
+    resume: task.resume.kind === 'allowed' ? blocked : task.resume,
+    cancel: task.cancel.kind === 'allowed' ? blocked : task.cancel,
+    remove: task.remove.kind === 'allowed' ? blocked : task.remove,
+    editDetails: task.editDetails.kind === 'allowed' ? blocked : task.editDetails,
+    editContext: task.editContext.kind === 'allowed' ? blocked : task.editContext,
+    editDependencies: task.editDependencies.kind === 'allowed' ? blocked : task.editDependencies,
+  };
+  const specification = projection.specification;
+
+  return {
+    ...projection,
+    position: heldPosition,
+    actions: heldActions,
+    ...(heldTask ? { task: heldTask } : {}),
+    ...(specification
+      ? {
+          specification: {
+            ...specification,
+            createTask:
+              specification.createTask.kind === 'allowed' ? blocked : specification.createTask,
+          },
+        }
+      : {}),
+    attemptCommit: wait,
+  };
+}
 
 /**
  * The action projection of a subject. Strictly read-only: it reads one snapshot inside `serialize`,
@@ -377,8 +766,12 @@ export function inspectActions(
     const snapshot = await dependencies.store.read(subject.specId);
     const derived = deriveAttention(dependencies.catalogue, snapshot);
 
+    const wait = await outer.holds?.attemptCommit?.(subject.specId);
     if (subject.kind === 'specification') {
-      return specificationProjection(dependencies, snapshot, subject, derived);
+      return withAttemptCommitWait(
+        await specificationProjection(dependencies, snapshot, subject, derived),
+        wait,
+      );
     }
 
     // The Task detail: the projection every read makes, plus the authoring facts of this Task.
@@ -386,19 +779,22 @@ export function inspectActions(
     const projection = await taskProjection(dependencies, snapshot, subject, derived, read);
     const task = read.tasks.tasks.find((candidate) => candidate.taskId === subject.taskId);
     if (!task) {
-      return projection;
+      return withAttemptCommitWait(projection, wait);
     }
 
-    return {
-      ...projection,
-      taskAuthoring: await taskAuthoringOf(
-        dependencies,
-        snapshot,
-        read.tasks,
-        task,
-        projection.task?.editDependencies.kind === 'allowed',
-      ),
-    };
+    return withAttemptCommitWait(
+      {
+        ...projection,
+        taskAuthoring: await taskAuthoringOf(
+          dependencies,
+          snapshot,
+          read.tasks,
+          task,
+          projection.task?.editDependencies.kind === 'allowed',
+        ),
+      },
+      wait,
+    );
   });
 }
 
@@ -442,7 +838,7 @@ function ownedDrafts(tasks: ExecutionTasks, stepId: string): TaskProposal[] {
     }));
 }
 
-function presentHandoff(
+export function presentHandoff(
   definition: WorkflowDefinition,
   run: WorkflowRun,
   handoff: Handoff | undefined,
@@ -487,9 +883,19 @@ const LAUNCH_BLOCKERS: ReadonlySet<string> = new Set<AgentUnavailableReason>(
 );
 
 /** The agent option of the next step, from the same decision a continuation makes (D10). */
-function agentOptionOf(decision: ContinuationDecision): AgentOption {
+function agentOptionOf(
+  decision: ContinuationDecision,
+  catalogue: Pick<ExecutionCatalogue, 'archetype'>,
+): AgentOption {
+  const available = (launch: AgentLaunch): AgentOption => ({
+    kind: 'available',
+    launch,
+    ...(catalogue.archetype(launch.archetype)?.independent === true
+      ? { independent: true as const }
+      : {}),
+  });
   if (decision.kind === 'continue') {
-    return { kind: 'available' };
+    return available(decision.launch);
   }
 
   if (decision.kind === 'attention') {
@@ -498,7 +904,7 @@ function agentOptionOf(decision: ContinuationDecision): AgentOption {
     }
 
     if (decision.suggestion) {
-      return { kind: 'available' };
+      return available(decision.suggestion);
     }
 
     const reason = decision.blocker ?? decision.reason;
@@ -510,11 +916,15 @@ function agentOptionOf(decision: ContinuationDecision): AgentOption {
   throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'The next step of the run is not a work step.');
 }
 
-function startable(step: WorkflowStep, decision: ContinuationDecision): StartableStep {
+function startable(
+  step: WorkflowStep,
+  decision: ContinuationDecision,
+  catalogue: Pick<ExecutionCatalogue, 'archetype'>,
+): StartableStep {
   return {
     step: describeStep(step),
     human: step.kind === 'work' && step.executors.includes('human'),
-    agent: agentOptionOf(decision),
+    agent: agentOptionOf(decision, catalogue),
   };
 }
 
@@ -562,13 +972,15 @@ export function relationStepsOf(
       return position.next
         ? { next: { step: stepOf(definition, position.next.step.id), startsNow: true } }
         : {};
+    // The confirmation of a held result judges the step's exit gates again.
     case 'active':
+    case 'awaiting-confirmation':
     case 'waiting': {
       const step = stepOf(definition, position.step.id);
       const target = onlyTarget(step);
 
       return {
-        ...(position.kind === 'active' ? { active: step } : {}),
+        ...(position.kind !== 'waiting' ? { active: step } : {}),
         ...(target !== undefined
           ? { next: { step: stepOf(definition, target), startsNow: false } }
           : {}),
@@ -610,6 +1022,7 @@ function firstStepOf(
     startable(
       entry,
       resolveContinuation({ next: entry, archetypes: (id) => catalogue.archetype(id) }),
+      catalogue,
     ),
   );
 }
@@ -658,6 +1071,10 @@ interface RunInput {
   /** Whether a change of one of a Task's documents is pending (D03). */
   readonly taskDocumentChangePending: (specId: string, taskId: string) => Promise<boolean>;
   readonly tasks: ExecutionTasks;
+  /** The snapshot read: the content revisions of what a Confirm applies (`confirmsDigest`). */
+  readonly snapshot: ExecutionSnapshot;
+  /** The document files of a draft a Confirm approves (`confirmsDigest`). */
+  readonly references: Pick<TaskReferences, 'taskDocumentRevisions'>;
   readonly gates: GateReading;
 }
 
@@ -806,7 +1223,7 @@ async function runProjection(
     const next = await withEntryGates(
       input.gates,
       ready,
-      startable(ready, continuationOf(run, definition, input.catalogue)),
+      startable(ready, continuationOf(run, definition, input.catalogue), input.catalogue),
     );
     const blockers = [...(await input.startBlockers()), ...entryGateBlockers(next)];
 
@@ -820,6 +1237,10 @@ async function runProjection(
         ...returnAction,
       },
     };
+  }
+
+  if (position.state === 'awaiting-confirmation') {
+    return { ...common, ...(await awaitingProjection(input)) };
   }
 
   const step = stepOf(definition, position.step);
@@ -859,16 +1280,45 @@ async function runProjection(
   }
 
   const exits = await stepExits(input, step);
+  // The attempt this one followed, when it was taken over (Take over, or Hand to agent).
+  const previous = run.attempts.find(
+    (record) => record.step === attempt.step && record.attempt === attempt.attempt - 1,
+  );
 
   return {
     ...common,
     position: {
       kind: 'active',
       step: describeStep(step),
-      attempt: { number: attempt.attempt, startedAt: attempt.startedAt, actor: attempt.actor },
+      attempt: {
+        number: attempt.attempt,
+        startedAt: attempt.startedAt,
+        actor: attempt.actor,
+        ...(previous?.outcome?.kind === 'taken-over'
+          ? attempt.actor.class === 'human'
+            ? { takenOverFrom: { attempt: previous.attempt } }
+            : { handedOverFrom: { attempt: previous.attempt } }
+          : {}),
+      },
       exits,
     },
     actions: {
+      // Hand to agent: only from the owner's attempt of a step an agent may do.
+      ...(attempt.actor.class === 'human' && step.executors.includes('agent')
+        ? {
+            handToAgent: {
+              step: step.id,
+              attempt: attempt.attempt,
+              agent: agentOptionOf(
+                resolveContinuation({
+                  next: step,
+                  archetypes: (id) => input.catalogue.archetype(id),
+                }),
+                input.catalogue,
+              ),
+            },
+          }
+        : {}),
       // A person never finishes an agent's attempt (the core refuses it).
       ...(attempt.actor.class === 'human'
         ? {
@@ -884,6 +1334,72 @@ async function runProjection(
         : {}),
       ...returnAction,
     },
+  };
+}
+
+/**
+ * A run waiting for the owner's confirmation of an agent's result (D17): the attempt that ended, the
+ * agent's proposal (its result with where it goes and the exit gates it needs now, its feedback and
+ * artifacts) and what Confirm applies besides moving on: the drafts `approve-draft-tasks` approves
+ * (the Specification's drafts as they are now) and the agent's Task decisions. The owner's actions
+ * are Confirm and Reject; nothing else moves the run (no start, finish or return).
+ */
+async function awaitingProjection(
+  input: RunInput,
+): Promise<Pick<ActionProjection, 'position' | 'actions'>> {
+  const { definition, run } = input;
+  const record = awaitingAttempt(run);
+  const outcome = record?.outcome;
+  const step = record ? stepOf(definition, record.step) : undefined;
+  if (!record?.actor || outcome?.kind !== 'transition' || step?.kind !== 'work') {
+    throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'The awaited attempt has no pending result.');
+  }
+
+  const transition = (await stepExits(input, step)).find(
+    (candidate) => candidate.id === outcome.transition,
+  );
+  const declared = step.transitions.find((candidate) => candidate.id === outcome.transition);
+  if (!transition || !declared) {
+    throw new WorkflowError(
+      'WORKFLOW_STATE_CORRUPT',
+      `The run refers to an unknown transition "${outcome.transition}" of the step "${step.id}".`,
+    );
+  }
+
+  const confirms = await resultConfirmsOf(
+    declared.annotations.effects,
+    input.tasks.tasks,
+    input.snapshot,
+    record,
+    input.references,
+  );
+  const ref = { step: record.step, attempt: record.attempt };
+
+  return {
+    position: {
+      kind: 'awaiting-confirmation',
+      step: describeStep(step),
+      attempt: {
+        number: record.attempt,
+        startedAt: record.startedAt,
+        ...(record.endedAt !== undefined ? { endedAt: record.endedAt } : {}),
+        actor: record.actor,
+      },
+      proposal: {
+        transition,
+        ...(outcome.feedback !== undefined ? { feedback: outcome.feedback } : {}),
+        artifacts: outcome.artifacts,
+      },
+      confirms: {
+        ...(confirms.approvesDrafts !== undefined
+          ? { approvesDrafts: confirms.approvesDrafts.map((draft) => draft.taskId) }
+          : {}),
+        ...(confirms.taskDecisions.length > 0 ? { taskDecisions: confirms.taskDecisions } : {}),
+      },
+      confirmsDigest: confirmsDigestOf(confirms),
+    },
+    // While an attempt commit waits, both are `unavailable` (`withAttemptCommitWait`).
+    actions: { confirm: ref, reject: ref },
   };
 }
 
@@ -1017,6 +1533,8 @@ async function specificationPosition(
         taskDocumentChangePending: (specId, taskId) =>
           dependencies.references.pendingDocumentChange(specId, taskId),
         tasks: executionTasks(catalogue, snapshot),
+        snapshot,
+        references: dependencies.references,
         gates,
       }),
     )),
@@ -1118,50 +1636,11 @@ export async function taskProjection(
   const { task } = loaded;
   const { lifecycle, pending } = await taskLifecycleOf(dependencies, snapshot, loaded, read.detail);
   const readinessBlockers = () => taskReadinessBlockers(task, tasks.tasks);
-  const contextBlockers = async (): Promise<StartBlocker[]> => {
-    const issues = (await unresolvedContext(dependencies, subject.specId, task)).filter(
-      (issue) => issue.entry.required,
-    );
-    const stale = issues.filter((issue) => !isAwaited(issue));
-    const awaited = issues.flatMap((issue) =>
-      isAwaited(issue) && issue.entry.kind !== 'instructions'
-        ? [{ index: issue.index, kind: issue.entry.kind }]
-        : [],
-    );
-
-    return [
-      ...(stale.length > 0
-        ? [
-            {
-              kind: 'context-unresolved' as const,
-              entries: stale.map((issue) => ({
-                index: issue.index,
-                kind: issue.entry.kind,
-                reason: issue.reason,
-              })),
-            },
-          ]
-        : []),
-      ...(awaited.length > 0 ? [{ kind: 'context-awaited' as const, entries: awaited }] : []),
-    ];
-  };
-
+  const contextBlockers = () => contextBlockersOf(dependencies, task);
   const gates: GateReading = { subject, documents: dependencies.references };
   const run = task.run;
   if (!run) {
-    let workflow: WorkflowDefinition | undefined;
-    const typeBlockers: StartBlocker[] = [];
-    try {
-      workflow = resolveTaskType({
-        type: task.type,
-        allowed: await read.allowedTypes(),
-        taskType: (id) => catalogue.taskType(id),
-        workflow: (id) => catalogue.workflow(id),
-      }).workflow;
-    } catch (error) {
-      typeBlockers.push(typeBlockerOf(error));
-    }
-
+    const { workflow, blockers: typeBlockers } = await taskWorkflowOf(catalogue, read, task);
     const blockers = [...readinessBlockers(), ...typeBlockers, ...(await contextBlockers())];
     // A Task on hold has no start-blocker item: the item of its hold, if any, is derived
     // (`heldTaskAttention`), as for a Task with a run.
@@ -1212,6 +1691,8 @@ export async function taskProjection(
     taskDocumentChangePending: (specId, taskId) =>
       dependencies.references.pendingDocumentChange(specId, taskId),
     tasks,
+    snapshot,
+    references: dependencies.references,
     gates,
   });
 
@@ -1221,6 +1702,116 @@ export async function taskProjection(
     task: lifecycle,
     ...ownAttention(derived, subject),
   };
+}
+
+/** The workflow a Task's first start would follow, or why its type cannot start one. */
+async function taskWorkflowOf(
+  catalogue: ExecutionCatalogue,
+  read: TaskProjectionRead,
+  task: ExecutionTask,
+): Promise<{ readonly workflow?: WorkflowDefinition; readonly blockers: StartBlocker[] }> {
+  try {
+    return {
+      workflow: resolveTaskType({
+        type: task.type,
+        allowed: await read.allowedTypes(),
+        taskType: (id) => catalogue.taskType(id),
+        workflow: (id) => catalogue.workflow(id),
+      }).workflow,
+      blockers: [],
+    };
+  } catch (error) {
+    return { blockers: [typeBlockerOf(error)] };
+  }
+}
+
+/** The required context of a Task that does not resolve: stale (a person fixes it) or awaited. */
+async function contextBlockersOf(
+  dependencies: ActionDependencies,
+  task: ExecutionTask,
+): Promise<StartBlocker[]> {
+  const issues = (await unresolvedContext(dependencies, task.specId, task)).filter(
+    (issue) => issue.entry.required,
+  );
+  const stale = issues.filter((issue) => !isAwaited(issue));
+  const awaited = issues.flatMap((issue) =>
+    isAwaited(issue) && issue.entry.kind !== 'instructions'
+      ? [{ index: issue.index, kind: issue.entry.kind }]
+      : [],
+  );
+
+  return [
+    ...(stale.length > 0
+      ? [
+          {
+            kind: 'context-unresolved' as const,
+            entries: stale.map((issue) => ({
+              index: issue.index,
+              kind: issue.entry.kind,
+              reason: issue.reason,
+            })),
+          },
+        ]
+      : []),
+    ...(awaited.length > 0 ? [{ kind: 'context-awaited' as const, entries: awaited }] : []),
+  ];
+}
+
+/** What a list row needs of an approved Task that has not started. */
+export interface UnstartedTaskStanding {
+  /** It can start now: the action projection would find no start blocker. */
+  readonly startable: boolean;
+  /** Its start-blocker attention item, if a person has to fix something before it can start. */
+  readonly attention?: AttentionItem;
+}
+
+/**
+ * {@link taskProjection}'s start rule for an approved Task that has not started, reduced to what a
+ * list row needs (whether it can start, and its start-blocker attention), with the same blockers in
+ * the same precedence (`startBlockerAttention`). It stops reading as soon as the answer is decided:
+ * a type or an unsatisfiable dependency decides without any lookup, context is looked up only when
+ * neither does, and the entry gates of the first step (which read the Task's documents) are
+ * evaluated only for a Task no dependency still keeps waiting. No preview, actions, lifecycle or
+ * document relations are built. An item it returns names the step only when the gates decided it.
+ */
+export async function unstartedTaskStanding(
+  dependencies: ActionDependencies,
+  read: TaskProjectionRead,
+  task: ExecutionTask,
+): Promise<UnstartedTaskStanding> {
+  const subject = { kind: 'task', specId: task.specId, taskId: task.taskId } as const;
+  const { broken } = read.tasks;
+  const { workflow, blockers: typeBlockers } = await taskWorkflowOf(
+    dependencies.catalogue,
+    read,
+    task,
+  );
+  const early = [...taskReadinessBlockers(task, read.tasks.tasks), ...typeBlockers];
+  const decided = startBlockerAttention(subject, early, undefined, broken);
+  if (decided || !workflow) {
+    return { startable: false, ...(decided ? { attention: decided } : {}) };
+  }
+
+  const known = [...early, ...(await contextBlockersOf(dependencies, task))];
+  if (known.some((blocker) => blocker.kind === 'context-unresolved')) {
+    const attention = startBlockerAttention(subject, known, undefined, broken);
+
+    return { startable: false, ...(attention ? { attention } : {}) };
+  }
+
+  // A dependency that can still complete may deliver what the gates ask: they decide nothing yet.
+  if (known.some((blocker) => blocker.kind === 'dependencies')) {
+    return { startable: false };
+  }
+
+  const next = await firstStepOf(workflow, dependencies.catalogue, {
+    subject,
+    documents: dependencies.references,
+  });
+  const blockers = [...known, ...entryGateBlockers(next)];
+  const attention = startBlockerAttention(subject, blockers, next, broken);
+
+  return { startable: blockers.length === 0, ...(attention ? { attention } : {}) };
 }
 
 function typeBlockerOf(error: unknown): StartBlocker {

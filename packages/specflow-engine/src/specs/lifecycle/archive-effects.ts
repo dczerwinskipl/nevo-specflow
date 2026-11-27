@@ -19,6 +19,7 @@ import {
   listUncleanPaths,
   siblingSpecificationDirectories,
 } from './preflight';
+import { readableAttemptCommitHolds } from '../documents/attempt-commit-hold';
 import { isExecutionStatePathOf } from '../execution-paths';
 import { disabledIntegrationHooksDirectory } from './git/scratch';
 import { readCloseJournal } from './journal/store';
@@ -30,6 +31,7 @@ import {
   type CloseArchiveMove,
 } from './model';
 import { sha256Hex } from '../../hash';
+import { SPECIFICATION_ROOT } from '../repository';
 
 function failure(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_RECOVERY_REQUIRED', message);
@@ -181,11 +183,14 @@ async function archiveCommitPaths(
 }
 
 /**
- * The archived manifest: the parsed source with only `status` replaced, so `archetype`, `documents`,
- * `folders` and any unknown top-level key survive archival unchanged.
+ * The archived manifest: the parsed source without the legacy `status` key (archived is the
+ * `specs/archive` location, not a field), so `archetype`, `documents`, `folders` and any unknown
+ * top-level key survive archival unchanged.
  */
 export function archivedManifestText(parsed: object): string {
-  return stringify({ ...parsed, status: 'archived' });
+  const { status: _legacy, ...manifest } = parsed as Record<string, unknown>;
+
+  return stringify(manifest);
 }
 
 export async function assertArchivedFiles(root: string, archive: CloseArchiveMove): Promise<void> {
@@ -204,18 +209,6 @@ export async function assertArchivedFiles(root: string, archive: CloseArchiveMov
   const observed = await physicalInventory(root, archive.destinationPath);
   if (!isDeepStrictEqual(observed, expected)) {
     throw failure('Archived file inventory differs from durable intent.');
-  }
-
-  const manifest = parse(
-    await readFile(join(root, archive.destinationPath, 'specification.yaml'), 'utf8'),
-  ) as unknown;
-  if (
-    typeof manifest !== 'object' ||
-    manifest === null ||
-    !('status' in manifest) ||
-    manifest.status !== 'archived'
-  ) {
-    throw failure('Archived manifest does not declare archived status.');
   }
 }
 
@@ -271,9 +264,7 @@ export async function planArchiveMove(
     !('spec_id' in parsed) ||
     parsed.spec_id !== plan.specId ||
     !('id' in parsed) ||
-    parsed.id !== plan.slug ||
-    !('status' in parsed) ||
-    typeof parsed.status !== 'string'
+    parsed.id !== plan.slug
   ) {
     throw invalid('Canonical source manifest identity cannot be proved.');
   }
@@ -301,7 +292,7 @@ export async function moveToArchive(
   archivedManifest: string,
   afterArchiveMove?: () => Promise<void>,
 ): Promise<void> {
-  const archiveParent = join(root, 'specs', 'archive');
+  const archiveParent = join(root, SPECIFICATION_ROOT, 'archive');
   if (await absent(archiveParent)) {
     await mkdir(archiveParent);
   }
@@ -444,7 +435,7 @@ export async function archiveSpecificationWithCommit(
   const newPath = 'specs/archive/' + record.plan.slug;
   // The Specification's uncommitted execution state goes into the archive commit; a sibling
   // Specification's own pending execution state does not block it either (#181); nothing else may
-  // be dirty.
+  // be dirty, and never a path a waiting agent attempt commit takes (D15).
   const siblings = await siblingSpecificationDirectories(
     actual.root,
     source.workspaceId,
@@ -455,6 +446,7 @@ export async function archiveSpecificationWithCommit(
     specificationDirectory: oldPath,
     acceptExecutionState: true,
     siblingDirectories: siblings.map((entry) => entry.directory),
+    holds: await readableAttemptCommitHolds(engine, source.workspaceId),
   });
   if (
     facts.head !== source.head ||

@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 
+import type { AgentActor } from '../../../../workflow/state/model';
+import type { AgentWriteActor } from '../../../durable/claims';
 import { classifyJournalText } from '../../../durable/unsupported';
 import { DocumentError } from '../../../document-rules';
 import { DOCUMENT_JOURNAL_MAX_BYTES } from '../limits';
@@ -94,6 +96,42 @@ describe('journal codec', () => {
     expect(rejection({ ...buildJournal('queued'), ...patch }).code).toBe(
       'DOCUMENT_RECOVERY_REQUIRED',
     );
+  });
+
+  it('records the agent as the attempt names it, provider and model titles included', () => {
+    // The Runtime hands the attempt's `AgentActor` to the write as is: the shapes must not drift.
+    expectTypeOf<AgentWriteActor>().toEqualTypeOf<AgentActor>();
+    const agent = {
+      executionId: '22222222-2222-4222-8222-222222222222',
+      actor: {
+        class: 'agent',
+        details: {
+          archetype: 'task-planner',
+          provider: 'claude',
+          providerTitle: 'Claude Code',
+          model: 'claude-opus-5-5',
+          modelTitle: 'Opus 5.5',
+          sessionId: '33333333-3333-4333-8333-333333333333',
+        },
+      },
+    } as const;
+    const journal = buildJournal('queued', { agent });
+    expect(parse(JSON.parse(encodeDocumentChangeJournal(TEST_CONTEXT, journal))).agent).toEqual(
+      agent,
+    );
+
+    const details = (patch: Record<string, unknown>) =>
+      rejection(
+        buildJournal('queued', {
+          agent: {
+            ...agent,
+            actor: { ...agent.actor, details: { ...agent.actor.details, ...patch } },
+          },
+        }),
+      ).code;
+    expect(details({ modelTitle: '' })).toBe('DOCUMENT_RECOVERY_REQUIRED');
+    expect(details({ providerTitle: 't'.repeat(201) })).toBe('DOCUMENT_RECOVERY_REQUIRED');
+    expect(details({ effort: 'high' })).toBe('DOCUMENT_RECOVERY_REQUIRED');
   });
 
   it('pins the commit mode: auto carries its branch, manual never queues and has none', () => {

@@ -21,11 +21,13 @@ describe('interpretWatchResult', () => {
       releaseStorage: false,
       discardAttempt: false,
     });
-    expect(interpretWatchResult({ kind: 'not-started' })).toMatchObject({
-      failure: { kind: 'uncertain' },
+    // A record the Runtime lost is sent again; no hidden "retry" announcement contradicts the page.
+    const lost = interpretWatchResult({ kind: 'not-started' });
+    expect(lost).toMatchObject({
+      failure: { kind: 'uncertain', cause: 'lost' },
       releaseStorage: false,
-      announce: 'notStarted',
     });
+    expect(lost).not.toHaveProperty('announce');
     expect(
       interpretWatchResult({ kind: 'unresolved', error: apiError('timeout', 'unknown') }),
     ).toMatchObject({ failure: { kind: 'uncertain' }, releaseStorage: false });

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppServices } from '../../../../app/useAppServices';
 import { invalidateAfterTaskChange, taskAuthoringKeys } from '../queries';
+import { newId } from '../../../../shared/ids/newId';
 
 /** A new Task document: its path in the Task folder and its catalogue document type. */
 export interface NewTaskDocument {
@@ -22,7 +23,7 @@ export function useTaskDocumentOperations(specId: string, taskId: string) {
   const create = useMutation({
     mutationFn: (document: NewTaskDocument) =>
       taskAuthoringApi.addDocuments(specId, taskId, {
-        operationId: crypto.randomUUID(),
+        operationId: newId(),
         documents: [{ path: document.path, type: document.type, content: '' }],
       }),
     onSuccess: refresh,
@@ -30,7 +31,7 @@ export function useTaskDocumentOperations(specId: string, taskId: string) {
   const rename = useMutation({
     mutationFn: (input: { documentId: string; revision: string; name: string }) =>
       taskAuthoringApi.operateDocument(specId, taskId, {
-        operationId: crypto.randomUUID(),
+        operationId: newId(),
         action: 'rename',
         kind: 'document',
         documentId: input.documentId,
@@ -42,7 +43,7 @@ export function useTaskDocumentOperations(specId: string, taskId: string) {
   const remove = useMutation({
     mutationFn: (input: { documentId: string; revision: string }) =>
       taskAuthoringApi.operateDocument(specId, taskId, {
-        operationId: crypto.randomUUID(),
+        operationId: newId(),
         action: 'delete',
         kind: 'document',
         documentId: input.documentId,

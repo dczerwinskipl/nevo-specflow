@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { ToolActionSummary, WorkSummary } from '@nevo/specflow-contracts/sessions';
 import {
   START_OF_TURN_CHAPTER_ID,
-  TOOL_BURST_MIN_SIZE,
+  TOOL_GROUP_MIN_SIZE,
   buildWorkChapters,
   availableWorkFilterKinds,
   filterWorkChapters,
+  foldPermissions,
   formatWorkDuration,
   groupChapterEntries,
   mergeToolActions,
@@ -198,39 +199,40 @@ describe('availableWorkFilterKinds', () => {
 });
 
 describe('groupChapterEntries', () => {
-  it(`compacts a run of ${TOOL_BURST_MIN_SIZE}+ consecutive completed tool items into one burst`, () => {
-    const items = Array.from({ length: TOOL_BURST_MIN_SIZE }, () => tool());
+  it(`compacts a run of ${TOOL_GROUP_MIN_SIZE}+ consecutive completed tool items into one group`, () => {
+    const items = Array.from({ length: TOOL_GROUP_MIN_SIZE }, () => tool());
     const entries = groupChapterEntries(items);
 
-    expect(entries).toHaveLength(1);
-    expect(entries[0]).toEqual({ type: 'burst', items });
+    expect(entries).toEqual([{ type: 'burst', items }]);
   });
 
-  it('keeps a single completed tool item as its own row, never a one-item burst', () => {
+  it('keeps a single completed tool item as its own row, never a one-item group', () => {
     const only = tool();
     const entries = groupChapterEntries([only]);
 
     expect(entries).toEqual([{ type: 'single', item: only }]);
   });
 
-  it(`never wraps a short run (below ${TOOL_BURST_MIN_SIZE} items) in a burst — each stays its own row`, () => {
-    const items = Array.from({ length: TOOL_BURST_MIN_SIZE - 1 }, () => tool());
-    const entries = groupChapterEntries(items);
+  it('shows every operation as its own row in the detailed view', () => {
+    const items = Array.from({ length: 6 }, () => tool());
 
-    expect(entries).toEqual(items.map((item) => ({ type: 'single', item })));
+    expect(groupChapterEntries(items, 'detailed')).toEqual(
+      items.map((item) => ({ type: 'single', item })),
+    );
   });
 
-  it('only groups a long separate run, leaving a shorter run elsewhere as individual rows', () => {
-    const short = [tool(), tool()];
-    const boundary = work({ kind: 'reasoning' });
-    const long = Array.from({ length: TOOL_BURST_MIN_SIZE }, () => tool());
-    const entries = groupChapterEntries([...short, boundary, ...long]);
+  it('keeps a tool whose permission was denied out of a group', () => {
+    const ok1 = tool();
+    const denied = tool();
+    const ok2 = tool();
+    const permission = work({ kind: 'interaction', decision: 'denied' });
 
-    expect(entries).toEqual([
-      { type: 'single', item: short[0] },
-      { type: 'single', item: short[1] },
-      { type: 'single', item: boundary },
-      { type: 'burst', items: long },
+    expect(
+      groupChapterEntries([ok1, denied, ok2], 'compact', new Map([[denied.workId, permission]])),
+    ).toEqual([
+      { type: 'single', item: ok1 },
+      { type: 'single', item: denied },
+      { type: 'single', item: ok2 },
     ]);
   });
 
@@ -258,6 +260,29 @@ describe('groupChapterEntries', () => {
       { type: 'single', item: reasoning },
       { type: 'single', item: ok2 },
     ]);
+  });
+
+  it('folds a permission into the one tool next to it with the same operation and subject', () => {
+    const command = { operation: 'command' as const, subject: 'pnpm test' };
+    const run = tool(command);
+    const permission = work({ kind: 'interaction', decision: 'allowed', ...command });
+    const other = tool({ operation: 'read', subject: 'a.ts' });
+    const folded = foldPermissions([run, permission, other]);
+
+    expect(folded.items).toEqual([run, other]);
+    expect(folded.authorizations.get(run.workId)).toBe(permission);
+  });
+
+  it('keeps a permission its own row when two neighbours match it, or none does', () => {
+    const command = { operation: 'command' as const, subject: 'pnpm test' };
+    const before = tool(command);
+    const permission = work({ kind: 'interaction', decision: 'allowed', ...command });
+    const after = tool(command);
+    const unanswered = work({ kind: 'interaction', ...command });
+
+    expect(foldPermissions([before, permission, after]).items).toHaveLength(3);
+    expect(foldPermissions([tool(command), unanswered]).items).toHaveLength(2);
+    expect(foldPermissions([tool({ operation: 'read' }), permission]).items).toHaveLength(2);
   });
 
   it('isolates an active/queued tool instead of merging it with completed neighbours', () => {

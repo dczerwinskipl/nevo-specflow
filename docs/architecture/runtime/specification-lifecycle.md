@@ -28,7 +28,7 @@ Specification Close archives a selected Specification; Worktree Close may integr
 
 ## Create and the three distinct Git choices
 
-[Create admission and Git selection](specification-create-lifecycle.md) defines the starting checkout, `baseRef`, branch/worktree selection, journal retention, scaffold commits and the Git-disabled case. An interrupted Create requires [operator recovery](../../engineering/shared/specification-create-recovery.md), not automatic takeover after a timeout.
+[Create admission and Git selection](specification-create-lifecycle.md) defines the starting checkout, `baseRef`, branch/worktree selection, journal retention, scaffold commits and the Git-disabled case. An interrupted Create is resumed by its next run (the Runtime reruns the Creates it accepted at startup) only on positive evidence that its executor is gone ([ADR 0027](../decisions/0027-locks-released-only-on-positive-evidence.md)), never after a timeout; otherwise, and from `git-initiated`, it needs [operator recovery](../../engineering/shared/specification-create-recovery.md).
 
 ## Explicit Close intents
 

@@ -22,6 +22,12 @@ export interface TaskReferences extends GateDocuments {
    */
   projectDocument(specId: string, id: string): Promise<boolean>;
   /**
+   * The checkout-relative path of that document's file, when the documentation names it: the agent
+   * context hashes it, so a project document is part of the attempt's context digest (D13). Absent
+   * (or `undefined`): the document is pinned by its id only.
+   */
+  projectDocumentPath?(specId: string, id: string): Promise<string | undefined>;
+  /**
    * A repository-relative file or folder exists in the Specification's checkout, or a glob matches at
    * least one file there.
    */
@@ -33,6 +39,18 @@ export interface TaskReferences extends GateDocuments {
   pendingDocumentChange(specId: string, taskId: string): Promise<boolean>;
   /** {@link pendingDocumentChange} of every Task of the Specification at once (one read). */
   pendingDocumentChanges(specId: string): Promise<ReadonlySet<string>>;
+  /**
+   * The content revision (sha256 of the bytes) of every document file of the Task (`task.md` and
+   * the others, registered or not), by path; `null` for a registered document without a file. What
+   * the owner's Confirm of an agent's result pins of a draft besides its manifest (D17).
+   */
+  taskDocumentRevisions(specId: string, taskId: string): Promise<readonly TaskDocumentRevision[]>;
+}
+
+export interface TaskDocumentRevision {
+  /** Relative to the Task folder. */
+  readonly path: string;
+  readonly revision: string | null;
 }
 
 /** The dependencies of ONE read, with {@link readScopedReferences}. */
@@ -69,11 +87,23 @@ export function readScopedReferences(references: TaskReferences): TaskReferences
       once(key('specification', specId, id), () => references.specificationDocument(specId, id)),
     projectDocument: (specId, id) =>
       once(key('project', specId, id), () => references.projectDocument(specId, id)),
+    ...(references.projectDocumentPath
+      ? {
+          projectDocumentPath: (specId: string, id: string) =>
+            once(key('project-path', specId, id), () =>
+              references.projectDocumentPath!(specId, id),
+            ),
+        }
+      : {}),
     path: (specId, path) => once(key('path', specId, path), () => references.path(specId, path)),
     pendingDocumentChange: async (specId, taskId) => (await pending(specId)).has(taskId),
     pendingDocumentChanges: pending,
     documentsOfType: (scope, type) =>
       once(key('documents', scope, type), () => references.documentsOfType(scope, type)),
+    taskDocumentRevisions: (specId, taskId) =>
+      once(key('task-documents', specId, taskId), () =>
+        references.taskDocumentRevisions(specId, taskId),
+      ),
   };
 }
 

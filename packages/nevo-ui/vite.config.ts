@@ -1,10 +1,18 @@
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'node:path';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  test: {
+    // The package's own public entries (`@nevo/ui/figma/define`, ...) resolve to its source, as in
+    // `tsconfig.json`: a test must not depend on the package's own `dist` being built and current.
+    alias: [
+      { find: /^@nevo\/ui$/u, replacement: resolve(import.meta.dirname, 'src/index.ts') },
+      { find: /^@nevo\/ui\/(.+)$/u, replacement: resolve(import.meta.dirname, 'src/$1') },
+    ],
+  },
   build: {
     cssCodeSplit: true,
     lib: {

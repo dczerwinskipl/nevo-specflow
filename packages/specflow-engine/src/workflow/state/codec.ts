@@ -14,6 +14,7 @@ import {
   RECORD_BYTES_MAX,
   RETURNS_MAX,
   TASK_ID_PATTERN_SOURCE,
+  TASKS_PER_SPECIFICATION_MAX,
 } from '../limits';
 import type { SpecificationExecutionRecord, TaskRunRecord } from './model';
 
@@ -44,6 +45,11 @@ const PositionSchema = Type.Union([
   closed({ state: Type.Literal('active'), step: id(), attempt: Type.Integer({ minimum: 1 }) }),
   closed({ state: Type.Literal('ready'), step: id() }),
   closed({
+    state: Type.Literal('awaiting-confirmation'),
+    step: id(),
+    attempt: Type.Integer({ minimum: 1 }),
+  }),
+  closed({
     state: Type.Literal('terminal'),
     outcome: Type.Union([Type.Literal('completed'), Type.Literal('abandoned')]),
   }),
@@ -56,7 +62,9 @@ export const ActorSchema = Type.Union([
     details: closed({
       archetype: optional(id()),
       provider: id(),
+      providerTitle: optional(text(200)),
       model: optional(text(200)),
+      modelTitle: optional(text(200)),
       sessionId: optional(text(200)),
     }),
   }),
@@ -66,6 +74,62 @@ export const ActorSchema = Type.Union([
       actorId: text(200),
       trust: Type.Union([Type.Literal('local'), Type.Literal('authenticated')]),
     }),
+  }),
+]);
+
+const uuid = () =>
+  Type.String({ pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' });
+
+/** The host data of an agent attempt started for agent step execution (`AgentAttemptBinding`). */
+const AgentAttemptBindingSchema = closed({
+  kind: Type.Literal('agent-attempt'),
+  attemptId: uuid(),
+  workspaceId: uuid(),
+  contextDigest: optional(Type.String({ pattern: '^[0-9a-f]{64}$' })),
+  launch: optional(
+    closed({
+      session: Type.Union([Type.Literal('fresh'), Type.Literal('reuse')]),
+      effort: optional(Type.String({ minLength: 1, maxLength: 64 })),
+    }),
+  ),
+});
+
+/**
+ * What an agent's finish held for the owner's confirmation applies once confirmed besides its
+ * transition (`PendingOwnerDecisions`): its Task status decisions.
+ */
+const PendingOwnerDecisionsSchema = closed({
+  kind: Type.Literal('owner-decisions'),
+  taskDecisions: Type.Array(
+    closed({
+      taskId: Type.String({ pattern: TASK_ID_PATTERN_SOURCE }),
+      status: Type.Union([
+        Type.Literal('ready'),
+        Type.Literal('on-hold'),
+        Type.Literal('cancelled'),
+      ]),
+      reason: optional(text(FEEDBACK_MAX)),
+    }),
+    { minItems: 1, maxItems: TASKS_PER_SPECIFICATION_MAX },
+  ),
+});
+
+const ConfirmationSchema = Type.Union([
+  closed({ state: Type.Literal('pending'), hostData: optional(PendingOwnerDecisionsSchema) }),
+  closed({
+    state: Type.Literal('confirmed'),
+    hostData: optional(PendingOwnerDecisionsSchema),
+    at: timestamp(),
+    actor: ActorSchema,
+    requestDigest: optional(Type.String({ pattern: '^[0-9a-f]{64}$' })),
+  }),
+  closed({
+    state: Type.Literal('rejected'),
+    hostData: optional(PendingOwnerDecisionsSchema),
+    at: timestamp(),
+    actor: ActorSchema,
+    feedback: text(FEEDBACK_MAX),
+    requestDigest: optional(Type.String({ pattern: '^[0-9a-f]{64}$' })),
   }),
 ]);
 
@@ -79,6 +143,7 @@ const OutcomeSchema = Type.Union([
   }),
   closed({ kind: Type.Literal('returned'), to: id(), feedback: optional(text(FEEDBACK_MAX)) }),
   closed({ kind: Type.Literal('abandoned') }),
+  closed({ kind: Type.Literal('taken-over') }),
 ]);
 
 const RunSchema = closed({
@@ -95,10 +160,12 @@ const RunSchema = closed({
       sequence: sequence(),
       startedAt: timestamp(),
       actor: optional(ActorSchema),
+      hostData: optional(AgentAttemptBindingSchema),
       endedAt: optional(timestamp()),
       finishedBy: optional(ActorSchema),
       requestDigest: optional(Type.String({ pattern: '^[0-9a-f]{64}$' })),
       outcome: optional(OutcomeSchema),
+      confirmation: optional(ConfirmationSchema),
     }),
     { maxItems: ATTEMPTS_MAX },
   ),

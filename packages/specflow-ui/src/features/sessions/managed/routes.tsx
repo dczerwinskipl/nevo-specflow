@@ -16,6 +16,7 @@ import {
 } from '../associations/queries';
 import { homeSpecification } from '../associations/useSessionHomeSpecification';
 import { ManagedSession } from './ManagedSession';
+import { useSpecificationWorkspace } from '../../specs/read-model';
 import { useSessionContextNavigation } from './useSessionContextNavigation';
 
 /**
@@ -48,7 +49,7 @@ function ManagedSessionRoute() {
 export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
   const services = useAppServices();
   const owner = useAuthOwner() ?? 'unavailable';
-  const { onOpenSpecification, onOpenDocuments, onOpenDocumentation } =
+  const { onOpenSpecification, onOpenDocuments, onOpenDocumentation, onReviewChanges } =
     useSessionContextNavigation(sessionId);
   const association = useSessionAssociation(sessionId);
   const queryClient = useQueryClient();
@@ -66,6 +67,25 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
   const toSpecifications = () =>
     navigate({ to: '/', search: { collection: 'current' }, replace: true });
   const home = homeSpecification(data);
+  // The Specification's uncommitted files as the Runtime reports them (only where its changes
+  // view exists): the Session reads them again whenever a Turn ends before stating a count.
+  const homeWorkspace = useSpecificationWorkspace(home?.specId ?? '', services.specificationApi);
+  const uncommitted =
+    homeWorkspace.data?.sectionAvailability?.changes === 'available'
+      ? homeWorkspace.data.changes?.uncommitted
+      : undefined;
+  const refreshWorkspace = homeWorkspace.refetch;
+  const workspaceChanges = useMemo(
+    () =>
+      uncommitted
+        ? {
+            count: uncommitted.length,
+            // A failed read is not a new count.
+            refresh: async () => !(await refreshWorkspace()).isError,
+          }
+        : undefined,
+    [uncommitted, refreshWorkspace],
+  );
   const onSessionChanged = () => {
     if (home) {
       void invalidateSpecificationSessions(queryClient, home.specId);
@@ -110,6 +130,8 @@ export function ManagedSessionRouteView({ sessionId }: { sessionId: string }) {
         onOpenSpecification={onOpenSpecification}
         onOpenDocuments={onOpenDocuments}
         onOpenDocumentation={onOpenDocumentation}
+        onReviewChanges={onReviewChanges}
+        workspaceChanges={workspaceChanges}
         onSessionDeleted={onSessionDeleted}
         onSessionChanged={onSessionChanged}
         onGoToSpecifications={() => void toSpecifications()}

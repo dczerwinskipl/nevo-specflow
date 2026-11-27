@@ -4,8 +4,6 @@
 // the locks of recording a commit and an uncertain outcome of a Git process that may still run.
 import { subscribe, unsubscribe } from 'node:diagnostics_channel';
 import { randomUUID } from 'node:crypto';
-import { rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -30,6 +28,7 @@ import { notesText } from '../support/document-writes';
 import {
   clockAfterBackoff,
   editNotesByHand,
+  indexLockedCommits,
   isolatedQueue,
   manualClock,
   queueProject,
@@ -58,22 +57,19 @@ describe('attempts are counted per member', () => {
   it('gives a save that joins a batch of tired members its own full set of attempts', async () => {
     const project = await queueProject();
     const tired = await queueSave(project, 1, 'tired\n');
-    const lock = join(project.root, '.git', 'index.lock');
-    await writeFile(lock, '');
+    // Every commit is refused as a held index lock is; the saves are admitted all the same.
+    const commits = indexLockedCommits(project);
     let at = Date.now() + 1000;
     for (let attempt = 1; attempt <= 9; attempt += 1) {
       const clock = manualClock();
       clock.wallAt(at);
-      await runQueueOnce(project.engine, isolatedQueue({ clock }), undefined, FLUSH);
+      await runQueueOnce(project.engine, isolatedQueue({ clock, commits }), undefined, FLUSH);
       at += 120_000;
     }
 
     expect((await stage(project, tired))?.attempts).toBe(9);
 
-    // A save is admitted only while Git can take a commit; the blocker is back for the next attempt.
-    await rm(lock);
     const fresh = await queueSave(project, 2, 'fresh\n');
-    await writeFile(lock, '');
     let batchAttempts = -1;
     const clock = manualClock();
     clock.wallAt(at);
@@ -81,6 +77,7 @@ describe('attempts are counted per member', () => {
       project.engine,
       isolatedQueue({
         clock,
+        commits,
         hooks: {
           afterClaim: (batch) => {
             batchAttempts = batch.attempts;
@@ -94,7 +91,7 @@ describe('attempts are counted per member', () => {
     );
     // One more failed attempt does not end the retries of the save that has just arrived.
     expect(batchAttempts).toBe(0);
-    expect(result).toMatchObject({ status: 'failed', outcome: 'requeued' });
+    expect(result).toMatchObject({ status: 'failed', outcome: 'requeued', reason: 'index-locked' });
     expect(await stage(project, tired)).toMatchObject({ stage: 'queued', attempts: 10 });
     expect(await stage(project, fresh)).toMatchObject({ stage: 'queued', attempts: 1 });
   });

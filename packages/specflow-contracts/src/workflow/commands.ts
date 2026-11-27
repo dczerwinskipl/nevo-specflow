@@ -7,6 +7,8 @@ import {
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import {
   ATTENTION_REASONS,
+  AgentAttemptWorkSchema,
+  AgentOptionSchema,
   BlockingTaskSchema,
   ExitBlockerSchema,
   LAUNCH_BLOCKERS,
@@ -19,6 +21,7 @@ import {
   WorkflowStepSchema,
   WorkflowSubjectSchema,
 } from './projection';
+import { AGENT_OWNER_NOTE_MAX_LENGTH } from '../documents/agent-commands';
 
 /**
  * The owner commands on a workflow subject and their results. The actor is never part of a request:
@@ -38,6 +41,11 @@ const literals = <const T extends readonly string[]>(values: T) =>
   Type.Unsafe<T[number]>(Type.Union(values.map((value) => Type.Literal(value))));
 
 const StepId = Type.String({ minLength: 1, maxLength: 200 });
+
+/** The idempotency key of an owner request (a UUID): a repeat returns the same outcome. */
+const RequestIdSchema = Type.String({
+  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+});
 
 /** Start (or resume) the next step of the owner. */
 export const StartWorkflowRequestSchema = Type.Object(
@@ -137,6 +145,38 @@ export const FinishWorkflowRequestSchema = Type.Object(
 );
 export type FinishWorkflowRequest = Static<typeof FinishWorkflowRequestSchema>;
 
+/** The changed files one agent finish proposal declares at most (the dirty set's bound). */
+export const AGENT_CHANGED_PATHS_MAX = 500;
+/** The longest checkout-relative path a finish proposal declares. */
+export const AGENT_CHANGED_PATH_LENGTH_MAX = 1024;
+
+/**
+ * An agent's finish proposal for its own attempt (agent step execution, D12): the owner's finish input and the
+ * files outside SpecFlow's own folders the attempt changed (`changes.paths`, B3). The declared set
+ * must equal what is uncommitted outside the Specification directories and SpecFlow's namespace:
+ * an undeclared changed file or a declared file that is not changed refuses the proposal
+ * (`WORKFLOW_UNDECLARED_CHANGES`). Absent `changes` declares no file.
+ */
+export const AgentFinishProposalRequestSchema = Type.Object(
+  {
+    ...FinishWorkflowRequestSchema.properties,
+    changes: Type.Optional(
+      Type.Object(
+        {
+          /** Checkout-relative paths with `/` separators, as `git status` names them; each once. */
+          paths: Type.Array(
+            Type.String({ minLength: 1, maxLength: AGENT_CHANGED_PATH_LENGTH_MAX }),
+            { maxItems: AGENT_CHANGED_PATHS_MAX },
+          ),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
+export type AgentFinishProposalRequest = Static<typeof AgentFinishProposalRequestSchema>;
+
 /** Send the run back to a declared step it already reached. */
 export const ReturnWorkflowRequestSchema = Type.Object(
   {
@@ -162,6 +202,8 @@ export const WorkflowContinuationSchema = Type.Union([
       Type.Literal('terminal'),
       Type.Literal('waiting-for-tasks'),
       Type.Literal('on-hold'),
+      /** An agent's result waits for the owner's Confirm or Reject (D17). */
+      Type.Literal('awaiting-confirmation'),
     ]),
   }),
   Type.Object({
@@ -194,10 +236,14 @@ export type StartWorkflowResult = Static<typeof StartWorkflowResultSchema>;
 
 /**
  * What the host did once the finish was recorded (`commit-execution-state`: commit the
- * Specification's execution state when auto-commit is off). A failed post action does not fail the
- * finish; its `message` is display-only.
+ * Specification's execution state when auto-commit is off; `attempt-commit`: the one commit of an
+ * agent attempt, D15, its documents, Tasks, execution state and declared files, whatever the commit
+ * policy). A failed post action does not fail the finish; its `message` is display-only.
  */
-const PostActionName = Type.Literal('commit-execution-state');
+const PostActionName = Type.Union([
+  Type.Literal('commit-execution-state'),
+  Type.Literal('attempt-commit'),
+]);
 
 export const PostActionResultSchema = Type.Union([
   Type.Object({
@@ -220,6 +266,14 @@ export const PostActionResultSchema = Type.Union([
     status: Type.Literal('failed'),
     code: Type.String(),
     message: Type.String(),
+    /**
+     * `commit-execution-state`: the workflow state it left uncommitted (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`:
+     * tied to an agent attempt whose commit waits; `WORKFLOW_STATE_CORRUPT`: an agent attempt's
+     * record cannot be read), with the hand-edited ones in `edited`.
+     */
+    held: Type.Optional(
+      Type.Object({ edited: Type.Array(Type.String()), paths: Type.Array(Type.String()) }),
+    ),
   }),
 ]);
 export type PostActionResult = Static<typeof PostActionResultSchema>;
@@ -247,11 +301,115 @@ export const FinishWorkflowResultSchema = Type.Object({
 });
 export type FinishWorkflowResult = Static<typeof FinishWorkflowResultSchema>;
 
-export const ReturnWorkflowResultSchema = Type.Object({
+/**
+ * The owner's **Retry commit** of a finished agent attempt whose commit failed (D15): the attempt
+ * `step#attempt` of the subject, as the Now block and Close name it.
+ */
+export const RetryAttemptCommitRequestSchema = Type.Object(
+  { step: StepId, attempt: Type.Integer({ minimum: 1 }) },
+  { additionalProperties: false },
+);
+export type RetryAttemptCommitRequest = Static<typeof RetryAttemptCommitRequestSchema>;
+
+/** What the retried attempt commit reported (`attempt-commit`: completed, skipped or failed). */
+export const RetryAttemptCommitResultSchema = Type.Object({
+  postActions: Type.Array(PostActionResultSchema),
+});
+export type RetryAttemptCommitResult = Static<typeof RetryAttemptCommitResultSchema>;
+
+/**
+ * The owner's **Confirm** of an agent's result that waits for them (D17, `actions.confirm`): the
+ * attempt `step#attempt` the owner was shown. `requestId` is the idempotency key: the same request
+ * again returns the recorded decision with `replayed: true`; a confirm or reject of an attempt
+ * another request decided is `WORKFLOW_ATTEMPT_MISMATCH`.
+ */
+export const ConfirmWorkflowRequestSchema = Type.Object(
+  {
+    requestId: RequestIdSchema,
+    step: StepId,
+    attempt: Type.Integer({ minimum: 1 }),
+    /**
+     * The projection's `confirmsDigest` the owner was shown: Confirm applies exactly that, and is
+     * refused `WORKFLOW_CONFIRMATION_CHANGED` (naming what it would apply now) when it changed.
+     */
+    confirmsDigest: Type.String({ pattern: '^[0-9a-f]{64}$' }),
+  },
+  { additionalProperties: false },
+);
+export type ConfirmWorkflowRequest = Static<typeof ConfirmWorkflowRequestSchema>;
+
+/**
+ * The owner's **Reject** of that result (`actions.reject`): the step goes back to ready to start
+ * with `feedback` (required) as its handoff; nothing the agent wrote is undone (it was committed
+ * with its attempt when the attempt finished).
+ */
+export const RejectWorkflowRequestSchema = Type.Object(
+  {
+    requestId: RequestIdSchema,
+    step: StepId,
+    attempt: Type.Integer({ minimum: 1 }),
+    feedback: Type.String({ minLength: 1, maxLength: 20_000 }),
+  },
+  { additionalProperties: false },
+);
+export type RejectWorkflowRequest = Static<typeof RejectWorkflowRequestSchema>;
+
+/**
+ * The confirmed result: the transition taken and what follows, as after a finish, and what the
+ * owner's post actions reported (`postActions`: the commit of the workflow state, as after an
+ * owner's finish; a replay runs them again). The agent's attempt commit ran when it finished.
+ */
+export const ConfirmWorkflowResultSchema = Type.Object({
+  subject: WorkflowSubjectSchema,
+  transition: Type.String(),
+  position: WorkflowRunPositionSchema,
+  continuation: WorkflowContinuationSchema,
+  specification: Type.Optional(WorkflowContinuationSchema),
+  replayed: Type.Optional(Type.Literal(true)),
+  postActions: Type.Array(PostActionResultSchema),
+});
+export type ConfirmWorkflowResult = Static<typeof ConfirmWorkflowResultSchema>;
+
+export const RejectWorkflowResultSchema = Type.Object({
   subject: WorkflowSubjectSchema,
   position: WorkflowRunPositionSchema,
   continuation: WorkflowContinuationSchema,
+  replayed: Type.Optional(Type.Literal(true)),
+  /** The owner's commit of the Reject (`commit-execution-state`), as after Confirm. */
+  postActions: Type.Array(PostActionResultSchema),
 });
+export type RejectWorkflowResult = Static<typeof RejectWorkflowResultSchema>;
+
+/**
+ * What the owner's Return did (D19): `returned`, the run moved back now; `return-requested`, an
+ * agent's Turn of the active attempt may still run: the return is recorded on the attempt, the
+ * Runtime stopped the Turn, and the return applies once the agent's process is proven stopped (the
+ * projection shows it as `agentAttempt.returnRequest` until then).
+ */
+export const ReturnWorkflowResultSchema = Type.Union([
+  Type.Object({
+    kind: Type.Literal('returned'),
+    subject: WorkflowSubjectSchema,
+    position: WorkflowRunPositionSchema,
+    continuation: WorkflowContinuationSchema,
+    /** The owner's commit of the return (`commit-execution-state`); absent where none runs. */
+    postActions: Type.Optional(Type.Array(PostActionResultSchema)),
+  }),
+  Type.Object({
+    kind: Type.Literal('return-requested'),
+    subject: WorkflowSubjectSchema,
+    /** The return target. */
+    to: StepId,
+    attemptId: Type.String(),
+    step: StepId,
+    attempt: Type.Integer({ minimum: 1 }),
+    sessionId: Type.String(),
+    turnId: Type.String(),
+    requestedAt: Type.String(),
+    /** The Runtime's stop of the Turn was sent, or failed (Stop again); absent offline. */
+    stop: Type.Optional(literals(['sent', 'failed'] as const)),
+  }),
+]);
 export type ReturnWorkflowResult = Static<typeof ReturnWorkflowResultSchema>;
 
 export const AbandonSpecificationResultSchema = Type.Object({
@@ -300,9 +458,58 @@ export const WORKFLOW_ERROR_CODES = [
   'WORKFLOW_EXIT_BLOCKED',
   'WORKFLOW_GATE_UNSATISFIED',
   'WORKFLOW_TASKS_OPEN',
+  'WORKFLOW_OWNER_DECISION_REQUIRED',
+  /**
+   * What the owner's Confirm of an agent's result would apply (the drafts it approves, their content,
+   * the Task decisions) is not what they were shown (`confirmsDigest`): read the result again.
+   */
+  'WORKFLOW_CONFIRMATION_CHANGED',
+  /**
+   * With Git on, the owner's Confirm or Reject of an agent's result while its attempt commit has not
+   * run or failed: the agent's work is committed on its own first (retry the attempt commit), then
+   * Confirm or Reject applies.
+   */
+  'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
+  /**
+   * Agent step execution attribution (B3, B6): the checkout has uncommitted changes SpecFlow cannot attribute
+   * (`WORKFLOW_DIRTY_BASELINE`, at the start), files changed since the agent's last Turn ended
+   * (`WORKFLOW_BASELINE_CHANGED`, at Continue), new files in a Specification directory without a
+   * document type (`WORKFLOW_UNREGISTERED_DOCUMENTS`), SpecFlow's own files edited past it
+   * (`WORKFLOW_ENGINE_FILE_EDITED`), or changed files the finish proposal does not declare exactly
+   * (`WORKFLOW_UNDECLARED_CHANGES`), or an untracked Git repository inside the checkout
+   * (`WORKFLOW_NESTED_REPOSITORY`); `details.attribution` names the paths.
+   */
+  'WORKFLOW_DIRTY_BASELINE',
+  'WORKFLOW_BASELINE_CHANGED',
+  'WORKFLOW_UNREGISTERED_DOCUMENTS',
+  'WORKFLOW_ENGINE_FILE_EDITED',
+  'WORKFLOW_UNDECLARED_CHANGES',
+  'WORKFLOW_NESTED_REPOSITORY',
+  /**
+   * Hand to agent: the checkout has uncommitted changes besides the owner's workflow state the hand
+   * commits (the owner's own work in the step, or what an earlier attempt left); the agent's attempt
+   * would take them as its own. `details.attribution` names them: commit or undo them first.
+   */
+  'WORKFLOW_OWNER_WORK_UNCOMMITTED',
+  /**
+   * Agent step execution cannot start or continue now; `details.agent` is the unavailable agent option with its
+   * reason (the projection's `agent`, or `agentAttempt.continue`), so the form can explain it.
+   */
+  'WORKFLOW_AGENT_UNAVAILABLE',
   'WORKFLOW_UNAVAILABLE',
+  /**
+   * The Runtime's own: the commit policy of the workflow state refused the change before anything
+   * was written (a protected branch, Git unavailable, too many uncommitted paths, a journal to
+   * recover); `details.commit` names the refusal in the documents' vocabulary.
+   */
+  'WORKFLOW_COMMIT_REFUSED',
   /** The project control lock (as in Close): only `CONTROL_LOCK_BUSY` is worth a retry. */
   'CONTROL_LOCK_BUSY',
+  /**
+   * The lock is held by an owner SpecFlow cannot prove stopped: stop every SpecFlow process of the
+   * project, then run `nevo-specflow specs documents recover --confirmed-stopped`.
+   */
+  'CONTROL_LOCK_RECOVERY_REQUIRED',
   'CONTROL_LOCK_CORRUPT',
   'CONTROL_LOCK_OWNERSHIP_LOST',
   'CONTROL_LOCK_INVALID_HOME',
@@ -314,10 +521,77 @@ const codes = Type.Unsafe<WorkflowErrorCode>(
 );
 
 /**
+ * What holds a Specification whose workflow cannot change now (`WORKFLOW_SPECIFICATION_BUSY`):
+ * `agent-turn` an agent Session Turn holds the project-wide write claim (retry once it ends, or stop
+ * it); `agent-turn-unknown` that Turn ended without a verified outcome (resolve the Session: Check
+ * outcome, or its recovery); `claim-not-held` a write of an agent execution whose claim is no
+ * longer held (its Turn settled: start a new one); `close` a Close of the Specification is unsettled. The other values are
+ * the busy causes of the commit admission of the workflow state, as in the documents' `SPEC_BUSY`;
+ * `other` a busy refusal whose cause is not one of these (still a refusal: retry later).
+ */
+export const SPECIFICATION_BUSY_CAUSES = [
+  'agent-turn',
+  'agent-turn-unknown',
+  'claim-not-held',
+  'close',
+  'create-or-close',
+  'commit-in-progress',
+  'queue-full',
+  'held-limit',
+  'recovery-required',
+  'manifest-changed',
+  'source-changed',
+  'write-in-progress',
+  'task-resource-change',
+  'other',
+] as const;
+export type SpecificationBusyCause = (typeof SPECIFICATION_BUSY_CAUSES)[number];
+
+/**
+ * The document refusals of the workflow state's commit admission that a workflow command answers as
+ * `WORKFLOW_COMMIT_REFUSED` (the same codes, reasons and causes as a document write's refusal).
+ */
+export const WORKFLOW_COMMIT_REFUSAL_CODES = [
+  'BRANCH_PROTECTED',
+  'COMMIT_BLOCKED',
+  'GIT_POLICY_INVALID',
+  'DOCUMENT_UNCOMMITTED_LIMIT',
+  'DOCUMENT_OPERATION_INVALID',
+  'DOCUMENT_RECOVERY_REQUIRED',
+] as const;
+export type WorkflowCommitRefusalCode = (typeof WORKFLOW_COMMIT_REFUSAL_CODES)[number];
+
+/**
+ * The paths of an agent step execution attribution refusal (`WORKFLOW_DIRTY_BASELINE`,
+ * `WORKFLOW_BASELINE_CHANGED`, `WORKFLOW_UNREGISTERED_DOCUMENTS`, `WORKFLOW_ENGINE_FILE_EDITED`,
+ * `WORKFLOW_UNDECLARED_CHANGES`): the first of them (`paths`, sorted) of `count`. For
+ * `WORKFLOW_UNDECLARED_CHANGES`, `undeclared` are changed files the proposal does not declare and
+ * `unchanged` declared files that are not changed files of the attempt (`paths` holds both).
+ * `remedies` (`WORKFLOW_UNREGISTERED_DOCUMENTS`): give each file a document type, or delete a new
+ * one, or restore a changed one.
+ * `incomplete`: what is uncommitted cannot be read in full (more changed files than SpecFlow names,
+ * an unreadable record of its own writes, no record of the last Turn), so nothing is attributed.
+ */
+export const WorkflowAttributionSchema = Type.Object({
+  paths: Type.Array(Type.String()),
+  count: Type.Integer({ minimum: 0 }),
+  undeclared: Type.Optional(Type.Array(Type.String())),
+  unchanged: Type.Optional(Type.Array(Type.String())),
+  remedies: Type.Optional(
+    Type.Array(
+      Type.Union([Type.Literal('classify'), Type.Literal('delete'), Type.Literal('restore')]),
+    ),
+  ),
+  incomplete: Type.Optional(Type.Literal(true)),
+});
+export type WorkflowAttribution = Static<typeof WorkflowAttributionSchema>;
+
+/**
  * A refused workflow command. `code` is the stable value clients branch on (`error` repeats it);
  * `message` is display-only text and may change. `details.blockers` lists what holds a Specification
  * (`WORKFLOW_EXIT_BLOCKED`), `details.openTasks` the Tasks a completion waits for
- * (`WORKFLOW_TASKS_OPEN`).
+ * (`WORKFLOW_TASKS_OPEN`), `details.cause` (and `sessionId`) what holds a busy Specification
+ * (`WORKFLOW_SPECIFICATION_BUSY`).
  */
 export const WorkflowErrorSchema = Type.Object(
   {
@@ -385,9 +659,314 @@ export const WorkflowErrorSchema = Type.Object(
          * Tasks are open; every open Task and why it is open, in id order.
          */
         openTasks: Type.Optional(Type.Array(OpenTaskSchema)),
+        /** An agent step execution attribution refusal: the paths it names ({@link WorkflowAttributionSchema}). */
+        attribution: Type.Optional(WorkflowAttributionSchema),
+        /** `WORKFLOW_AGENT_UNAVAILABLE`: why an agent cannot do the step now. */
+        agent: Type.Optional(AgentOptionSchema),
+        /** `WORKFLOW_SPECIFICATION_BUSY`: what holds the Specification ({@link SPECIFICATION_BUSY_CAUSES}). */
+        cause: Type.Optional(
+          Type.Unsafe<SpecificationBusyCause>(
+            Type.Union(SPECIFICATION_BUSY_CAUSES.map((cause) => Type.Literal(cause))),
+          ),
+        ),
+        /** `WORKFLOW_SPECIFICATION_BUSY` of `agent-turn` / `agent-turn-unknown`: the Session holding the claim. */
+        sessionId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
+        /** `WORKFLOW_COMMIT_REFUSED`: the document refusal, with its `reason`, `cause` and `blockedBy`. */
+        commit: Type.Optional(
+          Type.Object(
+            {
+              code: Type.Unsafe<WorkflowCommitRefusalCode>(
+                Type.Union(WORKFLOW_COMMIT_REFUSAL_CODES.map((code) => Type.Literal(code))),
+              ),
+              reason: Type.Optional(Type.String({ maxLength: 64 })),
+              cause: Type.Optional(Type.String({ maxLength: 64 })),
+              blockedBy: Type.Optional(Type.String({ maxLength: 64 })),
+            },
+            { additionalProperties: false },
+          ),
+        ),
       }),
     ),
   },
   { $id: 'WorkflowError', additionalProperties: false },
 );
 export type WorkflowError = Static<typeof WorkflowErrorSchema>;
+
+/**
+ * Agent step execution (D12, D18): an agent attempt of the step the owner was shown. Without `expected.attempt`
+ * a new attempt of `expected.step`; with it (Continue) a new Turn of that active agent attempt in
+ * its own Session. With `expected.handOver` (Hand to agent, `actions.handToAgent`), `expected.attempt`
+ * is the owner's active attempt: it ends handed to the agent and the agent's next attempt of the
+ * step starts, like a new attempt (a fresh Session unless the step continues one). `provider`, `model` and `effort` choose the agent of a fresh Session only (the
+ * projection's `agent.launch` is the default); a continued Session keeps its own, and naming them
+ * then is refused. `message` is the owner's note to the agent, after the brief. The actor is the
+ * authenticated caller; the agent's actor comes from the Session, never from the body.
+ */
+export { AGENT_OWNER_NOTE_MAX_LENGTH };
+
+export const AgentStepExecutionRequestSchema = Type.Object(
+  {
+    /** The idempotency key of this request: a repeat returns the same attempt and Turn. */
+    requestId: RequestIdSchema,
+    expected: Type.Object(
+      {
+        step: StepId,
+        attempt: Type.Optional(Type.Integer({ minimum: 1 })),
+        handOver: Type.Optional(Type.Literal(true)),
+      },
+      { additionalProperties: false },
+    ),
+    provider: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
+    model: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
+    effort: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
+    /**
+     * The owner's note to the agent, sent after the brief in the same Turn (a Continue's note goes
+     * into the attempt's own Turn, with its scope; it never widens it) and recorded on the Turn in
+     * the attempt journal.
+     */
+    message: Type.Optional(Type.String({ minLength: 1, maxLength: AGENT_OWNER_NOTE_MAX_LENGTH })),
+  },
+  { additionalProperties: false },
+);
+export type AgentStepExecutionRequest = Static<typeof AgentStepExecutionRequestSchema>;
+
+/** The agent attempt that runs, and the Turn just dispatched in its Session. */
+export const AgentStepExecutionResultSchema = Type.Object(
+  {
+    kind: Type.Union([Type.Literal('started'), Type.Literal('continued')]),
+    subject: WorkflowSubjectSchema,
+    attemptId: Type.String(),
+    step: StepId,
+    attempt: Type.Integer({ minimum: 1 }),
+    sessionId: Type.String(),
+    turnId: Type.String(),
+    /** The Session was created for this attempt (`fresh`) or continued (`reuse`). */
+    session: Type.Union([Type.Literal('fresh'), Type.Literal('reuse')]),
+  },
+  { additionalProperties: false },
+);
+export type AgentStepExecutionResult = Static<typeof AgentStepExecutionResultSchema>;
+
+/**
+ * Stop the agent of the active agent attempt (D19): its running Turn is cancelled; the step stays
+ * locked until SpecFlow sees the agent's process has ended, then the attempt waits for Continue,
+ * Take over or Return.
+ */
+export const StopAgentStepExecutionRequestSchema = Type.Object(
+  {
+    requestId: RequestIdSchema,
+    /** The attempt the owner was shown; another one refuses (`WORKFLOW_ATTEMPT_MISMATCH`). */
+    attemptId: Type.String({ minLength: 1, maxLength: 64 }),
+  },
+  { additionalProperties: false },
+);
+export type StopAgentStepExecutionRequest = Static<typeof StopAgentStepExecutionRequestSchema>;
+
+export const StopAgentStepExecutionResultSchema = Type.Object(
+  { attemptId: Type.String(), sessionId: Type.String(), turnId: Type.String() },
+  { additionalProperties: false },
+);
+export type StopAgentStepExecutionResult = Static<typeof StopAgentStepExecutionResultSchema>;
+
+/**
+ * `GET .../workflow/agent-execution/check`: whether an agent can run the step now, with every reason
+ * the start would refuse with, the checkout's baseline included (explain before action: the dialog
+ * calls it when it opens). `position` is what a start would work on: the next step (a new attempt),
+ * the active agent attempt (Continue, with `attempt`), or the owner's active attempt the agent would
+ * be handed (Hand to agent, with `attempt` and `handOver`); send it back as `expected`.
+ */
+export const AgentStepExecutionCheckSchema = Type.Object(
+  {
+    position: Type.Object(
+      {
+        step: StepId,
+        attempt: Type.Optional(Type.Integer({ minimum: 1 })),
+        handOver: Type.Optional(Type.Literal(true)),
+      },
+      { additionalProperties: false },
+    ),
+    agent: AgentOptionSchema,
+  },
+  { additionalProperties: false },
+);
+export type AgentStepExecutionCheck = Static<typeof AgentStepExecutionCheckSchema>;
+
+/**
+ * Take over (F17, D19): the owner ends the active agent attempt `step#attempt` the owner was shown
+ * (`taken-over`) and starts their own attempt of the step, once the agent's process is proven ended
+ * (`WORKFLOW_SPECIFICATION_BUSY` while it may still run). Nothing the agent wrote is undone or
+ * committed; Close lists what stays uncommitted.
+ */
+export const TakeOverAgentStepExecutionRequestSchema = Type.Object(
+  { step: StepId, attempt: Type.Integer({ minimum: 1 }) },
+  { additionalProperties: false },
+);
+export type TakeOverAgentStepExecutionRequest = Static<
+  typeof TakeOverAgentStepExecutionRequestSchema
+>;
+
+export const TakeOverAgentStepExecutionResultSchema = Type.Object(
+  {
+    subject: WorkflowSubjectSchema,
+    /** The agent attempt that ended `taken-over`. */
+    takenOver: Type.Object({
+      attemptId: Type.String(),
+      step: StepId,
+      attempt: Type.Integer({ minimum: 1 }),
+    }),
+    /** The owner's attempt that started. */
+    step: WorkflowStepSchema,
+    attempt: Type.Integer({ minimum: 1 }),
+  },
+  { additionalProperties: false },
+);
+export type TakeOverAgentStepExecutionResult = Static<
+  typeof TakeOverAgentStepExecutionResultSchema
+>;
+
+const AttemptOutcomeSchema = Type.Union([
+  Type.Object({
+    kind: Type.Literal('transition'),
+    transition: Type.String(),
+    result: Type.Optional(Type.String()),
+    feedback: Type.Optional(Type.String()),
+    artifacts: Type.Array(Type.String(), { maxItems: 1000 }),
+  }),
+  Type.Object({
+    kind: Type.Literal('returned'),
+    to: Type.String(),
+    feedback: Type.Optional(Type.String()),
+  }),
+  Type.Object({ kind: Type.Literal('abandoned') }),
+  Type.Object({ kind: Type.Literal('taken-over') }),
+]);
+
+export const AGENT_ATTEMPT_EVENT_KINDS = [
+  'started',
+  /** The attempt started when the owner handed their attempt of the step to the agent. */
+  'handed-over',
+  'turn-started',
+  'turn-ended',
+  'proposal-refused',
+  'return-requested',
+  'returned',
+  'finished',
+  'committed',
+  'commit-failed',
+  'taken-over',
+  'abandoned',
+  'awaiting-confirmation',
+  'confirmed',
+  'rejected',
+] as const;
+
+/**
+ * The agent detail of one attempt in the Workflow history: who worked on it, how it ended, its step
+ * events (oldest first; `turn` numbers a Turn event, `code` names a refusal or a commit failure,
+ * `runs` how often the commit ran) and the work it left.
+ */
+export const AgentAttemptHistorySchema = Type.Object({
+  attemptId: Type.String(),
+  provider: Type.String(),
+  model: Type.Optional(Type.String()),
+  sessionId: Type.String(),
+  turns: Type.Integer({ minimum: 0 }),
+  ended: literals(['active', 'finished', 'returned', 'taken-over', 'abandoned'] as const),
+  takenOverBy: Type.Optional(Type.Object({ attempt: Type.Integer({ minimum: 1 }) })),
+  /** The owner's attempt that handed the step to the agent (Hand to agent). */
+  handedOverFrom: Type.Optional(Type.Object({ attempt: Type.Integer({ minimum: 1 }) })),
+  returnRequest: Type.Optional(
+    Type.Object({
+      to: Type.String(),
+      requestedAt: Type.String(),
+      state: Type.Union([
+        Type.Literal('requested'),
+        Type.Literal('applied'),
+        Type.Literal('refused'),
+      ]),
+      refusal: Type.Optional(Type.Object({ code: Type.String(), message: Type.String() })),
+    }),
+  ),
+  proposal: Type.Optional(
+    Type.Object({
+      transition: Type.String(),
+      state: Type.Union([
+        Type.Literal('pending'),
+        Type.Literal('refused'),
+        Type.Literal('finalized'),
+      ]),
+      submittedAt: Type.String(),
+      refusal: Type.Optional(
+        Type.Object({
+          code: Type.String(),
+          message: Type.String(),
+          paths: Type.Optional(Type.Array(Type.String(), { maxItems: 1000 })),
+        }),
+      ),
+    }),
+  ),
+  events: Type.Array(
+    Type.Object({
+      kind: literals(AGENT_ATTEMPT_EVENT_KINDS),
+      at: Type.Optional(Type.String()),
+      turn: Type.Optional(Type.Integer({ minimum: 1 })),
+      code: Type.Optional(Type.String()),
+      runs: Type.Optional(Type.Integer({ minimum: 1 })),
+      /** A `turn-started` the owner sent a note with: the note (a Continue's note for the agent). */
+      note: Type.Optional(Type.String({ maxLength: AGENT_OWNER_NOTE_MAX_LENGTH })),
+    }),
+    { maxItems: 1000 },
+  ),
+  work: AgentAttemptWorkSchema,
+});
+export type AgentAttemptHistory = Static<typeof AgentAttemptHistorySchema>;
+
+/**
+ * `GET .../workflow/history`: every attempt and return of the subject's run, newest first (empty
+ * before it started); an agent attempt with its step events and the work it left (`agent`).
+ */
+export const WorkflowHistorySchema = Type.Object(
+  {
+    subject: WorkflowSubjectSchema,
+    items: Type.Array(
+      Type.Union([
+        Type.Object({
+          kind: Type.Literal('attempt'),
+          sequence: Type.Integer({ minimum: 1 }),
+          step: StepId,
+          stepTitle: Type.String(),
+          attempt: Type.Integer({ minimum: 1 }),
+          startedAt: Type.String(),
+          endedAt: Type.Optional(Type.String()),
+          actor: Type.Optional(WorkflowActorSchema),
+          outcome: Type.Optional(AttemptOutcomeSchema),
+          /** The workflow's label of the transition the attempt took ("Breakdown approved"). */
+          transitionLabel: Type.Optional(Type.String()),
+          /** The owner's decision on a result held for confirmation (absent while it waits). */
+          confirmation: Type.Optional(
+            Type.Object({
+              state: literals(['confirmed', 'rejected'] as const),
+              at: Type.String(),
+              actor: WorkflowActorSchema,
+              /** The feedback of a Reject. */
+              feedback: Type.Optional(Type.String()),
+            }),
+          ),
+          agent: Type.Optional(AgentAttemptHistorySchema),
+        }),
+        Type.Object({
+          kind: Type.Literal('return'),
+          sequence: Type.Integer({ minimum: 1 }),
+          at: Type.String(),
+          to: StepId,
+          feedback: Type.Optional(Type.String()),
+        }),
+      ]),
+      { maxItems: 10_000 },
+    ),
+    /** Older records were left out (the newest 200 are returned). */
+    truncated: Type.Optional(Type.Literal(true)),
+  },
+  { $id: 'WorkflowHistory' },
+);
+export type WorkflowHistory = Static<typeof WorkflowHistorySchema>;

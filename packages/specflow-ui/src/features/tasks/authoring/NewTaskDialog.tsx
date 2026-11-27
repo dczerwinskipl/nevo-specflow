@@ -2,7 +2,6 @@ import { useId, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
-  CheckboxField,
   Dialog,
   DialogBody,
   DialogContent,
@@ -21,6 +20,7 @@ import {
 import { TASK_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 import type { TaskTypeOption } from '@nevo/specflow-contracts/workflow';
 import { RefusalAlert } from './RefusalAlert';
+import { ItemPicker } from './picker/ItemPicker';
 import { useCreateTask } from './useTaskAuthoring';
 
 const TASK_ID = new RegExp(TASK_ID_PATTERN);
@@ -165,25 +165,26 @@ function NewTaskForm({
             <Field.Description>{t('taskAuthoring.newTask.summaryDescription')}</Field.Description>
           </Field>
           {tasks.length > 0 ? (
-            <fieldset className="grid gap-3">
-              <legend className="mb-3 text-label-sm text-content-primary">
-                {t('taskAuthoring.newTask.dependsOnLegend')}
-              </legend>
-              {tasks.map((task) => (
-                <CheckboxField
-                  key={task.id}
-                  label={`${task.id} · ${task.title}`}
-                  checked={dependsOn.includes(task.id)}
-                  onCheckedChange={(checked) =>
-                    setDependsOn((current) =>
-                      checked === true
-                        ? [...current, task.id]
-                        : current.filter((id) => id !== task.id),
-                    )
-                  }
-                />
-              ))}
-            </fieldset>
+            // The same picker as Add dependencies: a new Task can depend on any other Task.
+            <ItemPicker
+              items={tasks.map((task) => ({
+                id: task.id,
+                title: task.title || task.id,
+                searchText: task.id,
+              }))}
+              picked={dependsOn}
+              onToggle={(id, checked) =>
+                setDependsOn((current) =>
+                  checked ? [...current, id] : current.filter((other) => other !== id),
+                )
+              }
+              labels={{
+                available: t('taskAuthoring.newTask.dependsOnLegend'),
+                unavailable: t('taskAuthoring.picker.unavailableTasks'),
+                noneAvailable: t('taskAuthoring.dependencies.noneAvailable'),
+                search: t('taskAuthoring.picker.searchTasks'),
+              }}
+            />
           ) : null}
         </form>
       </DialogBody>

@@ -17,6 +17,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidateSpecificationWorkspace } from './read-model/queries';
+import { unreadableCauseOf, unreadableCopy } from '../../shared/unreadable/unreadable';
 
 import type { SpecificationWorkspaceData } from './read-model/model';
 import { SpecificationWorkspace } from './workspace/SpecificationWorkspace';
@@ -74,6 +75,7 @@ function SpecificationSurfaceConnected({
     data,
     isLoading,
     isError,
+    error,
     errorStatus,
     isDomainNotFound,
     refetch,
@@ -82,6 +84,8 @@ function SpecificationSurfaceConnected({
   } = useSpecificationWorkspace(specId);
 
   if (isError && (!data || errorStatus === 401 || errorStatus === 403 || errorStatus === 404)) {
+    const failed = unreadableCopy(unreadableCauseOf(error));
+
     return (
       <AppWorkspace split="primary" labels={workspaceLabels}>
         <AppWorkspace.Primary
@@ -111,7 +115,7 @@ function SpecificationSurfaceConnected({
                       ? t('specification.resourceAccessDeniedTitle')
                       : isDomainNotFound
                         ? t('specification.notFoundTitle')
-                        : t('specification.unavailableTitle')
+                        : t(failed.title)
                   }
                   className="max-w-content-standard"
                 >
@@ -120,7 +124,7 @@ function SpecificationSurfaceConnected({
                       ? t('specification.resourceAccessDeniedDescription')
                       : isDomainNotFound
                         ? t('specification.notFoundDescription', { id: specId })
-                        : t('specification.unavailableDescription', { id: specId })}
+                        : t(failed.description)}
                   </Typography>
 
                   <div className="mt-3 flex items-center gap-3">

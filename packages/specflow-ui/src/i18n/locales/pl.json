@@ -102,10 +102,9 @@
     "sectionRenderFailedDescription": "Wystąpił błąd podczas wyświetlania sekcji. Spróbuj wyświetlić ją ponownie.",
     "attentionSourceFailedTitle": "Nie udało się wczytać części uwag",
     "attentionSourceFailedDescription": "Jedno ze źródeł uwag zakończyło się błędem. Pozostałe dostępne wpisy są nadal widoczne.",
-    "unavailableTitle": "Specyfikacja jest niedostępna",
-    "unavailableDescription": "Obszar roboczy specyfikacji nie jest jeszcze wspierany przez Runtime lub nie mógł zostać załadowany.",
     "notFoundTitle": "Nie znaleziono specyfikacji",
     "notFoundDescription": "Specyfikacja {{id}} nie została znaleziona.",
+    "tasksUnreadableTitle": "Nie można teraz odczytać zadań",
     "noChangesNotice": "Brak zarejestrowanych zmienionych plików w tym widoku.",
     "viewOverview": "Przegląd",
     "viewDocuments": "Dokumenty",
@@ -148,7 +147,6 @@
     "prReviewLink": "Przegląd PR",
     "gitRefreshFailed": "Nie udało się odświeżyć stanu repozytorium",
     "gitStaleData": "Dane nieaktualne · ostatnie sprawdzenie 30 min temu",
-    "sessionActions": "Akcje sesji",
     "openSessionAction": "Otwórz sesję",
     "allSessionsLink": "Wszystkie sesje",
     "activityHistoryLink": "Historia aktywności",
@@ -231,8 +229,7 @@
     "moreActions": "Akcje specyfikacji",
     "search": "Szukaj specyfikacji",
     "loading": "Ładowanie specyfikacji",
-    "unavailable": "Specyfikacje są niedostępne",
-    "unavailableDescription": "Przegląd specyfikacji nie jest jeszcze dostępny w tym Runtime.",
+    "unavailable": "Nie udało się wczytać specyfikacji",
     "refreshFailed": "Nie udało się odświeżyć specyfikacji",
     "refreshFailedDescription": "Wyświetlana jest ostatnio wczytana kolekcja. Spróbuj ponownie, aby pobrać aktualny stan.",
     "emptyCurrent": "Brak bieżących specyfikacji",
@@ -243,13 +240,12 @@
     "noResultsDescription": "Wpisz inny tytuł lub wyczyść wyszukiwanie, aby zobaczyć tę kolekcję.",
     "openSpec": "Otwórz specyfikację: {{title}}",
     "openPullRequest": "PR #{{number}}: Otwórz pull request — {{title}}",
-    "progress": "{{completed}} / {{total}} zadań",
     "updated": "Aktualizacja: {{date}}",
     "sections": {
       "requiresAttention": "Wymaga uwagi",
-      "active": "W toku",
-      "ready": "Gotowe",
-      "draft": "Szkice",
+      "inProgress": "W toku",
+      "notStarted": "Nierozpoczęte",
+      "ended": "Zakończone",
       "unknown": "Status nieustalony"
     },
     "collapseSection": "Zwiń sekcję {{label}}",
@@ -269,15 +265,22 @@
       "active_few": "{{count}} aktywne sesje",
       "active_many": "{{count}} aktywnych sesji",
       "active_other": "{{count}} aktywnych sesji",
-      "ready": "Gotowe do rozpoczęcia",
-      "draft": "W przygotowaniu",
+      "attentionItems_one": "1 sprawa wymaga uwagi",
+      "attentionItems_few": "{{count}} sprawy wymagają uwagi",
+      "attentionItems_many": "{{count}} spraw wymaga uwagi",
+      "attentionItems_other": "{{count}} spraw wymaga uwagi",
       "unavailable": "Informacje o stanie pracy są niedostępne",
       "concurrent_one": "1 sesja w toku",
       "concurrent_few": "{{count}} sesje w toku",
       "concurrent_many": "{{count}} sesji w toku",
       "concurrent_other": "{{count}} sesji w toku",
       "attention": "Wymagana uwaga człowieka",
-      "unknown": "Stan pracy jeszcze nieustalony"
+      "unknown": "Stan pracy jeszcze nieustalony",
+      "moreAttention_one": "Jeszcze {{count}} element wymaga uwagi",
+      "moreAttention_few": "Jeszcze {{count}} elementy wymagają uwagi",
+      "moreAttention_many": "Jeszcze {{count}} elementów wymaga uwagi",
+      "moreAttention_other": "Jeszcze {{count}} elementu wymaga uwagi",
+      "attentionOnTask": "{{action}} · {{task}}"
     },
     "forbidden": {
       "title": "Brak dostępu",
@@ -288,8 +291,8 @@
     "invalidProgress": "Postęp niedostępny",
     "progressLabel": "Ukończenie zadań dla {{title}}",
     "specificationColumn": "Specyfikacja",
-    "situationColumn": "Sytuacja",
-    "progressColumn": "Postęp",
+    "workflowColumn": "Przepływ",
+    "tasksColumn": "Zadania",
     "updatedColumn": "Aktualizacja",
     "milestoneColumn": "Etap",
     "pullRequestColumn": "PR",
@@ -298,6 +301,17 @@
     "milestone": {
       "completed": "Ukończono",
       "archived": "Zarchiwizowano"
+    },
+    "unreadable": {
+      "title": "Nie udało się odczytać tej specyfikacji",
+      "busyTitle": "Stan niedostępny · zajęty",
+      "reason": {
+        "invalid": "Jej pliki przepływu pracy są nieprawidłowe.",
+        "filesystem": "Nie udało się odczytać jej plików przepływu pracy.",
+        "busy": "SpecFlow jest zajęty albo wznawia pracę po zatrzymaniu. Odśwież listę za chwilę. Jeśli to się powtarza, uruchom SpecFlow ponownie.",
+        "unexpected": "Wystąpił nieoczekiwany błąd; szczegóły są w logu Runtime.",
+        "recovery": "Blokada projektu wymaga odzyskania. Zatrzymaj wszystkie procesy SpecFlow tego projektu, a potem uruchom nevo-specflow specs documents recover --confirmed-stopped."
+      }
     }
   },
   "taskWorkspace": {
@@ -428,14 +442,16 @@
     "staleContext": "Kontekst może być nieaktualny",
     "contextUnavailable": "Nie udało się wczytać informacji o specyfikacji.",
     "noSpecificationSelectedTitle": "Wybierz specyfikację",
-    "noSpecificationSelectedDescription": "Otwórz specyfikację z listy, aby zobaczyć jej dokumenty i sesje."
+    "noSpecificationSelectedDescription": "Otwórz specyfikację z listy, aby zobaczyć jej dokumenty i sesje.",
+    "taskPage": "Zadanie"
   },
   "operations": {
     "progress": {
       "status": {
         "pending": "oczekuje",
         "running": "w toku",
-        "done": "gotowe"
+        "done": "gotowe",
+        "notDone": "nie wykonano"
       }
     },
     "panel": {
@@ -480,7 +496,11 @@
       "step": "Krok {{current}} z {{total}}: {{title}}",
       "interrupted": "Brak aktywności od {{minutes}} min. Sprawdź wynik",
       "started": "Rozpoczęto {{time}}",
-      "updated": "Zaktualizowano {{time}}"
+      "updated": "Zaktualizowano {{time}}",
+      "gitUnsettled": "Zatrzymane w trakcie pracy Gita. Otwórz, aby zobaczyć polecenie odzyskania",
+      "lockRecovery": "Blokada projektu wymaga odzyskania. Otwórz, aby zobaczyć polecenie",
+      "createInterrupted": "Zatrzymane razem z Runtime. Nic nie zostało utworzone",
+      "resumeForbidden": "Nie wznowiono: nie możesz już tu tworzyć"
     },
     "announce": {
       "completed": "{{name}}: zakończono",
@@ -502,18 +522,12 @@
     "loadError": "Nie udało się wczytać konfiguracji",
     "sessionReady": "Sesja gotowa",
     "specificationCreated": "Specyfikacja utworzona",
-    "withAI": "Z agentem",
-    "manual": "Samodzielnie",
     "nameLabel": "Nazwa specyfikacji",
     "namePlaceholder": "Np. Logowanie SSO",
     "providerDefault": "Domyślny wykonawcy",
-    "changeMethod": "Zmień sposób pracy",
     "formRegion": "Utworzenie specyfikacji",
     "method": {
-      "title": "Sposób tworzenia",
-      "intro": "Wybierz, czy zaczniesz od rozmowy ze Spec Writerem, czy od szkieletu dokumentów z archetypu.",
-      "aiText": "Rozpocznij sesję Spec Writera. Kolejne etapy mogą korzystać z innych agentów.",
-      "manualText": "Utwórz dokumenty archetypu i edytuj je samodzielnie."
+      "aiText": "Rozpocznij sesję Spec Writera. Kolejne etapy mogą korzystać z innych agentów."
     },
     "heading": {
       "specification": "Nowa specyfikacja"
@@ -538,7 +552,7 @@
       "workspaceError": "Nie udało się wczytać opcji środowiska pracy.",
       "forbidden": "Nie masz uprawnień do tworzenia specyfikacji.",
       "refreshConfiguration": "Odśwież konfigurację przed utworzeniem.",
-      "title": "Podaj nazwę specyfikacji.",
+      "title": "Wpisz nazwę, aby utworzyć specyfikację.",
       "provider": "Wybierz dostępnego agenta.",
       "model": "Wybierz model.",
       "effort": "Wybierz wysiłek, który obsługuje ten model.",
@@ -625,13 +639,18 @@
       "readOnlyForm": "Formularz jest tylko do odczytu.",
       "uncertain": {
         "title": "Sprawdzamy wynik tworzenia",
-        "body": "Nie mamy potwierdzonego wyniku. Sprawdź go tą samą operacją — nie utworzymy drugiej specyfikacji ani drugiej gałęzi."
+        "body": "Nie mamy potwierdzonego wyniku. Sprawdź go tą samą operacją — nie utworzymy drugiej specyfikacji ani drugiej gałęzi.",
+        "bodyLost": "Ponowienie wysyła to samo żądanie jeszcze raz, z tym samym identyfikatorem. Nie utworzy drugiej specyfikacji ani drugiej gałęzi. Możesz też wrócić do tworzenia: wpisane dane zostaną zachowane.",
+        "titleLost": "Ta operacja przepadła"
       },
       "recovery": {
         "title": "Tworzenie wymaga dokończenia",
         "body": "Nevo rozpoczęło przygotowanie środowiska pracy, ale nie potwierdziło wyniku. Nie twórz specyfikacji ponownie — mogłoby to zdublować gałąź i katalog. Formularz jest zablokowany do czasu sprawdzenia.",
         "inProgress": "Operacja jest nadal w toku.",
-        "pending": "Operacja nadal wymaga dokończenia."
+        "pending": "Operacja nadal wymaga dokończenia.",
+        "git": "Runtime zatrzymał się, gdy Git pracował nad tą specyfikacją. Upewnij się, że żaden jej proces Git już nie działa (i usuń pozostały plik .git/index.lock), a potem dokończ ją z wiersza poleceń.",
+        "lock": "Blokadę projektu trzyma proces SpecFlow, o którym SpecFlow nie może stwierdzić, że się zatrzymał. Zatrzymaj wszystkie procesy SpecFlow tego projektu, a potem zwolnij blokadę z wiersza poleceń.",
+        "nextStep": "Następny krok:"
       },
       "branchExistsAutomatic": {
         "title": "Nevo nie zdołało wybrać wolnej nazwy gałęzi",
@@ -710,7 +729,11 @@
         "title": "Archetypy zmieniły się w trakcie wypełniania formularza",
         "body": "Specyfikacja nie została utworzona. Wpisane dane zostały zachowane: odśwież archetypy i sprawdź swój wybór."
       },
-      "refreshArchetypes": "Odśwież archetypy"
+      "refreshArchetypes": "Odśwież archetypy",
+      "interrupted": {
+        "title": "Tworzenie zatrzymało się razem z Runtime",
+        "body": "Runtime zatrzymał się, zanim ta specyfikacja powstała, i jej nie dokończył. Nic nie zostało utworzone. Spróbuj ponownie z tymi samymi ustawieniami albo wróć do formularza."
+      }
     },
     "workspace": {
       "heading": "Miejsce pracy",
@@ -1008,6 +1031,14 @@
           "title": "Kolejny krok",
           "running": "W toku",
           "done": "Zakończony"
+        },
+        "starting-agent": {
+          "title": "Uruchamianie agenta",
+          "running": "Otwieranie jego sesji",
+          "done": "Agent wystartował",
+          "titleNamed": "Uruchamianie agenta: {{step}}",
+          "pending": "Gdy specyfikacja będzie gotowa",
+          "notStarted": "Agent nie zaczął kroku {{step}}"
         }
       },
       "neutral": {
@@ -1041,7 +1072,9 @@
         "goal": "Cel",
         "committedTo": "Pliki specyfikacji trafią do commita na gałęzi <branch/>",
         "archetype": "Archetyp",
-        "documents": "Dokumenty"
+        "documents": "Dokumenty",
+        "agent": "Agent",
+        "firstStep": "Pierwszy krok"
       },
       "status": {
         "sending": "Wysyłanie żądania…",
@@ -1050,7 +1083,15 @@
         "reading": "Odczytywanie operacji…",
         "completed": "Gotowe. Otwieramy specyfikację…",
         "workingNew": "Przygotowujemy nowe środowisko pracy i specyfikację.",
-        "completedUncommitted": "Gotowe, ale pliki nie mają jeszcze commita."
+        "completedUncommitted": "Gotowe, ale pliki nie mają jeszcze commita.",
+        "agentStarted": "Agent zaczął krok {{step}}. Otwieranie jego sesji…",
+        "agentNotStarted": "Specyfikacja istnieje. Agent nie pracuje.",
+        "unconfirmed": {
+          "busy": "SpecFlow był zajęty albo wznawiał pracę po zatrzymaniu i nie potwierdził wyniku.",
+          "lost": "SpecFlow nie ma śladu tej operacji: mógł się zatrzymać, zanim ją rozpoczął.",
+          "noAnswer": "SpecFlow nie odpowiedział na czas.",
+          "unknown": "SpecFlow nie potwierdził wyniku."
+        }
       },
       "leaveNote": "Możesz opuścić tę stronę. Tworzenie trwa dalej na serwerze, a jego stan sprawdzisz, wracając z listy specyfikacji.",
       "openSpecification": "Otwórz specyfikację",
@@ -1059,7 +1100,7 @@
       "backToCreate": "Wróć do tworzenia",
       "notFound": {
         "title": "Ta operacja nie istnieje",
-        "body": "Serwer nie ma po niej śladu. Link może być błędny albo operacja wygasła. Nic nie jest tworzone."
+        "body": "SpecFlow nie ma po niej śladu: mogła przepaść, gdy SpecFlow się zatrzymał, albo link jest błędny. Nic nie jest tworzone."
       },
       "configuration": "Konfiguracja",
       "details": {
@@ -1072,13 +1113,55 @@
       "uncommitted": {
         "title": "Pliki specyfikacji nie mają commita",
         "body": "Git jest w tym projekcie wyłączony (git.enabled w .nevo/config.yaml), więc Nevo zapisało pliki bez commita. Zrób commit w Git samodzielnie: zamknięcie odmówi, dopóki pliki są bez commita."
+      },
+      "leaveNoteAgent": "Możesz opuścić tę stronę. SpecFlow dokończy tworzenie i uruchomi agenta bez niej; wynik pokaże lista operacji.",
+      "agentStarted": "Agent zaczął krok {{step}}",
+      "agentNotStarted": {
+        "title": "Agent nie wystartował",
+        "body": "Coś poszło nie tak przy uruchamianiu. Uruchom krok {{step}} z agentem ponownie albo otwórz specyfikację i kontynuuj stamtąd."
       }
     },
     "operations": {
       "kind": "Tworzenie specyfikacji"
     },
     "guide": {
-      "goToField": "Przejdź do pola"
+      "goToField": "Przejdź do pola",
+      "enterName": "Wpisz nazwę"
+    },
+    "start": {
+      "title": "Jak chcesz zacząć?",
+      "agent": {
+        "title": "Z agentem",
+        "text": "Uzupełnij podstawy. Potem agent zaczyna pierwszy krok i pracuje nad nim w sesji."
+      },
+      "manual": {
+        "title": "Ręcznie",
+        "text": "Utwórz dokumenty z archetypu i napisz je samodzielnie."
+      },
+      "agentUnavailable": {
+        "none": "Żaden agent nie może wystartować: {{reasons}}.",
+        "empty": "Żaden agent nie może wystartować: ten serwer nie ma żadnych agentów.",
+        "failed": "Nie udało się sprawdzić, którzy agenci mogą wystartować."
+      },
+      "backToStart": "Wróć do sposobów rozpoczęcia"
+    },
+    "agentStep": {
+      "title": "Agent",
+      "intro": "Zaraz po utworzeniu specyfikacji agent zaczyna jej pierwszy krok. Przejrzysz wynik, zanim cokolwiek pójdzie dalej.",
+      "firstStep": "Pierwszy krok: <step>{{step}}</step>",
+      "ownerFirst": "Pierwszy krok należy do Ciebie.",
+      "noWorkflow": "Ten archetyp nie uruchamia workflow, więc agent nie ma kroku do rozpoczęcia.",
+      "useManual": "Wybierz Ręcznie",
+      "goalHelp": "Zapisany w przeglądzie specyfikacji. Agent czyta go najpierw.",
+      "footNote": "Otworzy sesję agenta, gdy ten wystartuje.",
+      "submit": "Utwórz i uruchom z agentem",
+      "prerequisite": {
+        "ownerFirst": "Pierwszy krok należy do Ciebie. Wybierz Ręcznie.",
+        "noWorkflow": "Agent nie może zacząć tego archetypu. Wybierz Ręcznie.",
+        "agentsLoading": "Sprawdzanie, którzy agenci mogą wystartować…",
+        "agentsFailed": "Nie udało się sprawdzić agentów. Sprawdź ponownie w sekcji Agent.",
+        "noAgent": "Żaden agent nie może teraz wystartować. Napraw jednego powyżej albo wróć i utwórz specyfikację ręcznie."
+      }
     }
   },
   "documents": {
@@ -1384,13 +1467,15 @@
       "gitPolicyInvalid": "ustawienia Git projektu są nieprawidłowe.",
       "busy": "trwa inna zmiana tej specyfikacji.",
       "notEditable": "ten typ pliku można tu oglądać, ale nie edytować.",
-      "dangling": "Brak pliku; można tylko usunąć jego rejestrację."
+      "dangling": "Brak pliku; można tylko usunąć jego rejestrację.",
+      "attemptCommit": "praca agenta tutaj nie jest jeszcze zatwierdzona."
     },
     "remedy": {
       "branch": "Aby edytować, otwórz specyfikację w środowisku pracy na dozwolonej gałęzi.",
       "commitBlocked": "Dokończ lub przerwij merge albo rebase w tym środowisku pracy i spróbuj ponownie.",
       "gitPolicy": "Popraw ustawienia Git w konfiguracji projektu.",
-      "notEditable": "Pobierz plik, aby edytować go gdzie indziej."
+      "notEditable": "Pobierz plik, aby edytować go gdzie indziej.",
+      "attemptCommit": "Ponów commit pracy agenta, a potem spróbuj ponownie."
     },
     "save": {
       "saving": "Zapisywanie…",
@@ -1404,7 +1489,8 @@
       "tryAgain": "Spróbuj ponownie",
       "recoveryTitle": "Zapis nie został dokończony",
       "recoveryBody": "Dokończ zapis, zanim będziesz dalej edytować.",
-      "resume": "Wznów"
+      "resume": "Wznów",
+      "attemptCommit": "Nie zapisano: praca agenta nad tym dokumentem nie jest jeszcze zatwierdzona"
     },
     "conflict": {
       "title": "Nie zapisano: plik {{name}} zmienił się na dysku",
@@ -1429,6 +1515,12 @@
     },
     "image": {
       "actualSize": "Rzeczywisty rozmiar"
+    },
+    "attemptCommit": {
+      "held": "Praca agenta nad tym dokumentem w kroku {{step}} nie jest jeszcze zatwierdzona, więc do tego czasu nie można go edytować: agent i Ty nigdy nie dzielicie niezatwierdzonego pliku.",
+      "pending": "SpecFlow ją zatwierdza; jeśli to się nie zakończy, „Ponów commit” zrobi to teraz.",
+      "failed": "Jej commit się nie udał (<code>{{code}}</code>): usuń przyczynę, a potem użyj „Ponów commit”.",
+      "retryFailed": "Commit się nie wykonał; przyczynę pokazuje przebieg pracy specyfikacji."
     }
   },
   "sessions": {
@@ -1557,7 +1649,7 @@
       "emptyArchive": "Brak zarchiwizowanych sesji",
       "failed": "Nie udało się wczytać sesji.",
       "forbiddenSpecification": "Nie masz dostępu do sesji tej specyfikacji.",
-      "statusUnknown": "Stan sesji nieznany",
+      "statusUnknown": "SpecFlow nie potwierdził, że {{provider}} może ją prowadzić; otwórz sesję, aby to sprawdzić",
       "statusAttention": "Wymaga uwagi",
       "statusActive": "Aktywna",
       "statusAuthentication": "{{provider}}: wymagane ponowne logowanie",
@@ -1573,7 +1665,8 @@
       "associatedTasks_one": "Powiązana z {{count}} zadaniem",
       "associatedTasks_few": "Powiązana z {{count}} zadaniami",
       "associatedTasks_many": "Powiązana z {{count}} zadaniami",
-      "associatedTasks_other": "Powiązana z {{count}} zadaniami"
+      "associatedTasks_other": "Powiązana z {{count}} zadaniami",
+      "attempt": "Próba {{attempt}}"
     }
   },
   "apiErrors": {
@@ -1637,6 +1730,28 @@
     "description": "Połączony serwer nie udostępnia jeszcze tej części SpecFlow. Reszta produktu działa normalnie.",
     "back": "Wróć"
   },
+  "unreadable": {
+    "busy": {
+      "title": "SpecFlow jest zajęty",
+      "description": "SpecFlow jest zajęty albo wznawia pracę po zatrzymaniu, więc nie można tego teraz odczytać. Spróbuj ponownie za chwilę. Jeśli to się powtarza, uruchom SpecFlow ponownie."
+    },
+    "source": {
+      "title": "Nie można tego teraz odczytać",
+      "description": "SpecFlow jest zajęty, wznawia pracę po zatrzymaniu albo nie mógł odczytać swoich plików. Spróbuj ponownie za chwilę. Jeśli to się powtarza, uruchom SpecFlow ponownie."
+    },
+    "unreachable": {
+      "title": "SpecFlow nie odpowiada",
+      "description": "SpecFlow Runtime nie odpowiedział. Upewnij się, że działa, i spróbuj ponownie."
+    },
+    "failed": {
+      "title": "Coś poszło nie tak",
+      "description": "SpecFlow nie mógł tego odczytać z powodu nieoczekiwanego błędu. Spróbuj ponownie; jeśli to się powtarza, szczegóły są w logu Runtime."
+    },
+    "recovery": {
+      "title": "SpecFlow wymaga odzyskania",
+      "description": "Proces SpecFlow, którego zatrzymania SpecFlow nie może potwierdzić, nadal trzyma blokadę projektu, więc nie można tego odczytać. Zatrzymaj wszystkie procesy SpecFlow tego projektu, a potem uruchom w projekcie nevo-specflow specs documents recover --confirmed-stopped."
+    }
+  },
   "routeError": {
     "title": "Coś poszło nie tak",
     "description": "Nie udało się wyświetlić tego ekranu. Możesz spróbować ponownie lub wrócić do specyfikacji.",
@@ -1689,9 +1804,32 @@
     "failed": "Nie udało się wczytać tej części sesji.",
     "historyFailed": "Nie udało się wczytać starszych wiadomości.",
     "commandFailed": "Nie potwierdzono żądania. Ponów je z tym samym kluczem.",
+    "sending": "Wysyłanie…",
+    "sendFailure": {
+      "unconfirmed": "SpecFlow nie dostał odpowiedzi, więc nie wie, czy wiadomość dotarła. Ponów wysyła tę samą wiadomość; nie wykona się dwa razy.",
+      "too-long": "Wiadomość jest za długa. Skróć ją i wyślij ponownie.",
+      "TURN_CONFLICT": "Agent albo zmiana specyfikacji zapisuje teraz w tym projekcie. Wiadomość zostaje; wyślij ją, gdy ta praca się skończy.",
+      "PROVIDER_UNAVAILABLE": "Dostawca agenta jest teraz niedostępny. Wiadomość zostaje; wyślij ją, gdy dostawca będzie dostępny.",
+      "PROVIDER_AUTH_REQUIRED": "Dostawca wymaga ponownego zalogowania (dla Claude w Claude CLI). Wiadomość zostaje; wyślij ją po zalogowaniu.",
+      "MODEL_UNSUPPORTED": "Wybrany model jest niedostępny. Wybierz inny model i wyślij ponownie.",
+      "CAPABILITY_UNSUPPORTED": "Ta sesja nie może działać w wybranym trybie pracy. Wybierz inny tryb i wyślij ponownie.",
+      "SESSION_RECOVERY_REQUIRED": "Najpierw trzeba sprawdzić, jak skończyła się ostatnia tura. Sprawdź to powyżej, a potem wyślij ponownie.",
+      "SESSION_RECOVERY_REQUIRED_SESSION": "SpecFlow nie może bezpiecznie kontynuować rozmowy agenta w tej sesji. Aby pracować dalej, rozpocznij nową sesję; tę nadal można czytać.",
+      "mode-model-unsupported": "Wybrany tryb pracy nie obsługuje tego modelu. Wybierz inny model lub tryb pracy i wyślij ponownie.",
+      "refused": "Wiadomość nie została wysłana. Wiadomość zostaje; spróbuj ponownie albo zmień model lub tryb pracy."
+    },
     "savedRequestUnreadable": "Nie można odczytać zapisanego żądania",
     "savedRequestUnreadableBody": "Ta przeglądarka zachowała żądanie, którego nie da się odczytać. Mogło już zostać zastosowane. Odrzucenie go pozwala wysłać nowe.",
     "discardSavedRequest": "Odrzuć zapisane żądanie",
+    "unconfirmedCheck": "Sprawdź sesję",
+    "unconfirmedCheckBody": "Możesz też sprawdzić sesję: jeśli wiadomość dotarła, SpecFlow to potwierdzi; jeśli nie, możesz ją poprawić i wysłać ponownie. Jeśli dotrze później, pojawi się w rozmowie.",
+    "modeModelUnsupported": "Tryb {{mode}} nie obsługuje modelu {{model}}. Aby wysłać, wybierz inny model lub tryb pracy.",
+    "notice": {
+      "source": "SpecFlow:",
+      "error": "Błąd SpecFlow.",
+      "warning": "Ostrzeżenie SpecFlow.",
+      "info": "Informacja SpecFlow."
+    },
     "responseRequired": "Wymagana odpowiedź",
     "selectionCount": "Wybrano {{count}} z maksymalnie {{max}}.",
     "commandDirectory": "Katalog względem workspace: {{cwd}}",
@@ -1716,14 +1854,16 @@
       "default": "Model domyślny",
       "triggerLabel": "Wybrany model: {{value}}",
       "sectionLabel": "Model",
-      "effortSectionLabel": "Effort"
+      "effortSectionLabel": "Effort",
+      "modeUnsupported": "Niedostępny w wybranym trybie pracy"
     },
     "intent": {
       "label": "Tryb pracy — następny Turn",
       "placeholder": "Wybierz tryb pracy",
       "triggerLabel": "Tryb pracy: {{value}}",
       "sectionLabel": "Tryb pracy",
-      "unavailable": "Niedostępny"
+      "unavailable": "Niedostępny",
+      "modelUnsupported": "Nie dla wybranego modelu"
     },
     "attach": {
       "action": "Dołącz załącznik",
@@ -1768,17 +1908,32 @@
     "actions_many": "Działań narzędzia",
     "actions_other": "Działania narzędzia",
     "newer": "Nowsza aktywność",
-    "outcome": {
-      "completed": "Zakończono",
-      "failed": "Niepowodzenie",
-      "cancelled": "Zatrzymano",
-      "interrupted": "Przerwano"
-    },
     "workKind": {
       "commentary": "Postęp",
       "reasoning": "Myślenie",
-      "interaction": "Interakcja z użytkownikiem",
+      "interaction": "Pytanie lub prośba o zgodę",
       "tool": "Narzędzie"
+    },
+    "toolVerb": {
+      "read": "Odczytano plik",
+      "edit": "Zmieniono plik",
+      "write": "Zapisano plik",
+      "list": "Wylistowano pliki",
+      "search": "Przeszukano",
+      "command": "Uruchomiono polecenie",
+      "test": "Uruchomiono testy",
+      "web": "Pobrano z sieci",
+      "other": "Wywołanie narzędzia",
+      "andMore": "{{label}} i {{count}} więcej"
+    },
+    "failureReason": {
+      "outside-worktree": "Poza worktree: agent może czytać i zapisywać pliki tylko wewnątrz worktree."
+    },
+    "permissionState": {
+      "allowed": "Zezwolono",
+      "denied": "Odmówiono",
+      "waiting": "Czeka na Ciebie",
+      "answered": "Odpowiedziano"
     },
     "workState": {
       "queued": "W kolejce",
@@ -1790,7 +1945,20 @@
       "interrupted": "Przerwano",
       "expired": "Wygasło"
     },
+    "ownerMessageHold": {
+      "agent-attempt-open": "Ta sesja należy do próby agenta, która jest wciąż otwarta: wiadomość tutaj działałaby poza tą próbą. Aby przekazać coś agentowi, użyj Kontynuuj ze wskazówką w specyfikacji (najpierw zatrzymaj agenta, jeśli pracuje) albo Przejmij. Pisać tutaj możesz znowu, gdy próba się zakończy."
+    },
     "workInspector": {
+      "command": "Polecenie",
+      "fileContent": "Treść",
+      "before": "Przed",
+      "after": "Po",
+      "rawParameters": "Surowe parametry",
+      "copyCommand": "Kopiuj polecenie",
+      "copyContent": "Kopiuj treść",
+      "copyBefore": "Kopiuj tekst przed zmianą",
+      "copyAfter": "Kopiuj tekst po zmianie",
+      "wrapLines": "Zawijaj wiersze",
       "copy": "Kopiuj",
       "copyInput": "Kopiuj parametry",
       "copyOutput": "Kopiuj odpowiedź narzędzia",
@@ -1825,13 +1993,9 @@
       "emptyTurn": "Brak jeszcze historii pracy dla tej tury.",
       "noActions": "Jeszcze brak działań narzędzia.",
       "input": "Parametry",
-      "output": "Odpowiedź narzędzia",
+      "output": "Wynik",
       "errorCode": "Kod błędu: {{code}}",
       "counts": {
-        "total_one": "{{count}} element przebiegu",
-        "total_few": "{{count}} elementy przebiegu",
-        "total_many": "{{count}} elementów przebiegu",
-        "total_other": "{{count}} elementy przebiegu",
         "inProgress": "{{count}} w toku",
         "commentary_one": "{{count}} wpis postępu",
         "commentary_few": "{{count}} wpisy postępu",
@@ -1841,10 +2005,30 @@
         "reasoning_few": "{{count}} etapy myślenia",
         "reasoning_many": "{{count}} etapów myślenia",
         "reasoning_other": "{{count}} etapu myślenia",
-        "interaction_one": "{{count}} interakcja z użytkownikiem",
-        "interaction_few": "{{count}} interakcje z użytkownikiem",
-        "interaction_many": "{{count}} interakcji z użytkownikiem",
-        "interaction_other": "{{count}} interakcji z użytkownikiem"
+        "interaction_one": "{{count}} pytanie lub prośba o zgodę",
+        "interaction_few": "{{count}} pytania i prośby o zgodę",
+        "interaction_many": "{{count}} pytań i próśb o zgodę",
+        "interaction_other": "{{count}} pytania i prośby o zgodę",
+        "notices_one": "{{count}} notatka SpecFlow",
+        "notices_few": "{{count}} notatki SpecFlow",
+        "notices_many": "{{count}} notatek SpecFlow",
+        "notices_other": "{{count}} notatki SpecFlow"
+      },
+      "question": {
+        "answer": "{{question}} → {{answer}}",
+        "ownText": "własna odpowiedź",
+        "asked": "Pytanie",
+        "chosen": "Wybrane",
+        "yourText": "Twoje słowa: {{text}}"
+      },
+      "detailedView": "Pokaż każdą operację",
+      "authorization": {
+        "title": "Autoryzacja",
+        "answered": "Prośba o zgodę · nie zapisano, kto zdecydował"
+      },
+      "interaction": {
+        "permission": "Prośba o zgodę",
+        "question": "Pytanie"
       }
     },
     "workSummary": {
@@ -1915,8 +2099,12 @@
       }
     },
     "outcomeReason": {
+      "claude-policy-check-failed": "SpecFlow nie mógł sprawdzić ustawień Claude na tym komputerze. Spróbuj ponownie; jeśli to się powtarza, uruchom Runtime ponownie.",
       "TURN_CONFLICT": "Inny agent lub zmiana specyfikacji wciąż zapisuje w tym projekcie. Poczekaj, aż się zakończy, albo sprawdź wynik tury o nieznanym wyniku, a potem wyślij wiadomość ponownie.",
-      "PROCESS_STOPPED": "Agent zatrzymał się, gdy SpecFlow nie mógł zapisać jego wyniku. Przejrzyj zmiany w obszarze roboczym, zanim przejdziesz dalej."
+      "PROCESS_STOPPED": "Proces agenta zatrzymał się, zanim SpecFlow zdążył zapisać, jak zakończyła się tura.",
+      "failed": "Agent nie zdołał dokończyć tej tury.",
+      "cancelled": "Agent został zatrzymany, zanim skończył.",
+      "interrupted": "Agent przerwał pracę, zanim skończył."
     },
     "turnUnknown": "Wynik tury nieznany",
     "reconcile": {
@@ -1934,7 +2122,47 @@
       "description": "Historia tej sesji nie jest już dostępna.",
       "action": "Przejdź do specyfikacji"
     },
-    "messageActions": "Akcje wiadomości"
+    "messageActions": "Akcje wiadomości",
+    "brief": {
+      "title": "Co otrzymał agent",
+      "subject": "{{step}} · podejście {{attempt}}",
+      "subjectTask": "{{step}} zadania {{task}} · podejście {{attempt}}",
+      "intro": "Co SpecFlow polecił agentowi na start tego podejścia.",
+      "source": {
+        "stepPurpose": "Cel kroku",
+        "stepInstructions": "Instrukcje kroku",
+        "agentProfile": "Profil agenta",
+        "handoff": "Przekazanie z poprzedniego kroku",
+        "task": "Zadanie"
+      },
+      "generated": "Wygenerowane przez SpecFlow",
+      "titleTask": "{{step}} zadania {{task}}",
+      "openFull": "Zobacz pełny brief",
+      "ownerNote": "Twoja wskazówka dla agenta",
+      "resumed": "Wznowiono wykonanie",
+      "continue": "Kontynuacja podejścia {{attempt}}",
+      "openContinuation": "Zobacz brief kontynuacji",
+      "introContinuation": "Co SpecFlow polecił agentowi przy kontynuacji tego podejścia.",
+      "handoff": {
+        "from": "Z kroku {{step}} · podejście {{attempt}}",
+        "returned": "Powrót do tego kroku",
+        "artifacts": "Przekazane pliki",
+        "fromUnnamed": "Z poprzedniego kroku · podejście {{attempt}}"
+      },
+      "fullText": "Pełny tekst wysłany agentowi",
+      "fullTextNote": "Dokładnie tak, jak otrzymał go agent, z regułami i odwołaniami SpecFlow."
+    },
+    "turnOutcome": {
+      "consequence": "W przestrzeni roboczej mogły już zajść zmiany.",
+      "reviewChanges": "Przejrzyj zmiany w przestrzeni roboczej",
+      "details": "Pokaż szczegóły techniczne",
+      "changesLeft_one": "W przestrzeni roboczej jest teraz {{count}} niezatwierdzony plik.",
+      "changesLeft_few": "W przestrzeni roboczej są teraz {{count}} niezatwierdzone pliki.",
+      "changesLeft_many": "W przestrzeni roboczej jest teraz {{count}} niezatwierdzonych plików.",
+      "changesLeft_other": "W przestrzeni roboczej jest teraz {{count}} niezatwierdzonego pliku.",
+      "noChangesLeft": "W przestrzeni roboczej nie ma teraz niezatwierdzonych zmian."
+    },
+    "composerPlaceholder": "Napisz do {{agent}}…"
   },
   "sessionStart": {
     "heading": "Nowa sesja",
@@ -1949,10 +2177,6 @@
     },
     "prerequisite": {
       "noProvider": "Żaden agent nie jest teraz dostępny."
-    },
-    "footer": {
-      "nameLater": "Sesja otworzy się bez wiadomości. Nazwę możesz nadać później.",
-      "ready": "Sesja otworzy się bez wiadomości, z Twoją nazwą."
     },
     "submit": {
       "start": "Rozpocznij sesję"
@@ -2114,7 +2338,11 @@
       "draftNotice": "wymaga zatwierdzenia, zanim wystartuje",
       "onHold": "Wstrzymane",
       "cancelled": "Anulowane",
-      "loadFailed": "Nie udało się wczytać, co można zrobić z tym zadaniem."
+      "loadFailed": "Nie udało się wczytać, co można zrobić z tym zadaniem.",
+      "kind": "Zadanie",
+      "copyKey": "Kopiuj klucz zadania",
+      "keyCopied": "Skopiowano klucz zadania",
+      "keyCopyFailed": "Nie udało się skopiować klucza zadania"
     },
     "lifecycle": {
       "approve": "Zatwierdź",
@@ -2249,7 +2477,7 @@
       "artifactLabel": "Powstaje wcześniej w procesie (na przykład w innym zadaniu)",
       "artifactDescription": "Potrzebny, zanim to zadanie wystartuje. Może jeszcze nie istnieć; do tego czasu jest oczekiwany, bez ostrzeżenia. To, co tworzy to zadanie, nie jest kontekstem: to warunek wyjścia kroku, który to tworzy.",
       "specificationLegend": "Dokumenty specyfikacji {{spec}}",
-      "alreadyInContext": "już w kontekście",
+      "alreadyInContext": "Już w kontekście",
       "documentIdLabel": "Identyfikator dokumentu",
       "documentIdDescription": "Identyfikator, pod którym zostanie zarejestrowany. Do tego czasu jest oczekiwany.",
       "searchLabel": "Szukaj w dokumentacji projektu",
@@ -2272,7 +2500,13 @@
       "ownArtifactBody": "Kontekst wymienia to, czego zadanie potrzebuje przed startem. {{ref}} powstaje w tym zadaniu, więc należy do warunku wyjścia kroku, który go tworzy, na przykład „istnieje dokument z wnioskami” przed zakończeniem.",
       "notFoundOptional": "Nie znaleziono: {{ref}} przeniesiono lub usunięto. Opcjonalny, więc następny krok go pominie.",
       "requiredShort": "wymagany",
-      "optionalShort": "opcjonalny"
+      "optionalShort": "opcjonalny",
+      "confirmCount_one": "Dodaj {{count}} dokument do kontekstu",
+      "confirmCount_few": "Dodaj {{count}} dokumenty do kontekstu",
+      "confirmCount_many": "Dodaj {{count}} dokumentów do kontekstu",
+      "confirmCount_other": "Dodaj {{count}} dokumentu do kontekstu",
+      "noneAvailable": "Wszystkie dokumenty są już w kontekście.",
+      "resultsInContext": "Wszystkie wyniki są już w kontekście."
     },
     "dependencies": {
       "none": "Brak zależności: zadanie może wystartować zaraz po zatwierdzeniu.",
@@ -2280,18 +2514,22 @@
       "fixed": "Zależności są ustalone od pierwszego startu zadania.",
       "remove": "Usuń zależność",
       "actionsFor": "Akcje dla {{id}}",
-      "dialogTitle": "Dodaj zależności do {{id}}",
-      "dialogDescription": "{{id}} będzie gotowe dopiero, gdy te zadania zostaną ukończone.",
-      "existing": "Już jest zależnością",
-      "confirm": "Dodaj zależności",
-      "legend": "Zadania",
+      "dialogTitle": "Dodaj zależności",
+      "dialogDescription": "Wybierz zadania, które muszą zostać ukończone, zanim „{{title}}” będzie mogło wystartować.",
       "noCandidates": "W tej specyfikacji nie ma innych zadań.",
       "missingTask": "{{id}} nie jest już zadaniem tej specyfikacji.",
       "unavailable": {
-        "would-create-cycle": "{{other}} już zależy od {{id}}; dodanie utworzyłoby cykl",
+        "dependency": "Już jest zależnością",
+        "would-create-cycle": "Już zależy od tego zadania; dodanie utworzyłoby cykl",
         "cancelled": "Anulowane; nigdy nie zostanie ukończone",
         "broken": "Uszkodzone; najpierw przywróć jego pliki"
-      }
+      },
+      "confirmNone": "Dodaj zależności",
+      "confirm_one": "Dodaj {{count}} zależność",
+      "confirm_few": "Dodaj {{count}} zależności",
+      "confirm_many": "Dodaj {{count}} zależności",
+      "confirm_other": "Dodaj {{count}} zależności",
+      "noneAvailable": "Teraz nie można dodać żadnego zadania."
     },
     "refusal": {
       "generic": "Zmiana nie została zapisana. Spróbuj ponownie.",
@@ -2309,12 +2547,108 @@
       "documentPathConflict": "Dokument o tej nazwie już istnieje.",
       "documentPathInvalid": "Ta nazwa pliku jest niedozwolona.",
       "documentRevisionConflict": "Dokument zmienił się od otwarcia. Odśwież i spróbuj ponownie.",
-      "documentProtected": "task.md jest głównym dokumentem zadania: nie można zmienić jego nazwy ani go usunąć."
+      "documentProtected": "task.md jest głównym dokumentem zadania: nie można zmienić jego nazwy ani go usunąć.",
+      "lockRecovery": "Proces SpecFlow, którego zatrzymania SpecFlow nie może potwierdzić, nadal trzyma blokadę projektu. Zatrzymaj wszystkie procesy SpecFlow tego projektu, a potem uruchom nevo-specflow specs documents recover --confirmed-stopped."
+    },
+    "picker": {
+      "availableTasks": "Dostępne zadania",
+      "unavailableTasks": "Niedostępne zadania",
+      "unavailableDocuments": "Niedostępne dokumenty",
+      "searchTasks": "Szukaj zadań",
+      "searchDocuments": "Szukaj dokumentów",
+      "noMatches": "Nic nie pasuje do wyszukiwania."
     }
   },
   "workflowExecution": {
     "actor": {
       "you": "ciebie"
+    },
+    "agent": {
+      "title": "Uruchom z agentem: {{step}}",
+      "descriptionTask": "Agent wykonuje ten krok zadania {{task}} samodzielnie: czyta krok, jego dokumenty i kontekst, pisze to, czego krok wymaga, i proponuje wynik. Decyzje, które należą do Ciebie, zostają u Ciebie.",
+      "descriptionSpecification": "Agent wykonuje ten krok specyfikacji samodzielnie: czyta krok, jego dokumenty i kontekst, pisze to, czego krok wymaga, i proponuje wynik. Decyzje, które należą do Ciebie, zostają u Ciebie.",
+      "checking": "Sprawdzamy, czy agent może wykonać ten krok…",
+      "checkFailedTitle": "SpecFlow nie mógł sprawdzić agenta",
+      "checkFailedBody": "Sprawdzanie się nie zakończyło, więc nic nie zostało uruchomione.",
+      "checkAgain": "Sprawdź ponownie",
+      "checkingAgain": "Sprawdzanie…",
+      "submit": "Uruchom z agentem",
+      "submitting": "Uruchamianie…",
+      "role": "Agent: {{name}}",
+      "roleFallback": "agenta",
+      "blocker": {
+        "dirty": {
+          "title": "Najpierw zacommituj lub cofnij te zmiany",
+          "body": "Te pliki zmieniono poza SpecFlow i nie są zacommitowane. Agent startuje z zacommitowanego checkoutu, żeby wszystko, co zmieni się potem, było jego pracą. (Dokumenty i zadania zapisane przez SpecFlow nie blokują startu.)",
+          "more": "i jeszcze {{count}}",
+          "hint": "Zacommituj je albo cofnij te, których nie potrzebujesz, i sprawdź ponownie."
+        },
+        "ownerWork": {
+          "title": "Najpierw zacommituj lub cofnij swoje zmiany",
+          "body": "Te pliki mają niezacommitowane zmiany. Gdyby agent przejął teraz krok, jego próba uznałaby je za własną pracę i zacommitowała jako pracę agenta.",
+          "hint": "Zacommituj swoją pracę albo cofnij to, czego nie potrzebujesz, i sprawdź ponownie. Agent prowadzi wtedy krok dalej od tego, co zacommitowałeś."
+        },
+        "noAgent": {
+          "title": "Nie wybrano agenta dla kroku {{step}}",
+          "body": "Krok {{step}} wykonuje rola: {{role}}, a projekt nie wskazuje dla niej agenta ani modelu, więc SpecFlow nie wie, którego uruchomić.",
+          "hint": "Wybierz agenta i model dla roli „{{role}}” w ustawieniach agentów projektu i sprawdź ponownie.",
+          "bodyUnnamed": "Krok {{step}} wykonuje agent, a projekt nie wskazuje dla niego agenta ani modelu, więc SpecFlow nie wie, którego uruchomić.",
+          "hintUnnamed": "Wybierz ich w ustawieniach agentów projektu i sprawdź ponownie."
+        },
+        "providerNotReady": {
+          "title": "Agent nie jest gotowy",
+          "body": "Agent wybrany przez przepływ nie może teraz wystartować.",
+          "hint": "Napraw to i sprawdź ponownie.",
+          "bodyRefused": "SpecFlow nie uruchomił agenta: wybrany niżej agent lub model nie może teraz działać."
+        },
+        "sessionUnavailable": {
+          "title": "Sesji do kontynuacji już nie ma",
+          "body": "Ten krok kontynuuje sesję wcześniejszego kroku, a ta sesja już nie istnieje. SpecFlow nie zakłada nowej w jej miejsce, bo ten krok ma bazować na tym, co ta sesja wie.",
+          "hint": "Wykonaj krok sam przez {{startLabel}} albo zmień przepływ, tak by ten krok mógł zacząć nową sesję."
+        },
+        "projectBusy": {
+          "title": "Projekt jest zajęty",
+          "body": "W projekcie zapisuje się inna zmiana, więc agent nie może teraz wystartować.",
+          "hint": "Poczekaj, aż się skończy, i sprawdź ponownie."
+        },
+        "demo": {
+          "title": "W demo agenci nie działają",
+          "body": "Demo nie uruchamia agentów.",
+          "hint": "Wykonaj krok sam przez {{startLabel}}."
+        },
+        "other": {
+          "title": "Agent nie może teraz wykonać tego kroku",
+          "body": "Krok zmienił się od otwarcia albo nie wykonuje go agent.",
+          "hint": "Sprawdź ponownie, żeby odczytać go jeszcze raz."
+        }
+      },
+      "session": {
+        "newSession": "Nowa sesja",
+        "label": "Sesja",
+        "continues": "Kontynuuje",
+        "continuesWhy": "{{model}}. Ten krok kontynuuje sesję podaną wyżej, sesję wcześniejszego kroku, więc agent zachowuje to, czego się tam nauczył. Jego agent i model pozostają bez zmian.",
+        "earlier": "wcześniejszą sesję",
+        "gone": "Ta sesja już nie istnieje.",
+        "notChosen": "Nie wybrano agenta ani modelu",
+        "model": "Model",
+        "preselected": "Wstępnie wybrane z ustawień roli „{{role}}”. Twój wybór dotyczy tylko tej próby.",
+        "independent": "Krok {{step}} jest wykonywany niezależnie: zawsze startuje w nowej sesji, nigdy w tej, która napisała zmianę. Wstępnie wybrane z ustawień roli „{{role}}”.",
+        "independentOwn": "Krok {{step}} jest wykonywany niezależnie: zawsze startuje w nowej sesji, nigdy w tej, która napisała zmianę.",
+        "catalogueFailed": "Nie udało się wyświetlić listy agentów, więc próba wystartuje z agentem {{agent}} z ustawień roli „{{role}}”.",
+        "loadingAgents": "Wczytywanie agentów…",
+        "chooseModel": "Wybierz model",
+        "modelUnassigned": "Dla roli „{{role}}” nie ustawiono modelu, który oferuje {{provider}}. Wybierz model dla tego startu.",
+        "workMode": "Agent pracuje w trybie „{{mode}}”."
+      },
+      "commit": "Gdy agent skończy, SpecFlow zacommituje jego pracę na <code>{{branch}}</code> jako jeden commit; zmiany innych osób nigdy nie są dołączane.",
+      "commitNoBranch": "Gdy agent skończy, SpecFlow zacommituje jego pracę na gałęzi specyfikacji jako jeden commit; zmiany innych osób nigdy nie są dołączane.",
+      "hand": {
+        "title": "Przekaż agentowi: {{step}}",
+        "descriptionTask": "Twoja próba {{attempt}} tego kroku zadania {{task}} kończy się tutaj, a agent prowadzi krok dalej w nowej próbie: czyta krok, jego dokumenty i kontekst, pisze to, czego krok wymaga, i proponuje wynik. Decyzje, które należą do Ciebie, zostają u Ciebie.",
+        "descriptionSpecification": "Twoja próba {{attempt}} tego kroku kończy się tutaj, a agent prowadzi krok dalej w nowej próbie: czyta krok, jego dokumenty i kontekst, pisze to, czego krok wymaga, i proponuje wynik. Decyzje, które należą do Ciebie, zostają u Ciebie.",
+        "submit": "Przekaż agentowi",
+        "submitting": "Przekazywanie…"
+      }
     },
     "now": {
       "heading": "Teraz",
@@ -2327,11 +2661,20 @@
       "ready": "Gotowe do rozpoczęcia",
       "active": "W toku od {{since}} · rozpoczęta przez {{actor}}",
       "activeAttempt": "Próba {{attempt}} · w toku od {{since}} · rozpoczęta przez {{actor}}",
+      "takenOverFrom": "przejęta od agenta",
       "starting": "Rozpoczynanie…",
       "track": {
         "current": "Krok {{position}} z {{total}}: {{title}}",
         "notStarted": "Nie rozpoczęto, kroków: {{total}}. Pierwszy krok: {{title}}",
-        "completed": "Wszystkie kroki ({{total}}) · ukończone"
+        "completed": "Wszystkie kroki ({{total}}) · ukończone",
+        "steps_one": "{{count}} krok",
+        "steps_few": "{{count}} kroki",
+        "steps_many": "{{count}} kroków",
+        "steps_other": "{{count}} kroku",
+        "allSteps_one": "{{count}} krok wykonany",
+        "allSteps_few": "Wszystkie {{count}} kroki wykonane",
+        "allSteps_many": "Wszystkie {{count}} kroków wykonanych",
+        "allSteps_other": "Wszystkie {{count}} kroku wykonane"
       },
       "newTask": "Nowe zadanie",
       "addSectionsToFinish_one": "Dodaj sekcję {{sections}} do {{name}}, aby zakończyć.",
@@ -2368,9 +2711,8 @@
       "return": "Wróć do wcześniejszego kroku",
       "finishKept": "Twoje zakończenie jest zachowane: wynik, uwagi i artefakty zostają bez zmian. Zakończ krok wraca do niego.",
       "postActionFailed": "Krok jest zakończony. Stanu przepływu nie zatwierdzono ({{code}}): pozostaje niezatwierdzony, a Zamknięcie go obejmie.",
+      "postActionAttemptCommit": "Zmiana jest zapisana, ale jej commit czeka, aż najpierw zostanie zatwierdzona praca agenta w tej specyfikacji. Ponów tamten commit; następny commit obejmie też tę zmianę.",
       "postActionHeld": "Krok jest zakończony. {{edited}} zmieniono poza SpecFlow po zapisaniu przez SpecFlow, więc pliki tego zadania oraz zadań dodanych lub usuniętych od tego czasu pozostają niezatwierdzone; reszta stanu przepływu jest zatwierdzona. Zatwierdź te pliki w Git; w przeciwnym razie obejmie je Zamknięcie.",
-      "lastPrefix": "Ostatnio: {{step}} · ",
-      "handoffFrom": "{{step}} · ",
       "alreadyFinished": "Ten krok został już zakończony. Poniżej widać, co można zrobić teraz.",
       "reevaluateWait": "Zakończ oczekiwanie",
       "retryWait": "Ponów zakończenie oczekiwania",
@@ -2387,7 +2729,29 @@
       "tasksOpenDrafts": "Aby zakończyć z wynikiem {{result}}, pomiń otwarte szkice tego kroku: odznacz {{tasks}} przy kończeniu.",
       "technicalStep": "Krok {{step}} · {{title}} wersja {{version}}",
       "technical": "{{title}} wersja {{version}}",
-      "openDocument": "Otwórz {{name}}"
+      "openDocument": "Otwórz {{name}}",
+      "runWithAgent": "Uruchom z agentem",
+      "handToAgent": "Przekaż agentowi",
+      "readFailed": "SpecFlow nie mógł odczytać, co można teraz zrobić w tym kroku.",
+      "readStale": "SpecFlow nie mógł odświeżyć tego kroku; pokazuje ostatnio odczytany stan, który może być nieaktualny.",
+      "readRetry": "Spróbuj ponownie",
+      "youAct": "Ten krok wykonujesz Ty: wykonaj pracę, a potem zakończ krok.",
+      "youActCanHand": "Ten krok wykonujesz Ty: wykonaj pracę i zakończ krok albo przekaż go agentowi, żeby go kontynuował.",
+      "youActTakenOver": "Przejąłeś ten krok od agenta, więc teraz należy do Ciebie: dokończ pracę sam i zakończ krok.",
+      "youActTakenOverCanHand": "Przejąłeś ten krok od agenta, więc teraz należy do Ciebie: dokończ pracę sam i zakończ krok albo przekaż go z powrotem agentowi w nowej próbie.",
+      "handUnavailable": "Przekazanie agentowi nie jest teraz możliwe: {{why}}.",
+      "personActs": "Ten krok wykonuje {{actor}}; możesz śledzić go tutaj.",
+      "handoffCommittedAll": "Praca zatwierdzona",
+      "openSession": "Otwórz sesję",
+      "sessionGone": "Sesja usunięta",
+      "agentWorking": "Pracuje od {{since}}",
+      "agentWorkingAttempt": "Próba {{attempt}} · pracuje od {{since}}",
+      "waitingForDependencies": "Czeka na zależności",
+      "dependenciesRemaining_one": "Pozostała {{count}} zależność",
+      "dependenciesRemaining_few": "Pozostały {{count}} zależności",
+      "dependenciesRemaining_many": "Pozostało {{count}} zależności",
+      "dependenciesRemaining_other": "Pozostało {{count}} zależności",
+      "viewDependencies": "Pokaż zależności"
     },
     "blocker": {
       "dependencies_one": "Czeka na {{count}} zależność",
@@ -2590,6 +2954,8 @@
         "workflowStateUncommittedStep": "Zmiany zadań i kroków innej specyfikacji w tym katalogu roboczym nie mają jeszcze commita. Zrób ich commit w Git albo zakończ trwający tam krok (zakończenie robi ich commit) i sprawdź ponownie.",
         "uncommittedAbandoned": "Zmiany w tym katalogu roboczym, których commit porzucono, nie mają commita. Zrób ich commit w Git i sprawdź ponownie.",
         "uncommittedGit": "Pliki zapisane przez SpecFlow w tym katalogu roboczym nie mają commita. Zrób ich commit w Git i sprawdź ponownie.",
+        "agentCommitFailed": "Agent skończył pracę, ale jej commit się nie udał. Ponów commit poniżej i sprawdź ponownie.",
+        "agentAndOthers": "Część plików w tym katalogu roboczym nie ma commita: praca agenta, której commit się nie udał, i pliki innych specyfikacji. Każda grupa poniżej mówi, jak zrobić commit jej plików; potem sprawdź ponownie.",
         "documentsFailed": "Commit dokumentu się nie powiódł. Ponów go lub rozwiąż w Dokumentach, a potem sprawdź ponownie."
       },
       "repository": {
@@ -2682,9 +3048,21 @@
       "archiveNote": "Zamknięcie archiwizuje specyfikację; nie można jej ponownie otworzyć.",
       "submitting": "Zamykanie…",
       "heldBy": {
+        "mixed": "pliki w jego katalogu roboczym nie mają commita",
         "other": "inna specyfikacja ma zmiany bez commita w tym katalogu roboczym",
         "own": "ma zmiany bez commita w swoim katalogu roboczym",
         "checkout": "pliki zapisane przez SpecFlow w tym katalogu roboczym nie mają commita"
+      },
+      "agentCommit": {
+        "title": "Praca agenta, której commit się nie udał",
+        "lead": "Agent skończył krok, ale Git nie przyjął jego commita. Pliki zostają bez commita, dopóki commit nie zostanie wykonany.",
+        "stepTask": "{{step}} zadania {{task}}, podejście {{attempt}}",
+        "stepSpecification": "{{step}} tej specyfikacji, podejście {{attempt}}",
+        "reason_one": "commit się nie udał: {{reason}} ({{code}}). {{count}} plik.",
+        "reason_few": "commit się nie udał: {{reason}} ({{code}}). {{count}} pliki.",
+        "reason_many": "commit się nie udał: {{reason}} ({{code}}). {{count}} plików.",
+        "reason_other": "commit się nie udał: {{reason}} ({{code}}). {{count}} pliku.",
+        "retryLabel": "Ponów commit: {{step}}"
       }
     },
     "abandon": {
@@ -2723,7 +3101,11 @@
       "localConfigModified": "Lokalna konfiguracja worktree (.nevo/local/config.yaml) została zmieniona, dodana ręcznie albo nie da się jej odczytać. Przenieś ją lub usuń, a potem zamknij ponownie.",
       "busy": "Specyfikacja jest zajęta inną zmianą. Spróbuj za chwilę.",
       "draftConflict": "Zachowany szkic zależy od szkicu, który odznaczono. Zachowaj oba albo odznacz oba.",
-      "tasksOpen": "Specyfikacja nie może się zakończyć, dopóki zadania są otwarte: {{tasks}}. Najpierw je ukończ lub anuluj."
+      "tasksOpen": "Specyfikacja nie może się zakończyć, dopóki zadania są otwarte: {{tasks}}. Najpierw je ukończ lub anuluj.",
+      "confirmationChanged": "To, co zastosowałoby potwierdzenie, zmieniło się od otwarcia tego widoku. Przeczytaj podsumowanie jeszcze raz i potwierdź.",
+      "attemptCommitRequired": "Praca agenta w tej specyfikacji nie jest jeszcze zatwierdzona, więc w jej przepływie nic nie może się zmienić. Ponów jej commit (powyżej), a potem spróbuj ponownie.",
+      "agentUnavailable": "Agent nie może teraz kontynuować. Odśwież stronę, aby zobaczyć dlaczego.",
+      "lockRecovery": "Proces SpecFlow, którego zatrzymania SpecFlow nie może potwierdzić, nadal trzyma blokadę projektu. Zatrzymaj wszystkie procesy SpecFlow tego projektu, a potem uruchom nevo-specflow specs documents recover --confirmed-stopped."
     },
     "time": {
       "today": "Dziś {{time}}",
@@ -2735,6 +3117,257 @@
       "removed": "Usuwa krok {{step}}",
       "renamed": "Zmienia nazwę kroku {{from}} na {{to}}",
       "transitions": "Zmienia, dokąd prowadzi krok {{step}}"
+    },
+    "agentAttempt": {
+      "sessionFallback": "sesja agenta",
+      "stop": "Zatrzymaj agenta",
+      "stopping": "Zatrzymywanie…",
+      "checkOutcome": "Sprawdź wynik",
+      "continue": "Kontynuuj",
+      "retryStart": "Spróbuj uruchomić ponownie",
+      "line": {
+        "working": "Podejście {{attempt}} · agent pracuje od {{since}}",
+        "stopping": "Podejście {{attempt}} · zatrzymywanie agenta",
+        "unknown": "Podejście {{attempt}} · wynik pracy agenta jest nieznany",
+        "sessionMissing": "Podejście {{attempt}} · agent się nie uruchomił",
+        "stopped": "Podejście {{attempt}} · agent zatrzymał się bez wyniku o {{at}}",
+        "refused": "Podejście {{attempt}} · wynik agenta nie został przyjęty",
+        "applying": "Podejście {{attempt}} · agent zaproponował wynik",
+        "returnRequested": "Podejście {{attempt}} · zażądano powrotu · czekanie na zatrzymanie agenta",
+        "returnStopped": "Podejście {{attempt}} · zażądano powrotu · agent się zatrzymał",
+        "waiting": "Podejście {{attempt}} · agent pracuje od {{since}} · czeka na Ciebie"
+      },
+      "stoppingNote": "Poproszono agenta o zatrzymanie. Krok {{step}} pozostaje zablokowany, dopóki SpecFlow nie zobaczy, że proces agenta się zakończył; wtedy można kontynuować lub wrócić.",
+      "unknown": {
+        "title": "SpecFlow nie wie, czy agent nadal pracuje.",
+        "body": "Jego proces może nadal działać, więc dopóki to nie jest znane, nic w tym projekcie nie może być zapisane: kroki, dokumenty i zadania każdej specyfikacji czekają. „Sprawdź wynik” ponownie pyta komputer, na którym działa SpecFlow. Jeśli nadal nie da się tego ustalić, zakończ tam proces agenta i sprawdź jeszcze raz."
+      },
+      "missing": {
+        "title": "Agent się nie uruchomił.",
+        "body": "Nie udało się utworzyć jego sesji, więc nic jeszcze nie zrobił. „Spróbuj uruchomić ponownie” pyta jeszcze raz."
+      },
+      "noResult": {
+        "title": "Agent zatrzymał się bez zaproponowania wyniku.",
+        "body": "„Kontynuuj” pozwala mu pracować dalej w tej samej sesji. „Przejmij”, aby dokończyć krok samodzielnie."
+      },
+      "applying": "Agent zaproponował wynik: {{result}}. SpecFlow go stosuje.",
+      "refused": {
+        "title": "Agent zaproponował wynik „{{result}}”, a SpecFlow go nie przyjął:",
+        "undeclared": "<code>{{path}}</code> nie zgadza się z tym, co agent podał jako swoje zmiany.",
+        "unregistered": "<code>{{path}}</code> nie ma typu dokumentu. Nadaj mu typ albo go usuń.",
+        "engineFile": "<code>{{path}}</code> to plik zapisany przez SpecFlow, edytowany poza SpecFlow.",
+        "nested": "<code>{{path}}</code> to repozytorium Git wewnątrz tego katalogu roboczego.",
+        "gate": "Warunek tego wyniku nie jest spełniony.",
+        "tasksOpen": "Zadania są nadal otwarte.",
+        "other": "SpecFlow go nie przyjął",
+        "next": "„Kontynuuj” pozwala agentowi to poprawić w tej samej sesji. „Przejmij”, aby poprawić to samodzielnie."
+      },
+      "changed": {
+        "title_one": "Agent nie może kontynuować: od jego zatrzymania zmienił się {{count}} plik.",
+        "title_few": "Agent nie może kontynuować: od jego zatrzymania zmieniły się {{count}} pliki.",
+        "title_many": "Agent nie może kontynuować: od jego zatrzymania zmieniło się {{count}} plików.",
+        "title_other": "Agent nie może kontynuować: od jego zatrzymania zmieniło się {{count}} pliku.",
+        "body": "SpecFlow nigdy nie uznaje cudzych zmian za pracę agenta. Cofnij te zmiany albo zatwierdź je samodzielnie (staną się Twoim commitem, nie agenta), a potem kontynuuj. Albo przejmij i dokończ krok samodzielnie."
+      },
+      "gone": {
+        "title": "Agent nie może kontynuować: jego sesja już nie istnieje.",
+        "body": "SpecFlow nie uruchamia innej sesji w jej miejsce. Przejmij, aby dokończyć krok samodzielnie, albo wróć do wcześniejszego kroku z menu."
+      },
+      "takeOver": "Przejmij",
+      "takingOver": "Przejmowanie…",
+      "keptLead": "Zachowano do tej pory:",
+      "seeAttempt": "Zobacz podejście",
+      "keptFiles_one": " i {{count}} zmieniony plik",
+      "keptFiles_few": " i {{count}} zmienione pliki",
+      "keptFiles_many": " i {{count}} zmienionych plików",
+      "keptFiles_other": " i {{count}} zmienionego pliku",
+      "keptFilesOnly_one": "{{count}} zmieniony plik",
+      "keptFilesOnly_few": "{{count}} zmienione pliki",
+      "keptFilesOnly_many": "{{count}} zmienionych plików",
+      "keptFilesOnly_other": "{{count}} zmienionego pliku",
+      "returning": "Wracanie…",
+      "stopAgain": "Zatrzymaj ponownie",
+      "returnNote": "Poproszono o powrót do kroku {{target}}. SpecFlow najpierw zatrzymuje agenta: krok wraca do {{target}} dopiero po zakończeniu jego procesu, więc nic, co jeszcze zapisze, nie zginie ani nie wmiesza się w następne podejście.",
+      "returnStopFailed": "SpecFlow nie mógł zatrzymać agenta, więc może on nadal pracować. Powrót do {{target}} czeka, aż agent się zatrzyma.",
+      "returnNextAction": "Agent się zatrzymał. Powrót do {{target}} zostanie zastosowany przy Twojej następnej akcji w tym kroku: wybierz Powrót w menu.",
+      "returnRefused": "Powrót do {{target}} nie został zastosowany: {{reason}} ({{code}}). Podejście pozostaje bez zmian.",
+      "continueDialog": {
+        "title": "Kontynuuj: {{step}}",
+        "description": "Agent kontynuuje próbę {{attempt}} w tej samej sesji, z zakresem tej próby.",
+        "noteLabel": "Wskazówka dla agenta (opcjonalna)",
+        "noteHint": "Na przykład co ma zrobić inaczej. Zostanie wysłana razem z komunikatem kontynuacji SpecFlow, w tej samej turze.",
+        "tooLong": "Wskazówka może mieć najwyżej {{max}} znaków.",
+        "withNote": "Kontynuuj ze wskazówką"
+      },
+      "takeOverDialog": {
+        "title": "Przejmij krok {{step}}",
+        "description": "Podejście agenta kończy się jako przejęte i zaczyna się Twoje własne podejście {{attempt}}. Krok kończysz samodzielnie.",
+        "stays": "Praca agenta zostaje",
+        "staysBody": "Nic nie jest cofane. Te pliki zostają tak, jak zostawił je agent, niezatwierdzone, dopóki ich nie zatwierdzisz; zakończenie kroku ich nie zatwierdza, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+        "noFiles": "Agent nie zostawił niezatwierdzonych plików.",
+        "session": "Sesja <session/> zostaje otwarta do czytania; nie pracuje już nad tym krokiem.",
+        "sessionGone": "Sesja <session/> już nie istnieje, więc nie ma czego czytać."
+      },
+      "earlierStep": "wcześniejszy krok",
+      "workingNote": "Agent wykonuje teraz ten krok. Nie musisz nic robić, dopóki nie skończy; Zatrzymaj agenta kończy jego pracę.",
+      "waiting": {
+        "title": {
+          "question": "Agent czeka na Ciebie: zadał pytanie.",
+          "permission": "Agent czeka na Ciebie: prosi o zgodę, żeby pracować dalej.",
+          "input": "Agent czeka na Ciebie w swojej sesji."
+        },
+        "body": "Nic więcej nie zrobi, dopóki tam nie odpowiesz.",
+        "open": {
+          "question": "Odpowiedz na pytanie",
+          "permission": "Odpowiedz na prośbę o zgodę",
+          "input": "Otwórz sesję"
+        }
+      }
+    },
+    "confirmation": {
+      "line": "Czeka na Twoje potwierdzenie · agent skończył {{at}}",
+      "applies": "Potwierdzenie {{what}}.",
+      "movesTo": "przechodzi do: {{step}}",
+      "ends": {
+        "completed": "kończy przepływ pracy",
+        "abandoned": "kończy przepływ pracy jako porzucony"
+      },
+      "approvesDrafts_one": "zatwierdza zadanie robocze {{first}}",
+      "approvesDrafts_few": "zatwierdza {{count}} zadania robocze ({{first}} do {{last}})",
+      "approvesDrafts_many": "zatwierdza {{count}} zadań roboczych ({{first}} do {{last}})",
+      "approvesDrafts_other": "zatwierdza {{count}} zadania robocze ({{first}} do {{last}})",
+      "recordsDecisions_one": "zapisuje decyzję agenta o {{count}} zadaniu",
+      "recordsDecisions_few": "zapisuje decyzje agenta o {{count}} zadaniach",
+      "recordsDecisions_many": "zapisuje decyzje agenta o {{count}} zadaniach",
+      "recordsDecisions_other": "zapisuje decyzje agenta o {{count}} zadania",
+      "confirm": "Potwierdź",
+      "confirming": "Potwierdzanie…",
+      "reject": "Odrzuć",
+      "rejectTitle": "Odrzuć wynik agenta",
+      "rejectDescription": "Krok {{step}} wraca do stanu gotowego do startu, a Twoja uwaga staje się jego przekazaniem. Propozycja agenta „{{result}}” nie jest stosowana.",
+      "rejectDescriptionDrafts": "Krok {{step}} wraca do stanu gotowego do startu, a Twoja uwaga staje się jego przekazaniem. Propozycja agenta „{{result}}” nie jest stosowana; zadania robocze i dokumenty, które agent napisał, zostają bez zmian.",
+      "feedbackLabel": "Co należy zmienić (wymagane)",
+      "feedbackHint": "Następne podejście przeczyta to jako pierwsze, niezależnie od tego, czy uruchomisz je sam, czy z agentem.",
+      "resultHeading": "Wynik agenta"
+    },
+    "attemptCommit": {
+      "committed": "Agent skończył krok {{step}}. Jego praca jest zatwierdzona.",
+      "committedOn": "Agent skończył krok {{step}}. Jego praca jest zatwierdzona na <code>{{branch}}</code>.",
+      "committedSha": "Agent skończył krok {{step}}. Commit <code>{{sha}}</code>{{list}}.",
+      "committedShaOn": "Agent skończył krok {{step}}. Commit <code>{{sha}}</code> na <code>{{branch}}</code>{{list}}.",
+      "countDocuments_one": "{{count}} dokument",
+      "countDocuments_few": "{{count}} dokumenty",
+      "countDocuments_many": "{{count}} dokumentów",
+      "countDocuments_other": "{{count}} dokumentu",
+      "countFiles_one": "{{count}} plik",
+      "countFiles_few": "{{count}} pliki",
+      "countFiles_many": "{{count}} plików",
+      "countFiles_other": "{{count}} pliku",
+      "and": " i ",
+      "pending": "Agent skończył krok {{step}}. SpecFlow zatwierdza jego pracę…",
+      "failed": "<strong>Krok {{step}} jest skończony, ale jego commit się nie udał: {{reason}} (<code>{{code}}</code>).</strong>",
+      "reason": {
+        "branchProtected": "gałąź jest chroniona",
+        "blocked": "hak Git lub reguła tego repozytorium go odrzuciły",
+        "other": "Git nie mógł go dokończyć"
+      },
+      "staysOn_one": "Ten plik pozostaje niezatwierdzony na <code>{{branch}}</code>, a Zamknięcie wymienia go, dopóki nie zostanie zatwierdzony.",
+      "staysOn_few": "Te {{count}} pliki pozostają niezatwierdzone na <code>{{branch}}</code>, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+      "staysOn_many": "Te {{count}} plików pozostaje niezatwierdzonych na <code>{{branch}}</code>, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+      "staysOn_other": "Te {{count}} pliku pozostaje niezatwierdzonych na <code>{{branch}}</code>, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+      "stays_one": "Ten plik pozostaje niezatwierdzony, a Zamknięcie wymienia go, dopóki nie zostanie zatwierdzony.",
+      "stays_few": "Te {{count}} pliki pozostają niezatwierdzone, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+      "stays_many": "Te {{count}} plików pozostaje niezatwierdzonych, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+      "stays_other": "Te {{count}} pliku pozostaje niezatwierdzonych, a Zamknięcie wymienia je, dopóki nie zostaną zatwierdzone.",
+      "blocksNext": "Do tego czasu „Uruchom z agentem” nie może rozpocząć kroku {{next}}: agent startuje tylko z zatwierdzonego katalogu roboczego.",
+      "blocksAgent": "Do tego czasu „Uruchom z agentem” nie może rozpocząć następnego kroku: agent startuje tylko z zatwierdzonego katalogu roboczego.",
+      "blocksConfirm": "Potwierdzenie i odrzucenie będą możliwe, gdy praca agenta zostanie zatwierdzona: po usunięciu przyczyny „Ponów commit” wykona commit jeszcze raz.",
+      "stalled": "Commit się nie zakończył. Jeśli nie zakończy się sam, „Ponów commit” wykona go teraz; potwierdzenie i odrzucenie czekają na niego.",
+      "blocksWorkflow": "Dopóki nie zostanie zatwierdzona, w przepływie tej specyfikacji nic się nie zmieni: Rozpocznij, Zakończ krok, Wróć i Uruchom z agentem czekają na nią.",
+      "blocksWorkflowFailed": "Dopóki nie zostanie zatwierdzona, w przepływie tej specyfikacji nic się nie zmieni: Rozpocznij, Zakończ krok, Wróć i Uruchom z agentem czekają na nią. Usuń przyczynę, a potem ponów commit.",
+      "stalledWorkflow": "Commit się nie zakończył. Jeśli nie zakończy się sam, ponowienie commita wykona go teraz.",
+      "stepOfTask": "{{step}} zadania {{task}}",
+      "retry": "Ponów commit",
+      "retrying": "Ponawianie…"
+    },
+    "projectHold": {
+      "session": "Sesja:",
+      "unknown": {
+        "title": "Nic nie może się teraz zapisać w tym projekcie.",
+        "body": "SpecFlow nie wie, czy agent nadal działa. Sprawdź jego wynik w:"
+      },
+      "working": {
+        "body": "Agent pracuje w tym projekcie. Dopóki się nie zatrzyma, rozpoczęcie, zakończenie i cofnięcie kroku tutaj jest odrzucane; ta strona odświeży się sama, gdy agent się zatrzyma. Pracuje nad:"
+      }
+    },
+    "attemptHistory": {
+      "truncated": "Starsze podejścia nie są pokazane.",
+      "stopped": "Agent zatrzymał się bez wyniku o {{at}}.",
+      "outcome": {
+        "takenOverBy": "Przejęte przez: {{who}}",
+        "takenOver": "Przejęte",
+        "abandoned": "Porzucone",
+        "returned": "Cofnięte do kroku {{step}}",
+        "active": "Agent nad tym pracuje",
+        "handedToAgent": "Przekazane agentowi",
+        "completed": "Ukończone",
+        "awaitingConfirmation": "Czeka na Twoje potwierdzenie",
+        "rejected": "Wynik odrzucony",
+        "commitFailed": "Ukończone, ale bez commita"
+      },
+      "ownerNote": "Twoja wskazówka dla agenta: {{note}}",
+      "event": {
+        "started": "Start",
+        "handed-over": "Przekazano agentowi",
+        "turn-started": "Agent zaczął pracować",
+        "turn-ended": "Agent się zatrzymał",
+        "proposal-refused": "Wynik nie został przyjęty",
+        "return-requested": "Zlecono cofnięcie",
+        "returned": "Cofnięto do wcześniejszego kroku",
+        "finished": "Skończył z wynikiem",
+        "committed": "Praca zacommitowana",
+        "commit-failed": "Commit się nie udał: {{reason}} ({{code}})",
+        "taken-over": "Przejęte",
+        "abandoned": "Porzucone",
+        "awaiting-confirmation": "Czeka na potwierdzenie",
+        "confirmed": "Wynik potwierdzony",
+        "rejected": "Wynik odrzucony"
+      },
+      "changes": {
+        "tasks_one": "{{count}} zadanie",
+        "tasks_few": "{{count}} zadania",
+        "tasks_many": "{{count}} zadań",
+        "tasks_other": "{{count}} zadania",
+        "files_one": "{{count}} zmieniony plik",
+        "files_few": "{{count}} zmienione pliki",
+        "files_many": "{{count}} zmienionych plików",
+        "files_other": "{{count}} zmienionego pliku",
+        "moreTasks_one": "Jeszcze {{count}} zadanie",
+        "moreTasks_few": "Jeszcze {{count}} zadania",
+        "moreTasks_many": "Jeszcze {{count}} zadań",
+        "moreTasks_other": "Jeszcze {{count}} zadania",
+        "truncated": "Commit objął więcej plików, niż tu wymieniono."
+      },
+      "committed": "Zacommitowane",
+      "notCommitted": "Zostawione w kopii roboczej, bez commita",
+      "day": {
+        "today": "Dziś",
+        "yesterday": "Wczoraj"
+      },
+      "openSession": "Otwórz sesję",
+      "confirmedBy": "Potwierdzone przez {{who}} · {{at}}",
+      "rejectedBy": "Odrzucone przez {{who}} · {{at}}"
+    },
+    "feedback": {
+      "view": "Pokaż uwagi",
+      "label": "Uwagi",
+      "copy": "Kopiuj uwagi",
+      "copied": "Skopiowano",
+      "failed": "Nie udało się odczytać uwag.",
+      "missing": "Tych uwag nie ma już w historii.",
+      "resultSection": "Wynik",
+      "rejectionSection": "Dlaczego wynik odrzucono",
+      "loading": "Wczytywanie uwag…"
     }
   },
   "taskOverview": {
@@ -2750,7 +3383,9 @@
         "resume-task": "Wznów",
         "start-step": "Rozpocznij krok",
         "reevaluate-wait": "Przejdź do bieżącego kroku",
-        "return-to-step": "Wróć do wcześniejszego kroku"
+        "return-to-step": "Wróć do wcześniejszego kroku",
+        "confirm-result": "Przejrzyj wynik",
+        "reject-result": "Odrzuć wynik"
       },
       "specification": "Specyfikacja",
       "stuckTitle_one": "Rozwiąż {{count}} blokujące zadanie",
@@ -2760,15 +3395,29 @@
       "stuckReason": "Zatwierdź, wznów lub anuluj je, aby specyfikacja mogła się zakończyć",
       "startFailed": "Nie udało się rozpocząć kroku. Otwórz zadanie, aby zobaczyć, co można zrobić teraz.",
       "resumeFailed": "Nie udało się wznowić zadania. Otwórz zadanie, aby zobaczyć, co można zrobić teraz.",
-      "startNamed": "Rozpocznij: {{step}}"
+      "startNamed": "Rozpocznij: {{step}}",
+      "reason": {
+        "holdsTasks": "Zadanie jest wstrzymane i blokuje: {{tasks}}. Wznów je albo anuluj.",
+        "holdsFinish": "Zadanie jest wstrzymane i nie pozwala zakończyć kroku {{step}}. Wznów je albo anuluj.",
+        "holdsTasksAndFinish": "Zadanie jest wstrzymane, blokuje: {{tasks}} i nie pozwala zakończyć kroku {{step}}. Wznów je albo anuluj.",
+        "theStep": "bieżącego",
+        "dependsOnBroken": "Zależy od uszkodzonych zadań: {{tasks}}. Przywróć ich pliki z Gita albo zmień zależności.",
+        "dependsOnEnded": "Zależy od zadań, których nie da się już ukończyć: {{tasks}}. Zmień zależności albo anuluj zadanie.",
+        "escalated": "Przekazane do specyfikacji: {{tasks}}. Zdecyduj o każdym zadaniu albo cofnij specyfikację do wcześniejszego kroku.",
+        "broken": "Pliki zadania są niespójne: przywróć je z Gita."
+      }
     },
     "summary": {
       "allTasks": "Wszystkie zadania",
-      "moreIn_one": "jeszcze {{count}} w grupie {{group}}",
-      "moreIn_few": "jeszcze {{count}} w grupie {{group}}",
-      "moreIn_many": "jeszcze {{count}} w grupie {{group}}",
-      "moreIn_other": "jeszcze {{count}} w grupie {{group}}",
-      "moreActions": "Zadania: więcej akcji"
+      "moreActions": "Zadania: więcej akcji",
+      "showMore_one": "Pokaż jeszcze {{count}}",
+      "showMore_few": "Pokaż jeszcze {{count}}",
+      "showMore_many": "Pokaż jeszcze {{count}}",
+      "showMore_other": "Pokaż jeszcze {{count}}",
+      "moreIn_one": "Pokaż jeszcze {{count}} zadanie: {{group}}",
+      "moreIn_few": "Pokaż jeszcze {{count}} zadania: {{group}}",
+      "moreIn_many": "Pokaż jeszcze {{count}} zadań: {{group}}",
+      "moreIn_other": "Pokaż jeszcze {{count}} zadań: {{group}}"
     },
     "progress": {
       "tasksDone": "ukończone zadania: {{completed}} z {{total}}",
@@ -2785,8 +3434,10 @@
       "onHold_few": "{{count}} wstrzymane",
       "onHold_many": "{{count}} wstrzymanych",
       "onHold_other": "{{count}} wstrzymanych",
-      "barNote": "Pasek liczy wszystkie zadania oprócz anulowanych.",
-      "barNoteEnded": "Pasek liczy wszystkie zadania oprócz anulowanych i zakończonych."
+      "readyToStart_one": "{{count}} gotowe do startu",
+      "readyToStart_few": "{{count}} gotowe do startu",
+      "readyToStart_many": "{{count}} gotowych do startu",
+      "readyToStart_other": "{{count}} gotowego do startu"
     },
     "terminal": {
       "allDone_one": "Zadanie ukończone",
@@ -2826,7 +3477,11 @@
       "holdsUpMore": "wstrzymuje {{ids}} (+{{more}})",
       "holdsFinish": "{{step}} nie może się zakończyć, dopóki to zadanie jest wstrzymane",
       "holdsFinishUnnamed": "krok nie może się zakończyć, dopóki to zadanie jest wstrzymane",
-      "waitingFor": "Czeka na {{ids}}"
+      "waitingFor": "Czeka na {{ids}}",
+      "waitingForCount_one": "Czeka na {{count}} inne zadanie",
+      "waitingForCount_few": "Czeka na {{count}} inne zadania",
+      "waitingForCount_many": "Czeka na {{count}} innych zadań",
+      "waitingForCount_other": "Czeka na {{count}} innych zadań"
     },
     "page": {
       "loading": "Wczytywanie zadań",

@@ -113,3 +113,45 @@ export const KeyboardReachable: Story = {
     await expect(output.textContent).toBe(before);
   },
 };
+
+/**
+ * Scrolled sideways, the code passes UNDER the pinned line numbers: the gutter is opaque (its tint
+ * over the field fill over the page) and stays at the block's left edge, so no character shows
+ * between or over the numbers (owner, 2026-11-24: "file_path" overlapped numbers 2 and 3).
+ */
+export const GutterOpaqueWhenScrolled: Story = {
+  play: async ({ canvas }) => {
+    const input = await canvas.findByRole('textbox', { name: 'Parametry' });
+    const { root, viewport } = blockOf(input);
+    viewport.scrollLeft = 200;
+    viewport.dispatchEvent(new Event('scroll'));
+    const gutter = root.querySelector<HTMLElement>('.cm-gutters')!;
+    await waitFor(() =>
+      expect(
+        Math.abs(gutter.getBoundingClientRect().left - viewport.getBoundingClientRect().left),
+      ).toBeLessThanOrEqual(1),
+    );
+    const style = getComputedStyle(gutter);
+    await expect(style.backgroundImage).toContain('gradient');
+    await expect(style.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+    // The gutter paints above the text it covers.
+    const rect = gutter.getBoundingClientRect();
+    const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    await expect(gutter.contains(top)).toBe(true);
+  },
+};
+
+/** Wrapped, the same block reads without sideways scrolling and keeps its gutter. */
+export const WrappedLines: Story = {
+  render: ({ width }) => (
+    <div style={{ width }}>
+      <ToolDetailCode text={longJson} language="json" label="Parametry" lineNumbers wrap />
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const input = await canvas.findByRole('textbox', { name: 'Parametry' });
+    const { viewport } = blockOf(input);
+    await expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.clientWidth + 1);
+    await expect(input.closest('.cm-editor')!.querySelector('.cm-lineWrapping')).not.toBeNull();
+  },
+};

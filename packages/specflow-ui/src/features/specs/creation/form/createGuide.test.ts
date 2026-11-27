@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { firstChoiceControl, modelDecidedTarget } from './createGuide';
+import { firstChoiceControl } from './createGuide';
 
 const group = (html: string) => {
   const container = document.createElement('div');
@@ -40,33 +40,6 @@ describe('firstChoiceControl', () => {
   });
 });
 
-describe('modelDecidedTarget', () => {
-  const model = document.createElement('button');
-
-  it('leads to the chosen mode of a segmented group', () => {
-    const modes = group(
-      '<div role="radiogroup"><button role="radio" aria-checked="false">Ask</button>' +
-        '<button role="radio" aria-checked="true">Agent</button></div>',
-    ).firstElementChild as HTMLElement;
-    expect(modelDecidedTarget(modes, model)?.textContent).toBe('Agent');
-  });
-
-  it('leads to the model picker when the model decides the modes (every item disabled)', () => {
-    const modes = group(
-      '<div role="radiogroup"><button role="radio" aria-checked="true" disabled>Ask</button>' +
-        '<button role="radio" aria-checked="false" disabled>Agent</button></div>',
-    ).firstElementChild as HTMLElement;
-    expect(modelDecidedTarget(modes, model)).toBe(model);
-  });
-
-  it('leads to an enabled mode picker, and past a disabled one to the model picker', () => {
-    const picker = document.createElement('button');
-    expect(modelDecidedTarget(picker, model)).toBe(picker);
-    picker.disabled = true;
-    expect(modelDecidedTarget(picker, model)).toBe(model);
-  });
-});
-
 describe('firstChoiceControl never returns a checked option that is ARIA-disabled', () => {
   it('a checked native radio with aria-disabled falls through to the first usable option', () => {
     const container = group(
@@ -87,15 +60,5 @@ describe('firstChoiceControl never returns a checked option that is ARIA-disable
         '<button role="radio" aria-checked="false" aria-disabled="true">b</button>',
     );
     expect(firstChoiceControl(none)).toBeNull();
-  });
-});
-
-describe('modelDecidedTarget for the Effort picker', () => {
-  it('leads to an enabled Effort picker, and to the model picker while the model decides it', () => {
-    const model = document.createElement('button');
-    const effort = document.createElement('button');
-    expect(modelDecidedTarget(effort, model)).toBe(effort);
-    effort.setAttribute('aria-disabled', 'true');
-    expect(modelDecidedTarget(effort, model)).toBe(model);
   });
 });

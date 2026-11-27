@@ -7,7 +7,7 @@ import {
   nodeProcessTable,
   type ExecutorIdentity,
   type ProcessTable,
-} from '../durable/executor-identity';
+} from '../../project/process/executor-identity';
 import type { ClaimSelf, MutationResource } from '../durable/claims';
 import type { LedgerOwner } from '../durable/ledger/model';
 import type { LeaseErrors } from '../durable/lease';
@@ -146,6 +146,13 @@ export interface ManualCommitPorts {
    * holds them. Called under the control lock, at the reservation.
    */
   assertQuiet(target: ManualCommitTarget, paths: readonly string[]): Promise<void>;
+  /**
+   * Refuses (`DOCUMENT_COMMITS_PENDING`, `cause: attempt-commit`) when a finished agent attempt
+   * whose own commit (D15) waits holds any of the paths, unless this commit is that attempt's own;
+   * `COMMIT_BLOCKED` when the holds cannot be read. Called at the admission and again under the
+   * control lock, at the reservation.
+   */
+  assertNotHeld(target: ManualCommitTarget, paths: readonly string[]): Promise<void>;
 }
 
 /**

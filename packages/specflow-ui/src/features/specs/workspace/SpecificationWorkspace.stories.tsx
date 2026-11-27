@@ -13,7 +13,7 @@ import { createSpecificationWorkspaceFixture } from '../../../../test-support/sp
 import type { ActivityEvent, SpecificationWorkspaceData } from '../read-model/model';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
 
-type ProjectState = 'no-session' | 'with-session' | 'sessions-disabled';
+type ProjectState = 'no-session' | 'with-session' | 'sessions-disabled' | 'tasks-unreadable';
 
 const created: ActivityEvent = {
   id: 'specification-created',
@@ -33,6 +33,8 @@ function projectMode(state: ProjectState): SpecificationWorkspaceData {
   const working = createSpecificationWorkspaceFixture('working', 'created-spec');
   const session = working.resumeSession!;
   const disabled = state === 'sessions-disabled';
+  // The Runtime could not read the Tasks now (busy or recovering from a stop, dogfood 4).
+  const tasksUnreadable = state === 'tasks-unreadable';
 
   return {
     ...base,
@@ -40,7 +42,7 @@ function projectMode(state: ProjectState): SpecificationWorkspaceData {
     // The fixture's overview document is `spec`; the expand target follows the overview id, never position.
     overviewDocumentId: 'spec',
     sectionAvailability: {
-      tasks: 'available',
+      tasks: tasksUnreadable ? 'unavailable' : 'available',
       documents: 'available',
       sessions: disabled ? 'unavailable' : 'available',
       activity: 'available',
@@ -49,13 +51,23 @@ function projectMode(state: ProjectState): SpecificationWorkspaceData {
     },
     sectionUnavailableReason: {
       ...(disabled ? { sessions: 'source_unavailable' as const } : {}),
+      ...(tasksUnreadable ? { tasks: 'source_unavailable' as const } : {}),
       repository: 'not_implemented',
       changes: 'not_implemented',
     },
     startSession: disabled
       ? { available: false, reason: 'sessions_disabled' }
       : { available: true },
-    ...(state === 'with-session'
+    ...(tasksUnreadable
+      ? {
+          featureAttention: {
+            tasks: { state: 'unavailable' as const, reason: 'source_unavailable' as const },
+            sessions: { state: 'available' as const, items: [] },
+            git: { state: 'unavailable' as const, reason: 'not_implemented' as const },
+          },
+        }
+      : {}),
+    ...(state === 'with-session' || tasksUnreadable
       ? {
           resumeSession: session,
           sessions: [session],
@@ -78,21 +90,29 @@ function projectMode(state: ProjectState): SpecificationWorkspaceData {
 
 function Workspace({
   state,
+  specificationKey,
   onNewSession,
+  locale = 'en',
 }: {
   readonly state: ProjectState;
+  readonly locale?: 'en' | 'pl';
+  /** The Specification's key; without one the line under the title names only the type. */
+  readonly specificationKey?: string;
   readonly onNewSession?: () => void;
 }) {
   const setup = useMemo(
     () => ({ query: createSpecFlowQueryClient(), services: createSpecFlowAppServices({}) }),
     [],
   );
-  const data = useMemo(() => projectMode(state), [state]);
+  const data = useMemo(
+    () => ({ ...projectMode(state), ...(specificationKey ? { key: specificationKey } : {}) }),
+    [state, specificationKey],
+  );
 
   return (
     <QueryClientProvider client={setup.query}>
       <TestServicesRouterContext services={setup.services}>
-        <StoryLocalization locale="en">
+        <StoryLocalization locale={locale}>
           <AppWorkspaceProvider>
             <UiModulesProvider modules={builtInUiModuleRegistry}>
               <div className="h-dvh">
@@ -114,6 +134,7 @@ function Workspace({
 
 const viewports = {
   w1440: { name: '1440', styles: { width: '1440px', height: '900px' }, type: 'desktop' },
+  w375: { name: '375', styles: { width: '375px', height: '812px' }, type: 'mobile' },
 } as const;
 
 const meta = {
@@ -158,10 +179,10 @@ export const ProjectModeNoSession: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Start session' }));
     await expect(args.onNewSession).toHaveBeenCalledTimes(1);
 
-    // On demand the history shows the localized created event with its calendar date.
+    // On demand the history shows the localized created event under its calendar day.
     await userEvent.click(canvas.getByRole('button', { name: 'Activity history' }));
     await expect(await canvas.findByText('Specification created')).toBeVisible();
-    await expect(canvas.getByText('Nov 8, 2026')).toBeVisible();
+    await expect(canvas.getByText(/^Nov 8(, 2026)?$/)).toBeVisible();
   },
 };
 
@@ -190,5 +211,50 @@ export const ProjectModeSessionsDisabled: Story = {
     await expect(canvas.queryByRole('button', { name: 'Start session' })).toBeNull();
     await expect(canvasElement.querySelector('#resume-heading')).toBeNull();
     await expectNothingUnavailable(canvasElement);
+  },
+};
+
+const pageKind = (canvasElement: HTMLElement) =>
+  canvasElement.querySelector('[data-page-kind]')?.textContent;
+
+/** Page identity: the line under the title names the type and the Specification's key. */
+export const ProjectModeWithKey: Story = {
+  args: { state: 'no-session', specificationKey: 'nevo-2' },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('heading', { level: 1 });
+    await expect(pageKind(canvasElement)).toBe('Specification · nevo-2');
+  },
+};
+
+/** A Specification without a key (created before keys, or a manifest without one): only its type. */
+export const ProjectModeWithoutKey: Story = {
+  args: { state: 'no-session' },
+  globals: { viewport: { value: 'w375', isRotated: false } },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('heading', { level: 1 });
+    await expect(pageKind(canvasElement)).toBe('Specification');
+  },
+};
+
+/**
+ * The Tasks could not be read now: SpecFlow is busy or recovering from a stop (a held control lock,
+ * dogfood 4). The section says so in plain words, never "not supported", and offers Retry.
+ */
+export const ProjectModeTasksUnreadable: Story = {
+  args: { state: 'tasks-unreadable', specificationKey: 'nevo-2' },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByText("Tasks can't be read right now");
+    await expect(canvas.getByText(/SpecFlow is busy or recovering from a stop/u)).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Retry' })).toBeVisible();
+    await expect(canvasElement.textContent).not.toMatch(/not supported/iu);
+    await expectNothingUnavailable(canvasElement);
+  },
+};
+export const ProjectModeTasksUnreadableMobilePolish: Story = {
+  args: { state: 'tasks-unreadable', specificationKey: 'nevo-2', locale: 'pl' },
+  globals: { viewport: { value: 'w375', isRotated: false } },
+  play: async ({ canvas }) => {
+    await canvas.findByText('Nie można teraz odczytać zadań');
+    await expect(canvas.getByRole('button', { name: 'Spróbuj ponownie' })).toBeVisible();
   },
 };

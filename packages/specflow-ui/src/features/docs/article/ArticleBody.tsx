@@ -8,6 +8,7 @@ import { useArticleNavigation } from './articleContext';
 import { SkippedDocumentList } from '../skipped/SkippedDocumentList';
 import { DocsArticleView } from './DocsArticleView';
 import { useReadingPosition } from './readingPositions';
+import { productIcons } from '../../../shared/product-icons';
 
 /**
  * Why a requested document has no article. A document that is not there (removed while reading,
@@ -33,7 +34,7 @@ function ArticleRefusal({
     return (
       <EmptyState
         variant="pane"
-        icon="file-search"
+        icon={productIcons.documentation}
         title={t(superseded ? 'docs.state.superseded.title' : 'docs.state.deprecated.title')}
         description={describe(
           t(
@@ -71,7 +72,7 @@ function ArticleRefusal({
   return (
     <EmptyState
       variant="pane"
-      icon="file-search"
+      icon={productIcons.documentation}
       title={t('docs.state.notAvailable')}
       description={
         <Typography as="code" variant="code-md" className="break-all">

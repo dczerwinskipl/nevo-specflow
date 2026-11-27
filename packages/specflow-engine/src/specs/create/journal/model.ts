@@ -1,5 +1,6 @@
 import type { CreateClientIntent } from '../intent';
 import type { WorkspaceIntegrationDestination } from '../../../project/workspace/registry/registry';
+import type { ExecutorIdentity } from '../../../project/process/executor-identity';
 
 export const CREATE_STAGES = [
   'reserved',
@@ -99,4 +100,10 @@ export interface CreateJournal {
   readonly gitPlan?: { readonly projectRoot: string; readonly gitInstanceId: string };
   readonly commit?: CreateCommitEvidence;
   readonly reason?: string;
+  /**
+   * The process that runs the stages: the reserving one, or the one that took the journal over on
+   * positive evidence that the previous one is gone (ADR 0027). Optional: journals reserved before
+   * it existed have none, and only an operator resumes them.
+   */
+  readonly executor?: ExecutorIdentity;
 }

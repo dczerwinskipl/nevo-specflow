@@ -32,7 +32,11 @@ export interface AgentActor {
   readonly details: {
     readonly archetype?: string;
     readonly provider: string;
+    /** The provider's title (the tool, "Claude Code") in the catalogue when the attempt started. */
+    readonly providerTitle?: string;
     readonly model?: string;
+    /** The model's title in the provider's catalogue when the attempt started, for people. */
+    readonly modelTitle?: string;
     readonly sessionId?: string;
   };
 }
@@ -55,6 +59,57 @@ export type WorkflowActor = AgentActor | OwnerActor;
 
 export type WorkflowRun = core.WorkflowRun<WorkflowActor>;
 export type AttemptRecord = core.AttemptRecord<WorkflowActor>;
+
+/**
+ * The host data SpecFlow records with an agent attempt it starts for agent step execution
+ * (`AttemptRecord.hostData`), committed with the run: the id of the attempt's local journal and the
+ * checkout the attempt works in. The per-Turn binding (invocation and Turn ids) and the finish
+ * proposal are in that journal (`workflow/agent`), never in a Git-tracked file.
+ */
+export interface AgentAttemptBinding {
+  readonly kind: 'agent-attempt';
+  readonly attemptId: string;
+  readonly workspaceId: string;
+  /** The digest of the step context the attempt was started with (sha256 hex), when given. */
+  readonly contextDigest?: string;
+  /**
+   * The launch the owner started the attempt with (D18), with the provider and model of its actor:
+   * a fresh Session or the continued one, and the effort when one was chosen.
+   */
+  readonly launch?: { readonly session: 'fresh' | 'reuse'; readonly effort?: string };
+}
+
+/** The binding of an attempt started for agent step execution; `undefined` for any other attempt. */
+export function agentAttemptBindingOf(
+  record: AttemptRecord | undefined,
+): AgentAttemptBinding | undefined {
+  const data = record?.hostData as AgentAttemptBinding | undefined;
+
+  return data?.kind === 'agent-attempt' ? data : undefined;
+}
+
+/**
+ * The host data of an agent's finish held for the owner's confirmation
+ * (`AttemptRecord.confirmation.hostData`): the Task status decisions of the finish, which only the
+ * owner takes (D17), applied once the owner confirms. Absent when the finish has none.
+ */
+export interface PendingOwnerDecisions {
+  readonly kind: 'owner-decisions';
+  readonly taskDecisions: readonly {
+    readonly taskId: string;
+    readonly status: 'ready' | 'on-hold' | 'cancelled';
+    readonly reason?: string;
+  }[];
+}
+
+/** The Task decisions a held finish applies once confirmed; none when it has none. */
+export function pendingOwnerDecisionsOf(
+  record: AttemptRecord | undefined,
+): PendingOwnerDecisions['taskDecisions'] {
+  const data = record?.confirmation?.hostData as PendingOwnerDecisions | undefined;
+
+  return data?.kind === 'owner-decisions' ? data.taskDecisions : [];
+}
 
 export interface SpecificationExecutionRecord {
   readonly specId: string;

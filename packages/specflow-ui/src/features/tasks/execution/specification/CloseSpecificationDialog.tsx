@@ -20,7 +20,7 @@ import type { CloseMerge } from '@nevo/specflow-contracts/specs';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { useAppServices } from '../../../../app/useAppServices';
 import { documentStateLabel } from '../../../documents';
-import { InlineAction } from '../InlineAction';
+import { TextAction } from '../../../../shared/actions';
 import {
   specsOverviewKeys,
   type DocumentItem,
@@ -275,15 +275,19 @@ function CloseContent({
                 />
               ) : null}
               {repository.length > 0 ? (
-                <RepositoryBlockers repository={repository} specTitle={specTitle} />
+                <RepositoryBlockers
+                  repository={repository}
+                  specTitle={specTitle}
+                  onRetried={checkAgain}
+                />
               ) : null}
               {/* Abandoning needs a Close too, which meets the same repository checks. */}
               {onAbandonInstead && blockers.length > 0 ? (
                 <Typography as="p" variant="body-sm" className="text-content-secondary">
                   {t('workflowExecution.close.abandonPrompt')}{' '}
-                  <InlineAction onClick={onAbandonInstead}>
+                  <TextAction onClick={onAbandonInstead}>
                     {t('workflowExecution.close.abandonInstead')}
-                  </InlineAction>
+                  </TextAction>
                 </Typography>
               ) : null}
             </>
@@ -327,6 +331,8 @@ function CloseContent({
                 <UncommittedOwners
                   hold={outcome.uncommitted}
                   specId={specId}
+                  onRetried={checkAgain}
+                  {...(outcome.ownersReasonKey ? { ownerLead: t(outcome.ownersReasonKey) } : {})}
                   {...(onOpenSpecification
                     ? { onOpenSpecification: (id: string) => go(() => onOpenSpecification(id))() }
                     : {})}
@@ -646,9 +652,9 @@ function CloseFacts({
             ))}
             {notDelivered > ITEMS_SHOWN ? (
               <li>
-                <InlineAction onClick={onSeeTasks}>
+                <TextAction onClick={onSeeTasks}>
                   {t('workflowExecution.exit.more', { count: notDelivered - ITEMS_SHOWN })}
-                </InlineAction>
+                </TextAction>
               </li>
             ) : null}
           </ul>

@@ -758,8 +758,10 @@ export const NavigationLongTaskBreadcrumb: Story = {
     await settleViewport(900, 900);
     await canvas.findByRole('heading', { name: longTaskTitle, level: 1 });
     const location = await canvas.findByRole('navigation', { name: 'Application location' });
-    if (location.querySelector('[aria-current="page"]')?.textContent !== longTaskTitle) {
-      throw new Error('The current breadcrumb must expose the full Task title.');
+    // The trail names a Task page by its type, never its long key or its title (the body's h1
+    // carries the title once: interaction-model.md "Page identity").
+    if (location.querySelector('[aria-current="page"]')?.textContent !== 'Task') {
+      throw new Error('The current breadcrumb must name the page as a Task.');
     }
 
     const back = Array.from(location.querySelectorAll('a')).find(

@@ -23,6 +23,28 @@ export async function seedExecutionCatalogue(): Promise<ExecutionCatalogue> {
   );
 }
 
+/**
+ * The archetype {@link restrictTaskTypes} restricts, and the one task type it still allows. No
+ * shipped Specification archetype restricts its task types, so a test of the task-type policy
+ * restricts one itself instead of depending on what a shipped archetype allows.
+ */
+export const RESTRICTED_ARCHETYPE = 'architecture';
+const RESTRICTED_ARCHETYPE_TASK_TYPE = 'implementation';
+
+/** The catalogue with {@link RESTRICTED_ARCHETYPE} allowing only `implementation` Tasks. */
+export function restrictTaskTypes(catalogue: ExecutionCatalogue): ExecutionCatalogue {
+  return {
+    ...catalogue,
+    specificationExecution: (archetypeId) => {
+      const execution = catalogue.specificationExecution(archetypeId);
+
+      return execution && archetypeId === RESTRICTED_ARCHETYPE
+        ? { ...execution, taskTypes: [RESTRICTED_ARCHETYPE_TASK_TYPE] }
+        : execution;
+    },
+  };
+}
+
 /** Every shipped seed file by its path relative to the definitions folder, to copy and edit. */
 export async function seedDefinitionFiles(): Promise<Record<string, string>> {
   const directory = await locateSeedDirectory();
@@ -53,6 +75,8 @@ export function fakeReferences(): TaskReferences & {
   readonly projectDocuments: Set<string>;
   readonly paths: Set<string>;
   readonly pendingDocuments: Set<string>;
+  /** The document files of each Task by id (`taskDocumentRevisions`); none by default. */
+  readonly taskDocuments: Map<string, { path: string; revision: string | null }[]>;
   /** The typed documents gates read, in registry order; `gateReads` counts the reads. */
   readonly gateDocuments: FakeGateDocument[];
   gateReads: number;
@@ -63,6 +87,7 @@ export function fakeReferences(): TaskReferences & {
     projectDocuments: new Set(['architecture.workflow.workflow-kernel']),
     paths: new Set(['packages/specflow-engine/src', 'packages/**/*.ts']),
     pendingDocuments: new Set<string>(),
+    taskDocuments: new Map<string, { path: string; revision: string | null }[]>(),
     gateDocuments: [] as FakeGateDocument[],
     gateReads: 0,
     documentsOfType: (scope: GateScopeRef, type: string) => {
@@ -87,6 +112,8 @@ export function fakeReferences(): TaskReferences & {
     pendingDocumentChange: (_specId: string, taskId: string) =>
       Promise.resolve(references.pendingDocuments.has(taskId)),
     pendingDocumentChanges: () => Promise.resolve(new Set(references.pendingDocuments)),
+    taskDocumentRevisions: (_specId: string, taskId: string) =>
+      Promise.resolve([...(references.taskDocuments.get(taskId) ?? [])]),
   };
 
   return references;
@@ -205,7 +232,8 @@ export const TWO_TASKS = [
 
 /**
  * Runs the Specification up to the wait step: the breakdown drafts {@link TWO_TASKS} and the
- * review's pass approves them. Returns the finish of the review.
+ * review's pass (the owner's: an approval is an owner decision) approves them. Returns the finish
+ * of the review.
  */
 export async function specificationWithTasks(dependencies: WorkflowDependencies) {
   await runToBreakdown(dependencies);
@@ -217,7 +245,7 @@ export async function specificationWithTasks(dependencies: WorkflowDependencies)
     actor: claude,
   });
 
-  return work(dependencies, specification, { result: 'pass' }, agent('codex', 'session-r', 'x'));
+  return work(dependencies, specification, { result: 'pass' }, owner);
 }
 
 /** Runs the Specification until `breakdown` is active (worked by {@link claude}). */

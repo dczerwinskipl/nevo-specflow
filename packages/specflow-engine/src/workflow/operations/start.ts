@@ -1,12 +1,13 @@
 import { ANY_TASK_TYPE } from '@nevo/specflow-contracts/documents';
 
-import { decide, findStep, newRun } from '@nevo/workflow';
+import { activeAttempt, decide, findStep, newRun } from '@nevo/workflow';
 import { resolveSpecificationExecution } from '../definitions/catalogue';
 import { WorkflowError } from '../errors';
 import { entryGatesOf } from '../gates/evaluate';
 import { assertGatesSatisfied } from '../gates/read';
 import { resolveTaskType, taskReadiness, unsatisfiableDependencies } from '../tasks/tasks';
 import type {
+  AgentAttemptBinding,
   ExecutionTask,
   SpecificationExecutionRecord,
   TaskRunRecord,
@@ -41,6 +42,54 @@ export interface StartOptions {
    * must be one the step allows; the Session of an agent attempt is the only one that resumes it.
    */
   readonly actor: WorkflowActor;
+  /**
+   * The position the caller showed and asks to start (agent step execution): checked before anything is written,
+   * so a stale request never starts or resumes another attempt (`WORKFLOW_ATTEMPT_MISMATCH`).
+   */
+  readonly expected?: ExpectedPosition;
+  /**
+   * Called once every check of the start passed (expected position, actor, Task readiness, entry
+   * gates) and before anything is written: agent step execution's baseline admission and context
+   * read. A throw refuses the start. `attemptData` is recorded with the attempt the start activates;
+   * a resume keeps the active attempt's own.
+   */
+  readonly admit?: () => Promise<{ readonly attemptData?: AgentAttemptBinding } | void>;
+}
+
+/**
+ * The step a start works on and, for a resume, its active attempt. Without `attempt` the start must
+ * activate a new attempt of `step`; with it, `step#attempt` must be the active attempt. With
+ * `handOver` (Hand to agent), `step#attempt` must be the owner's active attempt: it ends handed to
+ * the agent (`taken-over`) and the start activates the step's next attempt for the agent.
+ */
+export interface ExpectedPosition {
+  readonly step: string;
+  readonly attempt?: number;
+  readonly handOver?: true;
+}
+
+function assertExpectedPosition(loaded: LoadedSubject, expected: ExpectedPosition): void {
+  const position = loaded.run.position;
+  const current =
+    position.state === 'not-started'
+      ? { step: loaded.definition.entryStep }
+      : position.state === 'ready'
+        ? { step: position.step }
+        : position.state === 'active'
+          ? { step: position.step, attempt: position.attempt }
+          : undefined;
+  if (current?.step !== expected.step || current.attempt !== expected.attempt) {
+    const shown = `${expected.step}${expected.attempt !== undefined ? `#${String(expected.attempt)}` : ''}`;
+
+    throw new WorkflowError(
+      'WORKFLOW_ATTEMPT_MISMATCH',
+      current === undefined
+        ? `The run has ended; ${shown} cannot start.`
+        : position.state === 'active' && expected.attempt === undefined
+          ? `The step "${current.step}" has an active attempt already; continue it instead of starting ${shown}.`
+          : `The run moved since it was shown: it is at ${current.step}${current.attempt !== undefined ? `#${String(current.attempt)}` : ''}, not ${shown}.`,
+    );
+  }
 }
 
 /**
@@ -59,6 +108,13 @@ async function startSubject(
   readinessChecked = false,
 ): Promise<StartResult> {
   const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
+  if (options.expected) {
+    assertExpectedPosition(loaded, options.expected);
+    if (options.expected.handOver === true) {
+      return handOverSubject(dependencies, snapshot, loaded, options);
+    }
+  }
+
   if (loaded.run.position.state === 'terminal') {
     return { kind: 'terminal', subject };
   }
@@ -66,9 +122,10 @@ async function startSubject(
   // A resume continues the active attempt: only its own Session may resume an agent attempt. The
   // core refuses a wait step (the Engine enters and settles it) and an actor of the wrong class.
   assertSameSession(loaded.run, options.actor);
+  const at = isoNow(dependencies);
   const decision = decide(loaded.definition, loaded.run, {
     kind: 'start',
-    at: isoNow(dependencies),
+    at,
     actor: options.actor,
   });
   const intent = decision.intent;
@@ -98,7 +155,17 @@ async function startSubject(
     await assertGatesSatisfied(dependencies.references, subject, 'entry', step, entryGatesOf(step));
   }
 
-  const run = decision.nextRun;
+  const attemptData = (await options.admit?.())?.attemptData;
+  // The host data is known only once the start was admitted; the same decision records it.
+  const run =
+    attemptData !== undefined && !intent.resumed
+      ? decide(loaded.definition, loaded.run, {
+          kind: 'start',
+          at,
+          actor: options.actor,
+          hostData: attemptData,
+        }).nextRun
+      : decision.nextRun;
   if (run !== loaded.run || created) {
     await dependencies.store.apply(subject.specId, {
       ...changeFor(snapshot, loaded, run, created ? null : loaded.revision),
@@ -115,6 +182,79 @@ async function startSubject(
       definition: loaded.definition,
       step,
       attempt: intent.attempt,
+      catalogue: dependencies.catalogue,
+      ...(loaded.task ? { task: loaded.task } : {}),
+      allowedTaskTypes: snapshot.specification?.value.taskTypes ?? [ANY_TASK_TYPE],
+      ...executionTasks(dependencies.catalogue, snapshot),
+    }),
+  };
+}
+
+/**
+ * Hand to agent: the owner's active attempt (`expected`, checked by the caller) ends `taken-over`
+ * and the step's next attempt starts for `options.actor`, an agent, in one change, as the core's
+ * take-over decides it. The step started already, so the Task's readiness, its context and the
+ * entry gates are not judged again (as for a resume or a Take over); `admit` runs before anything is
+ * written, and its `attemptData` is recorded with the new attempt.
+ */
+async function handOverSubject(
+  dependencies: WorkflowDependencies,
+  snapshot: ExecutionSnapshot,
+  loaded: LoadedSubject,
+  options: StartOptions,
+): Promise<StartResult> {
+  const { subject, run: current } = loaded;
+  const position = current.position;
+  const active = activeAttempt(current);
+  if (options.actor.class !== 'agent') {
+    throw new WorkflowError('WORKFLOW_EXECUTOR_NOT_ALLOWED', 'Only an agent is handed a step.');
+  }
+
+  if (position.state !== 'active' || active?.actor?.class !== 'human') {
+    throw new WorkflowError(
+      'WORKFLOW_ATTEMPT_MISMATCH',
+      `The active attempt${ofSubject(subject)} is not a person's; only the owner's attempt is handed to the agent.`,
+    );
+  }
+
+  const at = isoNow(dependencies);
+  const command = {
+    kind: 'take-over',
+    at,
+    step: position.step,
+    attempt: position.attempt,
+    actor: options.actor,
+  } as const;
+  // The core judges the hand (the step's executors include an agent) before the admission.
+  const decision = decide(loaded.definition, current, command);
+  const step = findStep(loaded.definition, position.step);
+  if (decision.intent.kind !== 'execute' || step?.kind !== 'work') {
+    throw new WorkflowError(
+      'WORKFLOW_STATE_CORRUPT',
+      'A hand to the agent activated no work step.',
+    );
+  }
+
+  const attemptData = (await options.admit?.())?.attemptData;
+  const run =
+    attemptData !== undefined
+      ? decide(loaded.definition, current, { ...command, hostData: attemptData }).nextRun
+      : decision.nextRun;
+  const attempt = decision.intent.attempt;
+  await dependencies.store.apply(subject.specId, {
+    ...changeFor(snapshot, loaded, run, loaded.revision),
+    summary: `hand step ${step.id}${ofSubject(subject)} to an agent (attempt ${String(position.attempt)} → ${String(attempt)})`,
+  });
+
+  return {
+    kind: 'started',
+    subject,
+    context: compileStepContext({
+      subject,
+      run,
+      definition: loaded.definition,
+      step,
+      attempt,
       catalogue: dependencies.catalogue,
       ...(loaded.task ? { task: loaded.task } : {}),
       allowedTaskTypes: snapshot.specification?.value.taskTypes ?? [ANY_TASK_TYPE],
@@ -189,21 +329,30 @@ export function startSpecificationExecution(
   dependencies: WorkflowDependencies,
   input: StartSpecificationInput,
 ): Promise<StartResult> {
-  return dependencies.serialize(async () => {
-    const snapshot = await dependencies.store.read(input.specId);
-    const subject: WorkflowSubject = { kind: 'specification', specId: input.specId };
-    if (snapshot.specification) {
-      return startSubject(dependencies, snapshot, subject, input);
-    }
+  return dependencies.serialize(() => startSpecificationInSection(dependencies, input));
+}
 
-    const record = newSpecificationRecord(dependencies, input);
-    const seeded: ExecutionSnapshot = {
-      ...snapshot,
-      specification: { value: record, revision: '' },
-    };
+/**
+ * {@link startSpecificationExecution} for a caller that holds the `serialize` section already and
+ * writes more in it (the start of an agent attempt records its journal there).
+ */
+export async function startSpecificationInSection(
+  dependencies: WorkflowDependencies,
+  input: StartSpecificationInput,
+): Promise<StartResult> {
+  const snapshot = await dependencies.store.read(input.specId);
+  const subject: WorkflowSubject = { kind: 'specification', specId: input.specId };
+  if (snapshot.specification) {
+    return startSubject(dependencies, snapshot, subject, input);
+  }
 
-    return startSubject(dependencies, seeded, subject, input, true);
-  });
+  const record = newSpecificationRecord(dependencies, input);
+  const seeded: ExecutionSnapshot = {
+    ...snapshot,
+    specification: { value: record, revision: '' },
+  };
+
+  return startSubject(dependencies, seeded, subject, input, true);
 }
 
 function newSpecificationRecord(
@@ -246,41 +395,47 @@ export function startTaskExecution(
   dependencies: WorkflowDependencies,
   input: StartTaskInput,
 ): Promise<StartResult> {
-  return dependencies.serialize(async () => {
-    const snapshot = await dependencies.store.read(input.specId);
-    const subject: WorkflowSubject = {
-      kind: 'task',
-      specId: input.specId,
-      taskId: input.taskId,
-    };
-    const { task, run } = loadTask(dependencies.catalogue, snapshot, input.taskId);
-    if (run) {
-      assertExpectedRevision(input, run.value.run.workflow.revision);
+  return dependencies.serialize(() => startTaskInSection(dependencies, input));
+}
 
-      return startSubject(dependencies, snapshot, subject, input);
-    }
+/** {@link startTaskExecution} for a caller that holds the `serialize` section already. */
+export async function startTaskInSection(
+  dependencies: WorkflowDependencies,
+  input: StartTaskInput,
+): Promise<StartResult> {
+  const snapshot = await dependencies.store.read(input.specId);
+  const subject: WorkflowSubject = {
+    kind: 'task',
+    specId: input.specId,
+    taskId: input.taskId,
+  };
+  const { task, run } = loadTask(dependencies.catalogue, snapshot, input.taskId);
+  if (run) {
+    assertExpectedRevision(input, run.value.run.workflow.revision);
 
-    // Readiness first, so a draft is refused as blocked; `startSubject` does not check it again.
-    assertTaskReady(dependencies, snapshot, task);
-    const { workflow } = resolveTaskType({
-      type: task.type,
-      allowed: await effectiveTaskTypesOf(dependencies, snapshot),
-      taskType: (id) => dependencies.catalogue.taskType(id),
-      workflow: (id) => dependencies.catalogue.workflow(id),
-    });
-    const record: TaskRunRecord = {
-      specId: input.specId,
-      taskId: input.taskId,
-      run: newRun<WorkflowActor>(workflow),
-    };
-    assertExpectedRevision(input, record.run.workflow.revision);
-    const seeded: ExecutionSnapshot = {
-      ...snapshot,
-      runs: [...snapshot.runs, { value: record, revision: '' }],
-    };
+    return startSubject(dependencies, snapshot, subject, input);
+  }
 
-    return startSubject(dependencies, seeded, subject, input, true, true);
+  // Readiness first, so a draft is refused as blocked; `startSubject` does not check it again.
+  assertTaskReady(dependencies, snapshot, task);
+  const { workflow } = resolveTaskType({
+    type: task.type,
+    allowed: await effectiveTaskTypesOf(dependencies, snapshot),
+    taskType: (id) => dependencies.catalogue.taskType(id),
+    workflow: (id) => dependencies.catalogue.workflow(id),
   });
+  const record: TaskRunRecord = {
+    specId: input.specId,
+    taskId: input.taskId,
+    run: newRun<WorkflowActor>(workflow),
+  };
+  assertExpectedRevision(input, record.run.workflow.revision);
+  const seeded: ExecutionSnapshot = {
+    ...snapshot,
+    runs: [...snapshot.runs, { value: record, revision: '' }],
+  };
+
+  return startSubject(dependencies, seeded, subject, input, true, true);
 }
 
 function assertExpectedRevision(input: StartTaskInput, revision: string): void {

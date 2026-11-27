@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import { Command, InvalidArgumentError } from 'commander';
 
+import type { AgentBrokerTransport } from '../agent-broker/client';
+import { refuse, runBrokeredDocumentWrite } from '../agent-broker/routing';
 import { ReportedFailure } from '../exit-code';
 import { engineDocumentsApi, type DocumentsEngineApi, type DocumentWriteRequest } from './api';
 import { readContentInput } from './content-input';
@@ -28,6 +30,8 @@ export interface DocumentsCommandContext {
   readonly api?: DocumentsEngineApi;
   /** How long the drain at exit may take (default 10 s, the shutdown deadline of the queue). */
   readonly exitFlushDeadlineMs?: number;
+  /** Inside an agent Turn: the Runtime's broker, to which `add`, `save` and `classify` send their write. */
+  readonly broker?: AgentBrokerTransport;
 }
 
 /** The longest `flush` waits when no `--wait-ms` is given. */
@@ -135,6 +139,34 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
   };
 
   const usage = (command: Command, message: string): never => command.error(message);
+
+  /**
+   * Inside an agent Turn the write goes to the broker and the Engine is never opened. What the broker
+   * protocol cannot carry (a Task scope, waiting for the commit) is refused, not done locally.
+   */
+  const viaBroker = async (
+    options: WriteOptions,
+    unsupported: readonly (string | undefined)[],
+    action: 'create' | 'save' | 'classify',
+    operation: Parameters<typeof runBrokeredDocumentWrite>[4],
+  ): Promise<void> => {
+    const found = unsupported.find((reason) => reason !== undefined);
+    if (found !== undefined) {
+      refuse(output, options.json, 'specs documents', found);
+    }
+
+    await runBrokeredDocumentWrite(output, context.broker!, options, action, operation);
+  };
+
+  /** The Task whose documents a brokered write names (`--task`); the broker checks the scope. */
+  const taskOf = (options: WriteOptions) =>
+    options.task !== undefined ? { taskId: options.task } : {};
+
+  const noWait = (options: WriteOptions): (string | undefined)[] => [
+    options.wait || options.waitMs !== undefined
+      ? '--wait is not available to an agent in this Turn; the Runtime commits the documents.'
+      : undefined,
+  ];
 
   /** Exactly one of `--document` and `--folder`. */
   const targetOf = (command: Command, options: TargetOptions) => {
@@ -259,7 +291,10 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       .command('add')
       .description('Create a document from text (--content-file or --stdin) or from a template')
       .argument('<spec-id>', 'Specification UUID')
-      .option('--path <path>', 'Path in the Specification (required without --template)')
+      .option(
+        '--path <path>',
+        'Path relative to the Specification folder (the Task folder with --task), e.g. architecture.md, never specs/active/...; required without --template',
+      )
       .option(
         '--type <typeId>',
         'Document type id; omitted: unclassified (a template brings its own)',
@@ -301,6 +336,35 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
 
       if (options.template === undefined && options.catalogueRevision !== undefined) {
         usage(command, '--catalogue-revision applies to --template only.');
+      }
+
+      if (context.broker !== undefined) {
+        const template = options.template;
+        if (template !== undefined && options.path === undefined) {
+          refuse(
+            output,
+            options.json,
+            'specs documents add',
+            'Give --path with --template: an agent in this Turn names where the document goes.',
+          );
+        }
+
+        const type = options.type !== undefined ? { type: options.type } : {};
+        const entry =
+          template !== undefined
+            ? { path: options.path!, templateId: template, ...type }
+            : { path: options.path!, content: await readContentInput(options, context), ...type };
+        await viaBroker(options, noWait(options), 'create', {
+          name: 'documents.create',
+          specId,
+          ...taskOf(options),
+          documents: [entry],
+          ...(options.catalogueRevision !== undefined
+            ? { catalogueRevision: options.catalogueRevision }
+            : {}),
+        });
+
+        return;
       }
 
       await run(options, async (session) => {
@@ -369,6 +433,19 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
     ) => {
       if ((options.contentFile === undefined) === (options.stdin !== true)) {
         usage(command, 'Give exactly one of --content-file and --stdin.');
+      }
+
+      if (context.broker !== undefined) {
+        await viaBroker(options, noWait(options), 'save', {
+          name: 'documents.save',
+          specId,
+          ...taskOf(options),
+          documentId,
+          content: await readContentInput(options, context),
+          expectedRevision: options.expectedRevision,
+        });
+
+        return;
       }
 
       await run(options, async (session) => {
@@ -473,6 +550,19 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
       documentId: string,
       options: WriteOptions & { type: string; expectedRevision: string },
     ) => {
+      if (context.broker !== undefined) {
+        await viaBroker(options, noWait(options), 'classify', {
+          name: 'documents.classify',
+          specId,
+          ...taskOf(options),
+          documentId,
+          type: options.type,
+          expectedRevision: options.expectedRevision,
+        });
+
+        return;
+      }
+
       await run(options, (session) =>
         write(session, options, specId, {
           action: 'classify',
@@ -623,6 +713,7 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
         if (operationId === undefined) {
           const result = await api.takeOver(session.engine);
           emit(options, result, [
+            `Control lock breaker: ${result.breaker}`,
             `Control lock: ${result.lock.status}`,
             ...result.writes.map((item) => `Write ${item.operationId}: ${item.outcome}`),
             ...result.manualCommits.map(

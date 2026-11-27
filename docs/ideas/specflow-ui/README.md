@@ -93,12 +93,8 @@ still open:
 
 ## Open items without their own document
 
-- **Create with an agent on a project Runtime.** The method choice and Create with an agent exist
-  only in demo mode ([Create Specification, Demo mode](../../product/specflow/specification-creation.md#demo-mode)).
-  On a project Runtime the Create form chooses no agent and the Create operation allocates no
-  Session, so offering it there first needs a backend change: a project Create that takes the agent
-  choice and allocates the first Session. Whether that is planned with the UI or as a separate item
-  is not decided.
+- **From an idea.** The likely next way to start a Specification (from a `docs/ideas` document):
+  one more entry of the start screen's list ([Ways to start](../../product/specflow/specification-creation.md#ways-to-start-and-create-with-an-agent)).
 
 The Session Chat V10 HTML mocks remain illustrative, synthetic and **not production code or API
 evidence**. Exact visual styling, Context body, provider-specific capability fixtures and **mobile

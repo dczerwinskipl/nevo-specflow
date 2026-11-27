@@ -72,6 +72,7 @@ const RULES: Partial<Record<WorkflowErrorCode, ErrorCodeRule>> = {
   WORKFLOW_STATE_CORRUPT: { kind: 'server' },
   WORKFLOW_UNAVAILABLE: { kind: 'unavailable', outcome: 'not-applied' },
   CONTROL_LOCK_BUSY: { kind: 'unavailable', outcome: 'not-applied', retryable: true },
+  CONTROL_LOCK_RECOVERY_REQUIRED: { kind: 'unavailable', outcome: 'not-applied' },
   CONTROL_LOCK_CORRUPT: { kind: 'server' },
   CONTROL_LOCK_OWNERSHIP_LOST: { kind: 'server' },
   CONTROL_LOCK_INVALID_HOME: { kind: 'server' },

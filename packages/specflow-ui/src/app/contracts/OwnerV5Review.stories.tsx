@@ -93,7 +93,7 @@ export const GuardAt360430: Story = {
   args: { path: '/specs/new?collection=current' },
   play: async ({ canvas, userEvent, parameters }) => {
     await stable(360);
-    await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Ręcznie/ }));
     await userEvent.type(
       await canvas.findByRole('textbox', { name: 'Nazwa specyfikacji' }),
       'Długi opis eksportu danych klienta',

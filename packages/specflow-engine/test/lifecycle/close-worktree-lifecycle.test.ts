@@ -390,6 +390,6 @@ describe('E2.T12–T13 linked Worktree Close lifecycle', () => {
     expect((await engine.readRegistry()).revision).toBe(initialRevision);
     const completed = await disposeReboundWorktree(engine, operationId);
     expect(completed.stage).toBe('completed');
-    expect((await readWorkspaceSpecification(root, spec.specId)).status).toBe('draft');
+    expect((await readWorkspaceSpecification(root, spec.specId)).location).toBe('active');
   }, 120000);
 });

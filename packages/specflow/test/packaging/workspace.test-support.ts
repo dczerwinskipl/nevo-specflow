@@ -34,7 +34,12 @@ export function createPackagingWorkspace(sourceRoot: string): {
 
     return { root, dispose };
   } catch (error) {
-    dispose();
+    // A cleanup failure (a Windows file lock, EPERM) must not hide why the workspace failed.
+    try {
+      dispose();
+    } catch (cleanup) {
+      console.warn('packaging workspace cleanup failed', cleanup);
+    }
 
     throw error;
   }

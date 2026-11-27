@@ -19,8 +19,10 @@ import {
 } from '../detail/history/TaskHistoryResourceInspection';
 import { TaskHistory } from '../detail/history/TaskHistory';
 import { TaskHistoryHeader, TaskResourceHeader } from '../detail/history/TaskReferenceInspection';
+import { taskDocumentStack } from '../../documents';
 import { ProjectTaskWorkspace } from './ProjectTaskWorkspace';
 import { TaskViewStateProvider } from '../detail/TaskViewState';
+import { feedbackStack } from '../execution/feedback/feedbackStack';
 
 interface TaskContextData {
   task: FullTaskData;
@@ -40,7 +42,10 @@ function useTaskContext(params: RootParams): SecondaryData<TaskContextData> {
   const data = useContext(Context);
 
   return data
-    ? { status: 'ready', data: { ...data, historyResource: params.historyResource } }
+    ? {
+        status: 'ready',
+        data: { ...data, historyResource: params.historyResource },
+      }
     : { status: 'loading' };
 }
 
@@ -66,6 +71,19 @@ function HistoryResourceScreen({
 
 function HistoryScreen({ data }: SecondaryScreenProps<TaskContextData, Record<never, never>>) {
   const nav = useSecondaryStack<Pages>();
+  const navigation = useSecondaryNavigation();
+  // The agent's paths are checkout-relative; the Task's documents are its folder's.
+  const openDocument = (path: string) => {
+    const document = data.task.resource.documents.find((item) => path.endsWith(`/${item.path}`));
+    if (document) {
+      void navigation.openTab(taskDocumentStack, {
+        documentId: document.id,
+        name: document.path.split('/').at(-1) ?? document.id,
+      });
+    }
+
+    return document !== undefined;
+  };
 
   return (
     <AppContent className="w-content-standard max-w-full">
@@ -74,6 +92,11 @@ function HistoryScreen({ data }: SecondaryScreenProps<TaskContextData, Record<ne
           specId={data.specId}
           taskId={data.task.id}
           snapshot={data.task.snapshot}
+          onOpenDocument={openDocument}
+          // A feedback opened from the history is pushed: Back returns to the history.
+          onOpenFeedback={(ref) =>
+            void nav.navTo(feedbackStack, { specId: data.specId, taskId: data.task.id, ref })
+          }
           onOpenResource={(params) => {
             void nav.navTo('historyResource', params);
           }}
@@ -137,6 +160,9 @@ function FullTaskWithHistory(props: Parameters<typeof FullTaskWorkspace>[0]) {
       {...props}
       resource={props.task.resource}
       onOpenHistory={() => void navigation.open(historyStack, { taskId: props.task.id })}
+      onOpenFeedback={(ref) =>
+        void navigation.open(feedbackStack, { specId: props.specId, taskId: props.task.id, ref })
+      }
     />
   );
 }

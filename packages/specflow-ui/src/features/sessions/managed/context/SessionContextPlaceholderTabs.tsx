@@ -4,10 +4,11 @@ import {
   AppWorkspaceBody,
   EmptyState,
   defineSecondaryStack,
-  type IconName,
+  type IconGlyph,
 } from '@nevo/ui';
 import type { MessageKey } from '../../../../i18n/message';
 import { translateNow } from '../../../../i18n/message';
+import { productIcons } from '../../../../shared/product-icons';
 
 /**
  * Navigation-skeleton placeholder root tabs for Context's other subjects
@@ -28,7 +29,7 @@ import { translateNow } from '../../../../i18n/message';
  */
 export interface PlaceholderRootTab {
   id: string;
-  icon: IconName;
+  icon: IconGlyph;
   titleKey: MessageKey;
   stack: ReturnType<typeof definePlaceholderStack>;
 }
@@ -75,13 +76,13 @@ function definePlaceholderStack(id: string, titleKey: MessageKey) {
 
 /**
  * The five remaining subjects §7.4 names besides Tasks and History (now real — see this file's
- * own module comment), in the order the doc lists them. `icon` names are confirmed members of the
- * real `iconRegistry` (`Icon.tsx`), not guesses.
+ * own module comment), in the order the doc lists them. Product concepts take their glyph from the
+ * product icon dictionary.
  */
 export const placeholderRootTabs: PlaceholderRootTab[] = [
   {
     id: 'files',
-    icon: 'branch',
+    icon: productIcons.changes,
     titleKey: 'sessions.context.placeholders.files',
     stack: definePlaceholderStack('files', 'sessions.context.placeholders.files'),
   },
@@ -93,19 +94,19 @@ export const placeholderRootTabs: PlaceholderRootTab[] = [
   },
   {
     id: 'artifacts',
-    icon: 'archive',
+    icon: productIcons.artifacts,
     titleKey: 'sessions.context.placeholders.artifacts',
     stack: definePlaceholderStack('artifacts', 'sessions.context.placeholders.artifacts'),
   },
   {
     id: 'instructions',
-    icon: 'book-open',
+    icon: productIcons.instructions,
     titleKey: 'sessions.context.placeholders.instructions',
     stack: definePlaceholderStack('instructions', 'sessions.context.placeholders.instructions'),
   },
   {
     id: 'environment',
-    icon: 'server',
+    icon: productIcons.environment,
     titleKey: 'sessions.context.placeholders.environment',
     stack: definePlaceholderStack('environment', 'sessions.context.placeholders.environment'),
   },

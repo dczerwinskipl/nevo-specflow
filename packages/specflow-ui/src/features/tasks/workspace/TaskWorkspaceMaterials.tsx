@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { OperationalRow, operationalPrimaryLinkClassName } from '../../../shared/operational-list';
 import type { WorkspaceMaterial } from './taskWorkspaceModel';
 import { TaskCopyValue, TaskDetailDisclosure } from '../detail/history/TaskDetailDisclosure';
+import { productIcons } from '../../../shared/product-icons';
 
 export function TaskWorkspaceMaterials({
   materials,
@@ -35,7 +36,7 @@ export function TaskWorkspaceMaterials({
                     ? Image
                     : available && content.kind === 'archive'
                       ? FileArchive
-                      : 'file'
+                      : productIcons.document.item
                 }
                 size="sm"
               />

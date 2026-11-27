@@ -5,13 +5,20 @@ import type {
 } from '../../../specs';
 import type { AttentionItem, SpecificationWorkspaceData } from '../../../specs/read-model';
 import { message } from '../../../../i18n/message';
-import { goToHeading } from '../../execution/InlineAction';
+import {
+  attentionActionHasFlow,
+  attentionActionLabel,
+  attentionReason,
+  attentionStuckTitle,
+} from '../../overview/attentionWording';
+import { goToHeading } from '../../execution/goToHeading';
 import { SPECIFICATION_NOW_HEADING } from '../../execution/specification/SpecificationWorkflow';
 import {
   requestTaskAttention,
   taskCommandKey,
   type TaskAttentionRequest,
 } from '../../overview/attentionRequests';
+import { productIcons } from '../../../../shared/product-icons';
 
 type ActionCode = NonNullable<AttentionItem['action']>;
 type Context = Pick<SpecificationWorkSectionContext, 'specId' | 'actions'>;
@@ -29,19 +36,12 @@ function actionOf(
   item: AttentionItem,
   { specId, actions }: Context,
 ): SpecificationAttentionAction | undefined {
-  if (
-    code === 'answer-session' ||
-    code === 'open-project-settings' ||
-    code === 'configure-archetype'
-  ) {
+  if (!attentionActionHasFlow(code)) {
     // A Session's item belongs to the Sessions owner; settings have no UI yet.
     return undefined;
   }
 
-  const label =
-    code === 'start-step' && item.stepTitle
-      ? message('taskOverview.attention.startNamed', { step: item.stepTitle })
-      : message(`taskOverview.attention.action.${code}`);
+  const label = attentionActionLabel(code, item);
   const taskId = item.kind === 'task' ? item.targetId : undefined;
   const onTask = (run: (id: string) => void) =>
     taskId ? { label, onClick: () => run(taskId) } : undefined;
@@ -83,6 +83,12 @@ function actionOf(
       return onTask(openTask);
     case 'reevaluate-wait':
       return { label, onClick: () => goToHeading(SPECIFICATION_NOW_HEADING) };
+    // An agent's result that waits for the owner is decided where its step is shown.
+    case 'confirm-result':
+    case 'reject-result':
+      return taskId
+        ? { label, onClick: () => openTask(taskId) }
+        : { label, onClick: () => goToHeading(SPECIFICATION_NOW_HEADING) };
     case 'return-to-step':
       // The Specification's own Return dialog (its Now block, which also offers it in its menu
       // while it loads); a Task's on the Task page.
@@ -119,7 +125,8 @@ export function taskAttentionEntry(
   context: Context & { readonly data: SpecificationWorkspaceData },
 ): SpecificationAttentionEntry {
   const broken = item.code === 'task-broken';
-  const stuck = item.code === 'tasks-stuck' && (item.taskIds?.length ?? 0) > 0;
+  const factsReason = attentionReason(item, context.data.taskOverview?.taskTitles);
+  const stuckTitle = attentionStuckTitle(item);
   const typeTitle =
     item.kind === 'task' && item.targetId ? typeTitleOf(context.data, item.targetId) : undefined;
   // An item without a workflow action opens its Task.
@@ -141,23 +148,19 @@ export function taskAttentionEntry(
 
   return {
     item,
-    icon: 'list-checks',
+    // The item's own type: a Task, or the Specification whose workflow step it is about.
+    icon: item.kind === 'task' ? productIcons.task.item : productIcons.specification.item,
+    // The Task's key is left to the Tasks page; its title is the item's title already.
     facts:
       item.kind === 'task' && item.targetId
-        ? [item.targetId, ...(typeTitle ? [typeTitle] : [])]
+        ? typeTitle
+          ? [typeTitle]
+          : []
         : [message('taskOverview.attention.specification')],
-    ...(stuck
-      ? {
-          title: message('taskOverview.attention.stuckTitle', { count: item.taskIds!.length }),
-          reason: message('taskOverview.attention.stuckReason'),
-        }
+    ...(stuckTitle
+      ? { title: stuckTitle, reason: message('taskOverview.attention.stuckReason') }
       : {}),
-    ...(item.code === 'wait-transition-missing'
-      ? { reason: message('workflowExecution.now.waitTransitionMissing') }
-      : {}),
-    ...(item.code === 'wait-ready-to-settle'
-      ? { reason: message('workflowExecution.now.waitReadyToSettle') }
-      : {}),
+    ...(factsReason ? { reason: factsReason } : {}),
     tone: broken ? 'danger' : 'attention',
     reasonIcon: broken ? 'circle-alert' : 'triangle-alert',
     ...(action ? { action } : {}),

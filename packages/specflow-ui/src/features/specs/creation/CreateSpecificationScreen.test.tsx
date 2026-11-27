@@ -86,7 +86,19 @@ function renderScreen(
     </QueryClientProvider>,
   );
 
+  if (dataMode === 'project' && !props.restoreDraftOf) {
+    chooseManually();
+  }
+
   return { onProjectStarted };
+}
+
+/** A plain entry opens the ways to start: the manual form is one tap away (`restoreDraftOf` opens a form). */
+function chooseManually() {
+  void screen
+    .findByRole('button', { name: /^Manually/ }, { timeout: 5000 })
+    .then((tile) => fireEvent.click(tile))
+    .catch(() => undefined);
 }
 
 const storage = () => createSessionOperationStorage('unknown', sessionStorage);
@@ -160,7 +172,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
       const help = await screen.findByRole('dialog');
       expect(within(help).getByText(command)).toBeTruthy();
       fireEvent.click(within(help).getByRole('button', { name: 'Close' }));
-      expect(within(footer).queryByText(/Enter a specification name/)).toBeNull();
+      expect(within(footer).queryByText(/Enter a name to create/)).toBeNull();
       expect(within(footer).queryByRole('button', { name: 'Go to the field' })).toBeNull();
       expect(screen.queryByRole('radiogroup', { name: 'Archetype' })).toBeNull();
       const submit = screen.getByRole('button', { name: 'Create specification' });

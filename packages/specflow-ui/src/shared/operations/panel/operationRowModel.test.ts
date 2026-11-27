@@ -56,6 +56,16 @@ describe('presentOperation', () => {
     expect(view.action?.key).toBe('operations.row.checkResult');
   });
 
+  it.each([
+    ['recovery-required', 'CREATE_GIT_UNSETTLED', 'operations.row.gitUnsettled'],
+    ['recovery-required', 'CONTROL_LOCK_RECOVERY_REQUIRED', 'operations.row.lockRecovery'],
+    ['failed', 'CREATE_INTERRUPTED', 'operations.row.createInterrupted'],
+    ['failed', 'CREATE_RESUME_FORBIDDEN', 'operations.row.resumeForbidden'],
+  ])('says why a %s Create with %s stopped', (status, code, key) => {
+    const view = presentOperation(operationItem({ status, code }), stubCreateKind, fixtureNow);
+    expect(view.detail).toEqual({ key });
+  });
+
   it('names a row by its title, else by its kind, else generically', () => {
     expect(presentOperation(operationItem(), stubCreateKind, fixtureNow).name).toBe(
       'Payment limits',

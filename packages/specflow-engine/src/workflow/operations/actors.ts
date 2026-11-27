@@ -1,6 +1,8 @@
 import { sha256Hex } from '../../hash';
 import type { FinishingSession } from '../continuation/resolve';
 import { activeAttempt, canonicalJson } from '@nevo/workflow';
+import { requiresOwnerConfirmation } from '../definitions/effect-authority';
+import type { WorkflowTransition } from '../definitions/model';
 import { WorkflowError } from '../errors';
 import { assertActorShape } from '../input-schema';
 import type { OwnerActor, WorkflowActor, WorkflowRun } from '../state/model';
@@ -47,6 +49,32 @@ export function assertOwner(actor: unknown, action: string): asserts actor is Ow
   }
 
   assertActorShape(actor);
+}
+
+/**
+ * An agent's finish proposal never takes a decision only the owner takes (D17): a transition whose
+ * effects are owner authority or that declares `confirmation: owner`, and status decisions on Tasks
+ * (approve, hold, resume, cancel). An agent attempt's proposal that takes one is held for the owner's
+ * confirmation instead (`planFinish`); this refuses it on every other agent finish, which has no
+ * attempt the owner could confirm.
+ */
+export function assertAgentAuthority(
+  transition: WorkflowTransition,
+  taskDecisions: readonly unknown[] | undefined,
+): void {
+  if (requiresOwnerConfirmation(transition)) {
+    throw new WorkflowError(
+      'WORKFLOW_OWNER_DECISION_REQUIRED',
+      `Only the owner can take "${transition.label ?? transition.id}": choose another result, or hand the step to the owner.`,
+    );
+  }
+
+  if (taskDecisions !== undefined && taskDecisions.length > 0) {
+    throw new WorkflowError(
+      'WORKFLOW_OWNER_DECISION_REQUIRED',
+      'Only the owner decides the status of Tasks: finish without Task decisions.',
+    );
+  }
 }
 
 /** The Session that finished an attempt, when an agent in a Session finished it. */

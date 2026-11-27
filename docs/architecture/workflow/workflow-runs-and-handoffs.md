@@ -27,6 +27,9 @@ of:
 - `not-started`;
 - `active {step, attempt}`;
 - `ready {step}`: a checkpoint after a finish or a return; the next start activates `step`;
+- `awaiting-confirmation {step, attempt}`: the attempt ended with a transition the host holds for a
+  confirmation; a `confirm` takes it, a `reject` returns the run to `step`, ready (see
+  [owner confirmation](workflow-agent-attempts.md#owner-confirmation));
 - `terminal {outcome}`.
 
 Readiness, Task facts and statuses are derived from these, never stored.

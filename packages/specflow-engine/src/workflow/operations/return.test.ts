@@ -44,7 +44,7 @@ describe('return to an earlier step', () => {
       ['screen', 'ready'],
     ]);
 
-    const started = await startSpecification(dependencies);
+    const started = await startSpecification(dependencies, owner);
     expect(started).toMatchObject({
       context: {
         step: { id: 'breakdown' },
@@ -59,10 +59,10 @@ describe('return to an earlier step', () => {
         tasks: [{ id: 'audit', title: 'Audit', type: 'implementation', dependsOn: ['api'] }],
         taskDecisions: [{ taskId: 'screen', status: 'on-hold', reason: 'Wait for the audit.' }],
       },
-      actor: claude,
+      actor: owner,
     });
     expect(drafted.createdTasks).toEqual(['audit']);
-    await work(dependencies, specification, { result: 'pass' });
+    await work(dependencies, specification, { result: 'pass' }, owner);
 
     const resumed = (await inspectExecution(dependencies, SPEC)).tasks;
     expect(
@@ -95,7 +95,7 @@ describe('return to an earlier step', () => {
       step: 'breakdown',
       feedback: 'x',
     });
-    await startSpecification(dependencies);
+    await startSpecification(dependencies, owner);
     const applied = dependencies.store.applied.length;
 
     await expect(
@@ -110,7 +110,7 @@ describe('return to an earlier step', () => {
             { taskId: 'screen', status: 'ready' },
           ],
         },
-        actor: claude,
+        actor: owner,
       }),
     ).rejects.toMatchObject({ code: 'WORKFLOW_INPUT_INVALID' });
     expect(dependencies.store.applied).toHaveLength(applied);

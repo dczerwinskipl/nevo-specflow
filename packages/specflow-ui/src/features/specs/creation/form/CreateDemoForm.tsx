@@ -1,19 +1,16 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { isHttpClientError } from '@nevo/http-client';
 import { useTranslation } from 'react-i18next';
-import { Separator, cn, useWorkspaceCapabilities } from '@nevo/ui';
+import { Separator, Typography, cn, useWorkspaceCapabilities } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import { FlowBack } from '../../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useMessage } from '../../../../i18n/message';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
-import {
-  initialAgentChoice,
-  providerDefaultEffort,
-  startCatalogueFromDemo,
-  type AgentChoice,
-} from '../../../sessions';
-import { CreateAgentSection } from '../options/CreateAgentSection';
+import { AgentSession, type FreshChoice } from '../../../tasks';
+import { demoAgentCatalogue, demoWorkMode, initialDemoAgent } from '../start/demoAgents';
+import { demoEntryPoints, type CreateEntryPointId } from '../start/entryPoints';
+import { AgentEntryUnavailable, agentEntryUnavailable } from '../start/AgentEntryUnavailable';
 import { CreateBasicsSection } from '../options/CreateBasicsSection';
 import { ArchetypeSection } from '../options/ArchetypeSection';
 import {
@@ -40,8 +37,13 @@ import {
 } from '../operation/useCreateDemoSpecification';
 import { useRevealFailure } from '../errors/useRevealFailure';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
-import { createFormColumn, createFormColumns, createFormWidth } from '../createFormLayout';
-import { firstChoiceControl, modelDecidedTarget } from './createGuide';
+import {
+  createControlWidth,
+  createFormColumn,
+  createFormColumns,
+  createFormWidth,
+} from '../createFormLayout';
+import { firstChoiceControl } from './createGuide';
 import { revealControl, useCreateGuide } from './useCreateGuide';
 import {
   buildCreateSlug,
@@ -91,12 +93,13 @@ export function CreateDemoForm({
   const { options: workspaceOptions } = createOptions;
   const place = useWorkspacePlace(createOptions, announce);
 
-  const [method, setMethod] = useState(''),
+  const [method, setMethod] = useState<CreateEntryPointId | ''>(''),
     [title, setTitle] = useState(''),
     [archetypeChoice, setArchetypeChoice] = useState<ArchetypeChoice>(initialArchetypeChoice),
-    [agent, setAgent] = useState<AgentChoice>(() =>
-      initialAgentChoice(startCatalogueFromDemo(catalogue)),
-    );
+    [agent, setAgent] = useState<FreshChoice>(() => initialDemoAgent(catalogue));
+  // The same agent picker as Run with agent, over the demo catalogue.
+  const agentCatalogue = useMemo(() => demoAgentCatalogue(catalogue), [catalogue]);
+  const workMode = demoWorkMode(catalogue, agent);
 
   const archetype = selectedArchetype(catalogue, archetypeChoice);
   const optionalDocumentIds = archetype ? tickedTemplates(archetype, archetypeChoice) : [];
@@ -107,7 +110,6 @@ export function CreateDemoForm({
     providerId: agent.providerId,
     modelId: agent.modelId,
     effort: agent.effort,
-    mode: agent.mode,
     choice: requestChoiceSnapshot(place.choice, workspaceOptions, title),
   });
   const [initialConfiguration] = useState(configurationSnapshot);
@@ -153,9 +155,6 @@ export function CreateDemoForm({
   const nameRef = useRef<HTMLInputElement>(null);
   const archetypeRef = useRef<HTMLDivElement>(null);
   const providersRef = useRef<HTMLDivElement>(null);
-  const modelRef = useRef<HTMLElement | null>(null);
-  const modeRef = useRef<HTMLElement | null>(null);
-  const effortRef = useRef<HTMLElement | null>(null);
   const showPrerequisite = Boolean(prerequisite) && !uncertain && !recovery;
   const reason = showPrerequisite && prerequisite ? text(prerequisite) : undefined;
   const { tried, guide } = useCreateGuide({
@@ -170,20 +169,17 @@ export function CreateDemoForm({
       } else if (field === 'provider') {
         revealControl(firstChoiceControl(providersRef.current));
       } else if (field === 'model') {
-        revealControl(modelRef.current);
-      } else if (field === 'mode') {
-        revealControl(modelDecidedTarget(modeRef.current, modelRef.current));
-      } else if (field === 'effort') {
-        revealControl(modelDecidedTarget(effortRef.current, modelRef.current));
+        // The picker's trigger (the model and its effort) follows the agent tiles.
+        revealControl(
+          providersRef.current?.querySelector<HTMLElement>('button[aria-haspopup]') ?? null,
+        );
       } else {
         place.handleRef.current?.focusProblem(field);
       }
     },
   });
-  // The agent's own problem is said at its field once Create was tried (provider, model or mode).
-  const agentIssue = tried && method === 'ai' ? agentProblem(catalogue, agent) : undefined;
-  const agentError = (field: 'provider' | 'model' | 'effort' | 'mode') =>
-    agentIssue?.field === field ? text(agentIssue.message) : undefined;
+  // The agent's own problem is said under the picker once Create was tried.
+  const agentIssue = tried && method === 'agent' ? agentProblem(catalogue, agent) : undefined;
 
   useEffect(() => {
     if (method && !supportsSplit) {
@@ -210,13 +206,13 @@ export function CreateDemoForm({
       slug,
       buildTarget: () =>
         workspaceOptions ? buildCreateTarget(place.choice, workspaceOptions, title) : undefined,
-      ...(method === 'ai'
+      ...(method === 'agent'
         ? {
             session: {
               providerId: agent.providerId,
               modelId: agent.modelId,
-              ...(agent.effort !== providerDefaultEffort ? { effort: agent.effort } : {}),
-              mode: agent.mode,
+              ...(agent.effort ? { effort: agent.effort } : {}),
+              mode: workMode?.id ?? '',
             },
           }
         : {}),
@@ -229,7 +225,23 @@ export function CreateDemoForm({
   if (!method) {
     return (
       <CreateShell>
-        <CreateMethodChoice onChoose={setMethod} />
+        <CreateMethodChoice
+          entryPoints={demoEntryPoints}
+          onChoose={setMethod}
+          unavailable={
+            agentEntryUnavailable(agentCatalogue)
+              ? {
+                  agent: (
+                    <AgentEntryUnavailable
+                      agents={agentCatalogue}
+                      refreshing={false}
+                      onRefresh={onRefresh}
+                    />
+                  ),
+                }
+              : {}
+          }
+        />
         {leaveDialog}
       </CreateShell>
     );
@@ -251,13 +263,13 @@ export function CreateDemoForm({
       ? t('create.submit.checkOperation')
       : uncertain
         ? t('create.submit.checkResult')
-        : method === 'ai'
+        : method === 'agent'
           ? t('create.submit.createAndOpen')
           : t('create.submit.create');
   const note =
     uncertain || recovery
       ? t('create.footer.operationKept')
-      : method === 'ai'
+      : method === 'agent'
         ? t('create.footer.aiNote')
         : t('create.footer.manualNote');
 
@@ -283,22 +295,36 @@ export function CreateDemoForm({
     </div>,
   ];
   const whoAndWhereSections: ReactNode[] = [
-    method === 'ai' && (
-      <CreateAgentSection
-        key="agent"
-        catalogue={catalogue}
-        choice={agent}
-        locked={locked}
-        onChange={setAgent}
-        providerError={agentError('provider')}
-        modelError={agentError('model')}
-        effortError={agentError('effort')}
-        modeError={agentError('mode')}
-        providersRef={providersRef}
-        modelControlRef={modelRef}
-        effortControlRef={effortRef}
-        modeControlRef={modeRef}
-      />
+    method === 'agent' && (
+      <fieldset key="agent" disabled={locked} className={cn('grid gap-4', createControlWidth)}>
+        <div className="grid gap-1">
+          <Typography as="legend" variant="title-md" className="p-0">
+            {t('create.agent.initialTitle')}
+          </Typography>
+          <Typography as="p" variant="body-md" className="text-content-secondary">
+            {t('create.agent.introInitial')}
+          </Typography>
+        </div>
+        <div ref={providersRef} className="min-w-0">
+          <AgentSession
+            mode="fresh"
+            independent={false}
+            step={t('create.agent.initialTitle')}
+            role={t('workflowExecution.agent.roleFallback')}
+            launch={undefined}
+            catalogue={agentCatalogue}
+            choice={agent}
+            preselected={false}
+            workMode={workMode?.title}
+            onChoice={setAgent}
+          />
+        </div>
+        {agentIssue && (
+          <p role="alert" className="m-0 text-body-sm text-content-error">
+            {text(agentIssue.message)}
+          </p>
+        )}
+      </fieldset>
     ),
     <CreateWorkspaceSection
       key="git"
@@ -396,6 +422,7 @@ export function CreateDemoForm({
           submitDisabled={submitDisabled}
           submitBlocked={submitBlocked}
           onGuide={problemField && reason && !locked ? guide : undefined}
+          {...(problemField === 'name' ? { guideLabel: t('create.guide.enterName') } : {})}
         />
       }
     >
@@ -404,7 +431,7 @@ export function CreateDemoForm({
           headingRef={headingRef}
           lead={
             <FlowBack
-              label={t('create.changeMethod')}
+              label={t('create.start.backToStart')}
               disabled={locked}
               onBack={() => setMethod('')}
             />

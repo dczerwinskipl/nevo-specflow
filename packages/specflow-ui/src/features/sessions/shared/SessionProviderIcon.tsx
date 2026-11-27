@@ -2,6 +2,7 @@ import { Icon } from '@nevo/ui';
 import codex from './provider-icons/codex.svg?url';
 import claude from './provider-icons/claude-color.svg?url';
 import antigravity from './provider-icons/antigravity-color.svg?url';
+import { productIcons } from '../../../shared/product-icons';
 
 const providerIcons: Readonly<Record<string, { url: string; kind: 'color' | 'mono' }>> = {
   codex: { url: codex, kind: 'mono' },
@@ -35,7 +36,7 @@ export function SessionProviderIcon({
         aria-hidden="true"
         className={`inline-flex ${box} shrink-0 items-center justify-center`}
       >
-        <Icon name="chat" size={glyph} />
+        <Icon name={productIcons.agent} size={glyph} />
       </span>
     );
   }

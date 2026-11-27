@@ -1,11 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { ManagedSessionsApi } from './api';
+import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import {
   actionsWorkId,
+  answeredQuestionItems,
+  claudeTurnWorkItems,
+  claudeWriteActions,
+  claudeWriteWorkId,
   longReadActions,
   longReadWorkId,
   createWorkInspectorFixtureApi,
+  dogfoodEditActions,
+  dogfoodEditWorkId,
+  dogfoodTurnWorkItems,
   largeWorkTimelineItems,
   longRunWorkTimelineItems,
   mixedWorkTimelineActions,
@@ -16,6 +24,18 @@ import {
   WorkInspectorHost,
   openWork,
 } from './managedSession.workInspectorHost.stories-support';
+import { resetWorkHistoryView } from './workHistoryViewPreference';
+
+/** Every operation its own row (the detailed view), for a story that checks single rows. */
+function detailedView() {
+  window.localStorage.setItem('nevo:work-history:view', 'detailed');
+  resetWorkHistoryView();
+
+  return () => {
+    window.localStorage.removeItem('nevo:work-history:view');
+    resetWorkHistoryView();
+  };
+}
 
 /**
  * The MUST-FIX Work (L2) timeline rebuild: Commentary-grouped chapters, a distinct collapsible
@@ -117,11 +137,12 @@ export const Default: Story = {
         'Two approaches could fix this; the narrower one risks missing a related case.',
       ),
     ).toBeVisible();
-    // The three happy-path reads/searches right after Commentary are a short run (below
-    // `workGrouping.TOOL_BURST_MIN_SIZE`): live owner review #2 — don't wrap 1-4 operations in a
-    // synthetic "N tool actions" container, just show the rows. So every one of them is its own
-    // directly visible row, with no trigger to click first.
-    await expect(canvas.getByText('Read file admission.mjs')).toBeVisible();
+    // Compact by default (owner, PR 169): the happy-path reads/searches right after Commentary are
+    // one group row, collapsed; expanding it shows each of them as its own row.
+    const group = canvas.getByRole('button', { name: '3 działania narzędzia' });
+    await expect(canvas.getByText('Read file admission.mjs')).not.toBeVisible();
+    await userEvent.click(group);
+    await expect(await canvas.findByText('Read file admission.mjs')).toBeVisible();
     await expect(canvas.getByText('Search code WORKSPACE_WRITER_BLOCKED')).toBeVisible();
     await expect(canvas.getByText('Search code readiness-policy')).toBeVisible();
     // Never a fabricated "0 ms": every fixture item here has identical createdAt/updatedAt, which
@@ -177,6 +198,7 @@ export const LongRunGrouping: Story = {
  */
 export const TypeFilterShowsOnlyItsKind: Story = {
   tags: ['integration'],
+  beforeEach: detailedView,
   args: {
     api: createWorkInspectorFixtureApi(mixedWorkTimelineItems(), {
       [actionsWorkId]: mixedWorkTimelineActions(),
@@ -212,9 +234,7 @@ export const TypeFilterShowsOnlyItsKind: Story = {
       canvas.queryByText('Checking the implementation and locating the admission path…'),
     ).not.toBeInTheDocument();
 
-    // The three happy-path tool reads/searches left after filtering are a short run — below
-    // `workGrouping.TOOL_BURST_MIN_SIZE` — so they stay their own individually visible rows, with
-    // nothing to click first.
+    // In the detailed view the tool reads/searches left after filtering are their own visible rows.
     await expect(canvas.getByText('Read file admission.mjs')).toBeVisible();
     await expect(canvas.getByText('Search code WORKSPACE_WRITER_BLOCKED')).toBeVisible();
     await expect(canvas.getByText('Search code readiness-policy')).toBeVisible();
@@ -261,7 +281,7 @@ export const EveryFilterNarrowsToItsKind: Story = {
     await selectFilterKind(
       canvasElement,
       'Filtruj pracę według typu (aktywny filtr: Myślenie)',
-      'Interakcja z użytkownikiem',
+      'Pytanie lub prośba o zgodę',
     );
     await expect(await canvas.findByText('Permission to write workspace')).toBeVisible();
     await expect(canvas.queryByText('Run command pnpm test')).not.toBeInTheDocument();
@@ -269,7 +289,7 @@ export const EveryFilterNarrowsToItsKind: Story = {
 
     await selectFilterKind(
       canvasElement,
-      'Filtruj pracę według typu (aktywny filtr: Interakcja z użytkownikiem)',
+      'Filtruj pracę według typu (aktywny filtr: Pytanie lub prośba o zgodę)',
       'Wszystkie',
     );
     await expect(await canvas.findByText('Read file session.ts')).toBeVisible();
@@ -304,12 +324,12 @@ export const ToolActionDetails: Story = {
       await canvas.findByText('Updated src/admission.mjs (1 replacement, lines 42-44).'),
     ).toBeVisible();
     await expect(canvas.getAllByText('Parametry')).toHaveLength(3);
-    await expect(canvas.getAllByText('Odpowiedź narzędzia')).toHaveLength(3);
+    await expect(canvas.getAllByText('Wynik')).toHaveLength(3);
     // Parameters and response sit on the one product code view (as a document's source), read-only.
     // The JSON parameters the product pretty-printed are coloured and numbered; the verbatim
     // response is neither — its lines are the tool's own, so no gutter numbers them.
     const inputs = await canvas.findAllByRole('textbox', { name: 'Parametry' });
-    const outputs = await canvas.findAllByRole('textbox', { name: 'Odpowiedź narzędzia' });
+    const outputs = await canvas.findAllByRole('textbox', { name: 'Wynik' });
     await expect(inputs).toHaveLength(3);
     await expect(outputs).toHaveLength(3);
     for (const block of [...inputs, ...outputs]) {
@@ -465,5 +485,144 @@ export const FailedRefreshKeepsLoadedWork: Story = {
     await expect(
       canvas.queryByText('Nie udało się wczytać tej części sesji.'),
     ).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * A realistic Claude Turn (owner dogfood, 2026-11-24): every row says what it did and on what, in
+ * the UI's words, with no provider name; a permission says what the person decided or that it
+ * waits; the failed write names the file and the reason on its row; the agent's note heads the
+ * next phase. Opening the write shows a readable header, the written content, a relative
+ * response, and the raw parameters one click away.
+ */
+export const ClaudeTurn: Story = {
+  args: {
+    api: createWorkInspectorFixtureApi(claudeTurnWorkItems(), {
+      [claudeWriteWorkId]: claudeWriteActions(),
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await openWork(canvasElement);
+
+    // Only the action is emphasised; the subject reads as an identifier (mono, regular weight).
+    const subjects = await canvas.findAllByText(
+      'mkdir -p /tmp/dummy-job && cd /tmp/dummy-job && ./hello.sh …',
+    );
+    // The command and the permission it needed are one row (`foldPermissions`).
+    await expect(subjects).toHaveLength(1);
+    for (const subject of subjects) {
+      await expect(subject).toHaveAttribute('data-work-subject');
+      await expect(getComputedStyle(subject).fontWeight).toBe('400');
+    }
+
+    await expect(canvas.getAllByText('Uruchomiono polecenie')[0]).toBeVisible();
+    // A permission says what the owner decided, never the tool's own wording.
+    await expect(canvas.getByText('Zezwolono')).toBeVisible();
+    await expect(canvas.getByText('Czeka na Ciebie')).toBeVisible();
+    await expect(
+      canvas.getByText(
+        'dummy-scratch/test.sh: File has not been read yet. Read it first before writing to it.',
+      ),
+    ).toBeVisible();
+    await expect(
+      canvas.getByText(
+        "The file tools can only write inside the worktree, so I'll use a scratch directory there and delete it afterwards.",
+      ),
+    ).toBeVisible();
+    await expect(canvas.queryByText(/Claude (tools|permission|commentary)/)).toBeNull();
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: /Zapisano plik i 2 więcej · dummy-scratch\/job\.sh/ }),
+    );
+    await expect((await canvas.findAllByText('Zapisano plik')).length).toBeGreaterThan(0);
+    await expect((await canvas.findAllByRole('textbox', { name: 'Treść' })).length).toBe(3);
+    await expect(
+      await canvas.findByText('File created successfully at: dummy-scratch/job.sh'),
+    ).toBeInTheDocument();
+    // The headers and responses name files relative to the worktree (the raw parameters keep
+    // the tool's own absolute paths).
+    for (const response of canvas.getAllByRole('textbox', { name: 'Wynik' })) {
+      await expect(response.textContent).not.toContain('C:/Users');
+    }
+
+    await expect(canvas.getAllByRole('button', { name: 'Surowe parametry' })[0]).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    // One Wrap lines for the screen, in its header (none per block), pressed state announced —
+    // the same page-level toggle as Work history's view; each block keeps its own Copy.
+    const toggle = () => within(document.body).getByRole('button', { name: 'Zawijaj wiersze' });
+    await expect(toggle().closest('[data-workspace-header="true"]')).not.toBeNull();
+    const before = toggle().getAttribute('aria-pressed');
+    await userEvent.click(toggle());
+    await expect(toggle()).toHaveAttribute('aria-pressed', before === 'true' ? 'false' : 'true');
+
+    // On a phone it is icon-only, its words kept as the accessible name (and the tooltip).
+    await settleViewport(412, 915);
+    await waitFor(() => expect(toggle().textContent?.trim()).toBe(''));
+    const iconOnly = (button: HTMLElement) => button.querySelector('span.sr-only') !== null;
+    await expect(iconOnly(canvas.getAllByRole('button', { name: /^Kopiuj/ })[0]!)).toBe(true);
+  },
+};
+
+/**
+ * The Turn the owner reported (dogfood 4): allowed commands, five failed edits of one long path, a
+ * failed read under its own note, an interrupted edit. Opening the first failed edit shows its
+ * detail: the action and the file name in the header, the full path under it.
+ */
+export const DogfoodTurn: Story = {
+  args: {
+    api: createWorkInspectorFixtureApi(dogfoodTurnWorkItems(), {
+      [dogfoodEditWorkId]: dogfoodEditActions(),
+    }),
+  },
+};
+
+/**
+ * Owner, PR 169: an answered question says what was asked and what the owner answered ("Scope → All
+ * batches A–E (Recommended), …"); opening it shows every option with the chosen one marked. A
+ * question from before answers were recorded keeps its plain row. Checked at 375 px and desktop.
+ */
+export const AnsweredQuestions: Story = {
+  tags: ['integration'],
+  args: { api: createWorkInspectorFixtureApi(answeredQuestionItems()) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const row = 'Scope → All batches A–E (Recommended), Do Sessions last, behind the other four.';
+    for (const [width, height] of [
+      [375, 812],
+      [1440, 900],
+    ] as const) {
+      await settleViewport(width, height);
+      if (width === 375) {
+        await openWork(canvasElement);
+      }
+
+      await expect(await canvas.findByText(row)).toBeVisible();
+      await expect(
+        canvas.getByText('Fault scenarios → A test-only port, never in the public schemas.'),
+      ).toBeVisible();
+      await userEvent.click(canvas.getByText(row));
+      const detail = await waitFor(() => {
+        const node = canvasElement.querySelector<HTMLElement>('[data-question-detail]');
+        if (!node) {
+          throw new Error('The question detail is not open.');
+        }
+
+        return node;
+      });
+      await expect(detail.querySelector('[data-chosen="true"]')).toHaveTextContent(
+        'All batches A–E (Recommended)',
+      );
+      await expect(within(detail).getByText('Batch A only')).toBeVisible();
+      // No horizontal overflow at either width, against the frame's own width, once the panel
+      // has finished sliding in (a mid-slide panel is translated past the right edge).
+      await waitFor(
+        () => expect(detail.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth),
+        { timeout: 3000 },
+      );
+      await userEvent.click(canvas.getByText(row));
+    }
   },
 };

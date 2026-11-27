@@ -27,6 +27,8 @@ import { useTaskLifecycle } from '../authoring/lifecycle/useTaskLifecycle';
 import { TaskAuthoringView } from '../authoring/TaskAuthoringView';
 import { useTaskActions, useTaskDocumentTree } from '../authoring/useTaskAuthoring';
 import { FullTaskView } from './FullTaskView';
+import type { FeedbackRef } from '../execution/feedback/feedbackRef';
+import { productIcons } from '../../../shared/product-icons';
 
 export interface ProjectTaskWorkspaceProps {
   readonly specId: string;
@@ -40,6 +42,8 @@ export interface ProjectTaskWorkspaceProps {
   readonly reload: () => Promise<FullTaskData | undefined>;
   /** Narrow: opens the Task history as a pushed page (the header's history toggle). */
   readonly onOpenHistory: () => void;
+  /** Opens a hand-off's feedback in the shared Feedback view ("View feedback"). */
+  readonly onOpenFeedback: (ref: FeedbackRef) => void;
 }
 
 function versionOf(task: FullTaskData | undefined): TaskDetailsVersion | undefined {
@@ -84,6 +88,7 @@ function Workspace({
   onRetry,
   reload,
   onOpenHistory,
+  onOpenFeedback,
 }: ProjectTaskWorkspaceProps) {
   const { t } = useTranslation();
   const navigation = useSecondaryNavigation();
@@ -125,7 +130,7 @@ function Workspace({
     {
       id: 'history',
       label: t('specification.taskFullHistoryHeading'),
-      icon: 'clock',
+      icon: productIcons.history,
       presentation: 'icon',
       direct: 'always',
       onPress: onOpenHistory,
@@ -147,10 +152,10 @@ function Workspace({
                   title={t('specification.viewTasks')}
                   view="task"
                   specId={specId}
-                  detailLabel={task.title}
+                  detailLabel={task.id}
                 />
               }
-              icon="list-checks"
+              icon={productIcons.task.item}
               labels={{ moreActions: t('common.moreActions') }}
               actions={[...historyAction, ...lifecycle.actions]}
             />
@@ -188,6 +193,7 @@ function Workspace({
                       : {})}
                     onOpenDocument={openDocument}
                     onOpenHistory={onOpenHistory}
+                    onOpenFeedback={onOpenFeedback}
                     onReload={() => void reload()}
                   />
                 </FullTaskView>

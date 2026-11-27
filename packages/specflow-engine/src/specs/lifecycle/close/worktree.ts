@@ -124,8 +124,7 @@ export async function closeWorkspace(
       binding.generation !== journal.reboundRevision ||
       canonical.specId !== occupant.specId ||
       canonical.slug !== occupant.slug ||
-      canonical.location !== occupant.location ||
-      canonical.status !== occupant.status
+      canonical.location !== occupant.location
     ) {
       throw new CloseOperationError(
         'CLOSE_RECOVERY_REQUIRED',

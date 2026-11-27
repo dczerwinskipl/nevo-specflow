@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import type { SpecificationWorkspaceData } from '../read-model/model';
 import { WorkView } from './WorkView';
 import { OverviewVisitScroll } from './OverviewVisitScroll';
-import { ActivityHistory } from './ActivityHistory';
+import { SpecificationActivityHistory } from './activity/SpecificationActivityHistory';
 import { isSpecificationCreatedEvent } from './activity/presentActivity';
 import {
   WorkspaceProvider,
@@ -34,7 +34,13 @@ import {
 } from './specificationSecondaryStack';
 import { useActivityHistoryPanel } from './useActivityHistoryPanel';
 import { EnsureSpecificationState } from '../SpecificationStateProvider';
-import { SpecificationWorkflowProvider, useSpecificationExitActions } from '../../tasks';
+import {
+  SpecificationWorkflowProvider,
+  useSpecificationExitActions,
+  feedbackStack,
+  type FeedbackRef,
+} from '../../tasks';
+import { productIcons } from '../../../shared/product-icons';
 
 function fullTaskHref(specId: string, taskId: string, collection: 'current' | 'archive'): string {
   const search = collection === 'archive' ? '?collection=archive' : '';
@@ -138,6 +144,14 @@ function SpecificationWorkspaceInner({
     recordOpen(secondaryNavigation.open(historyStack, { specId }), false);
   }, [secondaryNavigation, specId, recordOpen]);
 
+  const handleOpenFeedback = useCallback(
+    (ref: FeedbackRef) => {
+      // The one Feedback view: Back (or Close) returns to where the reader came from.
+      recordOpen(secondaryNavigation.open(feedbackStack, { specId, ref }), false);
+    },
+    [secondaryNavigation, specId, recordOpen],
+  );
+
   const handleOpenFullTask = useCallback(
     (taskId: string, section?: TaskSection) => {
       void secondaryNavigation.close();
@@ -204,6 +218,7 @@ function SpecificationWorkspaceInner({
       openRepository: () => onOpenRepository?.(),
       openChanges: (source) => onOpenChanges?.(source),
       openHistory: handleOpenHistory,
+      openFeedback: handleOpenFeedback,
       openNewSession: () => onNewSession?.(),
       refresh: () => {
         if (!refreshing) {
@@ -223,6 +238,7 @@ function SpecificationWorkspaceInner({
       onOpenChanges,
       handleOpenDoc,
       handleOpenHistory,
+      handleOpenFeedback,
       onOpenTasks,
       secondaryNavigation,
       onRefresh,
@@ -254,7 +270,7 @@ function SpecificationWorkspaceInner({
                     <RefreshStatus active={refreshing} label={t('specifications.refreshing')} />
                   </div>
                 }
-                icon="file"
+                icon={productIcons.overview}
                 labels={{ moreActions: t('common.moreActions') }}
                 actions={[
                   // Narrow: history opens as a contextual flow. Split: the declarative history
@@ -262,7 +278,7 @@ function SpecificationWorkspaceInner({
                   supportsSplit
                     ? {
                         id: 'history',
-                        icon: 'clock' as const,
+                        icon: productIcons.history,
                         presentation: 'icon' as const,
                         label: t('specification.activityHistory'),
                         pressed: historyPanel.visible,
@@ -271,7 +287,7 @@ function SpecificationWorkspaceInner({
                       }
                     : {
                         id: 'history',
-                        icon: 'clock' as const,
+                        icon: productIcons.history,
                         label: t('specification.activityHistory'),
                         onPress: handleOpenHistory,
                       },
@@ -306,10 +322,10 @@ function SpecificationWorkspaceInner({
                     <Alert
                       tone="attention"
                       role="status"
-                      title={t('specification.unavailableTitle')}
+                      title={t('specification.staleDataTitle')}
                       className="max-w-content-standard"
                     >
-                      {t('specification.unavailableDescription', { id: specId })}
+                      {t('specification.staleDataDescription')}
                     </Alert>
                   ) : null}
 
@@ -330,8 +346,9 @@ function SpecificationWorkspaceInner({
           >
             <AppContent>
               <AppWorkspaceBody padding="none" scroll="area">
-                <ActivityHistory
-                  showHeading={false}
+                {/* The same Activity history as the stacked screen: one timeline. */}
+                <SpecificationActivityHistory
+                  specId={specId}
                   events={data.activityEvents}
                   availability={data.sectionAvailability?.activity ?? 'available'}
                   unavailableReason={data.sectionUnavailableReason?.activity}
@@ -339,6 +356,7 @@ function SpecificationWorkspaceInner({
                   onOpenTask={(taskId) => handleOpenFullTask(taskId)}
                   onOpenSession={onOpenSession}
                   onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
+                  onOpenFeedback={handleOpenFeedback}
                 />
               </AppWorkspaceBody>
             </AppContent>

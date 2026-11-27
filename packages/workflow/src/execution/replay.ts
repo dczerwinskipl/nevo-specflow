@@ -33,8 +33,10 @@ function attemptFollows(
     // The coordinator enters and completes a wait step: nobody works on it.
     return (
       record.actor === undefined &&
+      record.hostData === undefined &&
       record.finishedBy === undefined &&
-      record.requestDigest === undefined
+      record.requestDigest === undefined &&
+      record.confirmation === undefined
     );
   }
 
@@ -43,10 +45,16 @@ function attemptFollows(
     return false;
   }
 
-  // Only a finish records who finished (an actor of the attempt's class) and its request digest.
+  // Only a finish records who finished (an actor of the attempt's class) and its request digest,
+  // and only a finish's transition can wait for a confirmation (a rejection names what to change).
+  const confirmation = record.confirmation;
+
   return outcome?.kind === 'transition'
-    ? record.finishedBy?.class === actor.class
-    : record.finishedBy === undefined && record.requestDigest === undefined;
+    ? record.finishedBy?.class === actor.class &&
+        (confirmation?.state !== 'rejected' || Boolean(confirmation.feedback.trim()))
+    : record.finishedBy === undefined &&
+        record.requestDigest === undefined &&
+        confirmation === undefined;
 }
 
 /**
@@ -61,11 +69,17 @@ function attemptFollows(
  *   with a transition, who finished it, of the same class; an attempt of a wait step carries no actor;
  * - a finished attempt leads where its recorded transition of that step targets, with the result
  *   the transition declares (none when it declares none) and feedback when the transition requires
- *   it;
+ *   it; when its transition was held for a confirmation, the run waits there
+ *   (`awaiting-confirmation`, so it can only be the last record before an abandonment) while the
+ *   confirmation is pending, goes where the transition leads once confirmed, and back to the
+ *   attempt's step, ready, once rejected;
  * - an attempt ended by a return, and a return record (written only while no attempt is active, from
  *   the position it records), lead to the return's step; it is a return the definition declares, to a
  *   step an attempt replayed so far (the returned attempt included) was of, with feedback when the
  *   return requires it.
+ *
+ * - an attempt taken over (`take-over`) leads to a new attempt of the same step, which is the very
+ *   next record (no return, abandonment or end of the history comes between them);
  *
  * - an abandonment (`abandonRun`) comes after every other record, from the position they led to,
  *   which was not terminal, and leads to terminal `abandoned`; an attempt active then ended with the
@@ -102,6 +116,8 @@ export function isPositionJustified<A extends HostAnnotations>(
 
   let expected: RunPosition = { state: 'not-started' };
   let entering = false;
+  // The last record was an attempt taken over: the next one must be the new attempt of its step.
+  let handingOver = false;
   let abandonedAttempt = false;
   for (const record of records) {
     if (abandonedAttempt) {
@@ -112,7 +128,9 @@ export function isPositionJustified<A extends HostAnnotations>(
     if (isReturnRecord(record)) {
       if (
         entering ||
+        handingOver ||
         expected.state === 'active' ||
+        expected.state === 'awaiting-confirmation' ||
         expected.state === 'terminal' ||
         !isDeepStrictEqual(record.from, expected) ||
         !returnAllowed(record.to, record.feedback)
@@ -137,6 +155,7 @@ export function isPositionJustified<A extends HostAnnotations>(
     }
 
     entering = false;
+    handingOver = false;
     reached.add(step.id);
     const outcome = record.outcome;
     if (!outcome) {
@@ -160,6 +179,16 @@ export function isPositionJustified<A extends HostAnnotations>(
       continue;
     }
 
+    if (outcome.kind === 'taken-over') {
+      if (step.kind === 'wait') {
+        return false;
+      }
+
+      expected = { state: 'ready', step: step.id };
+      handingOver = true;
+      continue;
+    }
+
     const transition = step.transitions.find((candidate) => candidate.id === outcome.transition);
     if (
       !transition ||
@@ -167,6 +196,17 @@ export function isPositionJustified<A extends HostAnnotations>(
       (transition.feedback === 'required' && !outcome.feedback?.trim())
     ) {
       return false;
+    }
+
+    const confirmation = record.confirmation?.state;
+    if (confirmation === 'pending') {
+      expected = { state: 'awaiting-confirmation', step: step.id, attempt: record.attempt };
+      continue;
+    }
+
+    if (confirmation === 'rejected') {
+      expected = { state: 'ready', step: step.id };
+      continue;
     }
 
     expected = positionAfter(transition);
@@ -184,6 +224,7 @@ export function isPositionJustified<A extends HostAnnotations>(
     // Abandoning ends a run that had not ended, from the position the history led to, last.
     if (
       entering ||
+      handingOver ||
       expected.state === 'terminal' ||
       !isDeepStrictEqual(abandonment.from, expected) ||
       records.some((record) => record.sequence >= abandonment.sequence) ||
@@ -195,7 +236,7 @@ export function isPositionJustified<A extends HostAnnotations>(
     expected = { state: 'terminal', outcome: 'abandoned' };
   }
 
-  return !entering && isDeepStrictEqual(expected, run.position);
+  return !entering && !handingOver && isDeepStrictEqual(expected, run.position);
 }
 
 /** {@link isPositionJustified}, failing with `WORKFLOW_STATE_CORRUPT`. */
@@ -217,8 +258,13 @@ export type RunArrival<A extends HostAnnotations, TActor extends ActorRecord> =
   | { readonly kind: 'active' }
   /** The run was abandoned (`abandonRun`). */
   | { readonly kind: 'abandoned' }
-  /** An owner return, recorded on its own or as the outcome of the attempt it ended. */
+  /**
+   * An owner return, recorded on its own or as the outcome of the attempt it ended, or the rejection
+   * of a held transition (back to its attempt's step).
+   */
   | { readonly kind: 'return'; readonly to: string }
+  /** The last attempt ended with a transition that waits for a confirmation. */
+  | { readonly kind: 'awaiting-confirmation' }
   /** An attempt finished with this transition. */
   | {
       readonly kind: 'transition';
@@ -259,6 +305,19 @@ export function lastArrival<A extends HostAnnotations, TActor extends ActorRecor
     throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'An attempt was abandoned, but not the run.');
   }
 
+  if (outcome.kind === 'taken-over') {
+    // A taken-over attempt is always followed by the attempt that took it over.
+    throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A taken-over attempt is the last record.');
+  }
+
+  if (last.confirmation?.state === 'pending') {
+    return { kind: 'awaiting-confirmation' };
+  }
+
+  if (last.confirmation?.state === 'rejected') {
+    return { kind: 'return', to: last.step };
+  }
+
   const transition = findStep(definition, last.step)?.transitions.find(
     (candidate) => candidate.id === outcome.transition,
   );
@@ -294,11 +353,20 @@ export type Handoff =
 
 /**
  * The last event decides, by record sequence. A return record is only written while no attempt is
- * active, so every attempt with a lower sequence had already ended when the owner returned.
+ * active, so every attempt with a lower sequence had already ended when the owner returned. An
+ * attempt taken over hands nothing on: the attempt that took it over receives what it received. A
+ * transition that waits for a confirmation hands nothing on yet (the handoff is the one its step
+ * received); a rejected one hands on the rejection's feedback, as a return to its step does.
  */
 export function handoffOf(run: WorkflowRun): Handoff | undefined {
   const last = historyOf(run)
-    .filter((record) => isReturnRecord(record) || record.outcome !== undefined)
+    .filter(
+      (record) =>
+        isReturnRecord(record) ||
+        (record.outcome !== undefined &&
+          record.outcome.kind !== 'taken-over' &&
+          record.confirmation?.state !== 'pending'),
+    )
     .at(-1);
   if (!last) {
     return undefined;
@@ -309,7 +377,7 @@ export function handoffOf(run: WorkflowRun): Handoff | undefined {
   }
 
   const outcome = last.outcome;
-  if (!outcome || outcome.kind === 'abandoned') {
+  if (!outcome || outcome.kind === 'abandoned' || outcome.kind === 'taken-over') {
     // An abandoned run hands nothing on.
     return undefined;
   }
@@ -320,6 +388,10 @@ export function handoffOf(run: WorkflowRun): Handoff | undefined {
       at: last.endedAt ?? last.startedAt,
       ...(outcome.feedback ? { feedback: outcome.feedback } : {}),
     };
+  }
+
+  if (last.confirmation?.state === 'rejected') {
+    return { kind: 'return', at: last.confirmation.at, feedback: last.confirmation.feedback };
   }
 
   return {

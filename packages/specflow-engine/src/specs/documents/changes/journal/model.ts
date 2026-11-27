@@ -1,4 +1,5 @@
-import type { ExecutorIdentity } from '../../../durable/executor-identity';
+import type { AgentWriteActor } from '../../../durable/claims';
+import type { ExecutorIdentity } from '../../../../project/process/executor-identity';
 import type { DocumentChangeAction } from '../plan/model';
 import type { PlanEvidence } from '../plan/codec';
 import type { DocumentChangeStage, DocumentRecoveryPhase } from './stages';
@@ -27,6 +28,11 @@ export type DocumentChangeOutcome = (typeof DOCUMENT_CHANGE_OUTCOMES)[number];
  */
 export const DOCUMENT_COMMIT_MODES = ['auto', 'manual'] as const;
 export type DocumentCommitMode = (typeof DOCUMENT_COMMIT_MODES)[number];
+
+export interface DocumentChangeAgent {
+  readonly executionId: string;
+  readonly actor?: AgentWriteActor;
+}
 
 /** Evidence of the plan file: hash and size (the payload key), and the counts the journal reports. */
 export interface JournalPlanEvidence extends PlanEvidence {
@@ -65,6 +71,11 @@ export interface DocumentChangeJournal {
   readonly commitMode?: DocumentCommitMode;
   /** The writer, while the operation is `reserved` or `files-writing`. */
   readonly executor?: ExecutorIdentity;
+  /**
+   * The agent Turn the write was made for (D11): its execution claim (`executionId`, the Runtime
+   * invocation) and the agent, named in-process by the trusted host. Absent for every other writer.
+   */
+  readonly agent?: DocumentChangeAgent;
   /** Where a `recovery-required` operation stopped. */
   readonly recoveryPhase?: DocumentRecoveryPhase;
   /** The acknowledgement point: when the operation became `queued`. */

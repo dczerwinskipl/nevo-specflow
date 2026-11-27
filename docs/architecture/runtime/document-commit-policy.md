@@ -14,6 +14,7 @@ related:
   - architecture.runtime.specification-documents
   - architecture.runtime.document-write-and-commit-queue
   - adr.0018-engine-commit-policy-and-manual-commit
+  - adr.0026-agent-step-execution
   - architecture.workflow.workflow-kernel
 ---
 
@@ -62,7 +63,16 @@ entries. It holds no claim.
 
 A record is `engine/operations/ledger/<workspaceId>/<owner>.json`, published by atomic rename
 under the control lock and read lock-free; entries are `{ path, postSha256 | null, operationIds, operationCount,
-recordedAt, reason }` and the record pins `branch`, `head` and `workspaceRoot`.
+recordedAt, reason, executions?, authors? }` and the record pins `branch`, `head` and `workspaceRoot`.
+A record is at most 4 MiB.
+
+**Authors** (agent step execution, [ADR 0026](../decisions/0026-agent-step-execution.md)): `executions`
+names, for the kept operation ids an agent Turn made, that Turn's execution claim; `authors` is who
+made every operation of the path, merged on each record and never truncated: the agent Turns
+(`executions`, at most 100 distinct, one more makes the entry `unattributed`) and `unattributed`
+when any operation was made without one (an owner, a tool). The attempt commit selects by
+`authors`, so a file an agent saved more than 50 times still commits; a record written before the
+field existed derives it from the kept operations (`ledgerAuthorsOf`).
 
 It is pruned when entries equal `HEAD`
 (after a queued batch commits, a flush, a hand commit seen by the 30-second sweep, a manual commit or the Close flush): the
@@ -87,8 +97,10 @@ Manual commit shares the queued commit port, checkout-scoped claim, lease and du
 #### Admission and reservation
 
 1. Require Git, flush queue to rest and a nonempty ledger.
-2. Verify `ledgerRevision`, subset closure, pinned branch, Git preflight and unchanged post-images.
-3. Under control lock, reread the ledger; replan if it moved, then reserve the claim and journal.
+2. Verify `ledgerRevision`, subset closure, no selected path held by a waiting agent attempt commit
+   (see [Agent writes](#agent-writes)), pinned branch, Git preflight and unchanged post-images.
+3. Under control lock, reread the ledger; replan if it moved, judge the attempt holds again, then
+   reserve the claim and journal.
 
 #### Execution and verification
 
@@ -101,6 +113,49 @@ Manual commit shares the queued commit port, checkout-scoped claim, lease and du
 - Find prior effect by `Nevo-Operation` trailer; adopt only if it matches the complete snapshot and HEAD. Never duplicate the commit.
 - If the commit may have executed but cannot be proven, require `recover`; do not blindly retry.
 - Valid transitions: `reserved` → `committing`/`failed`; `committing` → itself (new executor), `completed`/`failed`/`recovery-required`; `recovery-required` → `committing` (resume), `completed` (adopt) or `failed` (abandon).
+
+### Agent writes
+
+A document write of an agent Turn arrives through the Runtime broker as the Turn's
+owned execution ([agent step execution](agent-step-execution.md)) and is an ordinary document
+operation: same admission, journal, commit policy and ledger, with the agent actor and the Turn
+recorded. It is refused (`foreign-uncommitted`, "commit it first") when a planned path's uncommitted
+ledger entry holds an operation of another author (made without an execution, or by an execution
+that is neither a Turn of the same agent attempt nor, for a Turn without an attempt, of the same
+Session), and when the checkout's ledgers or the claims they name cannot be read in full. So no path
+mixes two authors' uncommitted changes, and the attempt commit never has to take another author's.
+
+The reverse holds too. While a finished agent attempt's own commit is pending or failed (Git on), a
+document write not made under one of that attempt's Turns to a path its commit takes (the
+attempt's ledger entries, mixed ones included, and its declared paths) is refused in the same
+reservation, before anything is written or queued: `DOCUMENT_COMMITS_PENDING`, `cause:
+attempt-commit`, with `paths` and the attempt named in the message. That covers the owner's save,
+create (when the attempt changed `specification.yaml`), rename (either path), move, delete and Task
+document edits. Other paths stay writable. The tree reports the attempt (`attemptCommit`) and marks
+the held paths' actions unavailable (`attempt-commit`). When the attempt journals or the ledger
+cannot be read, every write is refused `COMMIT_BLOCKED` (`blockedBy: attempt-record-unreadable`).
+So with automatic commits on, no owner commit queued meanwhile takes the agent's file, and the
+attempt commit's retry is never raced by one.
+
+The manual commit applies the same holds: a selection (Specification or Workspace scope, the owner's
+`commit-execution-state` included) that contains a path a waiting attempt commit takes is refused at
+its admission and again under the control lock of its reservation, with the same
+`DOCUMENT_COMMITS_PENDING`, `cause: attempt-commit` (`COMMIT_BLOCKED` when the holds cannot be
+read). The only commit exempt is that attempt's own attempt commit, proven by an in-process
+authority the attempt commit runner mints for that one attempt (`mintAttemptCommitAuthority`); no
+transport can carry it and it exempts no other attempt's hold. So a Retry always holds all of the
+agent's work.
+
+**One source of truth.** Which uncommitted paths finished agent attempts hold, and which operation
+may take them, is one query of the workflow (`readAttemptCommitHolds`,
+`workflow/agent/finalize/attempt-commit/holds.ts`), supplied through the opened Engine as
+`attemptCommitHolds(workspaceId)` and always keyed by the checkout of the Specification acted on
+(never the checkout the Engine was opened on). It returns, per waiting attempt (commit pending or
+failed), the paths its commit takes (its ledger entries, mixed ones included, and its declared
+files) and the Turns whose writes are its own, plus the agent executions whose entries an attempt
+commit still takes; it fails closed (`readable: false`) when an attempt journal or a ledger record
+cannot be read, or a listing was cut short. Workflow admission, document admission and the document
+tree, the manual commit, Close and `commit-execution-state` are thin adapters over it.
 
 ### Close and queued operations
 
@@ -179,6 +234,22 @@ published change is ONE document operation of action `workflow` (contract
     the index and the waiting Tasks.
   - The held paths stay uncommitted
     until a person commits them with Git or a Close archives them.
+- **Agent attempts.** A finished agent attempt does not run `commit-execution-state`: its post action
+  `attempt-commit` commits the attempt's own ledger entries (documents, Tasks and execution state its
+  Turns made, the attempt's start included) with its declared code paths, as one commit
+  ([agent attempts](../workflow/workflow-agent-attempts.md#attempt-commit)). The owner's
+  Confirm of a result that waited for them, a Reject and a Return that applies now are owner writes
+  and commit through `commit-execution-state` as after an owner's finish (`afterOwnerChange`); a
+  new agent attempt runs it first, so it starts with SpecFlow's own workflow state committed. While
+  an attempt's commit waits, no workflow write of its Specification is admitted
+  (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`, [agent attempts](../workflow/workflow-agent-attempts.md#while-an-attempt-commit-waits)),
+  so no owner change joins the agent's entries. `commit-execution-state` is never `completed` while
+  it left an owner change uncommitted because of agent work: `failed`
+  `WORKFLOW_ATTEMPT_COMMIT_REQUIRED` or `WORKFLOW_STATE_CORRUPT` (an attempt journal cannot be
+  read), with `held`. Paths a person edited by hand stay `held` on a `completed` result. Which
+  entries are the agents' comes from the attempt holds of the Specification's own checkout
+  (`attemptCommitHolds`, see [Agent writes](#agent-writes)), resolved with the Specification, so an
+  Engine opened on the primary checkout leaves out the entries of an attempt in a linked worktree.
 - **Workflow subjects** follow the same rule as document subjects: at most 72 characters and never cut. When
   `<summary> in <slug>` does not fit, the summary goes alone, then `change the workflow state`; the body then holds the
   summary and `Specification: <slug>`.

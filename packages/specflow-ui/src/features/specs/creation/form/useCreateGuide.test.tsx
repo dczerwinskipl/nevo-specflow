@@ -8,7 +8,7 @@ function Harness({ focusField }: { focusField: (field: string) => void }) {
   const { announce, region } = useAnnouncer();
   const { guide } = useCreateGuide({
     problemField: 'name',
-    reason: 'Enter a specification name.',
+    reason: 'Enter a name to create the specification.',
     announce,
     focusField,
   });
@@ -43,9 +43,11 @@ describe('useCreateGuide', () => {
 
     observer.disconnect();
     // Cleared, then filled, twice: a screen reader hears the second activation too.
-    expect(texts.filter((text) => text === 'Enter a specification name.')).toHaveLength(2);
+    expect(
+      texts.filter((text) => text === 'Enter a name to create the specification.'),
+    ).toHaveLength(2);
     expect(texts.filter((text) => text === '').length).toBeGreaterThanOrEqual(1);
-    expect(region.textContent).toBe('Enter a specification name.');
+    expect(region.textContent).toBe('Enter a name to create the specification.');
     expect(focusField).toHaveBeenCalledTimes(2);
     expect(focusField).toHaveBeenLastCalledWith('name');
   });

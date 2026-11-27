@@ -38,6 +38,8 @@ export type CloseDialogOutcome =
       readonly reasonKey: CloseRefusalKey;
       /** Whose files hold the Close, to list under the reason; absent without the facts. */
       readonly uncommitted?: UncommittedHoldDetails;
+      /** Agent work among other owners: the sentence for those owners, shown in their groups. */
+      readonly ownersReasonKey?: CloseRefusalKey;
     }
   | { readonly kind: 'cannot-start'; readonly reasonKey: CloseRefusalKey }
   | { readonly kind: 'not-closed'; readonly reasonKey: CloseRefusalKey }
@@ -169,6 +171,8 @@ export type CloseRefusalKey =
       | 'workflowStateUncommittedStep'
       | 'uncommittedAbandoned'
       | 'uncommittedGit'
+      | 'agentCommitFailed'
+      | 'agentAndOthers'
       | 'documentsFailed'
       | 'commitBlocked'
       | 'engine'
@@ -180,6 +184,16 @@ export type CloseRefusalKey =
  * finish commits, or saved documents (also the answer when the facts are missing).
  */
 function uncommittedKey(hold: UncommittedHoldDetails | undefined): CloseRefusalKey {
+  // Only agent work whose commit failed: Retry commit is the way forward, not Git.
+  if (hold?.owners.length === 0 && hold.unreadable === 0 && (hold.attempts?.length ?? 0) > 0) {
+    return 'workflowExecution.close.refusal.agentCommitFailed';
+  }
+
+  // Agent work and other files together: one summary; each group below says its own way forward.
+  if (hold && hold.owners.length > 0 && (hold.attempts?.length ?? 0) > 0) {
+    return 'workflowExecution.close.refusal.agentAndOthers';
+  }
+
   // Facts SpecFlow cannot act on (definitions, unreadable records, mixed causes, none at all): Git.
   const specifications = hold?.owners.flatMap((owner) =>
     owner.kind === 'specification' ? [owner] : [],
@@ -223,10 +237,20 @@ function heldBy(refusal: WorkflowRefusal | undefined): CloseDialogOutcome | unde
   }
 
   const reasonKey = closeRefusalKey(refusal);
+  const hold = refusal.uncommittedHold;
+  if (!hold) {
+    return { kind: 'held', reasonKey };
+  }
 
-  return refusal.uncommittedHold
-    ? { kind: 'held', reasonKey, uncommitted: refusal.uncommittedHold }
-    : { kind: 'held', reasonKey };
+  // With agent work among them, the other owners keep their own lead inside their groups.
+  const mixed = hold.owners.length > 0 && (hold.attempts?.length ?? 0) > 0;
+
+  return {
+    kind: 'held',
+    reasonKey,
+    uncommitted: hold,
+    ...(mixed ? { ownersReasonKey: uncommittedKey({ ...hold, attempts: [] }) } : {}),
+  };
 }
 
 /**
@@ -236,7 +260,11 @@ function heldBy(refusal: WorkflowRefusal | undefined): CloseDialogOutcome | unde
 export function uncommittedHolder(
   hold: UncommittedHoldDetails | undefined,
   specId: string,
-): 'other' | 'own' | 'checkout' {
+): 'other' | 'own' | 'checkout' | 'mixed' {
+  if (hold && hold.owners.length > 0 && (hold.attempts?.length ?? 0) > 0) {
+    return 'mixed';
+  }
+
   const specifications = (hold?.owners ?? []).flatMap((owner) =>
     owner.kind === 'specification' ? [owner.specId] : [],
   );

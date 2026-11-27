@@ -109,20 +109,19 @@
 .mobile-floating-navigation > button {
   border-color: rgb(255 255 255 / 0.11);
   border-radius: 9999px;
-  background: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
-  -webkit-backdrop-filter: blur(var(--blur-sm));
-  backdrop-filter: blur(var(--blur-sm));
-  /* Drop-shadow component matches Tailwind's own `shadow-lg` literally (see
-   * `node_modules/tailwindcss/theme.css`'s `--shadow-lg`) — this screen's one shared "floating
-   * surface above content" elevation, also applied via the `shadow-lg` utility class to the
-   * Composer bar and the "jump to latest" pill in `ManagedSession.tsx`, so all three floating
-   * controls share one elevation rather than three different shadow values. The inset highlight
-   * is a separate "material" effect (the frosted edge), not the elevation shadow, so it is kept as-is.
+  /* The controls float over the content on purpose (nothing else covers the page): each circle
+   * is near-opaque with a stronger blur, so text scrolled under it never reads through it. */
+  background: color-mix(in srgb, var(--color-surface-raised) 96%, transparent);
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  backdrop-filter: blur(var(--blur-md));
+  /* Tailwind's `shadow-lg` geometry at a darker alpha: the small circles float over any content,
+   * so their edge must read against text as well as against the page. The inset highlight is a
+   * separate "material" effect (the frosted edge), not the elevation shadow.
    */
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.08),
-    0 10px 15px -3px rgb(0 0 0 / 0.1),
-    0 4px 6px -4px rgb(0 0 0 / 0.1);
+    0 10px 15px -3px rgb(0 0 0 / 0.3),
+    0 4px 6px -4px rgb(0 0 0 / 0.3);
   pointer-events: none;
 }
 

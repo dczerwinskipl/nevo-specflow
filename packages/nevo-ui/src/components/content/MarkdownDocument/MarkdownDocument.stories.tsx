@@ -51,6 +51,23 @@ export const Narrow: Story = {
   ),
 };
 
+/** Body text at the small size of a dense row around it (a history entry's feedback). */
+export const CompactText: Story = {
+  args: { textSize: 'compact' },
+  render: (args) => (
+    <div className="w-[26rem] max-w-full text-body-sm">
+      <p className="text-content-muted">Today, 12:35 · Attempt 1</p>
+      <MarkdownDocument {...args} />
+    </div>
+  ),
+  play: ({ canvasElement }) => {
+    const paragraph = canvasElement.querySelector('p + div p');
+    assert(paragraph?.className.includes('text-body-sm'), 'Paragraphs use the small body text.');
+    const cell = canvasElement.querySelector('td span');
+    assert(cell?.className.includes('text-body-sm'), 'Table cells use the small body text.');
+  },
+};
+
 export const RawHtmlIsNotEnabled: Story = {
   args: {
     source: '<script>alert("nope")</script>\n\n<strong>Raw HTML is not enabled.</strong>',

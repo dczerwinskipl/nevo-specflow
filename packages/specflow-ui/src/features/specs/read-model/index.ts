@@ -5,6 +5,7 @@
  */
 export { type SpecificationApi, createRuntimeSpecificationApi } from './api';
 export { invalidateSpecificationWorkspace, specificationKeys, specsOverviewKeys } from './queries';
+export { mapAttentionItem } from './mapWorkspaceResponse';
 export { sessionActivityLabel } from './status-labels';
 export { useSpecificationWorkspace } from './useSpecificationWorkspace';
 export type { UseSpecificationWorkspaceResult } from './useSpecificationWorkspace';

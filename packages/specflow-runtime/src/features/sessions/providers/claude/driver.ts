@@ -8,9 +8,11 @@ import {
   createInvocationScope,
   launchOwnedProcess,
   projectProviderEnvironment,
+  withRuntimeEntries,
   type ProviderEnvironment,
 } from '../process';
 import { claudeLoss, createClaudeOperation } from './operation';
+import { productCliGuard, withAbsolutePath } from './cli-path';
 import { inspectClaudeInstallation } from './installation';
 import {
   classifyProviderInstallation,
@@ -27,9 +29,22 @@ import {
   type ExecutableResolution,
 } from '../executable';
 import { claudeExecutable } from './executable';
-import { claudeArguments, claudeModels, verifyClaudeInit, claudeVersion } from './discovery';
+import {
+  ClaudeRestrictionError,
+  claudeArguments,
+  claudeModels,
+  verifyClaudeInit,
+  verifyClaudeStatus,
+  claudeVersion,
+} from './discovery';
 import { claudeMode, claudeModes } from './modes';
 import { createProviderAuthentication } from '../authentication';
+import { claudeRegistryPolicy } from './registry';
+
+/** How long a probe's answer is kept while the installation's identity stays the same. */
+export const CLAUDE_PROBE_REFRESH_MS = 15 * 60_000;
+/** How often a catalogue read starts a background check of the installation's identity. */
+export const CLAUDE_REVALIDATE_MS = 30_000;
 
 export function createClaudeDriver(
   options: {
@@ -38,17 +53,27 @@ export function createClaudeDriver(
     executable?: string;
     environment?: ProviderEnvironment;
     managedWrites?: boolean;
+    /** The Runtime log: why SpecFlow stopped a Claude process for output it does not support. */
+    logRejection?: (reason: string) => void;
   },
   dependencies: {
     inspect?: (
       signal: AbortSignal,
     ) => Promise<Awaited<ReturnType<typeof inspectClaudeInstallation>>>;
     probe?: typeof probeClaude;
+    /** Test seam: the clock the probe's age is judged by. */
+    now?: () => number;
   } = {},
 ): SessionDriver {
+  const now = dependencies.now ?? Date.now;
   const baseEnvironment = options.environment ?? projectProviderEnvironment({ host: process.env });
   const environment: ProviderEnvironment = {
-    values: Object.freeze({ ...baseEnvironment.values, CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1' }),
+    // Without empty or relative PATH entries: Claude's shell never resolves a bare command (the
+    // product CLI included) against its current directory, so allowlisted calls can be trusted.
+    values: Object.freeze({
+      ...withAbsolutePath(baseEnvironment.values, process.platform),
+      CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1',
+    }),
     sources: Object.freeze({
       ...baseEnvironment.sources,
       CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: 'configured',
@@ -72,6 +97,12 @@ export function createClaudeDriver(
   let checkedAt = 0;
   let scope = '';
   let discovery: Promise<ProviderDescriptor> | undefined;
+  /** A discovery ran to its end once (ready or not): later reads serve its result at once. */
+  let discovered = false;
+  /** When the last background revalidation started (it reads the installation, never awaited). */
+  let revalidatedAt = 0;
+  /** Aborted by `close`: every discovery (and the probe processes it runs) stops with it. */
+  const closing = new AbortController();
   const locator = createExecutableLocator(claudeExecutable, {
     ...(options.executable !== undefined ? { configured: options.executable } : {}),
     environment,
@@ -161,18 +192,52 @@ export function createClaudeDriver(
     throw error;
   }
 
+  /**
+   * The catalogue read (probe policy, see the provider reference): the first read after start
+   * waits for the first discovery (the Runtime starts it eagerly); every later read returns the last
+   * known descriptor at once and, at most every {@link CLAUDE_REVALIDATE_MS}, revalidates in the
+   * background: the installation is read again (its executable hash is cached by identity) and the
+   * CLI is probed again only when that identity changed, the last probe is older than
+   * {@link CLAUDE_PROBE_REFRESH_MS}, or the descriptor was invalidated (a Turn launch found the
+   * installation changed or broken). `recheck` (the owner's Check again) probes now and is awaited.
+   */
   async function refresh(
     signal: AbortSignal,
     refreshOptions: { recheck?: boolean } = {},
   ): Promise<ProviderDescriptor> {
-    if (refreshOptions.recheck && !discovery) {
-      locator.forget();
-      checkedAt = 0;
+    if (refreshOptions.recheck) {
+      if (!discovery) {
+        locator.forget();
+        claudeRegistryPolicy.forget();
+        checkedAt = 0;
+      }
+
+      return discover(signal);
     }
 
+    if (!discovered) {
+      return discover(signal);
+    }
+
+    if (
+      !closing.signal.aborted &&
+      !discovery &&
+      (checkedAt === 0 || now() - revalidatedAt >= CLAUDE_REVALIDATE_MS)
+    ) {
+      revalidatedAt = now();
+      // Never awaited: its outcome is the next read's descriptor.
+      void discover(AbortSignal.timeout(ProviderTimeouts.discoveryMs)).catch(() => undefined);
+    }
+
+    return structuredClone(descriptor);
+  }
+
+  /** One discovery at a time; a caller during one waits for it. */
+  async function discover(signal: AbortSignal): Promise<ProviderDescriptor> {
     discovery ??= (async () => {
       const boundedSignal = AbortSignal.any([
         signal,
+        closing.signal,
         AbortSignal.timeout(ProviderTimeouts.discoveryMs),
       ]);
       let inspectedAuthentication: string | undefined;
@@ -182,7 +247,10 @@ export function createClaudeDriver(
           const installation = await inspect(boundedSignal);
           inspectedAuthentication = installation.authenticationFingerprint;
           requireAuthentication(installation.authenticationFingerprint);
-          if (installation.fingerprint === checkedFingerprint && Date.now() - checkedAt < 30000) {
+          if (
+            installation.fingerprint === checkedFingerprint &&
+            now() - checkedAt < CLAUDE_PROBE_REFRESH_MS
+          ) {
             return structuredClone(descriptor);
           }
 
@@ -308,7 +376,15 @@ export function createClaudeDriver(
               protocolProfile: 'claude-stream-json-v1',
               ...(result.version ? { version: result.version } : {}),
             },
-            providerModes,
+            // A mode that runs only some models names them, so a client offers no pair that
+            // validate would refuse.
+            providerModes: providerModes.map((mode) => {
+              const runs = available.get(mode.modeId);
+
+              return runs && runs.length !== result.models.length
+                ? { ...mode, modelIds: runs.map((model) => model.modelId) }
+                : mode;
+            }),
             defaultModeId: options.managedWrites ? 'acceptEdits' : 'plan',
             modes: options.managedWrites ? ['read-only', 'workspace-write'] : ['read-only'],
           };
@@ -321,7 +397,7 @@ export function createClaudeDriver(
           delete descriptor.reasonCode;
           checkedFingerprint = installation.fingerprint;
           authentication.verified(installation.authenticationFingerprint);
-          checkedAt = Date.now();
+          checkedAt = now();
           scope = installation.accountScope;
 
           return structuredClone(descriptor);
@@ -337,16 +413,28 @@ export function createClaudeDriver(
         return structuredClone(descriptor);
       }
     })();
+    const running = discovery;
     try {
-      return await discovery;
+      return await running;
     } finally {
-      discovery = undefined;
+      discovered = true;
+      if (discovery === running) {
+        discovery = undefined;
+      }
     }
   }
 
   async function readyInstallation(signal: AbortSignal) {
     for (let attempt = 0; attempt < 2; attempt++) {
-      await refresh(signal);
+      // A Turn never runs on a stale answer: the first attempt checks (a fresh probe is reused),
+      // the second, after the installation changed, probes again.
+      if (attempt === 0) {
+        await discover(signal);
+      } else {
+        checkedAt = 0;
+        await discover(signal);
+      }
+
       if (descriptor.readiness !== 'ready') {
         throw new SessionError(
           descriptor.readiness === 'authenticationRequired'
@@ -391,6 +479,18 @@ export function createClaudeDriver(
     }
 
     const model = models.find((model) => model.modelId === (selection.modelId ?? 'default'));
+    if (
+      !model &&
+      profile.modeId === 'auto' &&
+      modeModels.get('plan')?.some((entry) => entry.modelId === (selection.modelId ?? 'default'))
+    ) {
+      throw new SessionError(
+        'MODEL_UNSUPPORTED',
+        'The installed Claude has no auto mode for this model; choose another model or mode.',
+        { reason: 'mode-model-unsupported', field: 'providerModeId' },
+      );
+    }
+
     if (!model) {
       throw new SessionError('MODEL_UNSUPPORTED', 'Requested Claude model is unavailable.');
     }
@@ -406,10 +506,16 @@ export function createClaudeDriver(
   return {
     telemetryGroups: ['usage', 'cost', 'limits'],
     supportsManagedWrites: options.managedWrites === true,
+    supportsPermissionAllowlist: true,
     supportsSessionWorkspaces: true,
     describe: () => structuredClone(descriptor),
     refresh,
     contextScope: () => scope,
+    async close() {
+      closing.abort();
+      // The probe disposes its process tree before its discovery settles (its cwd is the workspace).
+      await discovery?.catch(() => undefined);
+    },
     async validate(selection, signal = AbortSignal.timeout(ProviderTimeouts.discoveryMs)) {
       if (selection.providerId !== 'claude') {
         throw new SessionError('PROVIDER_UNAVAILABLE', 'Claude provider identity is required.');
@@ -470,16 +576,14 @@ export function createClaudeDriver(
         },
         async (fact) => {
           if (
-            // A frame this adapter refused says nothing about Claude's availability.
-            (fact.kind === 'lost' && fact.message !== claudeLoss.rejected) ||
+            // A frame this adapter refused says nothing about Claude's availability, nor does one
+            // launch that ran out of time (a slow start fails that Turn; the next one starts anew).
+            (fact.kind === 'lost' && !fact.message.startsWith(claudeLoss.rejected)) ||
             (fact.kind === 'outcome' &&
               fact.error &&
-              [
-                'PROVIDER_UNAVAILABLE',
-                'PROVIDER_AUTH_REQUIRED',
-                'PROCESS_FAILED',
-                'TIMEOUT',
-              ].includes(fact.error.code))
+              ['PROVIDER_UNAVAILABLE', 'PROVIDER_AUTH_REQUIRED', 'PROCESS_FAILED'].includes(
+                fact.error.code,
+              ))
           ) {
             invalidate(
               fact.kind === 'outcome' && fact.error?.code === 'PROVIDER_AUTH_REQUIRED'
@@ -516,15 +620,19 @@ export function createClaudeDriver(
               scope: temporary,
               executable: installation.executable,
               cwd: workspace,
-              args: claudeArguments(invocation.selection, invocation.providerContext),
-              environment,
+              args: claudeArguments(
+                invocation.selection,
+                invocation.providerContext,
+                invocation.permissions,
+              ),
+              environment: withRuntimeEntries(environment, invocation.runtimeEnvironment?.values),
               signal: operationSignal,
-              secrets: installation.secrets,
+              secrets: [...installation.secrets, ...(invocation.runtimeEnvironment?.secrets ?? [])],
               ...(invocation.recordProcess ? { record: invocation.recordProcess } : {}),
             });
           },
           async initialize(payload) {
-            const actual = claudeModels(payload);
+            const actual = claudeModels(payload, claudeMode(invocation.selection).modeId);
             const model =
               invocation.selection.modelId ?? (invocation.selection.effort ? 'default' : undefined);
             if (
@@ -556,15 +664,33 @@ export function createClaudeDriver(
             requireAuthentication(current.authenticationFingerprint);
             expectedVersion = claudeVersion(payload);
           },
+          ...(options.logRejection ? { onRejected: options.logRejection } : {}),
+          productCli: productCliGuard({
+            pathValue: Object.entries(environment.values).find(
+              ([name]) => name.toUpperCase() === 'PATH',
+            )?.[1],
+            platform: process.platform,
+            workspace,
+          }),
           verifyFrame(frame) {
+            const status = frame.type === 'system' && frame.subtype === 'status';
             if (!verified) {
               try {
+                if (status) {
+                  // Claude may report its permission mode before system/init.
+                  verifyClaudeStatus(frame, invocation.selection, expectedVersion);
+
+                  return;
+                }
+
                 verifyClaudeInit(frame, workspace, expectedVersion, invocation.selection);
               } catch (error) {
                 invalidate(
                   new ProviderUnavailableError(
                     'RESTRICTION_UNSUPPORTED',
-                    'Claude invocation does not satisfy the restricted protocol profile.',
+                    error instanceof ClaudeRestrictionError
+                      ? error.message
+                      : 'Claude invocation does not satisfy the restricted protocol profile.',
                   ),
                 );
 
@@ -572,6 +698,8 @@ export function createClaudeDriver(
               }
 
               verified = true;
+            } else if (status) {
+              verifyClaudeStatus(frame, invocation.selection, expectedVersion);
             } else if (frame.type === 'system' && frame.subtype === 'init') {
               verifyClaudeInit(frame, workspace, expectedVersion, invocation.selection);
             }

@@ -121,4 +121,92 @@ describe('workspace Session section policy', () => {
     expect(data?.attention.map((item) => item.targetId)).toEqual([`s-${String(total)}`, 's-2']);
     expect(result.sessionIdentities?.map((identity) => identity.sessionId)).toContain('s-2');
   });
+
+  it('titles the Sessions at read time when a title source is given, keeping the stored one otherwise', async () => {
+    const summaries: Record<string, string | undefined> = {
+      old: 'Agent step execution',
+      untitled: undefined,
+      renamed: 'My notes',
+    };
+    const rows = Object.keys(summaries).map((sessionId, index) => ({
+      projectId: 'project',
+      sessionId,
+      specId: 'spec',
+      createdSeq: 10 - index,
+      readiness: 'ready',
+      updatedAt: '2026-11-14T10:00:00.000Z',
+    }));
+    const call = (request: { op: string; sessionIds?: string[] }) =>
+      Promise.resolve(
+        request.op === 'list'
+          ? { rows, hasMore: false }
+          : request.sessionIds!.map((sessionId) => ({
+              sessionId,
+              ...(summaries[sessionId] ? { title: summaries[sessionId] } : {}),
+              providerId: 'fake',
+              readiness: 'ready',
+              activeTurn: { turnId: 't' },
+              createdAt: '2026-11-14T09:00:00.000Z',
+              updatedAt: '2026-11-14T10:00:00.000Z',
+            })),
+      );
+    const sessions = {
+      projectId: 'project',
+      coordinator: { store: { call }, provider: () => undefined, usable: () => true },
+    } as unknown as SessionsRuntime;
+    const origins = new Map([
+      ['old', { stepId: 'breakdown', stepTitle: 'Break the solution down', attempt: 1 }],
+      [
+        'untitled',
+        {
+          stepId: 'implement',
+          stepTitle: 'Implement',
+          attempt: 2,
+          taskId: 'T-1',
+          taskTitle: 'Login form',
+        },
+      ],
+      ['renamed', { stepId: 'review', stepTitle: 'Review', attempt: 1 }],
+    ]);
+    const title = (stored: string | undefined, origin: { stepTitle: string; attempt: number }) =>
+      stored === 'My notes' ? stored : `${origin.stepTitle} · attempt ${String(origin.attempt)}`;
+    const read = createWorkspaceSessionContribution({
+      sessions,
+      projectId: () => 'project',
+      agentSteps: { origins: () => Promise.resolve(origins), title },
+    });
+
+    const result = await read('spec', { authz: { can: () => true } as never });
+    const data = result.section.state === 'available' ? result.section.data : undefined;
+
+    expect(data?.items.map((item) => [item.id, item.title])).toEqual([
+      ['old', 'Break the solution down · attempt 1'],
+      ['untitled', 'Implement · attempt 2'],
+      // A title the owner gave is kept.
+      ['renamed', 'My notes'],
+    ]);
+    // Each row carries its structured origin, so a client words its lines without parsing titles.
+    expect(data?.items.map((item) => item.agentStep)).toEqual([...origins.values()]);
+    expect(result.sessionStarts?.map((start) => start.title)).toEqual(
+      data?.items.map((item) => item.title),
+    );
+
+    // A title source that fails keeps the stored titles.
+    const failing = createWorkspaceSessionContribution({
+      sessions,
+      projectId: () => 'project',
+      agentSteps: { origins: () => Promise.reject(new Error('definitions unreadable')), title },
+    });
+    const fallback = await failing('spec', { authz: { can: () => true } as never });
+    expect(
+      fallback.section.state === 'available'
+        ? fallback.section.data.items.map((item) => item.title)
+        : [],
+    ).toEqual(['Agent step execution', undefined, 'My notes']);
+    expect(
+      fallback.section.state === 'available'
+        ? fallback.section.data.items.some((item) => item.agentStep)
+        : true,
+    ).toBe(false);
+  });
 });

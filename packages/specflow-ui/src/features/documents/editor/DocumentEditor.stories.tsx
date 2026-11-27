@@ -2,7 +2,11 @@ import {
   documentContentFixture,
   saveResultFixture,
 } from '../../../../test-support/documents/fixtures';
-import type { SaveInput, SaveResult } from '@nevo/specflow-contracts/documents';
+import type {
+  DocumentAttemptCommit,
+  SaveInput,
+  SaveResult,
+} from '@nevo/specflow-contracts/documents';
 import { useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Meta, StoryObj } from '@storybook/react-vite';
@@ -48,16 +52,32 @@ const record = documentContentFixture({
     '# Feature: Logowanie SSO\n\n## Problem\n\nPracownicy logują się przez firmowego dostawcę tożsamości.\n\n- Powrót do projektu\n\nUżyj `identity_token`.',
   revision: '1',
 });
+/** An agent attempt whose failed commit still takes the document (`held`). */
+const heldBy: DocumentAttemptCommit = {
+  reason: 'attempt-commit-failed',
+  code: 'MANUAL_COMMIT_CONFLICT',
+  attemptId: '2a1d7b63-7b54-4d66-8e4f-2c8b6e3a9d02',
+  subject: { specId: 'sso' },
+  step: 'requirements',
+  attempt: 1,
+  stepTitle: 'Wymagania',
+  count: 2,
+  paths: ['specification.md', 'specification.yaml'],
+};
+
 function EditorFixture({
   deferred = false,
   plainText = false,
   renameFormat = false,
+  held = false,
   content,
 }: {
   content?: string;
   deferred?: boolean;
   plainText?: boolean;
   renameFormat?: boolean;
+  /** An agent attempt's commit takes the document: read-only, with Retry commit. */
+  held?: boolean;
 }) {
   const [textFormat, setTextFormat] = useState(plainText);
   const [release, setRelease] = useState<(() => void) | null>(null);
@@ -78,6 +98,10 @@ function EditorFixture({
                 }),
               )
             : Promise.resolve(saveResultFixture('2')),
+      },
+      workflowExecutionApi: {
+        ...services.workflowExecutionApi,
+        retryAttemptCommit: () => Promise.resolve({ postActions: [] }),
       },
     };
   }, [deferred]);
@@ -108,6 +132,9 @@ function EditorFixture({
                         ? record
                         : { ...record, content }
                   }
+                  {...(held
+                    ? { readOnlyReason: 'attempt-commit' as const, attemptCommit: heldBy }
+                    : {})}
                 >
                   <div className="flex h-full min-h-0 flex-col">
                     <div className="shrink-0 border-b border-border-subtle p-2">
@@ -142,7 +169,25 @@ export const Default: Story = {
     deferred: { control: 'boolean' },
     plainText: { control: 'boolean' },
     renameFormat: { control: 'boolean' },
+    held: { control: 'boolean' },
     content: { control: 'text' },
+  },
+};
+
+/**
+ * The agent's work on the document is not committed yet (its attempt commit failed): before any
+ * edit the editor says so with Retry commit, offers no Edit, and Save is unavailable.
+ */
+export const HeldByAgentAttemptCommit: Story = {
+  args: { held: true },
+  play: async ({ canvas, userEvent }) => {
+    const note = await canvas.findByRole('alert');
+    await expect(note).toHaveTextContent('Praca agenta nad tym dokumentem w kroku Wymagania');
+    await expect(note).toHaveTextContent('MANUAL_COMMIT_CONFLICT');
+    await expect(canvas.queryByRole('button', { name: 'Edytuj dokument' })).toBeNull();
+    const retry = within(note).getByRole('button', { name: 'Ponów commit' });
+    await userEvent.click(retry);
+    await waitFor(() => expect(retry).toBeEnabled());
   },
 };
 export const RetainedDraftAndGuard: Story = {

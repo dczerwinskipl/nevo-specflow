@@ -79,6 +79,53 @@ function workItem(overrides: Partial<WorkSummary> & { kind: WorkSummary['kind'] 
 }
 
 /**
+ * Questions the owner answered (dogfood round 3): one recorded with its answer (a choice plus the
+ * owner's own words), one recorded as free text only, and one from before answers were recorded,
+ * which keeps its plain row.
+ */
+export function answeredQuestionItems(): WorkSummary[] {
+  return [
+    workItem({
+      kind: 'commentary',
+      title: {
+        text: 'Four decisions shape this Specification; asking before writing.',
+        complete: true,
+      },
+    }),
+    workItem({
+      kind: 'interaction',
+      title: { text: 'Question', complete: true },
+      createdAt: '2026-10-30T10:00:00Z',
+      updatedAt: '2026-10-30T10:01:13Z',
+      question: {
+        header: 'Scope',
+        text: 'Which batches should this Specification deliver? The issue lists five, A to E; Sessions (E) is the largest.',
+        options: [
+          { id: '0', label: 'All batches A–E (Recommended)' },
+          { id: '1', label: 'Batches A–D, Sessions later' },
+          { id: '2', label: 'Batch A only' },
+        ],
+        answer: { optionIds: ['0'], text: 'Do Sessions last, behind the other four.' },
+      },
+    }),
+    workItem({
+      kind: 'interaction',
+      title: { text: 'Question', complete: true },
+      question: {
+        header: 'Fault scenarios',
+        text: 'How should tests inject the demo fault scenarios?',
+        options: [
+          { id: '0', label: 'Test-only injected port (Recommended)' },
+          { id: '1', label: 'A request header' },
+        ],
+        answer: { optionIds: [], text: 'A test-only port, never in the public schemas.' },
+      },
+    }),
+    workItem({ kind: 'interaction', title: { text: 'Question', complete: true } }),
+  ];
+}
+
+/**
  * A moderate, hand-authored mix exercising every grouping/Thinking/filter rule at once:
  * a leading tool burst before any Commentary (Start of Turn), a Commentary chapter with a
  * Reasoning summary and a run of happy-path tools compacted into a burst, a second chapter
@@ -124,6 +171,7 @@ export function mixedWorkTimelineItems(): WorkSummary[] {
     }),
     workItem({
       kind: 'interaction',
+      interaction: 'permission',
       state: 'completed',
       title: { text: 'Permission to write workspace', complete: true },
     }),
@@ -421,3 +469,273 @@ export function createWorkInspectorFixtureApi(
 }
 
 export { actionsWorkId, longReadWorkId };
+
+export const claudeWriteWorkId = '00000000-0000-4000-8000-000000000013';
+const worktree = 'C:/Users/owner/nevo-verify/dogfood/worktree';
+
+/**
+ * A realistic Claude Turn as the Runtime now records it: tool Work named by its first action's
+ * operation and workspace-relative subject, a permission with the person's decision, a write Work
+ * whose third file failed (named on its row), the agent's own note heading the next phase, and a
+ * permission still waiting.
+ */
+export function claudeTurnWorkItems(): WorkSummary[] {
+  return [
+    workItem({
+      kind: 'tool',
+      title: { text: 'Bash', complete: true },
+      operation: 'command',
+      subject: 'mkdir -p /tmp/dummy-job && cd /tmp/dummy-job && ./hello.sh …',
+      actionCount: 1,
+      createdAt: '2026-11-24T19:10:00.000Z',
+      updatedAt: '2026-11-24T19:10:25.300Z',
+    }),
+    workItem({
+      kind: 'interaction',
+      title: { text: 'Bash', complete: true },
+      operation: 'command',
+      subject: 'mkdir -p /tmp/dummy-job && cd /tmp/dummy-job && ./hello.sh …',
+      decision: 'allowed',
+      createdAt: '2026-11-24T19:10:01.000Z',
+      updatedAt: '2026-11-24T19:10:12.400Z',
+    }),
+    workItem({
+      workId: claudeWriteWorkId,
+      kind: 'tool',
+      state: 'failed',
+      title: { text: 'Write', complete: true },
+      operation: 'write',
+      subject: 'dummy-scratch/job.sh',
+      actionCount: 3,
+      failure: {
+        subject: 'dummy-scratch/test.sh',
+        message: 'File has not been read yet. Read it first before writing to it.',
+      },
+      createdAt: '2026-11-24T19:10:30.000Z',
+      updatedAt: '2026-11-24T19:10:54.800Z',
+    }),
+    workItem({
+      kind: 'commentary',
+      title: {
+        text: "The file tools can only write inside the worktree, so I'll use a scratch directory there and delete it afterwards.",
+        complete: true,
+      },
+    }),
+    workItem({
+      kind: 'tool',
+      title: { text: 'Edit', complete: true },
+      operation: 'edit',
+      subject: 'dummy-scratch/job.sh',
+      actionCount: 1,
+      createdAt: '2026-11-24T19:11:00.000Z',
+      updatedAt: '2026-11-24T19:11:00.031Z',
+    }),
+    workItem({
+      kind: 'interaction',
+      state: 'active',
+      title: { text: 'Bash', complete: true },
+      operation: 'command',
+      subject: 'rm -rf dummy-scratch /tmp/dummy-job',
+    }),
+  ];
+}
+
+/** The write Work's three actions: two created files and the one Claude refused. */
+export function claudeWriteActions(): ToolActionSummary[] {
+  const write = (
+    ordinal: number,
+    name: string,
+    content: string,
+    failed = false,
+  ): ToolActionSummary => ({
+    actionId: `00000000-0000-4000-8000-00000000002${ordinal}`,
+    ordinal,
+    revision: 1,
+    state: failed ? ('failed' as const) : ('completed' as const),
+    title: { text: 'Write', complete: true },
+    operation: 'write' as const,
+    subject: `dummy-scratch/${name}`,
+    input: fixtureContentRef(
+      JSON.stringify({ file_path: `${worktree}/dummy-scratch/${name}`, content }),
+    ),
+    output: fixtureContentRef(
+      failed
+        ? '<tool_use_error>File has not been read yet. Read it first before writing to it.</tool_use_error>'
+        : `File created successfully at: ${worktree}/dummy-scratch/${name}`,
+    ),
+    ...(failed
+      ? {
+          error: {
+            code: 'TOOL_FAILED',
+            message: 'File has not been read yet. Read it first before writing to it.',
+          },
+        }
+      : {}),
+    createdAt: '2026-11-24T19:10:30.000Z',
+    updatedAt: '2026-11-24T19:10:30.026Z',
+  });
+
+  return [
+    write(
+      1,
+      'job.sh',
+      [
+        '#!/bin/bash',
+        '# Dummy job: prints a greeting for a name.',
+        'name="${1:-World}"',
+        'echo "Hello, ${name}!"',
+      ].join('\n'),
+    ),
+    write(2, 'hello.sh', ['#!/bin/bash', 'echo "Hello, World! (2)"'].join('\n')),
+    write(
+      3,
+      'test.sh',
+      ['#!/bin/bash', 'set -e', '[ "$(./job.sh)" = "Hello, World!" ]'].join('\n'),
+      true,
+    ),
+  ];
+}
+
+/** The failed edit of `dogfoodTurnWorkItems` that `dogfoodEditActions` details. */
+export const dogfoodEditWorkId = '00000000-0000-4000-8000-000000000031';
+const longPath =
+  'specs/active/converge-demo-and-project-http-apis/nevo-solution/architecture/runtime/backend.md';
+
+/**
+ * The Turn the owner reported (dogfood 4, session 6ad1fe2a, Turn 2, shortened): commands each with
+ * an allowed permission, a progress note between them, five failed edits of one file in a row, a
+ * failed read under its own note, then a completed read and two edits the stop interrupted. In the
+ * compact view the first two commands are one group; every failure and interruption is its own row.
+ */
+export function dogfoodTurnWorkItems(): WorkSummary[] {
+  const at = (second: number) => new Date(Date.UTC(2026, 10, 25, 12, 8, second)).toISOString();
+  const command = (subject: string, start: number, ms: number): WorkSummary[] => [
+    workItem({
+      kind: 'tool',
+      title: { text: 'Bash', complete: true },
+      operation: 'command',
+      subject,
+      actionCount: 1,
+      createdAt: at(start),
+      updatedAt: new Date(Date.parse(at(start)) + ms).toISOString(),
+    }),
+    workItem({
+      kind: 'interaction',
+      interaction: 'permission',
+      title: { text: 'Bash', complete: true },
+      operation: 'command',
+      subject,
+      decision: 'allowed',
+      createdAt: at(start),
+      updatedAt: at(start + 1),
+    }),
+  ];
+  const failedEdit = (start: number, workId?: string) =>
+    workItem({
+      ...(workId ? { workId } : {}),
+      kind: 'tool',
+      state: 'failed',
+      title: { text: 'Edit', complete: true },
+      operation: 'edit',
+      subject: longPath,
+      actionCount: 1,
+      failure: { message: 'File has not been read yet. Read it first before writing to it.' },
+      createdAt: at(start),
+      updatedAt: new Date(Date.parse(at(start)) + 17).toISOString(),
+    });
+  const note = (text: string, second: number) =>
+    workItem({ kind: 'commentary', title: { text, complete: true }, createdAt: at(second) });
+
+  return [
+    note(
+      "The re-sent brief shows that `architecture.md` and `decisions.md` are registered at their new revisions. What's left is to bring `backend.md`, `behaviour.md` and the overview in line with D4–D11 and the parity-map corrections, then finish. First I'll confirm the Session management paths for the backend document.",
+      0,
+    ),
+    ...command(
+      'cd /c/Users/owner/nevo-verify/dogfood/worktrees/converge-demo-and-project-http-apis/packages/specflow-runtime/src/features/sessions/http && sed -n 85,115p …',
+      1,
+      1600,
+    ),
+    ...command(
+      'cd /c/Users/owner/nevo-verify/dogfood/worktrees/converge-demo-and-project-http-apis/packages/specflow-runtime/src/features/sessions/http && sed -n 70,90p …',
+      5,
+      501,
+    ),
+    note("Now I'll write the updated `backend.md` and save it through the CLI.", 10),
+    ...command(
+      'cd /c/Users/owner/nevo-verify/dogfood/worktrees/converge-demo-and-project-http-apis && mkdir -p /tmp/nevo-solution …',
+      11,
+      2700,
+    ),
+    failedEdit(21, dogfoodEditWorkId),
+    failedEdit(23),
+    failedEdit(27),
+    failedEdit(34),
+    failedEdit(36),
+    note("The edit tool needs a read first. I'll read the file, then edit it.", 40),
+    workItem({
+      kind: 'tool',
+      state: 'failed',
+      title: { text: 'Read', complete: true },
+      operation: 'read',
+      subject: longPath,
+      actionCount: 1,
+      failure: { message: 'File is outside the working directories.' },
+      createdAt: at(40),
+      updatedAt: at(41),
+    }),
+    note('The file tools only work inside the worktree, so I will edit it there.', 46),
+    workItem({
+      kind: 'tool',
+      title: { text: 'Read', complete: true },
+      operation: 'read',
+      subject: 'converge-demo-and-project-http-apis/backend.md',
+      actionCount: 1,
+      createdAt: at(46),
+      updatedAt: new Date(Date.parse(at(46)) + 19).toISOString(),
+    }),
+    workItem({
+      kind: 'tool',
+      state: 'interrupted',
+      title: { text: 'Edit', complete: true },
+      operation: 'edit',
+      subject: 'converge-demo-and-project-http-apis/backend.md',
+      actionCount: 1,
+      createdAt: at(55),
+      updatedAt: at(59),
+    }),
+  ];
+}
+
+/** The first failed edit of `dogfoodTurnWorkItems`: one action, its text before and after. */
+export function dogfoodEditActions(): ToolActionSummary[] {
+  const before = '"Demo today" is what `packages/specflow-runtime/src/features/*/demo` serves.';
+
+  return [
+    {
+      actionId: '00000000-0000-4000-8000-000000000041',
+      ordinal: 1,
+      revision: 1,
+      state: 'failed',
+      title: { text: 'Edit', complete: true },
+      operation: 'edit',
+      subject: longPath,
+      input: fixtureContentRef(
+        JSON.stringify({
+          file_path: `${worktree}/${longPath}`,
+          old_string: before,
+          new_string: `${before} Project mode serves the same routes from the feature modules.`,
+        }),
+      ),
+      output: fixtureContentRef(
+        '<tool_use_error>File has not been read yet. Read it first before writing to it.</tool_use_error>',
+      ),
+      error: {
+        code: 'TOOL_FAILED',
+        message: 'File has not been read yet. Read it first before writing to it.',
+      },
+      createdAt: '2026-11-25T12:08:21.000Z',
+      updatedAt: '2026-11-25T12:08:21.010Z',
+    },
+  ];
+}

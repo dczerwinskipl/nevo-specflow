@@ -7,11 +7,15 @@ read_when:
   - designing a UI screen, its navigation, or its back behavior
   - choosing between an inline surface, an inspector, a sheet, and a page
   - defining what state is preserved across navigation
+  - choosing an icon for a product concept, or naming a page in its header and trail
+  - choosing typography, action emphasis, colour, spacing, containers or disclosure on the
+    Specification Overview, the Task page or a Session
 summary: >
   Responsive shell with independent navigation and workspace breakpoints, the product
   hierarchy and routes, the reachability of every surface, starting a Session and the
-  navigator, Back/Close semantics, and when to use floating, Secondary, pushed-detail, or
-  full-workspace surfaces.
+  navigator, Back/Close semantics, page identity and the product icon dictionary, the shared visual
+  conventions of the Specification, Task and Session screens, and when to use floating, Secondary,
+  pushed-detail, or full-workspace surfaces.
 related:
   - product.specflow.ui.personas
   - product.specflow.ui.ai-session-ux
@@ -136,16 +140,16 @@ Compact/Narrow always open the Session directly, with no miniature floating repl
 
 ## Reachability
 
-| Surface                   | Normal entry                                                                                                                                                             | Representation                                            |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
-| Specifications            | default entry `/`; **Browse all specifications** in the switcher                                                                                                         | Primary                                                   |
-| Specification overview    | a Specifications row, the switcher, or its stable route                                                                                                                  | Primary                                                   |
-| Tasks page                | the navigator's Tasks, the Overview's **All tasks**; filtered: "N more in <group>" and the compact group links (`?group=`), **Review tasks** (`?blocking=specification`) | routed Primary                                            |
-| Full Task                 | a Task row, attention or activity item of the Specification, or its stable route                                                                                         | routed Primary                                            |
-| New Session               | the Specification's Sessions list, its empty state, Continue session, the preparation block                                                                              | routed Primary (`/specs/:specId/sessions/new`)            |
-| Session (Full Session)    | a Session row or Continue session, Create with an agent (demo mode only), a stable route                                                                                 | routed Primary + Secondary                                |
-| Session Context           | default on split-capable Session entry; the **Context** action on Narrow                                                                                                 | Secondary or pushed local detail                          |
-| Session inspection detail | an explicit click on a Work block, a Related Task or another Context row (the Task tab is a stand-in)                                                                    | a tab or the active tab's local stack; never a third pane |
+| Surface                   | Normal entry                                                                                                                                                                      | Representation                                            |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Specifications            | default entry `/`; **Browse all specifications** in the switcher                                                                                                                  | Primary                                                   |
+| Specification overview    | a Specifications row, the switcher, or its stable route                                                                                                                           | Primary                                                   |
+| Tasks page                | the navigator's Tasks, the Overview's **All tasks**; filtered: "Show N more tasks: <group>" and the compact group links (`?group=`), **Review tasks** (`?blocking=specification`) | routed Primary                                            |
+| Full Task                 | a Task row, attention or activity item of the Specification, or its stable route                                                                                                  | routed Primary                                            |
+| New Session               | the Specification's Sessions list, its empty state, Continue session, the preparation block                                                                                       | routed Primary (`/specs/:specId/sessions/new`)            |
+| Session (Full Session)    | a Session row or Continue session, Create with an agent (demo mode), a stable route                                                                                               | routed Primary + Secondary                                |
+| Session Context           | default on split-capable Session entry; the **Context** action on Narrow                                                                                                          | Secondary or pushed local detail                          |
+| Session inspection detail | an explicit click on a Work block, a Related Task or another Context row (the Task tab is a stand-in)                                                                             | a tab or the active tab's local stack; never a third pane |
 
 The table defines reachability. A product row keeps a stable neutral destination: a Specifications
 row always enters its Specification and never deep-links to whichever Task or issue currently has
@@ -250,9 +254,11 @@ to the Task page. A Back to a routed parent moves in one of two ways:
   the parent, which opens at its top with its title focused. (Rare: if that Overview entry was
   replaced meanwhile, Back still steps to the entry at its index.)
 
-The Narrow header names the screen with the Specification's key ("Overview · KEY") and shows a
-context notice (stale, or the Specification's information could not be read) in full under the
-title, wrapping to a second line, since a peer area has no line in its body.
+The Narrow header names the screen by its icon: a peer area with the Specification's key
+("Overview · KEY"), a stacked item by its own identifier (see
+[Page identity](#page-identity-and-product-icons)). It shows a context notice (stale, or the
+Specification's information could not be read) in full under the title, wrapping to a second line,
+since a peer area has no line in its body.
 
 **Body backs exist only in flows**: Create steps (back to the Specifications list, or a step back
 such as "Change method"), a new Session (back to Sessions) and the way back to a Session from a
@@ -270,3 +276,195 @@ Browser/system Back normally follows router history. On **Narrow**, when a local
 stack is active, the product first lets that stack pop or close before leaving the routed surface;
 the URL still represents only the Primary route. This uses router/history integration that keeps
 normal browser semantics; Secondary does not become a URL-addressable route.
+
+## Page identity and product icons
+
+**Page identity.** Every page says what it is and which item, and never shows its title twice
+(the Document pattern: a document's tab names its file, its body carries its title):
+
+- A **Task page** names itself in its location by its type, never by its long technical key
+  (owner, 2026-11-26): on Narrow the header reads `← [Task] Task · nevo-2` (the Specification's
+  key); on Wide and Compact the trail ends with it: `Specifications › [Specification] nevo-2 ›
+Tasks › [Task] Task` (the Task's key is the item's tooltip). The body keeps the title as its
+  heading; the line under it starts with the type's icon and name, "[Task] Task · Implementation",
+  and the Task's key follows as secondary metadata in mono with a copy icon action. A Task opened
+  from a Session's Context is the same page. Another stacked item (a document) is named by its own
+  identifier, as its tab names its file.
+- The **Specification Overview**'s line under its title reads "[Specification] Specification ·
+  nevo-2", only "Specification" when the Specification has no key. The trail's Specification item
+  carries the Specification icon and the key (its title when there is no key).
+- A **peer area**'s Narrow header names the area with its icon and the Specification's key
+  ("[Tasks] Tasks · nevo-2"). Peer lists of a Specification (Sessions, Tasks, Documents) keep their
+  visible heading. The **Specifications list**, the top-level collection, is named once by the
+  application header at every width, with its collection icon (the Narrow identity; the trail's
+  current item on Wide and Compact); its body heading is for assistive technology only (owner
+  review, 2026-11-27).
+- A **Session**'s header is the Session icon and the Session's one title (the same in the
+  Overview's Sessions, the Sessions list and the header, see
+  [Specification Sessions](specification-sessions.md)), with its state under it. The agent is named
+  once, by the transcript's speaker line ("Claude Code · Opus 5.5"). "Generated by SpecFlow" carries
+  the Nevo mark.
+- Identity adds no band or bar: on Narrow it scrolls away with the header, and the floating
+  navigation and actions stay as they are.
+
+**Product icons.** One icon per product concept, used for nothing else. The four items have a
+related pair: the single icon on item rows, item page headers and the trail's item; the collection
+icon on the navigation and on section and list headers. State icons (done, running, waiting, on
+hold, attention, failed, cancelled) are a separate set and never replace an item's icon: a done Task
+keeps its Task icon, with the done check beside it. The set was chosen by an all-pairs silhouette
+comparison at 16 and 20 px across every icon here, states included, then by the owner (PR #169).
+
+| Concept               | Single / collection            | Meaning                                                   |
+| --------------------- | ------------------------------ | --------------------------------------------------------- |
+| Specification         | BookOpen / Library             | An organised unit of work: workflow, Tasks and documents. |
+| Task                  | ClipboardCheck / ClipboardList | One unit of implementation work, an object of its own.    |
+| Session               | MessageSquare / MessagesSquare | A conversation with an agent (not the agent).             |
+| Document              | FileText / Files               | A file of a Specification or Task without a type icon.    |
+| Start a conversation  | MessageSquarePlus              | The "New session" / "Create with AI" action.              |
+| Documentation         | BookMarked                     | The repository's documentation (the reader).              |
+| Workflow step         | Workflow                       | A step of the workflow, and nothing else.                 |
+| Agent / provider      | provider mark; Bot             | Who does the work; Bot before a provider is chosen.       |
+| Generated by SpecFlow | Nevo mark                      | Text SpecFlow wrote (a brief, a continuation).            |
+| Context               | Paperclip                      | What an agent is given to read.                           |
+| Dependency            | Network                        | A Task this Task waits for.                               |
+| Commit                | GitCommitHorizontal            | A recorded Git commit.                                    |
+| Changes               | GitCompare                     | Uncommitted or compared workspace changes.                |
+| Branch                | GitBranch                      | A Git branch, and nothing else.                           |
+| Repository            | FolderGit2                     | The Git repository area.                                  |
+| History               | History                        | Activity, Work and attempt history (Clock is Waiting).    |
+| Overview              | Home                           | A Specification's Overview area.                          |
+| Tool action           | Wrench                         | Something an agent did with a tool.                       |
+| File read             | Glasses                        | A file an agent read (a Work row), not a Document.        |
+| Changed files         | Diff                           | The repository files an attempt changed.                  |
+| Review                | ScanEye                        | A result waits for the owner's review (Eye: preview).     |
+| Instructions          | ScrollText                     | Standing instructions (an agent's, a step's).             |
+| Artifacts             | Package                        | Files an agent produced.                                  |
+| Environment           | Container                      | Where a Session runs.                                     |
+| Owner confirmed       | UserCheck                      | The owner confirmed an agent's result.                    |
+| Owner rejected        | UserX                          | The owner rejected an agent's result.                     |
+
+Document types declare their icon in their definition
+(`packages/specflow-engine/definitions/document-type/*.yaml`, `icon:`), and a typed document shows
+it in place of the Document icon: overview.md Telescope (`telescope`), architecture.md Boxes
+(`boxes`), backend.md Server (`server`), behaviour.md ListOrdered (`list-ordered`), decisions.md
+Scale (`scale`), research.md FileSearch (`file-search`), user-story.md UserPen (`user-pen`), ux.md
+PanelsTopLeft (`panels-top-left`). These glyphs belong to the dictionary too; an unknown name shows
+the file's format icon.
+
+**One source.** `packages/specflow-ui/src/shared/product-icons/productIcons.ts` exports the
+dictionary by concept (`productIcons.task.item`, `productIcons.task.collection`,
+`documentTypeIcons`); features name the concept, never the glyph. ESLint
+(`specflow-icons/no-direct-product-icon`, `tools/eslint/no-direct-product-icon.mjs`) refuses these
+glyphs from `lucide-react` under any of their names, and their `Icon` registry names in an icon
+position, everywhere in SpecFlow UI's production sources but that module. A test keeps the rule's
+list (`productGlyphs.json`) equal to the module and checks that no glyph means two things.
+
+**A concept's icon means only that concept.** A glyph reused through the dictionary is still a
+second meaning: a file an agent read is not a Document, and the files an attempt changed are not the
+Documents collection. A new meaning gets its own named entry, chosen with the all-pairs silhouette
+test (no pair above 0.75 at 16 or 20 px). Rows whose concept sits next to a dictionary item (the
+Work rows' operations, an attempt's changes) have a test that pins their entry. Review checklist: a
+changed `productIcons.<concept>` use shows that concept, and nothing near it.
+
+## Visual conventions
+
+The Specification Overview, the Task page and a Session read as one product (owner review,
+2026-11-26). Each convention maps to an existing token or component; a feature never restyles one
+locally. The semantic roles are in
+[Semantic information hierarchy](../../../design-system/principles/information-hierarchy.md); this
+section names what the three screens use them for.
+
+**Application header vs workspace header.** The application header (the `WorkspaceHeader` of
+`AppWorkspace`, with `ApplicationLocationIdentity`) carries navigation, the view's identity (its
+icon, a short name and the Specification's key: "Overview · nevo-2", "Task · nevo-2"), its context
+notice and the screen's actions. The workspace header is the top of the body: the entity's human
+title (`title-lg`, the page's `h1`), its type line ("[icon] Task · Implementation", `body-sm`), a
+technical identifier as secondary metadata (`CopyableIdentifier`) and its description. A Session is
+the exception: a conversation has no workspace header above the transcript, and its application
+header carries its title and state.
+
+**Typography levels.** One level per role, tokens only:
+
+| Level                 | Token and colour                                       | Example                                  |
+| --------------------- | ------------------------------------------------------ | ---------------------------------------- |
+| Entity title          | `title-lg`, `content-primary`                          | the Specification's or Task's title      |
+| Current workflow step | `title-sm`, `content-primary`                          | "Waiting for Tasks", "Implement" in Now  |
+| Section label         | `section-label`                                        | NOW, DOCUMENTS, TASKS                    |
+| Primary content       | `body-md`, `content-primary`                           | the Goal, an agent's answer, a count     |
+| Progress commentary   | `body-md` or `body-sm`, `content-secondary`            | a step's purpose, the agent's Commentary |
+| Metadata              | `body-sm`, `content-muted`                             | "Task · Implementation", a time          |
+| Agent name            | `AgentName` (`body-md` in Now, `body-sm` in a Session) | "Claude Code · Opus 5.5"                 |
+| Text action           | `TextAction` or the DS `Link`, `content-link`          | View dependencies, Open session          |
+
+**Action hierarchy.** **Primary** (`Button`, default variant) is the one main action of the state
+(Continue, Start Implement, Approve). **Secondary** (`Button variant="secondary"`) is its
+alternative, at most one beside it (Take over, Run with agent). A **text action** (`TextAction` for
+an in-page action, `Link` for an address) leads to details (View dependencies, Open session, View
+full brief, View feedback). An **icon action** (`IconButton`, or a header action with
+`presentation: 'icon'`) is a compact auxiliary action with a tooltip (copy, history, ⋯). Context in
+a Session is an icon action that shows its label from the split width (`labelWhenWide`), so it
+never competes with Continue or Start.
+
+**Page-level toggles.** A toggle that changes how the whole screen shows its content (Work
+history's **Show every operation**, a tool detail's **Wrap lines**) is an icon action in the
+screen's header (`presentation: 'icon'`, `labelWhenWide`, pressed while on, a checked row where a
+header keeps its actions in the "…" menu): icon-only below the split width (a phone) and on a
+narrow header, its words as accessible name and tooltip; icon with its words from the split width
+when the header has room. One builder, one place, one pressed state. An action on one block (Copy
+of one code block) stays on the block, icon-only at every width with its words as accessible name
+and tooltip; a page toggle is never placed in the body. A toggle while on is accent-tinted (blue
+background tint, blue icon and words), never only a brighter icon.
+
+**Colour semantics.** Blue (`content-link`, `action-primary`, the active step of the track) is
+actions and navigation only. Green (`status-success`) is success, and an agent's work running
+normally. Yellow (`status-attention`) is waiting or attention (Waiting for dependencies, an
+interrupted attempt). Red (`content-error`, `status-danger`) is an error (failed tool actions, an
+unknown outcome). Colour never stands alone: a word or an icon carries the meaning too.
+
+**Spacing.** Tighter inside a logical group (`gap-0.5` to `gap-2`: a title and its quiet line, a
+description and its Show more, a Commentary and its tool row), larger between groups (`gap-3`
+inside Now, `gap-4` between conversation entries, the section rhythm between page sections).
+Backgrounds and borders appear only where they separate or highlight: Now's `AccentBlock`, the
+request and brief bubbles, notices and interaction prompts.
+
+**Containers.** Errors, warnings and required interactions keep a strong container (`Alert`,
+`InlineNote` in its tone, the interaction prompt). Routine items have none: an agent's Commentary
+is plain prose and its tool work a light row ("[icon] 5 commands ›").
+
+**Monospace.** `font-mono` only for code, commands and technical ids (a Task's key, a commit, a
+path), never for a title, a header name or a trail item.
+
+**Disclosure chevrons.** Chevron down expands in place and turns up while open
+(`DisclosureToggle`: Show more, Show description, the Goal's Show more). Chevron
+right navigates to details elsewhere (`TextAction chevron="navigate"`, navigation rows, the tool
+row, View feedback).
+
+**One place per kind of information** (owner review, PR 169). A kind of information has one place
+that presents it in detail, with any number of direct entry points to it. Feedback is presented
+whole only in the shared Feedback view ([Manual workflow execution](workflow-execution.md#feedback));
+Now's Last hand-off and every history entry offer **View feedback ›**, never a preview, a fade or a
+nested Show/Open in place.
+
+**One shared Now.** The Now block of a Specification and of a Task is one composition
+(`NowBlock`) of shared pieces: the state (the step, or an actionable readiness such as "Waiting for
+dependencies" with the lifecycle position as its quiet line, `ReadinessLine`), the progress
+(`StepProgress`, `TaskProgress`), the executor (`NowExecutor`: the agent's mark and name, the state
+of its work in its tone, Open session) and the actions. There is no per-execution-kind component;
+actions and ownership come from the workflow projection.
+
+**The edges of the screen.** The floating ☰ and ⋯ of a stacked layout stay as decided (#208).
+They intentionally overlap about one line of content while scrolling on a phone: a deliberate
+owner decision, never a defect to report or fix (see
+[Floating controls](shell-geometry.md#floating-controls-on-mobile-208)). The
+Composer and the scroll-to-latest button never cover the last content: the conversation reserves
+the Composer's height under its last entry, and scroll-to-latest floats above the Composer.
+
+| Need                            | Use                             | Owner                      |
+| ------------------------------- | ------------------------------- | -------------------------- |
+| Text action, navigating chevron | `TextAction`                    | `shared/actions`           |
+| Expand in place                 | `DisclosureToggle`              | `shared/actions`           |
+| Identifier with copy            | `CopyableIdentifier`            | `shared/clipboard`         |
+| Agent name                      | `AgentName`, `agentDisplayName` | `shared/agents`            |
+| Who works on the step           | `NowExecutor`                   | `features/tasks/execution` |
+| Actionable readiness count      | `ReadinessLine`                 | `features/tasks/execution` |
+| Status tone                     | `StatusIndicator`, `statusTone` | `@nevo/ui`                 |

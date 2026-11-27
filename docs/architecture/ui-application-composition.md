@@ -403,9 +403,12 @@ capability. Task disclosure state and history scroll survive nested inspection a
 Operational lists reserve a leading rail only for a real affordance or a selectable
 collection's shared axis. Text-only rows use InformationList's default control-height
 minimum; actual controls retain their own height plus row padding. The leading box is anchored
-at the row top (`InformationList.Leading` default `align="top"`); a decorative mark that
-identifies the row (a Session's provider mark) uses `align="first-line"`, a line-height box on the
-row's first text line: a multi-line row keeps its mark at the top, never centred on the row. On wide rows,
+at the row top (`InformationList.Leading` default `align="top"`). A decorative mark that
+identifies a short row (a Session's provider mark beside its title and one line of facts, the
+`inline` facts layout of `OperationalRow`) uses `align="center"`, a line-height box centred on the
+row (owner, 2026-11-26); `align="first-line"` keeps such a mark on the first text line of content
+that can run to many lines. Rows of many stacked lines (the Last hand-off, the tracked
+`OperationalRow` layout, a timeline entry) keep their marks at the top. On wide rows,
 metadata has a bounded content-sized rail (up to 18rem), leaving the primary/supporting
 region flexible; on narrow rows it follows the content. Long metadata must never collapse
 that region. Task history facts, purpose, transitions and feedback occupy separate blocks;

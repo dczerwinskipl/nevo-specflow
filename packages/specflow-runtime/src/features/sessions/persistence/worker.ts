@@ -35,6 +35,9 @@ import { createSessionTelemetry } from './telemetry';
 import { createSessionManagement } from './session-management';
 import { createFingerprint, createSessionAssociations } from './associations';
 import { createSessionCatalogue } from './catalogue';
+import { answeredQuestion } from './answered-question';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const TELEMETRY_PUBLICATION_RETRY_MS = 1000;
 
@@ -227,6 +230,8 @@ export async function runSessionWorker(): Promise<void> {
     existing?: string,
     digest?: WorkDigest,
     error?: ConversationEntry['error'],
+    notice?: ConversationEntry['notice'],
+    origin?: ConversationEntry['origin'],
   ): ConversationEntry {
     const old = existing
       ? decode<ConversationEntry>(get('SELECT data FROM entries WHERE id=?', existing))
@@ -242,6 +247,8 @@ export async function runSessionWorker(): Promise<void> {
       ...(workId ? { workId } : {}),
       ...(digest ? { digest } : {}),
       ...(error ? { error } : {}),
+      ...(notice ? { notice } : {}),
+      ...((origin ?? old?.origin) ? { origin: origin ?? old!.origin! } : {}),
     };
     run(
       'INSERT OR REPLACE INTO entries VALUES(?,?,?,?,?)',
@@ -790,6 +797,14 @@ export async function runSessionWorker(): Promise<void> {
       return associations.read(c.sessionId);
     }
 
+    if (c.op === 'has-session') {
+      return !!get('SELECT id FROM sessions WHERE id=?', c.sessionId);
+    }
+
+    if (c.op === 'has-turn') {
+      return !!get('SELECT id FROM turns WHERE id=? AND session=?', c.turnId, c.sessionId);
+    }
+
     if (c.op === 'associate-tasks') {
       return transaction(() => {
         session(c.sessionId);
@@ -813,7 +828,16 @@ export async function runSessionWorker(): Promise<void> {
           return cached;
         }
 
-        const id = randomUUID(),
+        if (c.sessionId !== undefined && !UUID_PATTERN.test(c.sessionId)) {
+          fail('SESSION_INPUT_INVALID', 'A preassigned Session id must be a UUID.');
+        }
+
+        // The trusted host's chosen id names one Session: created once, whoever repeats the create.
+        if (c.sessionId !== undefined && get('SELECT id FROM sessions WHERE id=?', c.sessionId)) {
+          return { sessionId: c.sessionId };
+        }
+
+        const id = c.sessionId ?? randomUUID(),
           date = now();
         const createdSeq =
           Number(get('SELECT value FROM meta WHERE key=?', CREATED_SEQ_KEY)?.value ?? 0) + 1;
@@ -906,8 +930,17 @@ export async function runSessionWorker(): Promise<void> {
           fail('SESSION_INPUT_INVALID', 'Read-only execution cannot carry a write claim binding.');
         }
 
-        const tid = randomUUID(),
-          invocationId = randomUUID(),
+        if (
+          c.ids !== undefined &&
+          (!UUID_PATTERN.test(c.ids.turnId) ||
+            !UUID_PATTERN.test(c.ids.invocationId) ||
+            get('SELECT id FROM turns WHERE id=?', c.ids.turnId))
+        ) {
+          fail('SESSION_INPUT_INVALID', 'Preassigned Turn ids must be new UUIDs.');
+        }
+
+        const tid = c.ids?.turnId ?? randomUUID(),
+          invocationId = c.ids?.invocationId ?? randomUUID(),
           date = now();
         let providerContext:
           { nativeSessionId: string; resume: boolean; scope: string } | undefined;
@@ -962,10 +995,11 @@ export async function runSessionWorker(): Promise<void> {
             );
           }
 
-          if (previous?.dispatched && !previous.confirmed) {
-            fail('SESSION_RECOVERY_REQUIRED', 'An unconfirmed dispatch cannot be retried.');
-          }
-
+          // A dispatch Claude never confirmed (it stopped before naming its context) belongs to a
+          // Turn that has settled: no nonterminal Turn is left (checked above), so no process of it
+          // runs on. Nothing of that native context was confirmed, so there is nothing to resume:
+          // the next Turn starts a new native context under a new reservation (the old one may
+          // exist natively and is never reused). A dispatch still unsettled stays TURN_CONFLICT.
           const reservation = previous?.confirmed ? String(previous.native) : randomUUID();
           let nativeSessionId = reservation;
           if (previous?.confirmed) {
@@ -1018,7 +1052,18 @@ export async function runSessionWorker(): Promise<void> {
         run('INSERT INTO turns VALUES(?,?,?,?)', tid, c.sessionId, 'active', JSON.stringify(t));
         telemetry.start(s, t);
         refreshAttention(s, t);
-        entry(s, tid, 'request', t.summary.userMessage);
+        entry(
+          s,
+          tid,
+          'request',
+          t.summary.userMessage,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          c.origin,
+        );
         emit(s, 'turn', { turn: t.summary, projection: projection(s) });
         const result = {
           turnId: tid,
@@ -1178,6 +1223,12 @@ export async function runSessionWorker(): Promise<void> {
         }
 
         w.state = 'waiting';
+        if (c.input.kind === 'permission') {
+          w.decision = c.input.decision === 'allow' ? 'allowed' : 'denied';
+        } else if (i.kind === 'question') {
+          w.question = answeredQuestion(i, c.input.answer);
+        }
+
         w.revision++;
         w.updatedAt = now();
         run('UPDATE work SET data=? WHERE id=?', JSON.stringify(w), w.workId);

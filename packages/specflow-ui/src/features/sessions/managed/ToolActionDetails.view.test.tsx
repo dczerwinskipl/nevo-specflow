@@ -6,6 +6,18 @@ import type { ContentRef, ToolActionSummary } from '@nevo/specflow-contracts/ses
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import type { ManagedSessionsApi } from './api';
 import { SingleToolActionDetail, SingleToolActionHeader } from './ToolActionDetails';
+import { resetCodeWrapPreference, useCodeWrapPreference } from './codeWrapPreference';
+
+/** Stands in for the actions screen's Wrap lines header action (`WorkInspector.tsx`). */
+function WrapLines() {
+  const [wrap, setWrap] = useCodeWrapPreference();
+
+  return (
+    <button type="button" aria-pressed={wrap} onClick={() => setWrap(!wrap)}>
+      Wrap lines
+    </button>
+  );
+}
 
 const rawInput = '{"pattern":"admission","path":"src","limit":3}';
 const rawOutput = 'src/admission.mjs:42: export function admission() {\n  return true;\n}';
@@ -32,8 +44,11 @@ const action: ToolActionSummary = {
   output: outputRef,
 };
 
-function renderDetail(item: ToolActionSummary = action, withHeader = true) {
-  const bodies: Record<string, string> = { 'content-in': rawInput, 'content-out': rawOutput };
+function renderDetail(
+  item: ToolActionSummary = action,
+  withHeader = true,
+  bodies: Record<string, string> = { 'content-in': rawInput, 'content-out': rawOutput },
+) {
   const api = {
     content: (_sessionId: string, ref: ContentRef, offset: number) =>
       Promise.resolve({
@@ -50,6 +65,7 @@ function renderDetail(item: ToolActionSummary = action, withHeader = true) {
       <QueryClientProvider
         client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
       >
+        <WrapLines />
         <SingleToolActionDetail
           item={item}
           source={{ api, sessionId: 'session-1' }}
@@ -80,7 +96,7 @@ describe('ToolAction details', () => {
   it('numbers only the JSON it pretty-printed; the verbatim response keeps its own lines, no gutter', async () => {
     renderDetail();
     const input = await screen.findByRole('textbox', { name: 'Parameters' });
-    const output = await screen.findByRole('textbox', { name: 'Tool response' });
+    const output = await screen.findByRole('textbox', { name: 'Result' });
 
     expect(input.closest('.cm-editor')!.querySelector('.cm-lineNumbers')).not.toBeNull();
     expect(output.closest('.cm-editor')!.querySelector('.cm-gutters')).toBeNull();
@@ -132,16 +148,17 @@ describe('ToolAction details', () => {
     const stack = document.querySelector('section')!.parentElement!;
     expect(stack.className).toContain('gap-5');
     expect(stack.className).not.toContain('gap-3');
-    expect(stack.firstElementChild?.querySelector('h2')).not.toBeNull();
+    // The content's header is the subject and the status: the screen's own header names the action.
+    expect(stack.firstElementChild?.querySelector('[data-tool-action-status]')).not.toBeNull();
+    expect(stack.querySelector('h2')).toBeNull();
   });
 
   const status = () => document.querySelector<HTMLElement>('[data-tool-action-status]')!;
 
-  it('heads a completed action with its full title, a success mark and the duration only', async () => {
+  it('heads a completed action with a success mark and the duration only', async () => {
     renderDetail();
     await screen.findByRole('textbox', { name: 'Parameters' });
 
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Search admission');
     const line = status();
     // The success icon is the visible mark; the state word is there for assistive technology only.
     expect(line.querySelector('svg.text-status-success')).not.toBeNull();
@@ -195,5 +212,63 @@ describe('ToolAction details', () => {
       await Promise.resolve();
     });
     expect(writeText).toHaveBeenCalledWith(rawInput);
+  });
+
+  it('reads a written file: verb and workspace-relative name, its content, a relative response', async () => {
+    const root = 'C:/Users/owner/worktree';
+    renderDetail(
+      {
+        ...action,
+        title: { text: 'Write', complete: true },
+        operation: 'write',
+        subject: 'dummy/job.sh',
+      },
+      true,
+      {
+        'content-in': JSON.stringify({
+          file_path: root + '/dummy/job.sh',
+          content: ['#!/bin/bash', 'echo "Hello, $1"'].join(String.fromCharCode(10)),
+        }),
+        'content-out': 'File created successfully at: ' + root + '/dummy/job.sh',
+      },
+    );
+    const content = await screen.findByRole('textbox', { name: 'Content' });
+
+    expect(document.querySelector('[data-tool-action-subject]')!.textContent).toBe('dummy/job.sh');
+    expect(content.textContent).toContain('echo "Hello, $1"');
+    const response = screen.getByRole('textbox', { name: 'Result' });
+    expect(response.textContent).toBe('File created successfully at: dummy/job.sh');
+    // The raw parameters stay one click away.
+    const raw = screen.getByRole('button', { name: 'Raw parameters' });
+    expect(raw.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(raw);
+    expect(raw.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('wraps every block from the screen’s one Wrap lines, and remembers it', async () => {
+    resetCodeWrapPreference();
+    localStorage.clear();
+    renderDetail(
+      { ...action, title: { text: 'Bash', complete: true }, operation: 'command' },
+      true,
+      {
+        'content-in': JSON.stringify({ command: 'mkdir -p /tmp/job && cd /tmp/job && ./job.sh' }),
+        'content-out': rawOutput,
+      },
+    );
+    await screen.findByRole('textbox', { name: 'Command' });
+    // One toggle for the screen, none per block; each block keeps its own Copy.
+    const toggle = screen.getByRole('button', { name: 'Wrap lines' });
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getAllByRole('button', { name: /^Copy/ }).length).toBeGreaterThan(1);
+
+    fireEvent.click(toggle);
+
+    expect(screen.getByRole('button', { name: 'Wrap lines' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(localStorage.getItem('nevo:tool-detail:wrap-lines')).toBe('true');
+    expect(document.querySelector('.cm-lineWrapping')).not.toBeNull();
+    resetCodeWrapPreference();
   });
 });

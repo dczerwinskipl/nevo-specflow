@@ -106,6 +106,14 @@ function CreatingSpecification() {
           })
         }
         onBackToSpecifications={() => void navigate({ to: '/', search: { collection } })}
+        onOpenSession={(sessionId) =>
+          void navigate({
+            to: '/sessions/$sessionId',
+            params: { sessionId },
+            search: { collection },
+            replace: true,
+          })
+        }
       />
     </AppWorkspaceProvider>
   );

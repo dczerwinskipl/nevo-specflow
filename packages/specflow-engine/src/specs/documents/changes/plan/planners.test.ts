@@ -287,6 +287,34 @@ describe('create', () => {
     ]);
   });
 
+  it('refuses a repository-relative path that would nest the Specification in itself', () => {
+    const snapshot = snapshotWithBehaviour();
+    const error = refusal(snapshot, {
+      action: 'create',
+      documents: [{ path: DIR + 'architecture.md', content: 'x' }],
+      folders: [],
+    });
+    expect(error.code).toBe('DOCUMENT_PATH_INVALID');
+    expect(error.message).toMatch(
+      /relative to the Specification folder.*give "architecture\.md".*not a path that starts with "specs\/"/,
+    );
+    expect(
+      refusal(snapshot, {
+        action: 'create',
+        documents: [{ path: 'Specs/x.md', content: 'x' }],
+        folders: [],
+      }).code,
+    ).toBe('DOCUMENT_PATH_INVALID');
+    // A file merely named like the folder is not a repository path.
+    expect(() =>
+      plan(snapshot, {
+        action: 'create',
+        documents: [{ path: 'specs.md', content: 'x' }],
+        folders: [],
+      }),
+    ).not.toThrow();
+  });
+
   it('pins the template and the rendered hash, and checks the catalogue revision', () => {
     const snapshot = snapshotWithBehaviour();
     const request: DocumentChangeRequest = {

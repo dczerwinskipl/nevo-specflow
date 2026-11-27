@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { SpecIdSchema, TaskIdSchema } from '../identifiers';
 import {
+  AgentStepOriginSchema,
   DisplayTitleSchema,
   SessionIdSchema,
   SessionInfoSchema,
@@ -75,6 +76,9 @@ export const SessionListItemSchema = Type.Object(
     modelId: Type.Optional(SessionInfoSchema.properties.modelId),
     /** The model's display title from the provider catalogue; absent when it is not listed. */
     modelTitle: Type.Optional(DisplayTitleSchema),
+    /** The title of the provider mode the Session runs in (Auto, Manual, ...); absent when not
+     * listed. */
+    providerModeTitle: Type.Optional(DisplayTitleSchema),
     /** Effective readiness: the same provider projection as the single-Session read. */
     readiness: SessionInfoSchema.properties.readiness,
     activeTurn: Type.Optional(
@@ -84,6 +88,8 @@ export const SessionListItemSchema = Type.Object(
     createdAt: SessionInfoSchema.properties.createdAt,
     updatedAt: SessionInfoSchema.properties.updatedAt,
     association: ListAssociationSchema,
+    /** An agent step execution Session's step and attempt (only with a `specification` association). */
+    agentStep: Type.Optional(AgentStepOriginSchema),
   },
   closed,
 );

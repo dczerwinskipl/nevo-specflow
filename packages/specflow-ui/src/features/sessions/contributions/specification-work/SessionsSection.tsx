@@ -1,4 +1,4 @@
-import { Button, EmptyState, InformationList, MenuItem, OverflowMenu } from '@nevo/ui';
+import { Button, EmptyState, InformationList } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { sessionActivityLabel, type SessionSummary } from '../../../specs/read-model';
@@ -6,12 +6,14 @@ import { OperationalRow, type SemanticSupporting } from '../../../../shared/oper
 import { useNow } from '../../../../shared/operations/panel/relativeTime';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
 import { SessionProviderIcon } from '../../shared/SessionProviderIcon';
+import { sessionTitleOf } from '../../shared/agentStepTitle';
 import {
   sessionRowFacts,
   sessionRowStatus,
   type SessionRowAgent,
   type SessionRowReadiness,
 } from '../../shared/sessionRow';
+import { productIcons } from '../../../../shared/product-icons';
 
 export interface SessionsSectionProps {
   /** The Sessions to show, the recommended one first. */
@@ -72,8 +74,8 @@ function sessionStatus(session: SessionSummary, t: TFunction): SemanticSupportin
  * Sessions on the Overview: the recommended Session first, then other Sessions of the
  * Specification, each the same row as in the Specification Sessions list (age, agent, Tasks and
  * its effective status). "All sessions" is a quiet header action, so it never outweighs the rows.
- * Without Sessions the section keeps its place with the Sessions page's empty text and, when the
- * start is offered, New session as its secondary action.
+ * When the start is offered, New session is always visible as the Tasks section's quiet add action
+ * (a ghost "+" button): under the rows, or beside the empty text without Sessions.
  */
 export function SessionsSection({
   sessions,
@@ -85,6 +87,12 @@ export function SessionsSection({
 }: SessionsSectionProps) {
   const { t, i18n } = useTranslation();
   const now = useNow();
+  // The same quiet add action as the Tasks section's New task.
+  const newSession = canStartSession ? (
+    <Button variant="ghost" size="sm" leadingIcon="plus" onClick={() => onStartSession()}>
+      {t('sessions.list.newSession')}
+    </Button>
+  ) : null;
   if (sessions.length === 0) {
     return (
       <WorkspaceSection aria-labelledby="resume-heading">
@@ -92,22 +100,15 @@ export function SessionsSection({
           id="resume-heading"
           headingTag="h2"
           title={t('specification.sessionsHeading')}
-          icon="chat"
+          icon={productIcons.session.collection}
         />
         <EmptyState
           variant="inline"
-          title={t('sessions.list.emptySpecification')}
-          actions={
-            canStartSession ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                leadingIcon="chat-plus"
-                onClick={() => onStartSession()}
-              >
-                {t('sessions.list.newSession')}
-              </Button>
-            ) : undefined
+          title={
+            <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span>{t('sessions.list.emptySpecification')}</span>
+              {newSession}
+            </span>
           }
         />
       </WorkspaceSection>
@@ -120,23 +121,11 @@ export function SessionsSection({
         id="resume-heading"
         headingTag="h2"
         title={t('specification.sessionsHeading')}
-        icon="chat"
+        icon={productIcons.session.collection}
         actions={
-          <>
-            <Button variant="ghost" size="sm" onClick={onOpenSessionsView}>
-              {t('specification.allSessionsLink')}
-            </Button>
-            {canStartSession ? (
-              <OverflowMenu
-                label={t('specification.sessionsHeading')}
-                triggerLabel={t('specification.sessionActions')}
-              >
-                <MenuItem leadingIcon="plus" onSelect={() => onStartSession()}>
-                  {t('sessions.list.newSession')}
-                </MenuItem>
-              </OverflowMenu>
-            ) : null}
-          </>
+          <Button variant="ghost" size="sm" onClick={onOpenSessionsView}>
+            {t('specification.allSessionsLink')}
+          </Button>
         }
       />
 
@@ -146,13 +135,15 @@ export function SessionsSection({
             key={session.id}
             titleAs="span"
             leading={<SessionProviderIcon providerId={session.providerId} />}
-            primary={session.title}
+            // An agent step Session by its step (and Task); a title the owner gave it wins.
+            primary={sessionTitleOf(session.title, session.agentStep) ?? session.title}
             onPrimaryClick={canOpenSession ? () => onOpenSession(session.id) : undefined}
             dataAttributes={{ 'data-focus-key': `session:${session.id}` }}
             // The same row as the Session's row in the Specification Sessions list.
             factsLayout="inline"
             compactFacts={sessionRowFacts(
               {
+                ...(session.agentStep ? { attempt: session.agentStep.attempt } : {}),
                 ...(session.updatedAt ? { updatedAt: session.updatedAt } : {}),
                 agent: agentOf(session),
                 taskCount: session.taskCount ?? 0,
@@ -165,6 +156,7 @@ export function SessionsSection({
           />
         ))}
       </InformationList>
+      {newSession ? <div className="px-2">{newSession}</div> : null}
     </WorkspaceSection>
   );
 }

@@ -388,6 +388,7 @@ describe('operator takeover', () => {
     await queueSave(project, 1, 'waiting\n');
     const result = await takeOverDocumentQueue(project.engine, { confirmExecutorStopped: false });
     expect(result).toEqual({
+      breaker: 'absent',
       lock: { status: 'refused', reason: 'assertion-missing' },
       writes: [],
       manualCommits: [],
@@ -479,6 +480,7 @@ describe('operator takeover', () => {
       lock: { probe: () => 'alive' },
     });
     expect(taken).toEqual({
+      breaker: 'absent',
       lock: { status: 'refused', reason: 'holder-alive' },
       writes: [],
       manualCommits: [],

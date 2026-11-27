@@ -4,6 +4,7 @@ import type { EmitFact } from '../driver';
 import { claudeReadTools } from './modes';
 import { nativeDecimal } from '../decimal';
 import { nativeToolOperation, type NativeToolOperations } from '../tool-operations';
+import { claudeToolError, claudeToolFailureReason, claudeToolSubject, firstLine } from './subjects';
 
 /** Claude Code's own tool names. Glob finds files by pattern and Grep searches file contents. */
 export const claudeToolOperations: NativeToolOperations = {
@@ -16,10 +17,25 @@ export const claudeToolOperations: NativeToolOperations = {
 };
 
 type ObjectValue = Record<string, unknown>;
+/** A native value safe to name in a reason: a short identifier, never free native prose. */
+export const shown = (value: unknown) =>
+  typeof value === 'string' && /^[A-Za-z0-9_.:@/-]{1,64}$/.test(value) ? value : 'an unknown value';
+
+/** The frame a line carried, by its identifiers only: `type` or `type/subtype`. */
+export function claudeFrameName(frame: Record<string, unknown>): string {
+  return shown(frame.type) + (frame.subtype === undefined ? '' : '/' + shown(frame.subtype));
+}
+
 export class ClaudeProtocolError extends Error {
-  constructor() {
+  /**
+   * What was refused, as a sentence naming only identifiers (frame type, subtype, field, tool),
+   * never native prose. Absent: the operation names the frame it was reading instead.
+   */
+  readonly detail: string | undefined;
+  constructor(detail?: string) {
     super('Claude output violates the supported protocol.');
     this.name = 'ClaudeProtocolError';
+    this.detail = detail;
   }
 }
 export function object(value: unknown): ObjectValue {
@@ -78,6 +94,8 @@ export function createClaudeProtocol(
   expectedSessionId: string,
   allowedTools: readonly string[] = claudeReadTools,
   freshContext = false,
+  /** The Turn's workspace: subjects and reasons name paths relative to it. */
+  workspace?: string,
 ) {
   identifier(expectedSessionId);
   const seen = new Map<string, string>();
@@ -93,6 +111,7 @@ export function createClaudeProtocol(
     key: string,
     channel: Extract<DriverFact, { kind: 'text' }>['channel'],
     value: string,
+    notice?: Extract<DriverFact, { kind: 'text' }>['notice'],
   ) {
     const bytes = Buffer.from(value);
     for (let start = 0; start < bytes.length;) {
@@ -101,7 +120,13 @@ export function createClaudeProtocol(
         end--;
       }
 
-      await emit({ kind: 'text', key, channel, text: bytes.subarray(start, end).toString('utf8') });
+      await emit({
+        kind: 'text',
+        key,
+        channel,
+        text: bytes.subarray(start, end).toString('utf8'),
+        ...(notice ? { notice } : {}),
+      });
       start = end;
     }
   }
@@ -111,11 +136,12 @@ export function createClaudeProtocol(
       return;
     }
 
+    // Named by its own first line, so the Work history heads its phase with what the agent said.
     await emit({
       kind: 'work-open',
       key: pending.key,
       workKind: 'commentary',
-      title: 'Claude commentary',
+      title: firstLine(pending.text, 200) ?? 'Commentary',
     });
     await text(pending.key, 'commentary', pending.text);
     await emit({ kind: 'work-update', key: pending.key, state: 'completed' });
@@ -150,12 +176,52 @@ export function createClaudeProtocol(
         return;
       }
 
+      if (frame.subtype === 'task_summary') {
+        // Claude's own one-line summary of what the running Turn does (2.1.312; null once it ends).
+        // Progress only, it carries no effect.
+        if (
+          frame.detail !== null &&
+          (typeof frame.detail !== 'string' || Buffer.byteLength(frame.detail) > 4096)
+        ) {
+          throw new ClaudeProtocolError(
+            'Its task_summary frame has a detail that is not a short text.',
+          );
+        }
+
+        return;
+      }
+
+      if (frame.subtype === 'permission_check_status') {
+        // Claude's own permission check of one open call of this Turn took longer than 4 s
+        // (2.1.312, auto mode's classifier): progress only. Its decision follows as that call's
+        // result, or as a permission request to the host. A subagent's call is never one of ours.
+        if (
+          frame.agent_id !== undefined ||
+          !['checking', 'done'].includes(String(frame.status)) ||
+          !tools.has(identifier(frame.tool_use_id))
+        ) {
+          throw new ClaudeProtocolError(
+            'Its permission_check_status frame is not for an open tool call of this Turn.',
+          );
+        }
+
+        return;
+      }
+
       if (
-        !['init', 'status', 'compact_boundary', 'api_retry', 'session_state_changed'].includes(
-          string(frame.subtype),
-        )
+        ![
+          'init',
+          'status',
+          'compact_boundary',
+          'api_retry',
+          'session_state_changed',
+          // Claude's own one-line summary of the finished Turn (2.1.312); it carries no effect.
+          'post_turn_summary',
+        ].includes(string(frame.subtype))
       ) {
-        throw new ClaudeProtocolError();
+        throw new ClaudeProtocolError(
+          `It sent a system frame of subtype ${shown(frame.subtype)}, which SpecFlow does not know.`,
+        );
       }
 
       return;
@@ -248,7 +314,9 @@ export function createClaudeProtocol(
       const messageId = identifier(message.id);
       const id = identifier(frame.uuid);
       if (frame.parent_tool_use_id !== undefined && frame.parent_tool_use_id !== null) {
-        throw new ClaudeProtocolError();
+        throw new ClaudeProtocolError(
+          'It sent a subagent message, which this profile does not allow.',
+        );
       }
 
       if (pending && pending.messageId !== messageId) {
@@ -269,7 +337,9 @@ export function createClaudeProtocol(
         } else if (block.type === 'thinking') {
           reasoning += string(block.thinking);
         } else if (block.type !== 'tool_use' && block.type !== 'redacted_thinking') {
-          throw new ClaudeProtocolError();
+          throw new ClaudeProtocolError(
+            `Its assistant message has a content block of type ${shown(block.type)}, which SpecFlow does not know.`,
+          );
         }
       }
 
@@ -301,13 +371,21 @@ export function createClaudeProtocol(
         }
 
         groups.set(parent, { remaining: toolBlocks.length, failed: false });
-        await emit({ kind: 'work-open', key: parent, workKind: 'tool', title: 'Claude tools' });
+        // Named by its first tool (its subject follows from that ToolAction).
+        await emit({
+          kind: 'work-open',
+          key: parent,
+          workKind: 'tool',
+          title: identifier(toolBlocks[0]!.name),
+        });
         for (const block of toolBlocks) {
           const toolId = identifier(block.id);
           const key = 'tool:' + toolId;
           const name = identifier(block.name);
           if (!allowedTools.includes(name)) {
-            throw new ClaudeProtocolError();
+            throw new ClaudeProtocolError(
+              `It called the tool ${name}, which this Turn does not allow.`,
+            );
           }
 
           const input = object(block.input);
@@ -315,20 +393,24 @@ export function createClaudeProtocol(
             name === 'Bash' &&
             (input.run_in_background === true || input.dangerouslyDisableSandbox === true)
           ) {
-            throw new ClaudeProtocolError();
+            throw new ClaudeProtocolError(
+              'It ran a Bash command in the background or outside the sandbox, which this profile does not allow.',
+            );
           }
 
           if (tools.has(toolId)) {
-            throw new ClaudeProtocolError();
+            throw new ClaudeProtocolError('It opened the same tool call twice.');
           }
 
           tools.set(toolId, { parent, key, name });
+          const subject = claudeToolSubject(name, input, workspace);
           await emit({
             kind: 'action-open',
             key,
             parentKey: parent,
             title: name,
             operation: nativeToolOperation(claudeToolOperations, name),
+            ...(subject ? { subject } : {}),
           });
           await text(key, 'tool-input', JSON.stringify(input));
         }
@@ -346,7 +428,7 @@ export function createClaudeProtocol(
         const toolId = identifier(block.tool_use_id);
         const tool = tools.get(toolId);
         if (!tool) {
-          throw new ClaudeProtocolError();
+          throw new ClaudeProtocolError('It sent a tool result for a call that is not open.');
         }
 
         if (block.is_error !== undefined && typeof block.is_error !== 'boolean') {
@@ -360,6 +442,17 @@ export function createClaudeProtocol(
           kind: 'action-update',
           key: tool.key,
           state: block.is_error ? 'failed' : 'completed',
+          ...(block.is_error
+            ? {
+                error: {
+                  code: 'TOOL_FAILED',
+                  message: claudeToolError(output, workspace),
+                  ...(claudeToolFailureReason(output)
+                    ? { reason: claudeToolFailureReason(output)! }
+                    : {}),
+                },
+              }
+            : {}),
         });
         tools.delete(toolId);
         const group = groups.get(tool.parent)!;
@@ -378,7 +471,9 @@ export function createClaudeProtocol(
     }
 
     if (frame.type !== 'result') {
-      throw new ClaudeProtocolError();
+      throw new ClaudeProtocolError(
+        `It sent a frame of type ${shown(frame.type)}, which SpecFlow does not know.`,
+      );
     }
 
     if (
@@ -390,7 +485,9 @@ export function createClaudeProtocol(
         'error_max_structured_output_retries',
       ].includes(string(frame.subtype))
     ) {
-      throw new ClaudeProtocolError();
+      throw new ClaudeProtocolError(
+        `It sent a result of subtype ${shown(frame.subtype)}, which SpecFlow does not know.`,
+      );
     }
 
     if (typeof frame.is_error !== 'boolean') {
@@ -410,12 +507,14 @@ export function createClaudeProtocol(
       frame.deferred_tool_use != null ||
       (frame.origin != null && object(frame.origin).kind !== 'human')
     ) {
-      throw new ClaudeProtocolError();
+      throw new ClaudeProtocolError(
+        `Its result ends with terminal reason ${shown(terminalReason ?? 'none')} and stop reason ${shown(frame.stop_reason ?? 'none')}, or with deferred or non-owner work, which SpecFlow does not support.`,
+      );
     }
 
     const success = frame.subtype === 'success' && frame.is_error === false && !interrupted;
     if (success && (!correlated || tools.size)) {
-      throw new ClaudeProtocolError();
+      throw new ClaudeProtocolError('It reported success while tool calls were still open.');
     }
 
     if (!success) {
@@ -653,7 +752,7 @@ export function createClaudeProtocol(
 
       await flushCommentary();
       if (reason) {
-        await text('provider-error', 'commentary', reason);
+        await text('provider-error', 'commentary', reason, 'error');
       }
 
       await emit({

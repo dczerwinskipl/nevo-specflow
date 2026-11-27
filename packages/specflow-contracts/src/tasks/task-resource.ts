@@ -63,6 +63,12 @@ export const TaskRunPositionSchema = Type.Union([
     attempt: Type.Integer({ minimum: 1 }),
   }),
   Type.Object({ state: Type.Literal('ready'), step: Type.String() }),
+  /** An agent's result of `step#attempt` waits for the owner's Confirm or Reject (D17). */
+  Type.Object({
+    state: Type.Literal('awaiting-confirmation'),
+    step: Type.String(),
+    attempt: Type.Integer({ minimum: 1 }),
+  }),
   Type.Object({
     state: Type.Literal('terminal'),
     outcome: Type.Union([Type.Literal('completed'), Type.Literal('abandoned')]),

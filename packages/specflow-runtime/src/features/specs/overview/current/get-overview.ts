@@ -29,8 +29,8 @@ export async function getCurrentOverview(
     snapshot.items,
   );
   const candidates = visible.map(toOverviewItem);
-  // Unknown sources must never disappear merely because a legacy project
-  // configured the four pre-E2.T06 sections explicitly.
+  // Unknown sources must never disappear merely because a project configured its sections without
+  // it.
   const sections: CurrentSpecSectionId[] = [...dependencies.sections];
   if (
     !sections.includes('unknown') &&
@@ -57,7 +57,9 @@ function toOverviewItem(spec: CurrentSpecRecord): CurrentSpecOverviewItem {
     ...(spec.pullRequests === undefined ? {} : { pullRequests: [...spec.pullRequests] }),
     ...(spec.tags === undefined ? {} : { tags: [...spec.tags] }),
     updatedAt: spec.updatedAt,
-    ...(spec.status === undefined ? {} : { status: spec.status }),
+    workflow: spec.workflow === null ? null : structuredClone(spec.workflow),
+    ...(spec.attention ? { attention: structuredClone(spec.attention) } : {}),
+    ...(spec.unreadable ? { unreadable: { reason: spec.unreadable.reason } } : {}),
     progress: spec.progress,
     classification: classifyCurrentSpec(spec),
     signals: spec.signals?.map((signal) => ({ ...signal })) ?? null,

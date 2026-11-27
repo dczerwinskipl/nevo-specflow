@@ -27,6 +27,9 @@ import { UnsavedChangesDialog } from '../editor/UnsavedChangesDialog';
 import { documentKeys, documentTreeKeys } from '../read-model/queries';
 import { documentTabs, neighbourOf, survivorOf, type DocumentTab } from './documentTabs';
 
+/** How often the tree is read again while an agent attempt's commit holds documents and runs. */
+const ATTEMPT_COMMIT_POLL_MS = 3000;
+
 /** The record query of the document on screen: the one place that loads it. */
 export interface DocumentRecordState {
   documentId: string;
@@ -103,6 +106,12 @@ export function DocumentTabsProvider({
   const tree = useQuery({
     queryKey: documentTreeKeys.tree(specId),
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
+    // An agent attempt's commit that is still running ends by itself: read again until it did.
+    refetchInterval: (query) =>
+      query.state.data?.attemptCommit?.reason === 'attempt-commit-pending'
+        ? ATTEMPT_COMMIT_POLL_MS
+        : false,
+    refetchIntervalInBackground: false,
   });
   const query = useQuery({
     queryKey: documentKeys.detail(specId, documentId ?? ''),
@@ -120,6 +129,7 @@ export function DocumentTabsProvider({
     [documentId, query],
   );
   const document = query.data && documentId ? query.data : undefined;
+  const readOnlyReason = document ? documentReadOnlyReason(tree.data, document) : undefined;
   const catalogue = useDocumentCatalogue();
   // Memoised on what it reads, so the editor session is not rebuilt on every render.
   const archetype = tree.data?.archetype;
@@ -139,7 +149,10 @@ export function DocumentTabsProvider({
       <DocumentEditorProvider
         specId={specId}
         document={document}
-        readOnlyReason={document ? documentReadOnlyReason(tree.data, document) : undefined}
+        readOnlyReason={readOnlyReason}
+        {...(readOnlyReason === 'attempt-commit' && tree.data?.attemptCommit
+          ? { attemptCommit: tree.data.attemptCommit }
+          : {})}
         guidance={document ? guidance : undefined}
       >
         <TabsHost specId={specId} documentId={documentId} tree={tree.data}>

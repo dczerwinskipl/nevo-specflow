@@ -1,5 +1,11 @@
 import { useCallback, useLayoutEffect, useRef } from 'react';
-import { readHistoryAnchor, restoreHistoryAnchor, type HistoryAnchor } from './pagedHistoryAnchor';
+import {
+  ENTRY_ATTRIBUTE,
+  LIST_ATTRIBUTE,
+  readHistoryAnchor,
+  restoreHistoryAnchor,
+  type HistoryAnchor,
+} from './pagedHistoryAnchor';
 
 /**
  * The single owner of a paged history scroller's position (the Work and Actions screens): the entry
@@ -79,5 +85,51 @@ export function usePagedHistoryScroll(
 
   const layoutChanged = useCallback(() => apply(), [apply]);
 
-  return { layoutChanged };
+  /**
+   * Shows `target` (an element of the list, holding at least one entry) at the top of the
+   * scroller, `margin` px below its top edge, and makes the entry it starts with the one being
+   * read, so every later change (fonts, late content, an older page) keeps it there. Only this
+   * scroller moves (never `scrollIntoView`, which also scrolls every ancestor). Near the end of the
+   * list the list is given the height it needs to reach the top (`min-height`, never a gap above
+   * new content); the next call or `releaseSpace` gives it back.
+   */
+  const showAtTop = useCallback(
+    (target: HTMLElement, margin: number) => {
+      const node = scroller.current;
+      if (!node) {
+        return;
+      }
+
+      const list = node.querySelector<HTMLElement>(`[${LIST_ATTRIBUTE}]`);
+      if (list) {
+        list.style.minHeight = '';
+      }
+
+      const viewportTop = node.getBoundingClientRect().top;
+      const wanted = node.scrollTop + target.getBoundingClientRect().top - viewportTop - margin;
+      const reachable = node.scrollHeight - node.clientHeight;
+      if (list && wanted > reachable) {
+        list.style.minHeight = `${list.getBoundingClientRect().height + (wanted - reachable)}px`;
+      }
+
+      node.scrollTop = Math.max(0, wanted);
+      const first = target.hasAttribute(ENTRY_ATTRIBUTE)
+        ? target
+        : target.querySelector<HTMLElement>(`[${ENTRY_ATTRIBUTE}]`);
+      anchor.current = readHistoryAnchor(node, first?.getAttribute(ENTRY_ATTRIBUTE) ?? undefined);
+      known.current = node.scrollTop;
+    },
+    [scroller],
+  );
+
+  /** Gives back the room `showAtTop` added below the list (the reader changed what it shows). */
+  const releaseSpace = useCallback(() => {
+    const list = scroller.current?.querySelector<HTMLElement>(`[${LIST_ATTRIBUTE}]`);
+    if (list?.style.minHeight) {
+      list.style.minHeight = '';
+      apply();
+    }
+  }, [apply, scroller]);
+
+  return { layoutChanged, showAtTop, releaseSpace };
 }

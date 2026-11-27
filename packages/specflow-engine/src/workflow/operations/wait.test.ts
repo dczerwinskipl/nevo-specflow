@@ -7,11 +7,12 @@ import { inspectExecution } from './inspect';
 import {
   SPEC,
   TWO_TASKS,
-  agent,
   claude,
   memoryDependencies,
   owner,
   positionOf,
+  RESTRICTED_ARCHETYPE,
+  restrictTaskTypes,
   runToBreakdown,
   seedExecutionCatalogue,
   specification,
@@ -54,12 +55,7 @@ describe('Tasks of a Specification', () => {
       message: expect.stringContaining('draft') as unknown,
     });
 
-    const reviewed = await work(
-      dependencies,
-      specification,
-      { result: 'pass' },
-      agent('codex', 'session-r', 'x'),
-    );
+    const reviewed = await work(dependencies, specification, { result: 'pass' }, owner);
 
     expect(reviewed.continuation).toEqual({ kind: 'none', reason: 'waiting-for-tasks' });
     expect(await positionOf(dependencies, specification)).toEqual({
@@ -113,7 +109,7 @@ describe('Tasks of a Specification', () => {
       actor: claude,
     });
     expect(revised.createdTasks).toEqual([]);
-    await work(dependencies, specification, { result: 'pass' });
+    await work(dependencies, specification, { result: 'pass' }, owner);
 
     const tasks = (await inspectExecution(dependencies, SPEC)).tasks.map((entry) => entry.record);
     expect(tasks).toMatchObject([
@@ -186,11 +182,11 @@ describe('Tasks of a Specification', () => {
   });
 
   it('rejects a task type the Specification archetype does not allow', async () => {
-    const dependencies = memoryDependencies(catalogue);
+    const dependencies = memoryDependencies(restrictTaskTypes(catalogue));
     const start = () =>
       startSpecificationExecution(dependencies, {
         specId: SPEC,
-        archetype: 'architecture',
+        archetype: RESTRICTED_ARCHETYPE,
         actor: claude,
       });
     for (let index = 0; index < 3; index += 1) {
@@ -250,7 +246,7 @@ describe('waiting for Tasks', () => {
       input: { tasks: [] },
       actor: claude,
     });
-    const result = await work(dependencies, specification, { result: 'pass' });
+    const result = await work(dependencies, specification, { result: 'pass' }, owner);
 
     expect(result.continuation).toEqual({
       kind: 'attention',

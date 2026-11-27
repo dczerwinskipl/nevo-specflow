@@ -17,6 +17,7 @@ import {
   recordLedgerEntries,
   validateJournalOperationId,
   writePayload,
+  type OwnedExecutionClaim,
 } from '../../durable';
 import { isExecutionStatePath } from '../../execution-paths';
 import { resourcesForDocumentChange } from '../changes/claims';
@@ -33,7 +34,12 @@ import {
 } from '../changes/plan/model';
 import { queueCapacityOf } from '../changes/queue-capacity';
 import { claimConflictOf } from './claim-source';
-import { admitGitCommit, type GitAdmission, type GitPreflightOptions } from './git-preflight';
+import {
+  admitGitCommit,
+  isAgentAttemptExecution,
+  type GitAdmission,
+  type GitPreflightOptions,
+} from './git-preflight';
 import { findDocumentChangeJournal, listDocumentChangeJournals } from './journal-store';
 import { assertNoClaimedBatchOverlap } from './reservation-guard';
 import { UNCOMMITTED_AUTO_COMMIT_OFF } from './uncommitted-write';
@@ -51,7 +57,8 @@ import type { BatchViewProvider, DocumentWriteDependencies } from './writer-type
  * is about to write (before its own journal exists: a change the policy refuses writes nothing, as for
  * a document), then `record` in the same lock section with what it wrote:
  *
- * - auto-commit on: the journal is published `queued` (its `checkout-scoped` claim held; the
+ * - auto-commit on: (except for an agent attempt's change, recorded as with auto-commit off for
+ *   its attempt commit, D15) the journal is published `queued` (its `checkout-scoped` claim held; the
  *   composition `documents/api.ts` wakes the scheduler); the queue commits it with the next batch,
  *   `pre`/`post` checked like any member;
  * - auto-commit off: the ledger entries are upserted and the journal ends `completed` (`uncommitted`,
@@ -97,6 +104,17 @@ export interface ExecutionStateCommitDependencies {
 }
 
 export interface ExecutionStateCommitOptions {
+  /**
+   * The execution claim the change is made under, named in-process by the Engine (the opened
+   * workflow's owned execution): that claim admits it in the phases its form allows.
+   */
+  readonly ownedExecution?: OwnedExecutionClaim;
+  /**
+   * The agent Turn the change is made for when it is not admitted under that Turn's claim: the start
+   * of an agent attempt, made for its first Turn before the claim exists. Only attributes the ledger
+   * entries (`executions`); it admits nothing. An owned execution attributes its own changes.
+   */
+  readonly attributedExecution?: string;
   readonly commits?: CommitPort;
   readonly git?: GitPreflightOptions;
   readonly now?: () => Date;
@@ -141,7 +159,19 @@ export async function admitExecutionStateCommit(
   const directory = containerDirectory(slug, { kind: 'specification' });
   const checkoutPaths = paths.map((path) => directory + '/' + path);
   const commits = options.commits ?? openVersionControl(engine).commits;
-  const git = await admitGitCommit(engine, commits, workspaceRoot, checkoutPaths, options.git);
+  // A change made under an agent attempt's Turn, or for it (the attempt's start), is the attempt's
+  // work: recorded in the ledger for its attempt commit whatever the commit policy (D15).
+  const attemptWrite =
+    options.attributedExecution !== undefined ||
+    (await isAgentAttemptExecution(context, options.ownedExecution?.operationId));
+  const git = await admitGitCommit(
+    engine,
+    commits,
+    workspaceRoot,
+    checkoutPaths,
+    options.git,
+    attemptWrite,
+  );
   if (!git.enabled) {
     return NOTHING_TO_RECORD;
   }
@@ -151,6 +181,7 @@ export async function admitExecutionStateCommit(
     await deps.assertClaims(context, resourcesForDocumentChange({ workspaceId }), {
       kind: 'document-change',
       operationId,
+      ...(options.ownedExecution !== undefined ? { ownedExecution: options.ownedExecution } : {}),
     });
   } catch (error) {
     if (error instanceof SharedResourceError) {
@@ -191,6 +222,7 @@ export async function admitExecutionStateCommit(
   );
   await assertWithinBounds(engine, git, { workspaceId, specId }, checkoutPaths);
 
+  const executionId = options.ownedExecution?.operationId ?? options.attributedExecution;
   const target: RecordTarget = {
     engine,
     git,
@@ -202,6 +234,7 @@ export async function admitExecutionStateCommit(
     workspaceRoot,
     commits,
     now: options.now ?? (() => new Date()),
+    ...(executionId !== undefined ? { executionId } : {}),
   };
 
   return { record: (summary, writes) => recordWrites(target, summary, writes) };
@@ -266,6 +299,12 @@ interface RecordTarget {
   readonly workspaceRoot: string;
   readonly commits: CommitPort;
   readonly now: () => Date;
+  /**
+   * The agent execution the change is made under (its owned claim) or attributed to: recorded on
+   * the operation and on the ledger entries it leaves (`executions`), so the attempt's own Task
+   * drafts and execution state are never another author's work and the attempt commit takes them.
+   */
+  readonly executionId?: string;
 }
 
 async function recordWrites(
@@ -340,6 +379,7 @@ async function recordWrites(
       documentCount: 0,
     },
     attempts: 0,
+    ...(target.executionId !== undefined ? { agent: { executionId: target.executionId } } : {}),
   };
 
   if (target.git.mode === 'auto') {
@@ -367,6 +407,7 @@ async function recordWrites(
       },
       {
         operationId: target.operationId,
+        ...(target.executionId !== undefined ? { executionId: target.executionId } : {}),
         reason: UNCOMMITTED_AUTO_COMMIT_OFF,
         recordedAt: now,
         ...(await ledgerPin(target)),

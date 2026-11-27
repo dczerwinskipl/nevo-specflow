@@ -1,11 +1,14 @@
 import {
   inspectCreateOptions,
   inspectPublicCreateOperation,
-  loadProjectCatalogue,
-  toArchetypeCatalogue,
+  ownExecutorIdentity,
+  proveExecutorState,
+  readArchetypeCatalogue,
   readPublicCreateOperationRow,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
+import { join } from 'node:path';
+
 import { Type } from 'typebox';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyPluginCallback } from 'fastify';
@@ -26,7 +29,7 @@ import {
   SpecCapabilities,
 } from '@nevo/specflow-contracts/specs';
 
-import { requireCapability } from '../../auth';
+import { requireCapability, type RequestAuthorization } from '../../auth';
 import {
   deriveOperationStatus,
   registerOperationEventsRoute,
@@ -38,6 +41,13 @@ import { catalogueEtag } from './catalogue-etag';
 import { createErrorCode, createErrorDetails, statusForCreateError } from './error-status';
 import { prefersRespondAsync } from './respond-async';
 import { createOperationPath, runCreate } from './run-create';
+import type { CreateFirstStep } from './first-step';
+import {
+  CREATE_REQUEST_RELATIVE_DIR,
+  createFileCreateRequestStore,
+  type CreateRequestStore,
+} from './request-store';
+import { resumeAcceptedCreates } from './resume';
 import { contractRef } from '../../../server/shared-contracts';
 
 /**
@@ -58,6 +68,20 @@ export interface SpecsCreateEndpointOptions {
   readonly closeGraceMs?: number;
   /** Injectable clock (tests). */
   readonly now?: () => Date;
+  /**
+   * The owner of Create's first-step intents (start the first step with an agent after Create).
+   * Absent: this Runtime runs no agent and a request with `firstStep` is refused.
+   */
+  readonly firstStep?: CreateFirstStep;
+  /** The Runtime's project, for the Manage check of a Create that starts an agent. */
+  readonly projectId?: () => string | undefined;
+  /** Replaces the Runtime's record of accepted Creates (tests); default: files under the Project Home state. */
+  readonly requests?: CreateRequestStore;
+  /**
+   * The authorization of a stored principal, for the startup rerun of a Create (it runs without a
+   * request). Absent or undefined: the principal cannot be checked and the Create is not rerun.
+   */
+  readonly authorizePrincipal?: (principal: string) => RequestAuthorization | undefined;
 }
 
 /**
@@ -80,7 +104,21 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
   };
 
   const closeGraceMs = options.closeGraceMs ?? DEFAULT_CLOSE_GRACE_MS;
+  const now = options.now ?? (() => new Date());
+  const startedAt = now().getTime();
+  const engineForRequests = options.engine;
+  const requests: CreateRequestStore | undefined =
+    options.requests ??
+    (engineForRequests
+      ? createFileCreateRequestStore(() =>
+          join(engineForRequests.context.project.stateRoot, CREATE_REQUEST_RELATIVE_DIR),
+        )
+      : undefined);
+  let closing = false;
   app.addHook('onClose', async () => {
+    closing = true;
+    // A start interrupted by the shutdown stays pending for the next Runtime start.
+    options.firstStep?.stop();
     if (inFlight.size === 0) {
       return;
     }
@@ -96,6 +134,83 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       clearTimeout(timer);
     }
   });
+
+  // The Runtime startup steps, in the background after the server is ready (the Session
+  // coordinator recovered first): Creates a previous Runtime accepted and did not see through are
+  // run again (resumed or settled from their journal), then a Create that completed while this
+  // Runtime was stopped before its agent start is started, as the principal stored with it.
+  const firstStep = options.firstStep;
+  const resumeEngine = options.engine;
+  if (resumeEngine && (requests || firstStep)) {
+    app.addHook('onReady', () => {
+      const resumed = (async () => {
+        if (requests) {
+          await resumeAcceptedCreates({
+            store: requests,
+            startedAt,
+            now,
+            stopped: () => closing,
+            executorState: async (executor) =>
+              proveExecutorState(executor, await ownExecutorIdentity()),
+            journalExists: async (operationId) =>
+              (await inspectPublicCreateOperation(resumeEngine, operationId)) !== undefined,
+            authorized: (record) => {
+              try {
+                const authz = options.authorizePrincipal?.(record.principal);
+                const projectId = options.projectId?.();
+                const scope: Readonly<Record<string, string>> =
+                  projectId === undefined ? {} : { projectId };
+
+                return (
+                  authz !== undefined &&
+                  authz.can({
+                    resource: SpecCapabilities,
+                    capability: SpecCapabilities.capabilities.Create,
+                    scope: {},
+                  }) &&
+                  (record.request.firstStep === undefined ||
+                    authz.can({
+                      resource: SpecCapabilities,
+                      capability: SpecCapabilities.capabilities.Manage,
+                      scope,
+                    }))
+                );
+              } catch {
+                return false;
+              }
+            },
+            run: (record) =>
+              runCreate({
+                engine: resumeEngine,
+                body: record.request,
+                respondAsync: false,
+                progress: options.progress,
+                track,
+                onDetachedFailure: () => undefined,
+                requests: { store: requests, principal: record.principal, now, resumed: true },
+                ...(firstStep
+                  ? { firstStep: { owner: firstStep, principal: record.principal } }
+                  : {}),
+              }),
+            onFailure: (operationId, error) => {
+              if (!createErrorCode(error)) {
+                app.log.warn({ operationId, err: error }, 'Create resume failed');
+              }
+            },
+          }).catch((error: unknown) => app.log.warn({ err: error }, 'Create resume could not run'));
+        }
+
+        await firstStep
+          ?.resume(resumeEngine, (operationId, error) =>
+            app.log.warn({ operationId, err: error }, 'Create first-step resume failed'),
+          )
+          .catch((error: unknown) =>
+            app.log.warn({ err: error }, 'Create first-step resume could not run'),
+          );
+      })();
+      track(resumed);
+    });
+  }
 
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/specs/create-options',
@@ -212,7 +327,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         return reply.code(503).send({ error: 'ENGINE_UNAVAILABLE', code: 'ENGINE_UNAVAILABLE' });
       }
 
-      const catalogue = toArchetypeCatalogue(await loadProjectCatalogue(engine));
+      const catalogue = await readArchetypeCatalogue(engine);
       const etag = catalogueEtag(catalogue);
       reply.header('ETag', etag).header('Cache-Control', 'private, no-cache');
       if (matchesEtag(request.headers['if-none-match'], etag)) {
@@ -261,7 +376,30 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
 
       try {
         const result = await inspectPublicCreateOperation(engine, request.params.operationId);
+        // The Runtime's record of the request: a Create it accepted is readable before (and
+        // without) an Engine journal, and keeps how its last run ended.
+        const accepted = await requests?.read(request.params.operationId).catch(() => undefined);
         if (!result) {
+          if (accepted) {
+            return reply.code(200).send(
+              accepted.failure
+                ? {
+                    operationId: request.params.operationId,
+                    kind: 'specification-create' as const,
+                    // A refusal is final; an open outcome names why only an operator can go on.
+                    status: accepted.failure.definite
+                      ? ('failed' as const)
+                      : ('recovery-required' as const),
+                    code: accepted.failure.code,
+                  }
+                : {
+                    operationId: request.params.operationId,
+                    kind: 'specification-create' as const,
+                    status: 'in-progress' as const,
+                  },
+            );
+          }
+
           return reply.code(404).send({
             code: 'CREATE_NOT_FOUND',
             error: 'CREATE_NOT_FOUND',
@@ -272,7 +410,34 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         // The status is derived exactly like the operations list does (one shared status table):
         // the registry overlay (also a recently failed run), else the journal idle time.
         if (result.status === 'completed') {
-          return reply.code(200).send(result);
+          // A Create with a first-step intent is complete once its agent start is settled.
+          const intent = await options.firstStep?.read(request.params.operationId);
+          if (!intent) {
+            return reply.code(200).send(result);
+          }
+
+          return reply.code(200).send(
+            intent.result
+              ? { ...result, firstStep: intent.result }
+              : {
+                  operationId: request.params.operationId,
+                  kind: 'specification-create' as const,
+                  status: 'in-progress' as const,
+                },
+          );
+        }
+
+        if (accepted?.failure) {
+          // How the last run after the reservation ended (for example of a resumed run): the journal
+          // stays unfinished, the Runtime's record says why: a refusal, or what an operator must do.
+          return reply.code(200).send({
+            operationId: request.params.operationId,
+            kind: 'specification-create' as const,
+            status: accepted.failure.definite
+              ? ('failed' as const)
+              : ('recovery-required' as const),
+            code: accepted.failure.code,
+          });
         }
 
         const row = await readPublicCreateOperationRow(engine, request.params.operationId);
@@ -355,7 +520,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         tags: ['Specifications'],
         summary: 'Create a Specification',
         description:
-          'Create a Specification and its selected archetype documents atomically under Engine admission. Requires project-wide spec.create. Omitted target means primary checkout; explicit existing/new-worktree choices use registered workspaces and validated Git policy. Body limit is 2 MiB. A retry MUST reuse the same operationId and identical request; changed data yields 409 CREATE_CONFLICT. With Prefer: respond-async, the Runtime validates/reserves and returns 202 with Location and Preference-Applied while detached work continues, even after client disconnect. Without the preference, successful Create normally returns 201. The inspection route reports the outcome; SSE is optional and display-only. Git-off success may contain uncommitted:true. Invalid Git policy fails closed.',
+          'Create a Specification and its selected archetype documents atomically under Engine admission. Requires project-wide spec.create; with firstStep also project-wide spec.manage, and the first workflow step of the archetype must be one an agent may do (else 400 CREATE_OPERATION_INVALID before anything is written). firstStep asks the Runtime to start that step with the given agent, as the caller, once the Specification exists: the intent is stored with the operation, resumed after a Runtime restart, and the operation stays in-progress until the start is settled; the completed result then carries firstStep (started with its Session, or not-started with the refusal code and agent option). A refused start never undoes the Create. A retry must carry the same firstStep (or none when the first request had none), else 409 CREATE_CONFLICT. Omitted target means primary checkout; explicit existing/new-worktree choices use registered workspaces and validated Git policy. Body limit is 2 MiB. A retry MUST reuse the same operationId and identical request; changed data yields 409 CREATE_CONFLICT. With Prefer: respond-async, the Runtime validates/reserves and returns 202 with Location and Preference-Applied while detached work continues, even after client disconnect. Without the preference, successful Create normally returns 201. The inspection route reports the outcome; SSE is optional and display-only. Git-off success may contain uncommitted:true. Invalid Git policy fails closed.',
         body: CreateSpecRequestSchema,
         response: {
           201: CreatedSpecSchema,
@@ -393,6 +558,17 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       }
 
       try {
+        if (request.body.firstStep) {
+          // Starting the first step drives the new Specification's run: the caller must be allowed
+          // to manage it (a project-wide grant; the Specification has no id yet).
+          const projectId = options.projectId?.();
+          request.authz.require({
+            resource: SpecCapabilities,
+            capability: SpecCapabilities.capabilities.Manage,
+            scope: projectId === undefined ? {} : { projectId },
+          });
+        }
+
         const outcome = await runCreate({
           engine,
           body: request.body,
@@ -400,6 +576,23 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
           progress: options.progress,
           track,
           onDetachedFailure: (error) => request.log.error({ err: error }, 'Detached Create failed'),
+          ...(requests
+            ? {
+                requests: {
+                  store: requests,
+                  principal: request.authz.readContext().subject,
+                  now,
+                },
+              }
+            : {}),
+          ...(options.firstStep
+            ? {
+                firstStep: {
+                  owner: options.firstStep,
+                  principal: request.authz.readContext().subject,
+                },
+              }
+            : {}),
         });
         if (outcome.kind === 'accepted') {
           return reply

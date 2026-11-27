@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 
+import { SpecIdSchema } from '../identifiers';
 import { OperationIdSchema } from '../operations/progress';
 import {
   ActionSchema,
@@ -167,6 +168,38 @@ export const DocumentTreeCommitsSchema = Type.Object(
 );
 export type DocumentTreeCommits = Static<typeof DocumentTreeCommitsSchema>;
 
+/** Most held paths `DocumentTree.attemptCommit` names (`count` is their total). */
+export const ATTEMPT_COMMIT_PATHS_MAX = 25;
+
+/**
+ * An agent attempt whose own commit (D15) waits and takes files of this Specification: it has not
+ * run yet (`attempt-commit-pending`) or failed (`attempt-commit-failed`, with its `code`). Those
+ * files cannot change until it ran: their write actions (and, when it takes `specification.yaml`, the
+ * capabilities) are unavailable with reason `attempt-commit`, and a write to one of them is refused
+ * `DOCUMENT_COMMITS_PENDING` (`cause: attempt-commit`). `paths`: at most 25 of the `count` held
+ * paths, Specification-relative, sorted. Retry commit is `POST .../workflow/attempt-commit/retry` of
+ * `subject` with `step` and `attempt`.
+ */
+export const DocumentAttemptCommitSchema = Type.Object(
+  {
+    reason: closedUnion(['attempt-commit-pending', 'attempt-commit-failed'] as const),
+    code: Type.Optional(Type.String({ minLength: 1, maxLength: 100 })),
+    attemptId: Type.String({ minLength: 36, maxLength: 36 }),
+    subject: Type.Object(
+      { specId: SpecIdSchema, taskId: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })) },
+      { additionalProperties: false },
+    ),
+    step: Type.String({ minLength: 1, maxLength: 200 }),
+    attempt: Type.Integer({ minimum: 1 }),
+    /** The step's title when the attempt finished (display text). */
+    stepTitle: Type.String({ maxLength: 1000 }),
+    count: Type.Integer({ minimum: 1 }),
+    paths: Type.Array(Type.String({ minLength: 1 }), { maxItems: ATTEMPT_COMMIT_PATHS_MAX }),
+  },
+  { additionalProperties: false },
+);
+export type DocumentAttemptCommit = Static<typeof DocumentAttemptCommitSchema>;
+
 export const DocumentTreeSchema = Type.Object(
   {
     revision: Type.String({ minLength: 1 }),
@@ -202,6 +235,8 @@ export const DocumentTreeSchema = Type.Object(
     issues: Type.Array(DocumentIssueSchema),
     /** From the journals, no Git; part of the tree revision. */
     commits: Type.Optional(DocumentTreeCommitsSchema),
+    /** From the agent attempt journals and the ledger, no Git; part of the tree revision. */
+    attemptCommit: Type.Optional(DocumentAttemptCommitSchema),
     truncated: Type.Boolean(),
     skippedEntries: Type.Integer({ minimum: 0 }),
   },

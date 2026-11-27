@@ -1,5 +1,6 @@
-// The executor identity and its dead proof belong to the durable core (they judge a lease for the
-// document queue and for the manual commit alike); the writer keeps this path for its own imports.
+// The executor identity and its dead proof are project infrastructure (they judge the control lock,
+// a lease of the document queue and the manual commit alike); the writer keeps this path for its
+// own imports.
 export {
   captureExecutorIdentity,
   nodeProcessTable,
@@ -7,4 +8,4 @@ export {
   proveExecutorState,
   type ExecutorState,
   type ProcessTable,
-} from '../../durable/executor-identity';
+} from '../../../project/process/executor-identity';

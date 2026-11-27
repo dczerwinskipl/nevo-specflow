@@ -8,8 +8,10 @@ import { OperationalRow } from '../../../shared/operational-list';
 import { useNow } from '../../../shared/operations/panel/relativeTime';
 import { SessionProviderIcon } from '../shared/SessionProviderIcon';
 import { sessionRowFacts, sessionRowStatus, type SessionRowAgent } from '../shared/sessionRow';
+import { sessionTitleOf } from '../shared/agentStepTitle';
 import type { SessionCollection } from './loadSessions';
 import type { SpecificationSessionListState } from './useSpecificationSessionList';
+import { productIcons } from '../../../shared/product-icons';
 
 /**
  * The heading the list belongs to: the nearest page title (`ViewPageTitle`, focusable with
@@ -62,7 +64,7 @@ export function SpecificationSessionsList({
   // The guarded handler of "Show more": one load at a time, whatever the button's state shows.
   const loading = useRef(false);
   const newSession = onNewSession ? (
-    <Button leadingIcon="chat-plus" onClick={onNewSession}>
+    <Button leadingIcon={productIcons.startConversation} onClick={onNewSession}>
       {t('sessions.list.newSession')}
     </Button>
   ) : null;
@@ -189,11 +191,12 @@ export function SpecificationSessionsList({
                 <OperationalRow
                   key={item.sessionId}
                   leading={<SessionProviderIcon providerId={item.providerId} />}
-                  primary={item.title ?? t('sessions.untitled')}
+                  primary={sessionTitleOf(item.title, item.agentStep) ?? t('sessions.untitled')}
                   onPrimaryClick={() => onOpenSession(item.sessionId)}
                   factsLayout="inline"
                   compactFacts={sessionRowFacts(
                     {
+                      ...(item.agentStep ? { attempt: item.agentStep.attempt } : {}),
                       updatedAt: item.updatedAt,
                       agent: agentOf(item),
                       taskCount:

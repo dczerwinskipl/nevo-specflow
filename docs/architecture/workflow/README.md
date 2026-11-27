@@ -17,6 +17,7 @@ summary: >
   - [Task resources and preparation](workflow-tasks.md)
   - [Continuation and attention](workflow-continuation-and-attention.md)
   - [Storage and recovery](workflow-storage-and-recovery.md)
+  - [Agent attempts, owner confirmation and the attempt commit](workflow-agent-attempts.md)
 
 ## Responsibility map
 

@@ -103,9 +103,11 @@ describe('Engine-backed specification workspace read', () => {
         overviewPath,
         '# Actual canonical Spec\n\n<!-- note -->\nSign in with the **company** [identity provider](https://idp.example).\n\nSecond paragraph.\n',
       );
-      const manifestCreated = /^created: ['"]?(\d{4}-\d{2}-\d{2})/mu.exec(
-        await readFile(manifestPath, 'utf8'),
-      )?.[1];
+      const manifest = await readFile(manifestPath, 'utf8');
+      const manifestCreated = /^created: ['"]?(\d{4}-\d{2}-\d{2})/mu.exec(manifest)?.[1];
+      // Create gives every Specification a key; the workspace names it (the Overview, the trail).
+      const manifestKey = /^key: ['"]?([a-z0-9-]+)/mu.exec(manifest)?.[1];
+      expect(manifestKey).toMatch(/^nevo-\d+$/u);
       const app = await createRuntimeApp(trustedLocalConfig(), { specs: { engine } });
       try {
         const response = await app.inject(`/api/specs/${created.specId}/workspace`);
@@ -116,6 +118,7 @@ describe('Engine-backed specification workspace read', () => {
         expect(body.workspaceId).toBe(engine.workspace.workspaceId);
         expect(body.specification).toEqual({
           id: created.specId,
+          key: manifestKey,
           title: 'Actual canonical Spec',
           // The overview's first paragraph as plain text, from the same canonical read.
           summary: 'Sign in with the company identity provider.',

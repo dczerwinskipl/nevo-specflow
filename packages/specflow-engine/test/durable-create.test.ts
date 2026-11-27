@@ -168,7 +168,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
       readFile(join(first.workspaceRoot, second.relativeManifestPath), 'utf8'),
     ).rejects.toMatchObject({ code: 'ENOENT' });
 
-    const changedFirst = firstManifest.replace('status: draft', 'status: approved');
+    const changedFirst = firstManifest.replace('priority: 10', 'priority: 20');
     expect(changedFirst).not.toBe(firstManifest);
     await writeFile(firstManifestPath, changedFirst);
     expect(await readFile(firstManifestPath, 'utf8')).toBe(changedFirst);
@@ -579,8 +579,8 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     const baseHead = git(checkout, 'rev-parse', 'HEAD');
     const manifestPath = join(checkout, first.relativeManifestPath);
     const originalManifest = await readFile(manifestPath, 'utf8');
-    expect(originalManifest).toContain('status: draft');
-    await writeFile(manifestPath, originalManifest.replace('status: draft', 'status: approved'));
+    expect(originalManifest).toContain('priority: 10');
+    await writeFile(manifestPath, originalManifest.replace('priority: 10', 'priority: 20'));
     git(checkout, 'add', '--', first.relativeManifestPath);
     commitStaged(checkout, 'normal specification update');
     const advancedHead = git(checkout, 'rev-parse', 'HEAD');
@@ -607,7 +607,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
       refsBefore,
     );
     expect(await readFile(manifestPath, 'utf8')).toBe(committedManifest);
-    expect(committedManifest).toContain('status: approved');
+    expect(committedManifest).toContain('priority: 20');
   }, 240000);
 
   it('does not replay a Git command after an interruption without explicit quiescence', async () => {

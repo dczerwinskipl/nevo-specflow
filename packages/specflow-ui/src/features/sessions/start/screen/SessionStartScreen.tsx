@@ -26,6 +26,7 @@ import { rememberStartedSession, startedSessionFrom } from '../handoff/startedSe
 import type { SessionStartSource } from '../source/sessionStartSource';
 import { SessionStartColumn } from './SessionStartColumn';
 import { readyCatalogue, startContextValue } from './startContext';
+import { productIcons } from '../../../../shared/product-icons';
 
 /** Nothing below it is chosen: what the form holds until a catalogue offers an agent. */
 const noAgent: AgentChoice = {
@@ -158,7 +159,7 @@ export function SessionStartScreen({
     ? {
         id: 'context',
         label: t('sessions.context.title'),
-        icon: 'file',
+        icon: productIcons.context,
         direct: 'always',
         onPress: () => void navigation.open(sessionContextStack, {}),
       }

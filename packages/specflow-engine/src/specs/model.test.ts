@@ -76,7 +76,6 @@ describe('parseSpecificationManifest', () => {
         { id: 'behaviour', path: 'docs/behaviour.md', type: 'behaviour' },
       ],
       folders: ['research'],
-      status: 'draft',
       location: 'active',
       priority: 10,
       created: '2026-10-24',
@@ -129,7 +128,6 @@ describe('parseSpecificationManifest', () => {
       [{ ...validSource(), id: 'other' }, 'id'],
       [{ ...validSource(), spec_id: 'nope' }, 'spec_id'],
       [{ ...validSource(), title: ' ' }, 'title'],
-      [{ ...validSource(), status: 3 }, 'status'],
       [{ ...validSource(), priority: 'high' }, 'priority'],
       [{ ...validSource(), created: 20261024 }, 'created'],
     ])('rejects %#', (source, field) => {

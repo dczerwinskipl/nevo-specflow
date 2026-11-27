@@ -57,6 +57,22 @@ export const ArchetypeWorkflowSchema = Type.Object(
   { additionalProperties: false },
 );
 
+/**
+ * The step a first start of the archetype's workflow begins with (the workflow's entry step), so
+ * Create can name it and offer "run it with an agent" only when an agent may do it. Absent when the
+ * archetype has no valid execution binding (no workflow starts it).
+ */
+export const ArchetypeFirstStepSchema = Type.Object(
+  {
+    id: Type.String({ minLength: 1 }),
+    title: Type.String({ minLength: 1 }),
+    /** An agent may do the step (its executors include `agent`); false: only the owner can. */
+    agent: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type ArchetypeFirstStep = Static<typeof ArchetypeFirstStepSchema>;
+
 export const ArchetypeInfoSchema = Type.Object(
   {
     id: CatalogueIdSchema,
@@ -68,6 +84,7 @@ export const ArchetypeInfoSchema = Type.Object(
     requirements: Type.Array(ArchetypeRequirementSchema),
     documents: Type.Array(ArchetypeTemplateInfoSchema),
     workflow: Type.Optional(ArchetypeWorkflowSchema),
+    firstStep: Type.Optional(ArchetypeFirstStepSchema),
   },
   { additionalProperties: false },
 );

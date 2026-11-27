@@ -55,6 +55,15 @@ bands, while the Create form and Specification Overview stayed in one narrow col
 | Activity history       | Stays in the Secondary. An empty history does not open or reserve it; it is available on demand. The user's explicit choice persists per Specification for the visit.                                                                                                                                                                          |
 | Design System          | The Bounded workspace rule changes together with the code: `fit="bounded"` is now the Focused frame.                                                                                                                                                                                                                                           |
 
+## Floating controls on mobile (#208)
+
+The floating ☰/⋯ controls on mobile intentionally overlap content while scrolling (about one line).
+This is a deliberate owner decision (#208): for a user who scrolls, it is the least irritating way
+to keep the screen space. It only looks like a defect on static screenshots, so agents and reviewers
+must not report it as an issue or "fix" it: no hiding on scroll, no bands or bars, no padding hacks.
+Making the buttons bigger is a possible future change, but it needs a standard layout change and is
+not in scope.
+
 ## Rejected alternatives
 
 | Alternative                                                                 | Why it was rejected                                                                                                                        |
@@ -83,6 +92,14 @@ These findings came from the audit and stay open. None of them is part of the ge
   session. This needs an information-model decision. The navigator could show places with counts
   and state rather than full object lists, and "2 active" could split into waiting for you and
   working.
+- **Compact title on scroll (open owner decision, review 2026-11-26).** Proposal: one shared
+  `AppWorkspace` mechanism, not one per screen, that observes the body's page title
+  (`data-page-title`) and, once it has scrolled away, shows a compact form of it in the
+  application header (the header's identity line, never a new row). It conflicts with "Identity
+  adds no band or bar" ([Page identity](interaction-model.md#page-identity-and-product-icons)) and
+  with the floating ☰/⋯ of a stacked layout (#208), which keep no header while scrolled, so it
+  needs the owner's decision before any work. The floating controls' overlap while scrolling is
+  decided, not open (see [Floating controls on mobile](#floating-controls-on-mobile-208)).
 - **Attention does not roll up** from a Task to the Specification (a Task row carries its Requires
   attention overlay; the Specifications list row does not).
 - **The Specification switcher shows no state:** no attention or progress per item, and no New

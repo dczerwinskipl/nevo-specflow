@@ -5,6 +5,7 @@ import { createInvocationScope, launchOwnedProcess, type ProviderEnvironment } f
 import { object, ClaudeProtocolError } from './protocol';
 import { claudeArguments, claudeModels, claudeVersion } from './discovery';
 import type { Invocation } from '../driver';
+import { claudeMode } from './modes';
 
 /** Initialize without a user message: no paid inference and no invented semantic-resume evidence. */
 export async function probeClaude(
@@ -51,7 +52,7 @@ export async function probeClaude(
       }
 
       const payload = object(response.response);
-      const models = claudeModels(payload);
+      const models = claudeModels(payload, claudeMode(options.selection).modeId);
       if (!models.length) {
         throw new ClaudeProtocolError();
       }

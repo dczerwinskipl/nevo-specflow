@@ -27,7 +27,7 @@ describe('CollectionColumns', () => {
       </>,
     );
     const [header, row] = [...container.children] as HTMLElement[];
-    const tracks = 'grid-cols-[minmax(0,40rem)_15rem_8.25rem]';
+    const tracks = 'grid-cols-[minmax(18rem,32rem)_minmax(15rem,22rem)_minmax(11rem,18rem)]';
 
     expect(header!.className).toContain(tracks);
     expect(row!.className).toContain(`@min-[48rem]/collection:${tracks}`);

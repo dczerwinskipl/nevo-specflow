@@ -13,9 +13,15 @@ export const agentArchetypeFile = (): AgentArchetypeDefinitionFile => ({
   title: 'Reviewer',
   description: 'Independent, evidence-based review of a scoped change.',
   profile: 'nevo-agents:reviewer',
+  independent: true,
   preferredProvider: 'codex',
   providers: [
-    { provider: 'codex', model: 'gpt-5.5', effort: 'high' },
+    {
+      provider: 'codex',
+      model: 'gpt-5.5',
+      effort: 'high',
+      permissions: { allow: ['Read', 'Bash(nevo-specflow documents:*)'] },
+    },
     { provider: 'claude', model: 'claude-opus-5-5' },
     { provider: 'antigravity' },
   ],
@@ -58,7 +64,7 @@ export const workflowFile = (): WorkflowDefinitionFile => ({
       archetype: 'reviewer',
       purpose: 'Review the change.',
       transitions: [
-        { id: 'accept', result: 'pass', to: { terminal: 'completed' } },
+        { id: 'accept', result: 'pass', to: { terminal: 'completed' }, confirmation: 'owner' },
         {
           id: 'reject',
           result: 'fail',
@@ -88,6 +94,21 @@ export const invalidAgentArchetypeFiles: [string, () => Json][] = [
     'an empty model',
     () => ({ ...agentArchetypeFile(), providers: [{ provider: 'codex', model: '' }] }),
   ],
+  ['a non-boolean independent facet', () => ({ ...agentArchetypeFile(), independent: 'yes' })],
+  [
+    'permissions with an empty rule',
+    () => ({
+      ...agentArchetypeFile(),
+      providers: [{ provider: 'codex', permissions: { allow: [''] } }],
+    }),
+  ],
+  [
+    'permissions with an unknown key',
+    () => ({
+      ...agentArchetypeFile(),
+      providers: [{ provider: 'codex', permissions: { allow: [], deny: [] } }],
+    }),
+  ],
 ];
 
 export const invalidTaskTypeFiles: [string, () => Json][] = [
@@ -99,6 +120,14 @@ const withStep = (step: Json): Json => ({ ...workflowFile(), steps: [step] });
 
 export const invalidWorkflowFiles: [string, () => Json][] = [
   ['an unknown subject', () => ({ ...workflowFile(), subject: 'project' })],
+  [
+    'an unknown confirmation',
+    () =>
+      withStep({
+        ...workflowFile().steps[0],
+        transitions: [{ id: 'done', to: { step: 'review' }, confirmation: 'agent' }],
+      }),
+  ],
   ['no steps', () => ({ ...workflowFile(), steps: [] })],
   ['a step without transitions', () => withStep({ ...workflowFile().steps[0], transitions: [] })],
   [

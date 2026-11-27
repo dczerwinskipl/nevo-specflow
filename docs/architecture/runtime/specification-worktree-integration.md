@@ -109,5 +109,5 @@ Runtime that owns the Project's Session store (one local owner, see
 A Turn that starts after the answer sees the unfinished Close journal and refuses, so the answer
 cannot go stale before the removal. On Windows a dead Runtime's provider tree dies with its Job
 Object; on POSIX its process group may outlive it, which is why the unsettled-Turn evidence counts. An external agent started outside Runtime holds no claim, and the Engine
-MUST NOT claim it is quiescent. Writer admission for workflow steps is not implemented yet.
+MUST NOT claim it is quiescent.
 See [durable recovery](../../engineering/shared/specflow-git-recovery.md).

@@ -1,8 +1,11 @@
+import type { SituationAttention } from '../../tasks';
+import { mapAttentionItem } from '../read-model';
 import type {
   ArchivedSpecOverviewItem,
   CurrentSpecOverviewItem,
   CurrentSpecSectionId,
   CurrentSpecAttentionReason,
+  CurrentSpecWorkflow,
   SpecOverviewItem,
   SpecsOverview,
 } from './model';
@@ -11,12 +14,26 @@ type Tags = readonly [] | readonly [string] | readonly [string, string];
 type PullRequests =
   { kind: 'single'; number: number; href: string } | { kind: 'multiple'; count: number };
 
-type CurrentSummary =
+/**
+ * What a current row says about its Specification:
+ *
+ * - `workflow`: where its workflow run stands, the Overview's Now in a few lines; with `attention`
+ *   when the workflow needs a person (the item the Overview's Requires attention lists first);
+ * - `attention`: an attention signal that is not the workflow's (a Session, demo evidence only);
+ * - `sessions`: Sessions execute while the workflow position is unknown (demo evidence only);
+ * - `unreadable`: the workflow could not be read, and why;
+ * - `unknown`: no work status.
+ */
+export type CurrentSummary =
+  | { kind: 'workflow'; workflow: CurrentSpecWorkflow; attention?: SituationAttention }
   | { kind: 'attention'; reason?: CurrentSpecAttentionReason; count?: number }
-  | { kind: 'active'; executionCount: number }
-  | { kind: 'ready' }
-  | { kind: 'draft' }
+  | { kind: 'sessions'; executionCount: number }
+  | { kind: 'unreadable'; reason: CurrentSpecUnreadableReason }
   | { kind: 'unknown' };
+
+export type CurrentSpecUnreadableReason = NonNullable<
+  CurrentSpecOverviewItem['unreadable']
+>['reason'];
 
 interface RowIdentity {
   readonly id: string;
@@ -34,7 +51,11 @@ export interface CurrentSpecRowModel extends RowIdentity {
   readonly collection: 'current';
   readonly sectionId: CurrentSpecSectionId;
   readonly summary: CurrentSummary;
+  /** Under an attention signal: where the workflow stands, so the row still names the step. */
+  readonly workflow?: CurrentSpecWorkflow;
   readonly qualifier?: { executionCount: number };
+  /** An abandoned run shows no Task progress: it says it was abandoned, and when. */
+  readonly hideProgress?: boolean;
 }
 
 export interface ArchiveSpecRowModel extends RowIdentity {
@@ -69,17 +90,25 @@ function identity(item: SpecOverviewItem): RowIdentity {
 
 export function currentRow(item: CurrentSpecOverviewItem): CurrentSpecRowModel {
   const executionCount = item.currentExecutions?.length ?? 0;
+  const summary = currentSummary(item);
+  const workflow = summary.kind === 'attention' && item.workflow ? item.workflow : undefined;
 
   return {
     ...identity(item),
     updatedAt: item.updatedAt,
     collection: 'current',
     sectionId: item.classification.section,
-    summary: currentSummary(item),
+    summary,
+    // One concurrent qualifier at most, under an attention signal only: the workflow position
+    // wins over the Session count.
+    ...(workflow ? { workflow } : {}),
     qualifier:
-      item.classification.section !== 'active' && executionCount > 0
+      summary.kind === 'attention' && !workflow && executionCount > 0
         ? { executionCount }
         : undefined,
+    ...(item.workflow?.kind === 'ended' && item.workflow.outcome === 'abandoned'
+      ? { hideProgress: true }
+      : {}),
   };
 }
 
@@ -110,22 +139,40 @@ export function sortArchiveItems(items: readonly ArchivedSpecOverviewItem[]) {
 }
 
 function currentSummary(item: CurrentSpecOverviewItem): CurrentSummary {
+  if (item.unreadable) {
+    return { kind: 'unreadable', reason: item.unreadable.reason };
+  }
+
   switch (item.classification.section) {
     case 'requires-attention':
+      // The workflow's own attention: the row names the item the Overview lists first.
+      if (item.workflow && item.attention) {
+        return {
+          kind: 'workflow',
+          workflow: item.workflow,
+          attention: {
+            first: mapAttentionItem(item.attention.first),
+            ...(item.attention.taskTitles ? { taskTitles: item.attention.taskTitles } : {}),
+            count: item.classification.count ?? 1,
+          },
+        };
+      }
+
       return {
         kind: 'attention',
         ...(item.classification.reason === undefined ? {} : { reason: item.classification.reason }),
         ...(item.classification.count === undefined ? {} : { count: item.classification.count }),
       };
 
-    case 'active':
-      return { kind: 'active', executionCount: item.currentExecutions?.length ?? 0 };
+    case 'in-progress':
+      // A Session executes while the workflow position is unknown (demo evidence only).
+      return item.workflow?.kind === 'step'
+        ? { kind: 'workflow', workflow: item.workflow }
+        : { kind: 'sessions', executionCount: item.currentExecutions?.length ?? 0 };
 
-    case 'ready':
-      return { kind: 'ready' };
-
-    case 'draft':
-      return { kind: 'draft' };
+    case 'not-started':
+    case 'ended':
+      return item.workflow ? { kind: 'workflow', workflow: item.workflow } : { kind: 'unknown' };
 
     case 'unknown':
       return { kind: 'unknown' };
@@ -169,8 +216,8 @@ export function rowMetadata(item: SpecRowModel): readonly RowMetadataFact[] {
  * Which facts the Runtime really provides for the current list. A project Runtime may know the
  * specifications but not their work status or progress; the list then must not draw groups and
  * columns of "unavailable". Decided from the whole collection (never from a search result, so
- * typing does not change the layout): status exists when any specification has a real section,
- * progress when any has a progress. The archive always has its own milestone and pull-request
+ * typing does not change the layout): status exists when any specification has a real section or
+ * a reason it could not be read, progress when any has a progress. The archive always has its own milestone and pull-request
  * columns, and an empty collection keeps the full layout (nothing to flatten).
  */
 export interface OverviewCapabilities {
@@ -184,7 +231,11 @@ export function overviewCapabilities(projection: SpecsOverview): OverviewCapabil
   }
 
   return {
-    status: projection.items.some((item) => item.classification.section !== 'unknown'),
+    // A row whose workflow the Runtime could not read (busy, recovering) still has a status: it is
+    // "unavailable" with its reason, never a list without states.
+    status: projection.items.some(
+      (item) => item.classification.section !== 'unknown' || item.unreadable !== undefined,
+    ),
     progress: projection.items.some((item) => item.progress !== null),
   };
 }

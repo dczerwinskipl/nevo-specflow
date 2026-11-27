@@ -1,23 +1,29 @@
 import { createHash } from 'node:crypto';
 
 import {
+  SPECIFICATION_BUSY_CAUSES,
+  WORKFLOW_COMMIT_REFUSAL_CODES,
   WORKFLOW_ERROR_CODES,
   type WorkflowError as WorkflowErrorContract,
   type WorkflowErrorCode,
 } from '@nevo/specflow-contracts/workflow';
 import { TRUSTED_LOCAL_SUBJECT } from '../auth/authorization/request-authorization';
 import {
+  AttributionRefusalError,
+  DocumentError,
   DraftConflictError,
   GateUnsatisfiedError,
   GitCapabilityError,
   ProjectControlLockError,
   ProjectHomeError,
   SpecificationError,
+  SpecificationBusyError,
   SpecificationExitBlockedError,
   TaskContextInvalidError,
   TaskContextUnresolvedError,
   TasksOpenError,
   WorkspaceRegistryError,
+  type AgentOption,
   type OwnerActor,
 } from '@nevo/specflow-engine';
 import type { FastifyReply } from 'fastify';
@@ -46,10 +52,26 @@ const UNAVAILABLE = new Set<WorkflowErrorCode>([
   'WORKFLOW_STATE_CORRUPT',
   'WORKFLOW_UNAVAILABLE',
   'CONTROL_LOCK_BUSY',
+  'CONTROL_LOCK_RECOVERY_REQUIRED',
   'CONTROL_LOCK_CORRUPT',
   'CONTROL_LOCK_OWNERSHIP_LOST',
   'CONTROL_LOCK_INVALID_HOME',
 ]);
+
+/**
+ * Agent step execution cannot start or continue now (explain before action): `option` is the unavailable agent
+ * option with its reason, the same the projection shows.
+ */
+export class AgentUnavailableError extends Error {
+  readonly code = 'WORKFLOW_AGENT_UNAVAILABLE';
+  readonly option: Extract<AgentOption, { kind: 'unavailable' }>;
+
+  constructor(option: Extract<AgentOption, { kind: 'unavailable' }>, message: string) {
+    super(message);
+    this.name = 'AgentUnavailableError';
+    this.option = option;
+  }
+}
 
 /** The Runtime has no workflow backend; recognised as a refusal by name and code. */
 export class WorkflowUnavailableError extends Error {
@@ -86,6 +108,10 @@ function isWorkflowErrorCode(value: unknown): value is WorkflowErrorCode {
  * `details.blockers`.
  */
 export function workflowFailure(error: unknown): WorkflowFailure | undefined {
+  if (error instanceof AgentUnavailableError) {
+    return failure(error.code, error.message, { agent: toWire(error.option) });
+  }
+
   if (error instanceof ProjectControlLockError) {
     return failure(error.code, error.message);
   }
@@ -145,6 +171,34 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
     return failure(error.code, error.message, { openTasks: toWire(error.openTasks) });
   }
 
+  // 409: Agent step execution attribution: the paths the Engine cannot attribute, or the ones declared wrongly.
+  if (error instanceof AttributionRefusalError) {
+    const { attribution } = error;
+
+    return failure(error.code, error.message, {
+      attribution: {
+        paths: [...attribution.paths],
+        count: attribution.count,
+        ...(attribution.undeclared ? { undeclared: [...attribution.undeclared] } : {}),
+        ...(attribution.unchanged ? { unchanged: [...attribution.unchanged] } : {}),
+        ...(attribution.remedies ? { remedies: [...attribution.remedies] } : {}),
+        ...(attribution.incomplete ? { incomplete: true as const } : {}),
+      },
+    });
+  }
+
+  // 409: another writer holds the Specification (an agent Turn's claim names its Session).
+  if (error instanceof SpecificationBusyError) {
+    return failure(error.code, error.message, { ...error.busy });
+  }
+
+  // The commit admission of the workflow state refuses in the documents' vocabulary: a busy
+  // checkout (a batch being committed, a full queue, a Create or Close, an agent Turn) is the same
+  // busy refusal, with its cause, as the workflow's own; a refused commit policy is a 409 as well.
+  if (error instanceof DocumentError) {
+    return documentRefusal(error);
+  }
+
   if (!(error instanceof Error) || error.name !== 'WorkflowError') {
     return undefined;
   }
@@ -152,6 +206,39 @@ export function workflowFailure(error: unknown): WorkflowFailure | undefined {
   const { code } = error as Error & { code?: unknown };
 
   return isWorkflowErrorCode(code) ? failure(code, error.message) : undefined;
+}
+
+/**
+ * A document refusal of the workflow state's commit admission as a workflow refusal: busy, the
+ * source gone, or the commit policy refusing (`WORKFLOW_COMMIT_REFUSED` with the document code);
+ * nothing was written in any of them. Any other document error is a defect here.
+ */
+function documentRefusal(error: DocumentError): WorkflowFailure | undefined {
+  const details = error.details;
+  if (error.code === 'SPEC_BUSY') {
+    const cause =
+      SPECIFICATION_BUSY_CAUSES.find((known) => known === details?.cause) ?? ('other' as const);
+
+    return failure('WORKFLOW_SPECIFICATION_BUSY', error.message, { cause });
+  }
+
+  if (error.code === 'SPEC_SOURCE_UNAVAILABLE') {
+    return failure('WORKFLOW_UNAVAILABLE', 'The Specification source is unavailable.');
+  }
+
+  const code = WORKFLOW_COMMIT_REFUSAL_CODES.find((known) => known === error.code);
+  if (code === undefined) {
+    return undefined;
+  }
+
+  return failure('WORKFLOW_COMMIT_REFUSED', error.message, {
+    commit: {
+      code,
+      ...(details?.reason !== undefined ? { reason: details.reason } : {}),
+      ...(details?.cause !== undefined ? { cause: details.cause } : {}),
+      ...(details?.blockedBy !== undefined ? { blockedBy: details.blockedBy } : {}),
+    },
+  });
 }
 
 /** The workflow refusal of each Specification lookup failure. */

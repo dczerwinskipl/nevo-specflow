@@ -55,7 +55,9 @@ describe('Tasks page', () => {
     // A draft is neutral (approving it is an action, not attention); waiting names its dependency.
     expect(row(container, 'T-04')?.dataset.taskAttention).toBeUndefined();
     expect(row(container, 'T-04')?.textContent).toContain('Draft · needs approval');
-    expect(row(container, 'T-03')?.textContent).toContain('Waiting for T-02');
+    expect(row(container, 'T-03')?.textContent).toContain(
+      'Waiting for Token exchange endpoint and session cookie',
+    );
     // The progress is the section count; Cancelled is collapsed by its configuration.
     expect(screen.getByText('1 of 6 done · 1 cancelled · 1 on hold')).not.toBeNull();
     expect(row(container, 'T-06')).toBeNull();
@@ -173,7 +175,7 @@ describe('Tasks page', () => {
     const cell = row(container, 'T-05')!.querySelector('[data-task-status-cell]')!;
 
     expect(cell.querySelector('[data-task-overlay]')?.textContent).toBe(
-      'Requires attention · holds up T-03',
+      'Requires attention · holds up Sign-in button and provider redirect',
     );
     expect(cell.querySelector('[data-collection-supporting]')?.textContent).toBe(
       'Waiting for the retention policy from the security team.',

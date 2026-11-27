@@ -12,6 +12,12 @@ export const ExecutionIntentSchema = Type.Object(
     operationId: identifier,
     ownerId: Type.String({ minLength: 1, maxLength: 256 }),
     binding: Type.String({ pattern: '^[0-9a-f]{64}$' }),
+    /**
+     * The agent attempt the execution is a Turn of (agent step execution): written by the trusted host when it
+     * admits the claim, so the attempt's finalize, recovery and authorship (`sameAuthor`) read it
+     * from the durable intent. Absent for a Turn without an attempt.
+     */
+    attempt: Type.Optional(Type.Object({ attemptId: identifier }, closed)),
   },
   closed,
 );

@@ -6,11 +6,13 @@ import type {
   ReconcileTurnResult,
 } from '@nevo/specflow-contracts/sessions';
 import { utf8Bytes, SessionLimits } from '@nevo/specflow-contracts/sessions';
+import { isHttpClientError } from '@nevo/http-client';
 import { isApiError, type ApiErrorKind } from '../../../api';
 import { writeOutcomeUnknown } from '../../../shared/http/apiErrorCode';
 import { sendRetained, type RequestAttempt } from '../../../shared/operations/retainedRequest';
 import { sessionErrorCode, type ManagedSessionsApi } from './api';
 import { applySessionEvent, conversationWindow, mergeEntries, prependHistory } from './model';
+import { newId } from '../../../shared/ids/newId';
 
 /** An interaction answer without its idempotency key, which the feed retains. */
 export type RespondAnswer = RespondInteraction extends infer T
@@ -25,6 +27,13 @@ export interface FeedState {
   historyError: boolean;
   commandBusy: boolean;
   commandError: boolean;
+  /**
+   * Why the last Send was not delivered, said in the Composer: `unconfirmed` while the exact
+   * request is kept (its answer was lost or timed out; the server may still run it, a retry with
+   * the same request id runs it at most once), `too-long` for a message over the limit, otherwise
+   * the Runtime's refusal code (a definite refusal: the request is released, the draft kept).
+   */
+  sendFailure?: string;
   /** The reader has scrolled away from the bottom (drives the "Jump to latest" pill). */
   away: boolean;
   /**
@@ -87,6 +96,18 @@ interface BrowserStorage {
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
 }
+/** The `details.reason` of a refused call, when its body names one. */
+function refusalReason(error: unknown): string | undefined {
+  const source = isApiError(error) ? error.cause : error;
+  if (!isHttpClientError(source) || typeof source.data !== 'object' || source.data === null) {
+    return undefined;
+  }
+
+  const details = (source.data as { details?: { reason?: unknown } }).details;
+
+  return typeof details?.reason === 'string' ? details.reason : undefined;
+}
+
 export function createSessionFeed(
   api: ManagedSessionsApi,
   sessionId: string,
@@ -115,6 +136,9 @@ export function createSessionFeed(
   };
 
   let pending: StartTurn | undefined;
+  // The newest entry ordinal known when the retained Send was first attempted in this view (absent
+  // after a reload): a newer request entry is that Send arriving.
+  let sentAfter: number | undefined;
   // `unreadable`: a record is there but malformed (explicit discard only); `unavailable`: the
   // storage itself cannot be read (blocks until it can).
   let retention: 'ready' | 'unreadable' | 'unavailable' = 'ready';
@@ -219,6 +243,12 @@ export function createSessionFeed(
   let controller: AbortController | undefined,
     generation = 0;
   const notify = (next: FeedState) => {
+    // A Send's failure reason belongs to the error it explains; a cleared error clears it too.
+    if (!next.commandError && next.sendFailure !== undefined) {
+      next = { ...next };
+      delete next.sendFailure;
+    }
+
     state = next;
     for (const listener of listeners) {
       listener();
@@ -414,7 +444,7 @@ export function createSessionFeed(
     const request =
       state.pending ??
       ({
-        requestId: crypto.randomUUID(),
+        requestId: newId(),
         message: state.draft,
         ...(state.modelOverride ? { modelId: state.modelOverride } : {}),
         ...(state.effortOverride ? { effort: state.effortOverride } : {}),
@@ -425,7 +455,7 @@ export function createSessionFeed(
     }
 
     if (utf8Bytes(request.message) > SessionLimits.messageBytes) {
-      notify({ ...state, commandError: true });
+      notify({ ...state, commandError: true, sendFailure: 'too-long' });
 
       return;
     }
@@ -446,14 +476,16 @@ export function createSessionFeed(
         throw new Error('Pending command retention could not be confirmed.');
       }
     } catch {
-      notify({ ...state, pending: request, commandError: true });
+      notify({ ...state, pending: request, commandError: true, sendFailure: 'unconfirmed' });
 
       return;
     }
 
+    sentAfter ??= state.pending ? undefined : latestOrdinal;
     notify({ ...state, pending: request, commandBusy: true, commandError: false });
     try {
       await api.start(sessionId, request);
+      sentAfter = undefined;
       // Keep the exact command retryable until its durable record is gone.
       // Acknowledgement alone must not let a newer command replace this record.
       if (storage.getItem(key + ':pending') === JSON.stringify(request)) {
@@ -476,7 +508,11 @@ export function createSessionFeed(
       // A definite refusal (the server saw the command and said no) could never succeed when
       // replayed, so the Composer is released: the draft and overrides stay editable, the error
       // stays visible. Any answer that leaves the outcome open keeps the exact command.
-      const archived = sessionErrorCode(error) === 'SESSION_ARCHIVED';
+      const code = sessionErrorCode(error);
+      const archived = code === 'SESSION_ARCHIVED';
+      // A start the Runtime refused for recovery committed nothing (its admission is one
+      // transaction; a replay of an applied request answers with its Turn): a definite refusal.
+      const definite = code === 'SESSION_RECOVERY_REQUIRED' || !writeOutcomeUnknown(error);
       const next: FeedState = {
         ...state,
         commandBusy: false,
@@ -484,12 +520,70 @@ export function createSessionFeed(
         commandError: !archived,
         archivedRefusal: archived || state.archivedRefusal,
       };
-      if (!writeOutcomeUnknown(error) && releaseRetained(JSON.stringify(request))) {
+      const released = definite && releaseRetained(JSON.stringify(request));
+      if (released) {
         delete next.pending;
+        sentAfter = undefined;
+      }
+
+      if (!archived) {
+        next.sendFailure = released
+          ? refusalReason(error) === 'mode-model-unsupported'
+            ? 'mode-model-unsupported'
+            : (code ?? 'refused')
+          : 'unconfirmed';
       }
 
       notify(next);
     }
+  }
+
+  /**
+   * The way out of a Send whose answer was lost (`unconfirmed`): re-reads the Session. When the
+   * message arrived (a Turn runs, or a newer request entry is there) the same request is sent again,
+   * which only confirms it (it never runs twice); when it did not, the request is dropped and the
+   * draft is editable again. A read that fails keeps the request.
+   */
+  async function checkUnconfirmed() {
+    const request = state.pending;
+    if (!request || state.commandBusy || state.sendFailure !== 'unconfirmed') {
+      return;
+    }
+
+    notify({ ...state, commandBusy: true });
+    let fresh: SessionSnapshot;
+    try {
+      fresh = await api.snapshot(sessionId);
+    } catch {
+      notify({ ...state, commandBusy: false, commandError: true, sendFailure: 'unconfirmed' });
+
+      return;
+    }
+
+    const requests = fresh.entries.filter((entry) => entry.kind === 'request');
+    const newest = requests.at(-1);
+    const arrived =
+      !!fresh.activeTurn ||
+      (sentAfter !== undefined
+        ? requests.some((entry) => entry.ordinal > sentAfter!)
+        : !!newest && request.message.startsWith(newest.text.text));
+    notify({ ...state, commandBusy: false });
+    if (arrived) {
+      await send();
+
+      return;
+    }
+
+    if (!releaseRetained(JSON.stringify(request))) {
+      notify({ ...state, commandError: true, sendFailure: 'unconfirmed' });
+
+      return;
+    }
+
+    sentAfter = undefined;
+    const next: FeedState = { ...state, commandError: false, draft: request.message };
+    delete next.pending;
+    notify(next);
   }
 
   function connect() {
@@ -614,6 +708,7 @@ export function createSessionFeed(
       }
     },
     send,
+    checkUnconfirmed,
     recheckProvider,
     async older() {
       const before = state.snapshot?.history.before;
@@ -666,7 +761,7 @@ export function createSessionFeed(
 
       notify({ ...state, commandBusy: true, commandError: false });
       try {
-        await api.cancel(sessionId, turnId, crypto.randomUUID());
+        await api.cancel(sessionId, turnId, newId());
         notify({ ...state, commandBusy: false });
       } catch {
         notify({ ...state, commandBusy: false, commandError: true });
@@ -722,7 +817,7 @@ export function createSessionFeed(
 
       const turnId = turn.turnId;
       if (reconcileAttempt?.turnId !== turnId) {
-        reconcileAttempt = { turnId, requestId: crypto.randomUUID() };
+        reconcileAttempt = { turnId, requestId: newId() };
       }
 
       const attempt = reconcileAttempt;

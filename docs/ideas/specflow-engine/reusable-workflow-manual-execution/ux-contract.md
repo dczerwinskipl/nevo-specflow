@@ -34,5 +34,5 @@ workflow execution` (`packages/specflow-ui/src/features/tasks/execution/ProjectW
 and `SpecFlow/Screens/Specification control center`
 (`packages/specflow-ui/src/features/tasks/overview/SpecificationControlCenter.stories.tsx`).
 
-The Ask agent attachment point remains an open idea
-([agent-assisted execution](agent-assisted-execution.md)).
+The agent attachment point is implemented as Run with agent
+([ADR 0026](../../../architecture/decisions/0026-agent-step-execution.md)).

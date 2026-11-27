@@ -6,6 +6,7 @@ import type {
   RenameSession,
   ArchiveSession,
   ReconcileTurnResult,
+  RequestOrigin,
 } from '@nevo/specflow-contracts/sessions';
 import { SessionLimits, utf8Bytes } from '@nevo/specflow-contracts/sessions';
 import { SessionError } from '../errors';
@@ -30,7 +31,19 @@ import { validateDriverFact } from '../providers/facts';
 import { nativeStopEvidence } from '../providers/process';
 import { executionBinding, type SessionEffects } from './effects';
 import { createManagedInvocation } from './managed-invocation';
+import { redactFact, type InvocationCapabilities } from './invocation-capabilities';
+import { redactAgentCapabilityShapes } from '@nevo/specflow-contracts/runtime';
 import { createSessionTelemetryService } from './telemetry';
+
+/** In-process options of a Turn start (agent step execution); never taken from a request. */
+export interface TurnStartOptions {
+  readonly ids?: { readonly turnId: string; readonly invocationId: string };
+  readonly agentAttempt?: { readonly attemptId: string };
+  /** The archetype's provider allowlist for this Turn (D20); applied only by a driver that supports it. */
+  readonly agentPermissions?: { readonly allow: readonly string[] };
+  /** In-process only (agent step execution): the Turn's request is SpecFlow's brief of this step. */
+  readonly origin?: RequestOrigin;
+}
 
 interface ActiveInvocation {
   sessionId: string;
@@ -74,6 +87,8 @@ export function createSessionCoordinator(
   workspaceOccupancy?: {
     beginTurn(workspaceId: string, sessionId: string): { end(): void } | undefined;
   },
+  /** Gives a write Turn of a Specification's Session its invocation capability (D11). */
+  invocationCapabilities?: InvocationCapabilities,
 ) {
   const driverList: readonly SessionDriver[] = Array.isArray(drivers)
     ? drivers
@@ -486,11 +501,33 @@ export function createSessionCoordinator(
         }),
       );
     },
+    /**
+     * Refuses a selection the provider cannot run now, with the provider's own reason, before
+     * anything else exists (agent step execution checks this before the Engine starts an attempt).
+     * `create` and `start` check the same again.
+     */
+    async validate(
+      selection: Invocation['selection'],
+      association?: { readonly specId: string },
+    ): Promise<void> {
+      accepting();
+      if (!available) {
+        throw new SessionError('PROVIDER_UNAVAILABLE', 'No Session provider is enabled.');
+      }
+
+      const driver = driverFor(selection.providerId);
+      await validate(driver, selection);
+      if (association && checkoutBound(driver) && (await inSeparateWorktree(association.specId))) {
+        throw worktreeProviderUnsupported();
+      }
+    },
     /** `association` is written verbatim; only a Turn start reads it (execution workspace). */
+    /** `options.sessionId` is in-process only (agent step execution): the Session's chosen id. */
     async create(
       actor: string,
       input: CreateSession,
       association?: AssociationWrite,
+      options: { readonly sessionId?: string } = {},
     ): Promise<{ sessionId: string }> {
       input = Object.freeze(structuredClone(input));
       association = association && Object.freeze(structuredClone(association));
@@ -517,9 +554,24 @@ export function createSessionCoordinator(
         throw worktreeProviderUnsupported();
       }
 
-      return call({ op: 'create', actor, input, ...(association ? { association } : {}) });
+      return call({
+        op: 'create',
+        actor,
+        input,
+        ...(association ? { association } : {}),
+        ...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}),
+      });
     },
-    async start(actor: string, sessionId: string, input: StartTurn): Promise<{ turnId: string }> {
+    /**
+     * Starts a Turn. `options` are in-process only (agent step execution): the Turn and invocation ids chosen
+     * before the Turn exists and the agent attempt the Turn is bound to; such a Turn must write.
+     */
+    async start(
+      actor: string,
+      sessionId: string,
+      input: StartTurn,
+      options: TurnStartOptions = {},
+    ): Promise<{ turnId: string }> {
       input = Object.freeze(structuredClone(input));
       accepting();
       const cached = await call<{ turnId: string } | undefined>({
@@ -562,6 +614,10 @@ export function createSessionCoordinator(
       const driver = driverFor(selection.providerId);
       await validate(driver, selection);
       const writing = selection.mode === 'workspace-write';
+      if (options.agentAttempt && !writing) {
+        throw new SessionError('SESSION_INPUT_INVALID', 'An agent attempt Turn writes.');
+      }
+
       const placement =
         selection.providerId === 'mock'
           ? { context: executionContext }
@@ -597,6 +653,8 @@ export function createSessionCoordinator(
               }
             : {}),
           ...(binding ? { effectBinding: binding } : {}),
+          ...(options.ids ? { ids: options.ids } : {}),
+          ...(options.origin ? { origin: options.origin } : {}),
         });
         if (!admitted.fresh) {
           return { turnId: admitted.turnId };
@@ -610,7 +668,9 @@ export function createSessionCoordinator(
         let seq = 0,
           tail = Promise.resolve();
         let uncertain = false;
-        const emit = async (fact: DriverFact) => {
+        const emit = async (reported: DriverFact) => {
+          // Whatever the provider reports, nothing shaped like an agent capability is stored.
+          const fact = redactFact(reported, redactAgentCapabilityShapes);
           validateDriverFact(fact);
           if (fact.kind === 'text' && utf8Bytes(fact.text) > SessionLimits.chunkBytes) {
             throw new SessionError(
@@ -695,6 +755,9 @@ export function createSessionCoordinator(
                 binding: binding!,
                 driver,
                 effects: effects!,
+                ...(invocationCapabilities ? { capabilities: invocationCapabilities } : {}),
+                ...(options.agentAttempt ? { agentAttempt: options.agentAttempt } : {}),
+                ...(options.agentPermissions ? { permissions: options.agentPermissions } : {}),
                 signal: controller.signal,
                 stop: () => controller.abort('persistence-loss'),
                 persist: emit,
@@ -782,6 +845,10 @@ export function createSessionCoordinator(
                         error instanceof SessionError
                           ? error.message
                           : 'Provider operation failed.',
+                      // A stable reason the client can word itself (e.g. the policy check).
+                      ...(error instanceof SessionError && error.details?.reason
+                        ? { reason: error.details.reason }
+                        : {}),
                     },
                   }),
             });
@@ -801,6 +868,22 @@ export function createSessionCoordinator(
           turnHold?.end();
         }
       }
+    },
+    /** Whether a Session with this id exists. */
+    hasSession: (sessionId: string) => call<boolean>({ op: 'has-session', sessionId }),
+    /** Whether the Session has the Turn `turnId` (a Turn start that may have been admitted). */
+    hasTurn: (sessionId: string, turnId: string) =>
+      call<boolean>({ op: 'has-turn', sessionId, turnId }),
+    /** In-process workflow orchestration only: adds Tasks of its home Specification to a Session. */
+    async associateTasks(sessionId: string, specId: string, taskIds: readonly string[]) {
+      accepting();
+      await call({
+        op: 'associate-tasks',
+        sessionId,
+        specId,
+        taskIds: [...taskIds],
+        origin: 'workflow',
+      });
     },
     async cancel(actor: string, sessionId: string, turnId: string, requestId: string) {
       accepting();
@@ -890,6 +973,12 @@ export function createSessionCoordinator(
       }
 
       closed = true;
+      // A provider's background discovery (its probe runs in the workspace) ends with the Runtime.
+      const driversClosing = Promise.all(
+        driverList.map((driver) =>
+          driver.close ? driver.close().catch(() => undefined) : Promise.resolve(),
+        ),
+      );
       const telemetryClosing = telemetry.close();
       void telemetryClosing.catch(() => undefined);
       for (const live of active.values()) {
@@ -900,7 +989,7 @@ export function createSessionCoordinator(
       try {
         await telemetryClosing;
         await Promise.race([
-          Promise.all([...active.values()].map((live) => live.done)),
+          Promise.all([...active.values()].map((live) => live.done)).then(() => driversClosing),
           delay(5000, undefined, { signal: timeout.signal }).then(() => {
             throw new SessionError(
               'SESSION_RECOVERY_REQUIRED',

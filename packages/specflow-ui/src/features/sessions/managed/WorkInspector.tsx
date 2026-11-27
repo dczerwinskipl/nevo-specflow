@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { ToolActionSummary, WorkCounts, WorkSummary } from '@nevo/specflow-contracts/sessions';
@@ -25,8 +25,13 @@ import {
   defineSecondaryStack,
   useSecondaryDetailHeaderHosted,
   useSecondaryStack,
+  WorkspaceHeaderIdentity,
+  type IconGlyph,
+  type WorkspaceHeaderAction,
 } from '@nevo/ui';
+import { WrapText } from 'lucide-react';
 import { translateNow } from '../../../i18n/message';
+import { DisclosureToggle } from '../../../shared/actions';
 import type { ManagedSessionsApi } from './api';
 import type { SessionFeed } from './feed';
 import { ReadableText } from './MessageText';
@@ -37,6 +42,8 @@ import { availablePaged, usePagedHistory } from './usePagedHistory';
 import {
   absorbPage,
   absorbWorkPage,
+  clearFocus,
+  focusWork,
   createViewStoreRegistry,
   initialPagedState,
   initialWorkViewState,
@@ -56,10 +63,14 @@ import {
   mergeToolActions,
   mergeWorkItems,
   availableWorkFilterKinds,
+  foldPermissions,
   type ChapterEntry,
   type WorkChapter,
   type WorkFilterKind,
+  type WorkHistoryView,
 } from './workGrouping';
+import { useWorkHistoryView } from './workHistoryViewPreference';
+import { AuthorizationSection } from './AuthorizationSection';
 import { WorkOperationsTimeline, chapterEntryMembers } from './WorkOperationsTimeline';
 import { workTabLabel } from './workTabLabel';
 import {
@@ -67,6 +78,10 @@ import {
   SingleToolActionHeader,
   ToolActionTimelineItem,
 } from './ToolActionDetails';
+import { useCodeWrapPreference } from './codeWrapPreference';
+import { workItemTitle, workItemTitleParts } from './toolLabels';
+
+type OpenActions = (item: WorkSummary, permissionId?: string) => void;
 
 interface Root {
   sessionId: string;
@@ -79,10 +94,25 @@ type Data = Root & {
   /** The view state of an object, kept across Secondary tab switches (`workInspectorStore.ts`). */
   workView: (turnId: string) => ViewStore<WorkViewState>;
   actionsView: (workId: string) => ViewStore<ActionsViewState>;
+  /** Compact (default) or every operation: the person's remembered choice (`useWorkHistoryView`). */
+  view: WorkHistoryView;
+  setView: (view: WorkHistoryView) => void;
+  /** Whether the tool detail's code blocks wrap their lines (`useCodeWrapPreference`). */
+  wrap: boolean;
+  setWrap: (wrap: boolean) => void;
 };
 interface Pages {
   work: Record<string, never>;
-  actions: { workId: string; workTitle: string };
+  /** `permissionId`: the permission Work folded into this tool Work (`foldPermissions`). */
+  /** `heading`: the concrete action ("Ran command"), the screen's title; `workTitle` adds its subject. */
+  /** `target`: what it acted on, named for the header (`actionTarget`). */
+  actions: {
+    workId: string;
+    workTitle: string;
+    heading: string;
+    target?: string;
+    permissionId?: string;
+  };
 }
 function useWorkRefresh(feed: SessionFeed, turnId: string, refresh: () => Promise<unknown>) {
   useEffect(() => {
@@ -208,22 +238,19 @@ function isNarrationLong(item: WorkSummary): boolean {
 type NarrationVoice = 'commentary' | 'reasoning';
 
 /** Commentary AND Thinking (Reasoning) are the agent's own narration, read directly in the flow —
- * never gated behind a click, never a row on the operations rail: Commentary is narration, not the
- * header of a collapsible operations group, and Thinking looks the same apart from its voice.
- * Both use exactly this one block — same size, colour, spacing and long-text handling —
- * and the ONLY visual difference is the voice: Thinking is italic, Commentary upright. They are
- * still two different kinds of Work (full-session.md "Work history (L2)"): the italic voice tells
- * them apart at a glance, and assistive tech gets the kind's own name (`sr-only`), since italics
- * are not announced. No icon, no marker dot, no chevron, no card.
+ * never gated behind a click, never a row on the operations rail. They are two different kinds of
+ * Work (full-session.md "Work history (L2)") with one block and two voices:
  *
- * Same text rendering as the chat's own Commentary row (`ManagedSession.tsx`'s `commentary`
- * branch): plain prose (`body-md`, pre-wrapped, no Markdown), `text-content-muted` — so the same
- * Commentary reads identically at both levels.
+ * - a **progress note** (Commentary) heads the operations after it, so it is styled and announced
+ *   as a heading (h2, the reading size in medium weight and the primary colour; owner, 2026-11-26);
+ * - **Thinking** stays quiet prose: muted and italic.
  *
- * The one exception is `isNarrationLong`: genuinely long narration gets a plain "Show more"/
- * "Show less" ghost `Button` (the same label-only disclosure pattern `TaskDetailDisclosure.tsx`
- * already uses elsewhere in this app for "reveal more text", not a new chevron-led control
- * invented for this row) instead of being dumped in full — expanding it mounts `ReadableText`
+ * Assistive tech also gets the kind's own name (`sr-only`). No icon, no marker dot, no chevron,
+ * no card. The text is plain prose (pre-wrapped, no Markdown), as in the chat.
+ *
+ * Long narration is the exception (`isNarrationLong`): genuinely long narration gets the shared
+ * "Show more"/"Show less" `DisclosureToggle` (interaction-model.md "Disclosure chevrons") instead of
+ * being dumped in full — expanding it mounts `ReadableText`
  * (which itself auto-fetches and stitches any remaining pages beyond the capped preview). */
 function WorkNarration({
   item,
@@ -242,7 +269,10 @@ function WorkNarration({
   return (
     <div
       {...historyEntry(item.workId)}
-      className={cn('grid min-w-0 gap-1 text-content-muted', voice === 'reasoning' && 'italic')}
+      className={cn(
+        'grid min-w-0 gap-1',
+        voice === 'reasoning' ? 'text-content-muted italic' : 'font-medium text-content-primary',
+      )}
     >
       <span className="sr-only">
         {voice === 'reasoning'
@@ -253,7 +283,8 @@ function WorkNarration({
         <ReadableText api={data.api} sessionId={data.sessionId} value={item.title} />
       ) : (
         <Typography
-          as="p"
+          // A progress note heads the operations after it (h2: the panel's title is the h1).
+          as={voice === 'commentary' ? 'h2' : 'p'}
           variant="body-md"
           className={cn(
             'min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]',
@@ -264,16 +295,15 @@ function WorkNarration({
         </Typography>
       )}
       {isLong && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 h-auto w-fit justify-start px-2 not-italic"
+        <DisclosureToggle
+          expanded={isExpanded}
+          className="not-italic"
           onClick={() => view.update((state) => toggleExpanded(state, item.workId))}
         >
           {isExpanded
             ? t('managedSession.workInspector.showLess')
             : t('managedSession.workInspector.showMore')}
-        </Button>
+        </DisclosureToggle>
       )}
     </div>
   );
@@ -327,18 +357,21 @@ function WorkChapterSection({
   chapter,
   turnStartLoaded,
   data,
+  authorizations,
   onOpenActions,
 }: {
   chapter: WorkChapter;
+  /** Permissions folded into the tool Work they were for, by the tool Work's id. */
+  authorizations: ReadonlyMap<string, WorkSummary>;
   /** The oldest page is loaded: a chapter without Commentary is really the start of the Turn. */
   turnStartLoaded: boolean;
   data: Data;
-  onOpenActions: (workId: string, title: string) => void;
+  onOpenActions: OpenActions;
 }) {
   const { t } = useTranslation();
   const segments = useMemo(
-    () => chapterSegments(groupChapterEntries(chapter.items)),
-    [chapter.items],
+    () => chapterSegments(groupChapterEntries(chapter.items, data.view, authorizations)),
+    [chapter.items, data.view, authorizations],
   );
   // A run between narration keeps its identity while an older page joins it (`useGroupKeys`).
   const keys = useGroupKeys(segments.map(segmentMembers));
@@ -352,7 +385,7 @@ function WorkChapterSection({
   // chronology like any other line rather than being pulled toward what follows it (spacing above
   // and below Commentary must be equal; a Commentary does not own the operations after it).
   return (
-    <section className="grid min-w-0 gap-5">
+    <section className="grid min-w-0 gap-5" data-work-chapter={chapter.id}>
       {chapter.commentary && chapter.commentaryRole === 'match' ? (
         <WorkNarration item={chapter.commentary} voice="commentary" data={data} />
       ) : !chapter.commentary && turnStartLoaded ? (
@@ -370,6 +403,7 @@ function WorkChapterSection({
             key={keys[index]}
             entries={segment.entries}
             view={data.workView(data.turnId)}
+            authorizations={authorizations}
             onOpenActions={onOpenActions}
           />
         ),
@@ -378,43 +412,44 @@ function WorkChapterSection({
   );
 }
 
-/** The persistent Work summary row (full-session.md "Work block", mockup's "144 elementy
- * przebiegu · 1 w toku" / "48 odczytów · 24 zapisy · …" counts row): rendered only when the
- * Runtime's `WorkPage.counts` aggregate is present — hidden entirely otherwise, never computed
- * from `items.length` (which is only ever a bounded page, not the Turn's true total). `byKind`
- * carries only the canonical Work kinds; the aggregate has no reads/writes/commands/search
- * breakdown of tool Work. */
+/** The Work summary above the list (full-session.md "Work history (L2)"): rendered only when the
+ * Runtime's `WorkPage.counts` aggregate is present — hidden entirely otherwise, never computed from
+ * `items.length` (which is only ever a bounded page, not the Turn's true total). The operations
+ * lead: how many tool actions the Turn ran (and how many still run), then, as quieter metadata,
+ * the other kinds of Work. No sum across kinds: "71 work items" counted notes, thinking and
+ * questions as if they were work done. `interaction` counts the questions and permission requests
+ * that reached the person (an automatic approval is not one: the Runtime records it as a SpecFlow
+ * note, counted under `notices`). */
 function WorkCountsSummary({ counts }: { counts: WorkCounts }) {
   const { t } = useTranslation();
-  // A kind with zero items is left out ("0 analiz · 0 odpowiedzi" is noise, not information).
-  const byKindLabels = [
-    counts.byKind.tool > 0 &&
-      t('managedSession.workInspector.toolBurst', { count: counts.byKind.tool }),
-    counts.byKind.commentary > 0 &&
-      t('managedSession.workInspector.counts.commentary', { count: counts.byKind.commentary }),
+  const headline = [
+    t('managedSession.workInspector.toolBurst', { count: counts.byKind.tool }),
+    counts.inProgress > 0 &&
+      t('managedSession.workInspector.counts.inProgress', { count: counts.inProgress }),
+  ].filter((label): label is string => typeof label === 'string');
+  // A kind with zero items is left out ("0 thinking steps" is noise, not information).
+  // SpecFlow's own notes (an automatic approval, a relayed error) are commentary Work too, counted
+  // apart (`notices`) so they never pass as the agent's progress notes.
+  const notices = counts.notices ?? 0;
+  const progressNotes = counts.byKind.commentary - notices;
+  const metadata = [
+    progressNotes > 0 &&
+      t('managedSession.workInspector.counts.commentary', { count: progressNotes }),
+    notices > 0 && t('managedSession.workInspector.counts.notices', { count: notices }),
     counts.byKind.reasoning > 0 &&
       t('managedSession.workInspector.counts.reasoning', { count: counts.byKind.reasoning }),
     counts.byKind.interaction > 0 &&
       t('managedSession.workInspector.counts.interaction', { count: counts.byKind.interaction }),
   ].filter((label): label is string => typeof label === 'string');
-  // Plain text, never a badge: an ordinary statistic, quieter than the operation
-  // titles below it (`body-md` secondary vs. `label-md` primary), and "w toku" is the same
-  // `workState.active` word the rows themselves use — not a second status vocabulary. It counts
-  // Work in this Turn only; it says nothing about the Session as a whole.
-  const headline = [
-    t('managedSession.workInspector.counts.total', { count: counts.total }),
-    counts.inProgress > 0 &&
-      t('managedSession.workInspector.counts.inProgress', { count: counts.inProgress }),
-  ].filter((label): label is string => typeof label === 'string');
 
   return (
-    <div className="grid gap-0.5">
-      <Typography as="p" variant="body-md" className="text-content-secondary">
+    <div className="grid gap-0.5" data-work-counts="">
+      <Typography as="p" variant="title-sm" className="text-content-primary">
         {headline.join(' · ')}
       </Typography>
-      {byKindLabels.length > 0 && (
+      {metadata.length > 0 && (
         <Typography as="p" variant="body-sm" className="text-content-muted">
-          {byKindLabels.join(' · ')}
+          {metadata.join(' · ')}
         </Typography>
       )}
     </div>
@@ -468,6 +503,37 @@ function LoadGateNotices({
   );
 }
 
+/** Where an opened stage starts: the list's own padding below the scroller's top edge. */
+const STAGE_TOP_MARGIN_PX = 16;
+
+/**
+ * A brief, subtle highlight of the stage Work history was opened at, so the reader sees which one
+ * it is: the selected-surface tint, bleeding a little past its edges (no layout change), fading out.
+ * Marked `data-stage-highlight` while it shows.
+ */
+function highlightStage(stage: HTMLElement) {
+  if (typeof stage.animate !== 'function') {
+    return;
+  }
+
+  const tint = getComputedStyle(stage).getPropertyValue('--color-surface-selected').trim();
+  if (!tint) {
+    return;
+  }
+
+  stage.setAttribute('data-stage-highlight', '');
+  const frame = (color: string) => ({
+    backgroundColor: color,
+    boxShadow: `0 0 0 8px ${color}`,
+    borderRadius: '8px',
+  });
+  const animation = stage.animate([frame(tint), frame(tint), frame('transparent')], {
+    duration: 1800,
+    easing: 'ease-out',
+  });
+  animation.onfinish = animation.oncancel = () => stage.removeAttribute('data-stage-highlight');
+}
+
 function Work({ data }: { data: Data }) {
   const { t } = useTranslation();
   const navigation = useSecondaryStack<Pages>();
@@ -495,12 +561,15 @@ function Work({ data }: { data: Data }) {
     state,
     items,
     hasOlder,
-    scroller,
+    viewport,
+    coveredTop,
+    scrollReady,
     content,
     loadOlder,
-    maybeLoadOlder,
     stalled,
     loadMore,
+    showAtTop,
+    releaseSpace,
   } = usePagedHistory({
     store: view,
     merge: mergeWorkItems,
@@ -523,9 +592,21 @@ function Work({ data }: { data: Data }) {
   const olderBusy = state.busy;
   const olderError = state.error;
   const loadGate = useLoadGate(query, state.items.length > 0);
-  const setFilter = (next: WorkFilterState) => view.update((value) => ({ ...value, filter: next }));
+  const setFilter = (next: WorkFilterState) => {
+    releaseSpace();
+    view.update((value) => ({ ...value, filter: next }));
+  };
 
-  const chapters = useMemo(() => buildWorkChapters(items), [items]);
+  // A permission and the tool Work it was for are one operation, in both views; a kind filter or a
+  // search sees every Work as it is (a filter on interactions still finds each permission).
+  const folded = useMemo(
+    () =>
+      filter.kind === 'all' && !filter.search.trim()
+        ? foldPermissions(items)
+        : { items, authorizations: new Map<string, WorkSummary>() },
+    [items, filter],
+  );
+  const chapters = useMemo(() => buildWorkChapters(folded.items), [folded.items]);
   const visibleChapters = useMemo(() => filterWorkChapters(chapters, filter), [chapters, filter]);
   // The leading chapter of the loaded part ("Start of Turn" until an older page brings its
   // Commentary) keeps its identity as older pages join it.
@@ -534,8 +615,61 @@ function Work({ data }: { data: Data }) {
     () => availableWorkFilterKinds(items, counts?.byKind),
     [items, counts],
   );
-  const openActions = (workId: string, workTitle: string) =>
-    void navigation.navTo('actions', { workId, workTitle });
+  // Opened at a work stage of the Conversation (`focusWork`): once its Work is loaded, the stage
+  // (its chapter: the progress note and the operations under it, groups already open) is shown at
+  // the top of the list and briefly highlighted, then the view is the reader's. Older pages load
+  // until it is found; nothing to find leaves the view as it is. A layout effect: the first frame
+  // the reader sees is already at the stage, and the scroll owner (`showAtTop`) keeps it there
+  // through fonts, late content and older pages landing above it.
+  const focus = state.focus;
+  const tailLoaded = query.data !== undefined;
+  useLayoutEffect(() => {
+    const root = content.current;
+    if (!focus || !root || !tailLoaded || state.busy || !scrollReady) {
+      return;
+    }
+
+    const target = focus
+      .map((id) =>
+        root.querySelector<HTMLElement>(
+          `[data-history-entry="${CSS.escape(id)}"], [data-work-id="${CSS.escape(id)}"]`,
+        ),
+      )
+      .find((element) => element !== null);
+    if (target) {
+      const stage = target.closest<HTMLElement>('[data-work-chapter]') ?? target;
+      showAtTop(stage, coveredTop() + STAGE_TOP_MARGIN_PX);
+      highlightStage(stage);
+      view.update(clearFocus);
+    } else if (hasOlder && !state.error) {
+      void loadOlder();
+    } else {
+      view.update(clearFocus);
+    }
+  }, [
+    focus,
+    items,
+    tailLoaded,
+    hasOlder,
+    state.busy,
+    state.error,
+    content,
+    view,
+    loadOlder,
+    showAtTop,
+    coveredTop,
+    scrollReady,
+  ]);
+  const openActions: OpenActions = (item, permissionId) => {
+    const target = actionTarget(item);
+    void navigation.navTo('actions', {
+      workId: item.workId,
+      workTitle: workItemTitle(t, item),
+      heading: workItemTitleParts(t, item).label,
+      ...(target ? { target } : {}),
+      ...(permissionId ? { permissionId } : {}),
+    });
+  };
 
   return (
     <AppContent className="h-full w-full">
@@ -547,10 +681,9 @@ function Work({ data }: { data: Data }) {
           `SessionContext`).
           A list starts directly under its filter bar and simply scrolls once it overflows. */}
       <ScrollArea
-        viewportRef={scroller}
+        viewportRef={viewport}
         className="min-h-0 w-full flex-1"
         contentClassName="flex min-h-full flex-col p-4"
-        onScroll={(event) => maybeLoadOlder(event.currentTarget)}
       >
         <div ref={content} className="flex w-full flex-1 flex-col gap-4">
           <LoadGateNotices gate={loadGate} retry={() => void query.refetch()} />
@@ -590,13 +723,15 @@ function Work({ data }: { data: Data }) {
                   actions={olderButton}
                 />
               ) : (
-                <div {...historyList} className="grid w-full gap-5">
+                // `content-start`: room added below the list (`showAtTop`) never stretches its rows.
+                <div {...historyList} className="grid w-full content-start gap-5">
                   {visibleChapters.map((chapter, index) => (
                     <WorkChapterSection
                       key={chapterKeys[index]}
                       chapter={chapter}
                       turnStartLoaded={!hasOlder}
                       data={data}
+                      authorizations={folded.authorizations}
                       onOpenActions={openActions}
                     />
                   ))}
@@ -628,6 +763,29 @@ function useActionsQuery(data: Data, params: ActionsParams) {
   });
 }
 
+/**
+ * What a tool Work acted on, as its detail's header names it under the action: a file tool's file
+ * name (the last part of its workspace-relative path, so a long path never truncates it away),
+ * otherwise the subject as it is (a command, a pattern, a URL). Typed data only: the operation
+ * decides, never the text.
+ */
+export function actionTarget(item: Pick<WorkSummary, 'operation' | 'subject'>): string | undefined {
+  if (!item.subject) {
+    return undefined;
+  }
+
+  const file = item.operation === 'read' || item.operation === 'edit' || item.operation === 'write';
+
+  return file ? (item.subject.split('/').filter(Boolean).at(-1) ?? item.subject) : item.subject;
+}
+
+/** What the opened Work acted on: its title without the action's own name in front. */
+function workSubject(params: ActionsParams): string | undefined {
+  const prefix = `${params.heading} · `;
+
+  return params.workTitle.startsWith(prefix) ? params.workTitle.slice(prefix.length) : undefined;
+}
+
 /** The common case — one ToolAction, with no older page behind it — is shown as a single detail. */
 function isSingleAction(count: number, hasOlder: boolean) {
   return count === 1 && !hasOlder;
@@ -645,15 +803,17 @@ function ActionsHeader({ data, params }: { data: Data; params: ActionsParams }) 
   // The same available data as the screen below: the stored pages stay when the tail is gone.
   const { items, hasOlder } = availablePaged(stored, query.data, mergeToolActions);
 
-  if (isSingleAction(items.length, hasOlder)) {
-    return <SingleToolActionHeader item={items[0]!} />;
+  if (items.length === 0) {
+    return null;
   }
 
-  return items.length > 0 ? (
+  return isSingleAction(items.length, hasOlder) ? (
+    <SingleToolActionHeader item={items[0]!} />
+  ) : (
     <Typography as="h2" variant="title-sm" className="text-content-primary">
       {params.workTitle}
     </Typography>
-  ) : null;
+  );
 }
 
 function Actions({ data, params }: { data: Data; params: ActionsParams }) {
@@ -663,27 +823,24 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
   const query = useActionsQuery(data, params);
   useWorkRefresh(data.feed, data.turnId, query.refetch);
 
-  const {
-    state,
-    items,
-    hasOlder,
-    scroller,
-    content,
-    loadOlder,
-    maybeLoadOlder,
-    stalled,
-    loadMore,
-  } = usePagedHistory({
-    store: view,
-    merge: mergeToolActions,
-    tail: query.data,
-    fetchOlder: (before) => data.api.actions(data.sessionId, params.workId, before),
-    absorbOlder: (current, page) => absorbPage(current, mergeToolActions, page, 'older'),
-  });
+  const { state, items, hasOlder, viewport, content, loadOlder, stalled, loadMore } =
+    usePagedHistory({
+      store: view,
+      merge: mergeToolActions,
+      tail: query.data,
+      fetchOlder: (before) => data.api.actions(data.sessionId, params.workId, before),
+      absorbOlder: (current, page) => absorbPage(current, mergeToolActions, page, 'older'),
+    });
   const olderBusy = state.busy;
   const olderError = state.error;
   const loadGate = useLoadGate(query, state.items.length > 0);
   const single = isSingleAction(items.length, hasOlder);
+  // The permission folded into this tool Work in the Work list, read from the Turn view it came from.
+  const turnItems = useViewState(data.workView(data.turnId)).items;
+  const permission = params.permissionId
+    ? turnItems.find((item) => item.workId === params.permissionId)
+    : undefined;
+  const authorization = <AuthorizationSection permission={permission} />;
 
   return (
     <AppContent className="h-full w-full">
@@ -691,20 +848,22 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
           `flex-1`; the real Actions Timeline starts at the top of the panel (no `m-auto` vertical
           centring — see `Work`'s comment for why). */}
       <ScrollArea
-        viewportRef={scroller}
+        viewportRef={viewport}
         className="min-h-0 w-full flex-1"
         // `pt-5` under the detail header row: the 20px section rhythm between it and the first section.
         contentClassName={cn('flex min-h-full flex-col px-4 pb-4', headerHosted ? 'pt-5' : 'pt-4')}
-        onScroll={(event) => maybeLoadOlder(event.currentTarget)}
       >
         <div ref={content} className="flex w-full flex-1 flex-col gap-4">
-          {/* Which Work these actions belong to — only when there are several. A single action's
-              own title is the heading (`SingleToolActionDetail`), and repeating the Work title
-              above it would show the same name twice. Where the
-              workspace hosts the `detailHeader` (`ActionsHeader`) beside Back, it shows either. */}
-          {!headerHosted && loadGate.showContent && !single && items.length > 0 && (
-            <Typography as="h2" variant="title-sm" className="text-content-primary">
-              {params.workTitle}
+          {/* Where no header row hosts the detail header, the screen's header names the action and
+              its target ("Edited file", "backend.md"); several actions keep their full subject
+              here, never the action's name a second time. */}
+          {!headerHosted && loadGate.showContent && !single && workSubject(params) && (
+            <Typography
+              as="p"
+              variant="body-sm"
+              className="min-w-0 text-content-secondary [overflow-wrap:anywhere]"
+            >
+              <span className="font-mono">{workSubject(params)}</span>
             </Typography>
           )}
           <LoadGateNotices gate={loadGate} retry={() => void query.refetch()} />
@@ -737,22 +896,30 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
                 // the rail to align against, that reserved column was pure indent (see
                 // `SingleToolActionDetail`'s own doc comment). Flush at the same edge as
                 // `params.workTitle` above.
-                <SingleToolActionDetail item={items[0]!} source={data} withHeader={!headerHosted} />
+                <SingleToolActionDetail
+                  item={items[0]!}
+                  source={data}
+                  withHeader={!headerHosted}
+                  authorization={authorization}
+                />
               ) : (
                 // L3/L4 exact chronology: the generic Timeline is the right default here, unlike
                 // the Commentary-grouped L2 Work log above (full-session.md "Work history (L2)").
                 // Several ToolActions genuinely need the marker rail — see
                 // `ToolActionTimelineItem`'s own doc comment.
-                <div {...historyList} className="w-full">
-                  <Timeline
-                    size="md"
-                    aria-label={t('managedSession.actions', { count: items.length })}
-                  >
-                    {items.map((item) => (
-                      <ToolActionTimelineItem key={item.actionId} item={item} source={data} />
-                    ))}
-                  </Timeline>
-                </div>
+                <>
+                  {authorization}
+                  <div {...historyList} className="w-full">
+                    <Timeline
+                      size="md"
+                      aria-label={t('managedSession.actions', { count: items.length })}
+                    >
+                      {items.map((item) => (
+                        <ToolActionTimelineItem key={item.actionId} item={item} source={data} />
+                      ))}
+                    </Timeline>
+                  </div>
+                </>
               )}
             </>
           )}
@@ -761,6 +928,38 @@ function Actions({ data, params }: { data: Data; params: ActionsParams }) {
     </AppContent>
   );
 }
+
+/**
+ * A page-level toggle (interaction-model.md "Visual conventions"): an icon action in the screen's
+ * header, pressed while on; its words are its accessible name and tooltip, shown beside the icon
+ * from the split width only (`labelWhenWide`); a checked row of the "…" menu where a stacked header
+ * keeps every action there. Work history's view and the tool detail's Wrap lines are the same
+ * control in the same place.
+ */
+function pageToggle(toggle: {
+  id: string;
+  label: string;
+  icon: IconGlyph;
+  pressed: boolean;
+  onPress: () => void;
+}): WorkspaceHeaderAction {
+  return {
+    ...toggle,
+    presentation: 'icon',
+    labelWhenWide: true,
+    direct: 'always',
+    checked: toggle.pressed,
+  };
+}
+
+const wrapLinesAction = (data: Data) =>
+  pageToggle({
+    id: 'tool-detail-wrap-lines',
+    label: translateNow('managedSession.workInspector.wrapLines'),
+    icon: WrapText,
+    pressed: data.wrap,
+    onPress: () => data.setWrap(!data.wrap),
+  });
 
 /**
  * The Work history root tab: one tab per Turn (full-session.md "Work history (L2)"). The tab's
@@ -773,26 +972,57 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
   const workView = createViewStoreRegistry(initialWorkViewState);
   const actionsView = createViewStoreRegistry(initialPagedState<ToolActionSummary>);
 
-  return defineSecondaryStack<Root, Data, Pages>({
+  const stack = defineSecondaryStack<Root, Data, Pages>({
     id: 'managed-session-work',
     initial: 'work',
     instanceId: (params) => params.turnId,
     tabLabel: (params) => workTabLabel(feed.getSnapshot().snapshot?.entries ?? [], params.turnId),
-    useData: (params) => ({
-      status: 'ready',
-      data: { ...params, api, feed, owner, workView, actionsView },
-    }),
+    useData: (params) => {
+      // Called as a hook by the workspace's screen host, so the remembered view re-renders the
+      // screen and its header action alike.
+      const [view, setView] = useWorkHistoryView();
+      const [wrap, setWrap] = useCodeWrapPreference();
+
+      return {
+        status: 'ready',
+        data: { ...params, api, feed, owner, workView, actionsView, view, setView, wrap, setWrap },
+      };
+    },
     screens: {
       work: {
         get title() {
           return translateNow('managedSession.work');
         },
+        // The one way to every operation (full-session.md "Work history (L2)").
+        actions: ({ data }) => [
+          pageToggle({
+            id: 'work-history-detailed',
+            label: translateNow('managedSession.workInspector.detailedView'),
+            icon: 'list',
+            pressed: data.view === 'detailed',
+            onPress: () => data.setView(data.view === 'detailed' ? 'compact' : 'detailed'),
+          }),
+        ],
         component: Work,
       },
       actions: {
         get title() {
           return translateNow('managedSession.actions');
         },
+        // The header names the concrete action ("Ran command", "Read file and 2 more"), never the
+        // page type; a split Secondary shows it in the detail header row instead (`ActionsHeader`).
+        // Under it, what it acted on (`actionTarget`): "Edited file" / "backend.md".
+        header: ({ params }) => (
+          <WorkspaceHeaderIdentity
+            headingLevel={2}
+            title={params.heading}
+            subtitle={params.target}
+          />
+        ),
+        // Wrap lines is the screen's, for every code block (one remembered choice): a page-level
+        // toggle, so it lives in the header like Work history's view toggle (interaction-model.md
+        // "Visual conventions"). Each block keeps only its own Copy.
+        actions: ({ data }) => [wrapLinesAction(data)],
         // The breadcrumb names the opened Work ("Read file admission.mjs"), not the page type;
         // the tab itself keeps its root's name ("Historia pracy").
         breadcrumbLabel: (params) => params.workTitle,
@@ -800,5 +1030,11 @@ export function createWorkInspector(api: ManagedSessionsApi, feed: SessionFeed, 
         component: Actions,
       },
     },
+  });
+
+  return Object.assign(stack, {
+    /** Opens the Turn's Work history at this stage's Work (`focusWork`), before the tab opens. */
+    focusWork: (turnId: string, workIds: readonly string[]) =>
+      workView(turnId).update((state) => focusWork(state, workIds)),
   });
 }

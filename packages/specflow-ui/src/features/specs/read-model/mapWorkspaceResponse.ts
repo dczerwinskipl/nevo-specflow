@@ -12,7 +12,12 @@ import type {
 import { translateNow } from '../../../i18n/message';
 
 function mapAttention(items: readonly WorkspaceAttention[]): AttentionItem[] {
-  return items.map((item) => ({
+  return items.map(mapAttentionItem);
+}
+
+/** One attention record of the Runtime as the UI's item (the Overview's and the list's). */
+export function mapAttentionItem(item: WorkspaceAttention): AttentionItem {
+  return {
     id: item.id,
     kind: item.kind,
     title: item.title,
@@ -27,9 +32,10 @@ function mapAttention(items: readonly WorkspaceAttention[]): AttentionItem[] {
     ...(item.action ? { action: item.action } : {}),
     ...(item.secondaryAction ? { secondaryAction: item.secondaryAction } : {}),
     ...(item.taskIds ? { taskIds: item.taskIds } : {}),
+    ...(item.brokenTaskIds ? { brokenTaskIds: item.brokenTaskIds } : {}),
     ...(item.blocking ? { blocking: item.blocking } : {}),
     ...(item.blocks ? { blocks: item.blocks } : {}),
-  }));
+  };
 }
 
 function mapFeatureAttention(
@@ -70,6 +76,7 @@ export function mapWorkspaceResponse(
     id: session.id,
     // The server never invents a title; an untitled Session shows the UI's untitled label.
     title: session.title ?? translateNow('sessions.untitled'),
+    ...(session.agentStep ? { agentStep: session.agentStep } : {}),
     navigationStatus: session.status,
     taskCount: session.taskIds.length,
     updatedAt: session.updatedAt,
@@ -77,6 +84,7 @@ export function mapWorkspaceResponse(
     ...(session.providerTitle ? { providerTitle: session.providerTitle } : {}),
     ...(session.modelId ? { modelId: session.modelId } : {}),
     ...(session.modelTitle ? { modelTitle: session.modelTitle } : {}),
+    ...(session.providerModeTitle ? { providerModeTitle: session.providerModeTitle } : {}),
     activityCode:
       session.status === 'active' || session.status === 'attention' ? session.status : undefined,
     activity:

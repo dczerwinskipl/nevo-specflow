@@ -224,7 +224,7 @@ describe('N2 the side-panel toggle hides the whole panel and restores what was a
     await settle();
     expect(screen.getByTestId('tabs').dataset.active).toBe('$workspace-pinned$');
 
-    const toggle = screen.getByRole('button', { name: 'Side panel' });
+    const toggle = screen.getByRole('button', { name: 'Context' });
     fireEvent.click(toggle);
     await settle();
     expect(toggle.getAttribute('aria-pressed')).toBe('false');
@@ -247,7 +247,7 @@ describe('N2 the side-panel toggle hides the whole panel and restores what was a
     const workTab = screen.getByTestId('tabs').dataset.active;
     expect(workTab).not.toBe('$workspace-pinned$');
 
-    const toggle = screen.getByRole('button', { name: 'Side panel' });
+    const toggle = screen.getByRole('button', { name: 'Context' });
     fireEvent.click(toggle);
     await settle();
     expect(screen.getByTestId('tabs').dataset.visible).toBe('false');

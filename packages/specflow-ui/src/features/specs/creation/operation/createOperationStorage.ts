@@ -36,7 +36,29 @@ export interface CreateDraft {
   readonly archetypeTitle?: string;
   readonly documentFiles?: readonly string[];
   readonly failure?: CreateFailure;
+  /**
+   * Create with an agent: the agent the owner chose (absent on the manual path). "Back to form"
+   * returns to the agent form with it.
+   */
+  readonly agent?: CreateDraftAgent;
 }
+
+/** The agent of a Create with an agent, as the form chose it and the progress page names it. */
+export interface CreateDraftAgent {
+  readonly providerId: string;
+  readonly modelId: string;
+  readonly effort?: string;
+  /** Display only: the agent and model as the form showed them ("Claude · Claude Sonnet"). */
+  readonly label?: string;
+  /** Display only: the first step the agent starts. */
+  readonly firstStepTitle?: string;
+}
+
+/** The part of a draft the Create forms seed their fields from (and carry between them). */
+export type CreateFormDraft = Pick<
+  CreateDraft,
+  'title' | 'goal' | 'choice' | 'archetype' | 'failure' | 'agent'
+>;
 
 /**
  * The ledger of this tab, one entry (and one draft) per operation id: a second operation never
@@ -78,6 +100,7 @@ function toDraft(value: unknown): CreateDraft | undefined {
       : undefined;
   const facts = toCreateFacts(value.facts);
   const archetype = toArchetypeChoice(value.archetype);
+  const agent = toDraftAgent(value.agent);
   const documentFiles =
     Array.isArray(value.documentFiles) &&
     value.documentFiles.every((file): file is string => typeof file === 'string')
@@ -94,6 +117,31 @@ function toDraft(value: unknown): CreateDraft | undefined {
     ...(typeof value.archetypeTitle === 'string' ? { archetypeTitle: value.archetypeTitle } : {}),
     ...(documentFiles ? { documentFiles } : {}),
     ...(failure ? { failure } : {}),
+    ...(agent ? { agent } : {}),
+  };
+}
+
+/** A stored agent choice; a damaged one is dropped (the form then preselects an agent again). */
+function toDraftAgent(value: unknown): CreateDraftAgent | undefined {
+  if (
+    !isRecord(value) ||
+    typeof value.providerId !== 'string' ||
+    typeof value.modelId !== 'string'
+  ) {
+    return undefined;
+  }
+
+  const text = (field: unknown) => (typeof field === 'string' ? field : undefined);
+  const effort = text(value.effort);
+  const label = text(value.label);
+  const firstStepTitle = text(value.firstStepTitle);
+
+  return {
+    providerId: value.providerId,
+    modelId: value.modelId,
+    ...(effort ? { effort } : {}),
+    ...(label ? { label } : {}),
+    ...(firstStepTitle ? { firstStepTitle } : {}),
   };
 }
 

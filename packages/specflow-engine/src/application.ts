@@ -1,6 +1,7 @@
 import { runReadRequest } from './project/request-verification-memo';
 import type { CheckoutQuiescence } from './specs/lifecycle/checkout-quiescence-port';
 import type { SpecificationExitGuard } from './specs/lifecycle/exit-guard';
+import type { AttemptCommitHolds } from './specs/uncommitted/attempts';
 import {
   resolveProjectHome,
   type ResolveProjectHomeOptions,
@@ -28,6 +29,14 @@ export interface SpecFlowEngine {
    */
   readonly stepInProgress?: (specId: string) => Promise<boolean | undefined>;
   /**
+   * The one answer to which uncommitted paths of the checkout `workspaceId` finished agent attempts
+   * hold while their own commit (D15) is pending or failed, and which agent executions an attempt
+   * commit still takes: workflow admission, document admission, the manual commit, Close and the
+   * owner's commit of the execution state all ask it, keyed by the checkout of the Specification
+   * they act on. Absent where no workflow is composed.
+   */
+  readonly attemptCommitHolds?: (workspaceId: string) => Promise<AttemptCommitHolds>;
+  /**
    * Whether an agent can work in a checkout Close would remove, from the host process (the Runtime
    * or the CLI) through `withCheckoutQuiescence`. Absent, Close does not remove a checkout.
    */
@@ -43,6 +52,9 @@ export interface EnginePorts {
   readonly stepInProgress?: (
     engine: SpecFlowEngine,
   ) => (specId: string) => Promise<boolean | undefined>;
+  readonly attemptCommitHolds?: (
+    engine: SpecFlowEngine,
+  ) => (workspaceId: string) => Promise<AttemptCommitHolds>;
 }
 
 /**
@@ -72,6 +84,12 @@ export async function openEngineBoundary(
     specificationExit: (specId) => ports.specificationExit(engine)(specId),
     ...(ports.stepInProgress
       ? { stepInProgress: (specId: string) => ports.stepInProgress!(engine)(specId) }
+      : {}),
+    ...(ports.attemptCommitHolds
+      ? {
+          attemptCommitHolds: (workspaceId: string) =>
+            ports.attemptCommitHolds!(engine)(workspaceId),
+        }
       : {}),
     async readRegistry() {
       // Revalidate the physical checkout on each use, including linked

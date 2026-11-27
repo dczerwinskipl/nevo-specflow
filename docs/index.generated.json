@@ -479,11 +479,12 @@
       "status": "superseded",
       "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/README.md",
       "read_when": [],
-      "summary": "Superseded planning dossier of PR #137. The neutral coordinator, executors and actors, attention and gates are ADR 0023; Tasks as resources are ADR 0024; the UI is the manual workflow execution product document. Still open: agent delegation (E6) and typed transition inputs (E5).",
+      "summary": "Superseded planning dossier of PR #137. The neutral coordinator, executors and actors, attention and gates are ADR 0023; Tasks as resources are ADR 0024; the UI is the manual workflow execution product document; agent delegation (E6) is ADR 0026 (agent step execution). Still open: typed transition inputs (E5).",
       "related": [
         "adr.0024-tasks-are-resources",
         "adr.0023-neutral-workflow-coordinator-and-manual-execution",
-        "ideas.specflow-engine.reusable-workflow.agent-execution",
+        "adr.0026-agent-step-execution",
+        "architecture.runtime.agent-step-execution",
         "ideas.specflow-engine.reusable-workflow.typed-inputs"
       ],
       "scope": "specflow",
@@ -986,6 +987,50 @@
       ]
     },
     {
+      "id": "architecture.runtime.agent-step-execution",
+      "type": "architecture",
+      "title": "Agent step execution — broker, invocation capability and the agent attempt lifecycle",
+      "status": "current",
+      "file": "docs/architecture/runtime/agent-step-execution.md",
+      "read_when": [
+        "changing how an agent runs a workflow step (Run with agent), Continue, Stop, Return or Take over",
+        "changing the agent broker, the invocation capability or what an agent Turn may write",
+        "adding a product CLI command (it must be placed as a read, a brokered write or refused)",
+        "changing the finalize, the attempt commit or the recovery of an agent attempt",
+        "diagnosing an AGENT_* broker refusal or a WORKFLOW_* attribution refusal"
+      ],
+      "summary": "How one agent attempt of a Specification or Task step runs end to end: the owner route, the Engine start with the trusted agent actor, the Session and Turn, the per-Turn capability and the per-user local broker through which the agent's product CLI writes as the Turn's own claim, the derived scope, the finish proposal, the finalize that publishes the step and settles the claim in one lock section, the attempt commit, the owner's Stop, Return, Take over, Confirm, Reject and Retry commit, redaction, the provider allowlist, and recovery after a crash.",
+      "related": [
+        "adr.0026-agent-step-execution",
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-agent-attempts",
+        "architecture.runtime.workspace-execution-claims",
+        "architecture.runtime.specification-documents",
+        "architecture.ai.session-storage-and-lifecycle",
+        "reference.api.specification-workflow",
+        "reference.cli.specflow-specification-commands",
+        "reference.protocols.session-provider-driver"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "ai",
+        "security",
+        "cli"
+      ],
+      "tags": [
+        "agent-execution",
+        "broker",
+        "capability",
+        "claims",
+        "finalize",
+        "recovery",
+        "redaction",
+        "permissions"
+      ]
+    },
+    {
       "id": "architecture.runtime.authorization",
       "type": "architecture",
       "title": "Runtime authorization",
@@ -1050,6 +1095,7 @@
         "architecture.runtime.specification-documents",
         "architecture.runtime.document-write-and-commit-queue",
         "adr.0018-engine-commit-policy-and-manual-commit",
+        "adr.0026-agent-step-execution",
         "architecture.workflow.workflow-kernel"
       ],
       "scope": "specflow",
@@ -1628,9 +1674,11 @@
         "diagnosing TURN_CONFLICT or SESSION_RECOVERY_REQUIRED from a Turn start or reconcile",
         "designing writer admission for workflow steps or external CLI agents"
       ],
-      "summary": "The Engine journal that admits every native agent execution as a project-wide writer claim: the intent, the phases admitted, dispatched, unknown and settled, settlement only on a proven not-dispatched or native-result receipt, the project-write resource that excludes Create, Close, document changes and manual commits, the archive move, the crash windows, and how Runtime maps the errors.",
+      "summary": "The Engine journal that admits every native agent execution as a project-wide writer claim: the intent, the phases admitted, dispatched, unknown and settled, settlement only on a proven not-dispatched or native-result receipt, the project-write resource that excludes Create, Close, document changes, manual commits and every workflow write, the owned-claim admission of an agent Turn's own writes and of its finalize, the archive move, the crash windows, and how Runtime maps the errors.",
       "related": [
         "architecture.runtime.specflow-engine",
+        "architecture.runtime.agent-step-execution",
+        "adr.0026-agent-step-execution",
         "architecture.ai.session-storage-and-lifecycle",
         "architecture.runtime.specflow-lifecycle",
         "engineering.shared.specflow-git-recovery",
@@ -1694,7 +1742,8 @@
         "reference.api.specification-workflow",
         "reference.api.specflow-specification-operations",
         "architecture.runtime.task-read-composition",
-        "product.specflow.ui.workflow-execution"
+        "product.specflow.ui.workflow-execution",
+        "architecture.workflow.workflow-agent-attempts"
       ],
       "scope": "specflow",
       "areas": [
@@ -1732,6 +1781,32 @@
         "engineering.shared.effects-and-io",
         "engineering.shared.testing",
         "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "architecture.workflow.workflow-agent-attempts",
+      "type": "architecture",
+      "title": "Workflow agent attempts, owner confirmation and the attempt commit",
+      "status": "current",
+      "file": "docs/architecture/workflow/workflow-agent-attempts.md",
+      "read_when": [
+        "changing how an agent attempt starts, proposes, finalizes or commits (Run with agent)",
+        "implementing owner Confirm, Reject, Stop, Return or Take over of an agent attempt",
+        "reviewing attempt attribution, the attempt journal or the workflow history"
+      ],
+      "summary": "Engine side of agent step execution: attempt binding and journal, the finish proposal, attribution checks, finalize after the agent's process stopped, owner confirmation of owner-only decisions, Stop/Return/Take over, the workflow history and the attempt commit.",
+      "related": [
+        "architecture.workflow.workflow-kernel",
+        "architecture.workflow.workflow-definitions-and-gates",
+        "architecture.workflow.workflow-storage-and-recovery",
+        "architecture.runtime.agent-step-execution",
+        "architecture.runtime.document-commit-policy",
+        "adr.0026-agent-step-execution"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime"
       ]
     },
     {
@@ -1774,7 +1849,8 @@
         "architecture.workflow.workflow-runs-and-handoffs",
         "architecture.workflow.workflow-tasks",
         "architecture.workflow.workflow-continuation-and-attention",
-        "adr.0017-definitions-as-project-data"
+        "adr.0017-definitions-as-project-data",
+        "architecture.workflow.workflow-agent-attempts"
       ],
       "scope": "specflow",
       "areas": [
@@ -1792,13 +1868,14 @@
         "choosing the authoritative workflow contract for a Specification or Task",
         "changing neutral workflow extension points or host integration"
       ],
-      "summary": "Entry point to the neutral workflow coordinator and Engine-owned definitions, Runs, Task resources, continuation and durable storage.",
+      "summary": "Entry point to the neutral workflow coordinator and Engine-owned definitions, Runs, Task resources, agent attempts, continuation and durable storage.",
       "related": [
         "architecture.workflow.workflow-definitions-and-gates",
         "architecture.workflow.workflow-runs-and-handoffs",
         "architecture.workflow.workflow-tasks",
         "architecture.workflow.workflow-continuation-and-attention",
         "architecture.workflow.workflow-storage-and-recovery",
+        "architecture.workflow.workflow-agent-attempts",
         "architecture.workflow.deterministic-workflow",
         "adr.0023-neutral-workflow-coordinator-and-manual-execution"
       ],
@@ -1846,6 +1923,7 @@
         "architecture.workflow.workflow-kernel",
         "architecture.workflow.workflow-runs-and-handoffs",
         "architecture.runtime.document-commit-policy",
+        "architecture.workflow.workflow-agent-attempts",
         "engineering.shared.specflow-git-recovery"
       ],
       "scope": "specflow",
@@ -2229,9 +2307,10 @@
       "read_when": [
         "driving workflow steps from managed Sessions",
         "binding a Session or Turn to a workflow attempt",
-        "designing batch, handover, rebind or multi-instance behaviour for managed execution"
+        "designing batch, handover, rebind or multi-instance behaviour for managed execution",
+        "letting the owner choose or remember the agent of a workflow step"
       ],
-      "summary": "Open proposals for connecting managed Sessions to the workflow kernel: attempt association, readiness before dispatch, workflow finish from a Session, batch and handover, native resume after rebind (S07), and multi-instance runs. Session storage and dispatch claims are implemented.",
+      "summary": "Open proposals for connecting managed Sessions to the workflow kernel: attempt association, readiness before dispatch, workflow finish from a Session, batch and handover, native resume after rebind (S07), multi-instance runs, and an owner-chosen agent per step. Session storage and dispatch claims are implemented.",
       "related": [
         "ideas.specflow-engine",
         "ideas.specflow-engine.execution-scopes",
@@ -2954,6 +3033,72 @@
         "engineering.shared.code-organization",
         "reference.api.task-reads",
         "reference.api.specification-workflow"
+      ]
+    },
+    {
+      "id": "adr.0026-agent-step-execution",
+      "type": "adr",
+      "title": "Agent step execution — an agent runs one workflow step through a Runtime broker",
+      "status": "current",
+      "file": "docs/architecture/decisions/0026-agent-step-execution.md",
+      "read_when": [],
+      "summary": "The owner can let an agent run one Specification or Task step (\"Run with agent\"). The agent's product CLI writes through a per-user local broker of the Runtime, authenticated by a per-Turn capability and admitted as the Turn's own execution claim; its finish is a proposal the Engine finalizes with the claim settlement once the process is proven stopped; the Engine commits the attempt's attributable work as one commit at finish; decisions only the owner takes wait for Confirm or Reject. Access to owner routes is the configured authentication mode only; the protocol is cooperative, not containment.",
+      "related": [
+        "architecture.runtime.agent-step-execution",
+        "architecture.workflow.workflow-kernel",
+        "architecture.runtime.workspace-execution-claims",
+        "architecture.runtime.specification-documents",
+        "architecture.runtime.specflow-lifecycle",
+        "adr.0018-engine-commit-policy-and-manual-commit",
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+        "adr.0024-tasks-are-resources",
+        "reference.api.specification-workflow",
+        "reference.cli.specflow-specification-commands",
+        "product.specflow.specification-creation"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ai",
+        "security",
+        "cli"
+      ],
+      "tags": [
+        "agent-execution",
+        "broker",
+        "capability",
+        "claims",
+        "commits",
+        "confirmation",
+        "trust-model"
+      ]
+    },
+    {
+      "id": "adr.0027-locks-released-only-on-positive-evidence",
+      "type": "adr",
+      "title": "A lock is released only on positive evidence that its owner is gone",
+      "status": "current",
+      "file": "docs/architecture/decisions/0027-locks-released-only-on-positive-evidence.md",
+      "read_when": [],
+      "summary": "The Project Home control lock, and the unfinished journal of a Create, are released or taken over without an operator exactly when the recorded owner is provably gone: its PID is not running, or a different process now has that PID (another start or creation time, another boot). A live owner is never overridden; an owner that cannot be judged fails closed and is left to the operator command. The Runtime applies the rule at startup and every waiter applies it while it waits; a Create the Runtime accepted is recorded before the Engine reserves anything and is resumed or settled at the next start.",
+      "related": [
+        "adr.0016-engine-owned-document-commits",
+        "architecture.runtime.document-write-and-commit-queue",
+        "architecture.ai.provider-process-ownership",
+        "engineering.shared.specification-create-recovery"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli"
+      ],
+      "tags": [
+        "control-lock",
+        "crash-recovery",
+        "create",
+        "executor-identity",
+        "native-stop"
       ]
     },
     {
@@ -4427,7 +4572,8 @@
         "ideas.specflow-engine.workflow-api-requirements",
         "adr.0024-tasks-are-resources",
         "adr.0023-neutral-workflow-coordinator-and-manual-execution",
-        "ideas.specflow-engine.reusable-workflow.agent-execution"
+        "adr.0026-agent-step-execution",
+        "architecture.runtime.agent-step-execution"
       ],
       "scope": "specflow",
       "areas": [
@@ -4446,40 +4592,27 @@
     {
       "id": "ideas.specflow-engine.reusable-workflow.agent-execution",
       "type": "engineering",
-      "title": "Agent-assisted deterministic Specification and Task execution",
-      "status": "draft",
+      "title": "Agent execution of workflow steps (superseded contract)",
+      "status": "superseded",
       "file": "docs/ideas/specflow-engine/reusable-workflow-manual-execution/agent-assisted-execution.md",
       "read_when": [
-        "adding an Ask agent action beside manual Workflow execution",
-        "implementing agent-written Specification documents and Task resources",
-        "integrating Managed Sessions with Workflow start and finish"
+        "following an old link to the \"Ask agent\" contract or its decisions D11 to D21"
       ],
-      "summary": "Owner-delegated execution of one declared Workflow step by an agent, including Specification authoring, Task descriptions, dependencies and context, with durable Session and attempt correlation and shared Engine validation.",
+      "summary": "Superseded working contract of agent execution (PR #169, E6). Implemented as agent step execution: the decisions are ADR 0026, the Runtime side is the agent step execution architecture page, the Engine side the workflow kernel's agent attempts.",
       "related": [
-        "adr.0024-tasks-are-resources",
-        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
-        "product.specflow.ui.workflow-execution",
-        "ideas.specflow-engine.plan-06",
-        "architecture.workflow.workflow-kernel",
-        "architecture.runtime.workspace-execution-claims",
-        "reference.api.workspace-docs",
-        "reference.cli.nevo-specflow-docs"
+        "adr.0026-agent-step-execution",
+        "architecture.runtime.agent-step-execution",
+        "architecture.workflow.workflow-kernel"
       ],
       "scope": "specflow",
       "areas": [
         "workflow",
         "runtime",
-        "ai",
-        "ui",
-        "cli",
-        "security",
-        "testing"
+        "ai"
       ],
       "tags": [
-        "agent-execution",
-        "task-authoring",
-        "managed-sessions",
-        "deterministic"
+        "superseded",
+        "agent-execution"
       ]
     },
     {
@@ -4526,7 +4659,7 @@
       "related": [
         "adr.0024-tasks-are-resources",
         "architecture.workflow.workflow-kernel",
-        "ideas.specflow-engine.reusable-workflow.agent-execution"
+        "adr.0026-agent-step-execution"
       ],
       "scope": "specflow",
       "areas": [
@@ -4946,6 +5079,38 @@
         "components",
         "testing",
         "agents"
+      ]
+    },
+    {
+      "id": "ideas.agent-access-policy",
+      "type": "product",
+      "title": "Agent access policy separate from the provider mode",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/agent-access-policy.md",
+      "read_when": [
+        "deciding who may run agent Sessions in provider Auto mode",
+        "confining agent writes or commands to the Specification worktree",
+        "adding roles or per-user limits to agent execution"
+      ],
+      "summary": "Proposed second axis next to the provider mode. An admin-assigned access policy (\"Full access\" or \"Workspace only\") that the user cannot change, enforced with the provider's native sandbox and deny rules where possible.",
+      "related": [
+        "adr.0026-agent-step-execution"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "ai",
+        "security",
+        "ui"
+      ],
+      "tags": [
+        "agent",
+        "sessions",
+        "authorization",
+        "permissions",
+        "auto-mode",
+        "sandbox",
+        "roles"
       ]
     },
     {
@@ -6002,9 +6167,11 @@
       "read_when": [
         "designing a UI screen, its navigation, or its back behavior",
         "choosing between an inline surface, an inspector, a sheet, and a page",
-        "defining what state is preserved across navigation"
+        "defining what state is preserved across navigation",
+        "choosing an icon for a product concept, or naming a page in its header and trail",
+        "choosing typography, action emphasis, colour, spacing, containers or disclosure on the Specification Overview, the Task page or a Session"
       ],
-      "summary": "Responsive shell with independent navigation and workspace breakpoints, the product hierarchy and routes, the reachability of every surface, starting a Session and the navigator, Back/Close semantics, and when to use floating, Secondary, pushed-detail, or full-workspace surfaces.",
+      "summary": "Responsive shell with independent navigation and workspace breakpoints, the product hierarchy and routes, the reachability of every surface, starting a Session and the navigator, Back/Close semantics, page identity and the product icon dictionary, the shared visual conventions of the Specification, Task and Session screens, and when to use floating, Secondary, pushed-detail, or full-workspace surfaces.",
       "related": [
         "product.specflow.ui.personas",
         "product.specflow.ui.ai-session-ux",
@@ -6136,7 +6303,7 @@
         "deciding what a Specification row may show or link to",
         "adding a state or a responsive rule to the Specifications list"
       ],
-      "summary": "The Specifications list at \"/\": backend-owned Current sections (Requires attention, Active, Ready, Draft) or a flat list when the Runtime has no work status, the row anatomy and its information budget, Archive milestones, search with filtered counts and forced disclosure, responsive behaviour and states.",
+      "summary": "The Specifications list at \"/\": backend-owned Current sections from where each Specification's workflow run stands (Requires attention, In progress, Not started, Ended) or a flat list when the Runtime has no work status, the row anatomy (the current step, as the Overview's Now names it) and its information budget, Archive milestones, search with filtered counts and forced disclosure, responsive behaviour and states.",
       "related": [
         "product.specflow.ui.interaction-model",
         "product.specflow.ui.shell-geometry",
@@ -6168,9 +6335,10 @@
         "changing Task authoring on the Full Task page (documents, context, dependencies, details)",
         "changing the first-start confirmation, Finish or Return dialogs, or exit gates in the UI",
         "changing Close specification or Abandon specification",
-        "adding Ask agent to a workflow step (E6) without redesigning the step panel"
+        "changing Run with agent (its Now block states, dialog, Stop, Continue, Take over, owner confirmation)",
+        "changing what Close lists as uncommitted changes"
       ],
-      "summary": "How a person runs a Specification and its Tasks entirely in the UI, without any Session: the projection-driven Now block with one main action, the Finish, Return and first-start dialogs, exit gates, Task authoring on the Full Task page (documents in the Secondary, context, dependencies, details), the lifecycle actions, and Close and Abandon with grouped blockers.",
+      "summary": "How a person runs a Specification and its Tasks entirely in the UI, without any Session: the projection-driven Now block with one main action, the Finish, Return and first-start dialogs, exit gates, Task authoring on the Full Task page (documents in the Secondary, context, dependencies, details), the lifecycle actions, Close and Abandon with grouped blockers, and Run with agent (the start dialog, attempt states, the attempt commit, owner confirmation, take over and history).",
       "related": [
         "product.specflow.ui.specification-overview",
         "product.specflow.ui.interaction-model",
@@ -6178,7 +6346,9 @@
         "reference.api.specification-workflow",
         "reference.api.task-reads",
         "adr.0024-tasks-are-resources",
-        "adr.0023-neutral-workflow-coordinator-and-manual-execution"
+        "adr.0023-neutral-workflow-coordinator-and-manual-execution",
+        "adr.0026-agent-step-execution",
+        "architecture.runtime.agent-step-execution"
       ],
       "scope": "specflow",
       "areas": [
@@ -6536,12 +6706,14 @@
         "changing the workflow action projection, a workflow command or its refusal codes",
         "rendering Close blockers or the Abandon action"
       ],
-      "summary": "The workflow action projection of a Specification and of a Task, the owner commands start, finish, return and abandon, the stable refusal codes with their HTTP status, and the blockers of a refused exit.",
+      "summary": "The workflow action projection of a Specification and of a Task, the owner commands start, finish, return and abandon, agent step execution (run with agent, check, stop, take over), Confirm and Reject of an agent's result, Retry commit, the workflow history, the stable refusal codes with their HTTP status, and the blockers of a refused exit.",
       "related": [
         "reference.api.openapi",
         "reference.api.specflow-specification-operations",
         "reference.api.authorization",
-        "reference.cli.specflow-specification-commands"
+        "reference.cli.specflow-specification-commands",
+        "architecture.runtime.agent-step-execution",
+        "adr.0026-agent-step-execution"
       ],
       "scope": "specflow",
       "areas": [

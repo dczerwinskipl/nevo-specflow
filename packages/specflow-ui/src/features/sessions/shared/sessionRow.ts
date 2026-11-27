@@ -50,19 +50,34 @@ export function sessionAgentFact(agent: SessionRowAgent, t: TFunction): CompactF
 
 /**
  * A Session row's inline facts, in order and each omitted when absent: the relative update, the
- * agent, the associated Task count (only above zero).
+ * agent, the associated Task count (only above zero). An agent step Session reads "Attempt 1 ·
+ * Opus 5.5 · 10 hours ago": its step and Task are the title line already.
  */
 export function sessionRowFacts(
   row: {
     readonly updatedAt?: string;
     readonly agent: SessionRowAgent | undefined;
     readonly taskCount: number;
+    /** The agent step attempt the Session was made for (`agentStep.attempt`). */
+    readonly attempt?: number;
   },
   t: TFunction,
   now: number,
   locale: string,
 ): InlineFacts {
   const age = row.updatedAt ? formatRelativeTime(row.updatedAt, now, locale) : undefined;
+  if (row.attempt !== undefined) {
+    const rest: CompactFacts = row.agent
+      ? age
+        ? [sessionAgentFact(row.agent, t), age]
+        : [sessionAgentFact(row.agent, t)]
+      : age
+        ? [age]
+        : [];
+
+    return prepend(t('sessions.list.attempt', { attempt: row.attempt }), rest);
+  }
+
   const tasks: readonly [] | readonly [CompactFactItem] =
     row.taskCount > 0
       ? [
@@ -125,7 +140,11 @@ export function sessionRowStatus(
         textClassName: 'text-content-muted',
       };
     case 'unavailable':
-      return { text: t('sessions.list.statusUnknown'), textClassName: 'text-content-muted' };
+      // Unconfirmed provider (not checked yet, or not running): says so and the way on.
+      return {
+        text: t('sessions.list.statusUnknown', { provider: sessionProviderName(agent) }),
+        textClassName: 'text-content-muted',
+      };
     default: {
       const unhandled: never = readiness;
 

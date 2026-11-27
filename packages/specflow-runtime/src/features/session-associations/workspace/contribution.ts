@@ -1,4 +1,8 @@
-import { SessionListLimits, type SessionInfo } from '@nevo/specflow-contracts/sessions';
+import {
+  SessionListLimits,
+  type AgentStepOrigin,
+  type SessionInfo,
+} from '@nevo/specflow-contracts/sessions';
 import type { RequestAuthorization } from '../../auth';
 import {
   SessionError,
@@ -25,9 +29,14 @@ interface WorkspaceSessionItem {
   providerTitle?: string;
   modelId?: string;
   modelTitle?: string;
+  providerModeTitle?: string;
   updatedAt: string;
+  agentStep?: AgentStepOrigin;
 }
 export type StartSessionReason = 'sessions_disabled' | 'forbidden' | 'no_provider';
+
+/** The title a Session is shown with, from its stored one (see `agentSteps`). */
+type SessionTitleOf = (sessionId: string, stored: string | undefined) => string | undefined;
 
 /** Effective Session readiness only; an Engine attempt never colours a Session row. */
 export function workspaceSessionStatus(readiness: SessionInfo['readiness']): Status {
@@ -73,6 +82,7 @@ export function sessionAttentionOf(
 async function waitingSessions(
   coordinator: SessionCoordinator,
   specId: string,
+  titleOf: SessionTitleOf,
 ): Promise<{ readonly row: SessionListRow; readonly title?: string }[]> {
   const candidates: SessionListRow[] = [];
   let after: number | undefined;
@@ -101,7 +111,7 @@ async function waitingSessions(
     })) {
       const listed = listedSession(summary, coordinator.provider);
       if (workspaceSessionStatus(listed.readiness) === 'attention') {
-        waiting.set(summary.sessionId, listed.title);
+        waiting.set(summary.sessionId, titleOf(summary.sessionId, listed.title));
       }
     }
   }
@@ -140,6 +150,15 @@ export function recommendSessions(
 export function createWorkspaceSessionContribution(options: {
   sessions: SessionsRuntime;
   projectId: ProjectIdSource;
+  /**
+   * Agent step execution Sessions: the step and attempt each was made for (each row's `agentStep`)
+   * and the title it is shown with (by its step and attempt unless the owner named it). Absent:
+   * stored titles only. Origins that cannot be read leave the rows as stored.
+   */
+  agentSteps?: {
+    readonly origins: (specId: string) => Promise<ReadonlyMap<string, AgentStepOrigin>>;
+    readonly title: (stored: string | undefined, origin: AgentStepOrigin) => string | undefined;
+  };
 }) {
   function startSession(
     specId: string,
@@ -169,6 +188,15 @@ export function createWorkspaceSessionContribution(options: {
       };
     }
 
+    const origins: ReadonlyMap<string, AgentStepOrigin> = options.agentSteps
+      ? await options.agentSteps.origins(specId).catch(() => new Map())
+      : new Map();
+    const titleOf: SessionTitleOf = (sessionId, stored) => {
+      const origin = origins.get(sessionId);
+
+      return origin && options.agentSteps ? options.agentSteps.title(stored, origin) : stored;
+    };
+
     try {
       const scan = await coordinator.store.call<SessionListScan>({
         op: 'list',
@@ -194,22 +222,25 @@ export function createWorkspaceSessionContribution(options: {
       const more = scan.rows.length > WORKSPACE_SESSION_LIMIT;
       const items: WorkspaceSessionItem[] = rows.map((row) => {
         const summary = byId.get(row.sessionId)!;
+        const title = titleOf(row.sessionId, summary.title);
 
         return {
           id: row.sessionId,
-          ...(summary.title ? { title: summary.title } : {}),
+          ...(title ? { title } : {}),
           taskIds: row.taskIds ?? [],
           status: workspaceSessionStatus(summary.readiness),
           providerId: summary.providerId,
           ...(summary.providerTitle ? { providerTitle: summary.providerTitle } : {}),
           ...(summary.modelId ? { modelId: summary.modelId } : {}),
           ...(summary.modelTitle ? { modelTitle: summary.modelTitle } : {}),
+          ...(summary.providerModeTitle ? { providerModeTitle: summary.providerModeTitle } : {}),
           updatedAt: summary.updatedAt,
+          ...(origins.has(row.sessionId) ? { agentStep: origins.get(row.sessionId)! } : {}),
         };
       });
       // Every Session that waits for input, also one beyond the rows (only scanned when more exist).
       const waiting = more
-        ? await waitingSessions(coordinator, specId)
+        ? await waitingSessions(coordinator, specId, titleOf)
         : rows.flatMap((row, index) =>
             items[index]!.status === 'attention'
               ? [{ row, ...(items[index]!.title ? { title: items[index]!.title } : {}) }]
@@ -246,12 +277,13 @@ export function createWorkspaceSessionContribution(options: {
           ...(row.specId !== undefined ? { specId: row.specId } : {}),
         })),
         // The "Session started" events of the activity history: bounded by the same 100 rows.
-        sessionStarts: rows.map((row) => {
+        sessionStarts: rows.map((row, index) => {
           const summary = byId.get(row.sessionId)!;
+          const title = items[index]!.title;
 
           return {
             sessionId: row.sessionId,
-            ...(summary.title ? { title: summary.title } : {}),
+            ...(title ? { title } : {}),
             createdAt: summary.createdAt,
           };
         }),

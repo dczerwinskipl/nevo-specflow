@@ -58,7 +58,9 @@ export interface ManifestDocument {
 }
 
 /**
- * A manifest is the only authority for canonical Spec metadata, status and the document registry.
+ * A manifest is the only authority for canonical Spec metadata and the document registry. It has no
+ * status: where the work stands is the workflow run, and active/archived is `location` (the folder).
+ * A `status` key of an older manifest is ignored on read and dropped when the manifest is rewritten.
  * The generated indexes and the Runtime Overview are projections, never stores.
  */
 export interface SpecificationManifest {
@@ -71,7 +73,6 @@ export interface SpecificationManifest {
   readonly documents: readonly ManifestDocument[];
   /** Explicit folders that may hold no file (empty when the manifest declares none). */
   readonly folders: readonly string[];
-  readonly status: string;
   readonly location: SpecificationLocation;
   readonly priority?: number;
   readonly created?: string;
@@ -192,10 +193,6 @@ export function parseSpecificationManifest(
     throw sourceInvalid(slug, 'title', 'must be a non-empty string');
   }
 
-  if (typeof source.status !== 'string' || !source.status.trim()) {
-    throw sourceInvalid(slug, 'status', 'must be a non-empty string');
-  }
-
   if (
     source.priority !== undefined &&
     (typeof source.priority !== 'number' || !Number.isFinite(source.priority))
@@ -223,7 +220,6 @@ export function parseSpecificationManifest(
     archetype,
     documents,
     folders,
-    status: source.status,
     location,
     ...(source.priority !== undefined ? { priority: source.priority } : {}),
     ...(source.created !== undefined ? { created: source.created } : {}),

@@ -1,5 +1,5 @@
 import type { ContinuationDecision } from '../continuation/resolve';
-import { decide, findStep, type RunPosition } from '@nevo/workflow';
+import { activeAttempt, decide, findStep, type RunPosition } from '@nevo/workflow';
 import { WorkflowError } from '../errors';
 import { exitGatesFor } from '../gates/evaluate';
 import { assertGatesSatisfied } from '../gates/read';
@@ -15,8 +15,16 @@ import {
   type TaskDecision,
   type TaskProposal,
 } from '../tasks/tasks';
-import type { WorkflowActor, WorkflowSubject } from '../state/model';
-import { assertSameSession, finishDigest } from './actors';
+import { requiresOwnerConfirmation } from '../definitions/effect-authority';
+import type { WorkStep, WorkflowTransition } from '../definitions/model';
+import {
+  agentAttemptBindingOf,
+  type PendingOwnerDecisions,
+  type WorkflowActor,
+  type WorkflowSubject,
+} from '../state/model';
+import type { ExecutionChange, ExecutionSnapshot } from '../state/store';
+import { assertAgentAuthority, assertSameSession, finishDigest } from './actors';
 import {
   advance,
   applyEffects,
@@ -140,137 +148,340 @@ function recordFinish(
   request: FinishStepInput,
 ): Promise<RecordedFinish> {
   return dependencies.serialize(async (): Promise<RecordedFinish> => {
-    assertFinishInputShape(request.input);
-    const { subject } = request;
-    const snapshot = await dependencies.store.read(subject.specId);
-    const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
-    assertFinishInput(request.input);
-    assertActorShape(request.actor);
-    // Only the active attempt has a Session to match; a finish of an ended attempt is a retry (or
-    // a stale request) that the coordinator decides by its digest and actor.
-    const position = loaded.run.position;
-    if (
-      position.state === 'active' &&
-      position.step === request.step &&
-      position.attempt === request.attempt
-    ) {
-      assertSameSession(loaded.run, request.actor);
-    }
-
-    const context: AdvanceContext = {
-      set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),
-      catalogue: dependencies.catalogue,
-      at: isoNow(dependencies),
-    };
-    const decision = decide(loaded.definition, loaded.run, {
-      kind: 'finish',
-      at: context.at,
-      step: request.step,
-      attempt: request.attempt,
-      actor: request.actor,
-      ...(request.input.result !== undefined ? { result: request.input.result } : {}),
-      ...(request.input.feedback !== undefined ? { feedback: request.input.feedback } : {}),
-      ...(request.input.artifacts !== undefined ? { artifacts: request.input.artifacts } : {}),
-      requestDigest: finishDigest(request),
-    });
-    if (decision.replayed) {
-      // The read showed the finish through a pending journal when its publication crashed: an
-      // empty change publishes that journal, so the retry leaves the files complete.
-      await dependencies.store.apply(subject.specId, {});
-
-      return {
-        result: replayedFinish(context, loaded, decision),
-        stepTitle: findStep(loaded.definition, request.step)?.title ?? request.step,
-      };
-    }
-
-    const [taken] = decision.declaredEffects;
-    const step = findStep(loaded.definition, request.step);
-    if (taken?.source !== 'transition' || step?.kind !== 'work') {
-      throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A finish took no transition.');
-    }
-
-    const transition = taken.transition;
-    const produces = step.annotations.produces === 'tasks';
-    if (produces !== (request.input.tasks !== undefined)) {
-      throw new WorkflowError(
-        'WORKFLOW_INPUT_INVALID',
-        produces
-          ? `The step "${step.id}" finishes with the list of Tasks it produced.`
-          : `The step "${step.id}" does not produce Tasks.`,
-      );
-    }
-
-    if (subject.kind === 'task' && request.input.taskDecisions !== undefined) {
-      throw new WorkflowError(
-        'WORKFLOW_INPUT_INVALID',
-        'Only a Specification step decides the status of Tasks.',
-      );
-    }
-
-    context.set.setRun(subject, decision.nextRun);
-    const createdTasks = produces ? draftTasks(context, request) : [];
-    for (const task of applyTaskDecisions(
-      context.set.tasks(),
-      request.input.taskDecisions ?? [],
-      context.at,
-    )) {
-      context.set.setTask(task);
-    }
-
-    applyEffects(context, decision.declaredEffects);
-    if (subject.kind === 'task' && transition.annotations.escalate) {
-      const feedback = request.input.feedback?.trim();
-      context.set.setTask({
-        ...context.set.task(subject.taskId),
-        status: 'on-hold',
-        statusChange: {
-          source: 'escalation',
-          at: context.at,
-          ...(feedback ? { reason: feedback } : {}),
-        },
-      });
-    }
-
-    // Open Tasks refuse a completion first (no gate would help), judged on the planned Tasks: the
-    // finish's own drafts, decisions and effects count. `advance` asks the same rule again.
-    assertNoOpenTasksAtCompletion(context, subject, transition.target);
-
-    // The authoritative check of the exit gates, after every input rule, on nothing written yet (the
-    // change above is only planned). A repeated finish (above) never evaluates them again.
-    await assertGatesSatisfied(
-      dependencies.references,
-      subject,
-      'exit',
-      step,
-      exitGatesFor(step, transition.result),
+    const plan = await planFinish(
+      dependencies,
+      await dependencies.store.read(request.subject.specId),
+      request,
+    );
+    // A replay publishes an empty change: the read showed the finish through a pending journal when
+    // its publication crashed, and the empty change publishes that journal, so the files are complete.
+    await dependencies.store.apply(
+      request.subject.specId,
+      plan.kind === 'replayed' ? {} : plan.change,
     );
 
-    const held =
-      subject.kind === 'task' &&
-      transition.target.kind !== 'terminal' &&
-      context.set.task(subject.taskId).status !== 'ready';
-    const continuation: ContinuationDecision = held
-      ? { kind: 'none', reason: 'on-hold' }
-      : advance(context, subject, loaded.definition, decision.intent);
-    const specification = subject.kind === 'task' ? settleWait(context) : undefined;
-    await dependencies.store.apply(subject.specId, {
-      ...context.set.change(),
-      summary: `finish step ${request.step}${ofSubject(subject)} (attempt ${request.attempt})`,
-    });
-
-    return {
-      result: {
-        subject,
-        transition: transition.id,
-        position: context.set.run(subject).position,
-        continuation,
-        createdTasks,
-        ...(specification && specification.kind !== 'none' ? { specification } : {}),
-      },
-      stepTitle: step.title,
-    };
+    return { result: plan.result, stepTitle: plan.stepTitle };
   });
+}
+
+/**
+ * A finish planned on a snapshot, nothing written: `planned` with the one change that records it,
+ * or `replayed` when the request repeats the subject's last finish (nothing to change).
+ */
+export type FinishPlan =
+  | ({ readonly kind: 'replayed' } & RecordedFinish)
+  | ({
+      readonly kind: 'planned';
+      readonly change: ExecutionChange;
+      /** The transition the finish takes. */
+      readonly transition: string;
+    } & RecordedFinish);
+
+export interface FinishPlanOptions {
+  /**
+   * The finish is an agent's proposal of an agent step execution attempt, or its finalize: the only path that
+   * finishes such an attempt for its agent. A proposal that takes a decision only the owner takes
+   * (D17) is planned held for the owner's confirmation (`awaiting-confirmation`); any other agent
+   * finish taking one is refused with `WORKFLOW_OWNER_DECISION_REQUIRED`.
+   */
+  readonly agentProposal?: boolean;
+}
+
+/**
+ * An attempt started by agent step execution advances only through its proposal and finalize (the agent's own
+ * Turn never finishes it directly); an owner finishes it only by taking it over.
+ */
+function assertNotBoundAttempt(
+  run: LoadedSubject['run'],
+  request: FinishStepInput,
+  options: FinishPlanOptions,
+): void {
+  if (
+    request.actor.class === 'agent' &&
+    !options.agentProposal &&
+    agentAttemptBindingOf(activeAttempt(run)) !== undefined
+  ) {
+    throw new WorkflowError(
+      'WORKFLOW_EXECUTOR_NOT_ALLOWED',
+      `The attempt ${request.step}#${String(request.attempt)} was started with Run with agent: its agent submits a finish proposal, which is applied when its Turn ends.`,
+    );
+  }
+}
+
+/**
+ * Every rule of a finish, judged on `snapshot` without writing anything: the input, the actor, the
+ * coordinator's decision, the produced drafts and Task decisions, the effects, open Tasks and the
+ * exit gates. The caller holds the `serialize` section the snapshot was read in; an owner's finish
+ * applies the change at once, an agent's proposal records it and is applied when it is finalized.
+ */
+export async function planFinish(
+  dependencies: WorkflowDependencies,
+  snapshot: ExecutionSnapshot,
+  request: FinishStepInput,
+  options: FinishPlanOptions = {},
+): Promise<FinishPlan> {
+  assertFinishInputShape(request.input);
+  const { subject } = request;
+  const loaded = loadSubject(dependencies.catalogue, snapshot, subject);
+  assertFinishInput(request.input);
+  assertActorShape(request.actor);
+  // Only the active attempt has a Session to match; a finish of an ended attempt is a retry (or
+  // a stale request) that the coordinator decides by its digest and actor.
+  const position = loaded.run.position;
+  if (
+    position.state === 'active' &&
+    position.step === request.step &&
+    position.attempt === request.attempt
+  ) {
+    assertSameSession(loaded.run, request.actor);
+    assertNotBoundAttempt(loaded.run, request, options);
+  }
+
+  const context: AdvanceContext = {
+    set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),
+    catalogue: dependencies.catalogue,
+    at: isoNow(dependencies),
+  };
+  const decision = decide(loaded.definition, loaded.run, finishCommand(request, context.at));
+  if (decision.replayed) {
+    return {
+      kind: 'replayed',
+      result: replayedFinish(context, loaded, decision),
+      stepTitle: findStep(loaded.definition, request.step)?.title ?? request.step,
+    };
+  }
+
+  const [taken] = decision.declaredEffects;
+  const step = findStep(loaded.definition, request.step);
+  if (taken?.source !== 'transition' || step?.kind !== 'work') {
+    throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A finish took no transition.');
+  }
+
+  const transition = taken.transition;
+  const produces = step.annotations.produces === 'tasks';
+  if (produces !== (request.input.tasks !== undefined)) {
+    throw new WorkflowError(
+      'WORKFLOW_INPUT_INVALID',
+      produces
+        ? `The step "${step.id}" finishes with the list of Tasks it produced.`
+        : `The step "${step.id}" does not produce Tasks.`,
+    );
+  }
+
+  if (subject.kind === 'task' && request.input.taskDecisions !== undefined) {
+    throw new WorkflowError(
+      'WORKFLOW_INPUT_INVALID',
+      'Only a Specification step decides the status of Tasks.',
+    );
+  }
+
+  // No agent takes a decision only the owner takes (D17). An agent attempt's proposal taking one is
+  // held for the owner's confirmation; any other agent finish is refused, judged before anything is
+  // planned, so the agent learns it before the drafts, Tasks and gates.
+  const taskDecisions = request.input.taskDecisions ?? [];
+  const forOwner =
+    request.actor.class === 'agent' && needsOwnerConfirmation(transition, taskDecisions);
+  if (forOwner && !options.agentProposal) {
+    assertAgentAuthority(transition, taskDecisions);
+  }
+
+  context.set.setRun(subject, decision.nextRun);
+  const createdTasks = produces ? draftTasks(context, request) : [];
+  // Every rule of the finish as if the owner took it, so a held proposal is one the owner can
+  // confirm as it stands (the confirmation judges it again then).
+  const { continuation, specification } = await completeFinish(dependencies, context, {
+    loaded,
+    step,
+    transition,
+    decision,
+    taskDecisions,
+    ...(request.input.feedback !== undefined ? { feedback: request.input.feedback } : {}),
+  });
+  const summary = `finish step ${request.step}${ofSubject(subject)} (attempt ${request.attempt})`;
+  if (forOwner) {
+    return planHeldFinish(dependencies, snapshot, request, {
+      loaded,
+      taskDecisions,
+      summary,
+      stepTitle: step.title,
+    });
+  }
+
+  return {
+    kind: 'planned',
+    change: { ...context.set.change(), summary },
+    transition: transition.id,
+    result: {
+      subject,
+      transition: transition.id,
+      position: context.set.run(subject).position,
+      continuation,
+      createdTasks,
+      ...(specification && specification.kind !== 'none' ? { specification } : {}),
+    },
+    stepTitle: step.title,
+  };
+}
+
+/**
+ * Whether an agent's finish takes a decision only the owner takes (D17): a transition that needs
+ * the owner's confirmation (`requiresOwnerConfirmation`) or status decisions on Tasks.
+ */
+export function needsOwnerConfirmation(
+  transition: WorkflowTransition,
+  taskDecisions: readonly unknown[],
+): boolean {
+  return requiresOwnerConfirmation(transition) || taskDecisions.length > 0;
+}
+
+/**
+ * The change of an agent's finish held for the owner's confirmation (D17): the attempt ends with its
+ * transition and the run waits there (`awaiting-confirmation`); the Task drafts the finish produced
+ * are written (the owner confirms what they see), its Task decisions are kept with the pending
+ * confirmation, and nothing else is applied: no effect, no decision, no next step.
+ */
+function planHeldFinish(
+  dependencies: WorkflowDependencies,
+  snapshot: ExecutionSnapshot,
+  request: FinishStepInput,
+  held: {
+    readonly loaded: LoadedSubject;
+    readonly taskDecisions: readonly TaskDecision[];
+    readonly summary: string;
+    readonly stepTitle: string;
+  },
+): FinishPlan {
+  const { subject } = request;
+  const context: AdvanceContext = {
+    set: new ExecutionWorkingSet(snapshot, dependencies.catalogue),
+    catalogue: dependencies.catalogue,
+    at: isoNow(dependencies),
+  };
+  const decisions: PendingOwnerDecisions | undefined =
+    held.taskDecisions.length > 0
+      ? {
+          kind: 'owner-decisions',
+          taskDecisions: held.taskDecisions.map((entry) => ({
+            taskId: entry.taskId,
+            status: entry.status,
+            ...(entry.reason !== undefined ? { reason: entry.reason } : {}),
+          })),
+        }
+      : undefined;
+  const decision = decide(held.loaded.definition, held.loaded.run, {
+    ...finishCommand(request, context.at),
+    confirmation: decisions ? { hostData: decisions } : {},
+  });
+  const outcome = decision.finished?.outcome;
+  if (outcome?.kind !== 'transition') {
+    throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A held finish took no transition.');
+  }
+
+  context.set.setRun(subject, decision.nextRun);
+  const createdTasks = request.input.tasks !== undefined ? draftTasks(context, request) : [];
+
+  return {
+    kind: 'planned',
+    change: { ...context.set.change(), summary: `${held.summary}, for the owner's confirmation` },
+    transition: outcome.transition,
+    result: {
+      subject,
+      transition: outcome.transition,
+      position: decision.nextRun.position,
+      continuation: { kind: 'none', reason: 'awaiting-confirmation' },
+      createdTasks,
+    },
+    stepTitle: held.stepTitle,
+  };
+}
+
+/** What a finish (or the owner's confirmation of a held one) applies once its transition is taken. */
+export interface FinishCompletion {
+  readonly loaded: LoadedSubject;
+  readonly step: WorkStep;
+  readonly transition: WorkflowTransition;
+  /** The coordinator's decision that took the transition, already set as the subject's run. */
+  readonly decision: Decision;
+  readonly taskDecisions: readonly TaskDecision[];
+  readonly feedback?: string;
+}
+
+/**
+ * The consequences of a taken transition, planned in `context` (whose run is the decision's): the
+ * Task decisions, the transition's effects, a Task's escalation, then the rules on the planned state
+ * (open Tasks at a completion, the exit gates) and what follows. Nothing is written.
+ */
+export async function completeFinish(
+  dependencies: WorkflowDependencies,
+  context: AdvanceContext,
+  completion: FinishCompletion,
+): Promise<{
+  readonly continuation: ContinuationDecision;
+  readonly specification?: ContinuationDecision;
+}> {
+  const { loaded, step, transition, decision } = completion;
+  const { subject } = loaded;
+  for (const task of applyTaskDecisions(
+    context.set.tasks(),
+    completion.taskDecisions,
+    context.at,
+  )) {
+    context.set.setTask(task);
+  }
+
+  applyEffects(context, decision.declaredEffects);
+  if (subject.kind === 'task' && transition.annotations.escalate) {
+    const feedback = completion.feedback?.trim();
+    context.set.setTask({
+      ...context.set.task(subject.taskId),
+      status: 'on-hold',
+      statusChange: {
+        source: 'escalation',
+        at: context.at,
+        ...(feedback ? { reason: feedback } : {}),
+      },
+    });
+  }
+
+  // Open Tasks refuse a completion first (no gate would help), judged on the planned Tasks: the
+  // finish's own drafts, decisions and effects count. `advance` asks the same rule again.
+  assertNoOpenTasksAtCompletion(context, subject, transition.target);
+
+  // The authoritative check of the exit gates, after every input rule, on nothing written yet (the
+  // change above is only planned). A repeated finish never evaluates them again.
+  await assertGatesSatisfied(
+    dependencies.references,
+    subject,
+    'exit',
+    step,
+    exitGatesFor(step, transition.result),
+  );
+
+  const held =
+    subject.kind === 'task' &&
+    transition.target.kind !== 'terminal' &&
+    context.set.task(subject.taskId).status !== 'ready';
+  const continuation: ContinuationDecision = held
+    ? { kind: 'none', reason: 'on-hold' }
+    : advance(context, subject, loaded.definition, decision.intent);
+  const specification = subject.kind === 'task' ? settleWait(context) : undefined;
+
+  return { continuation, ...(specification ? { specification } : {}) };
+}
+
+/** The coordinator's finish command of a request. */
+function finishCommand(request: FinishStepInput, at: string) {
+  return {
+    kind: 'finish' as const,
+    at,
+    step: request.step,
+    attempt: request.attempt,
+    actor: request.actor,
+    ...(request.input.result !== undefined ? { result: request.input.result } : {}),
+    ...(request.input.feedback !== undefined ? { feedback: request.input.feedback } : {}),
+    ...(request.input.artifacts !== undefined ? { artifacts: request.input.artifacts } : {}),
+    requestDigest: finishDigest(request),
+  };
 }
 
 /**
@@ -282,26 +493,17 @@ function replayedFinish(
   loaded: LoadedSubject,
   decision: Decision,
 ): FinishStepResult {
-  const { subject, definition } = loaded;
+  const { subject } = loaded;
   const finished = decision.finished;
   if (finished?.outcome?.kind !== 'transition') {
     throw new WorkflowError('WORKFLOW_STATE_CORRUPT', 'A repeated finish names no transition.');
   }
 
-  const run = decision.nextRun;
-  const task = subject.kind === 'task' ? context.set.task(subject.taskId) : undefined;
-  const continuation: ContinuationDecision =
-    decision.intent.kind === 'await-event'
-      ? waitDecision(decision.intent.step, context.set.tasks(), context.set.brokenTasks())
-      : task && run.position.state !== 'terminal' && task.status !== 'ready'
-        ? { kind: 'none', reason: 'on-hold' }
-        : continuationOf(run, definition, context.catalogue);
-
   return {
     subject,
     transition: finished.outcome.transition,
-    position: run.position,
-    continuation,
+    position: decision.nextRun.position,
+    continuation: recordedContinuation(context, loaded, decision),
     createdTasks: context.set
       .tasks()
       .filter(
@@ -313,6 +515,28 @@ function replayedFinish(
       .map((candidate) => candidate.taskId),
     replayed: true,
   };
+}
+
+/**
+ * What follows a decision that changed nothing (a repeated request), read from the state as it is
+ * now: nothing is planned.
+ */
+export function recordedContinuation(
+  context: AdvanceContext,
+  loaded: LoadedSubject,
+  decision: Decision,
+): ContinuationDecision {
+  const { subject, definition } = loaded;
+  const run = decision.nextRun;
+  const task = subject.kind === 'task' ? context.set.task(subject.taskId) : undefined;
+
+  return decision.intent.kind === 'await-event'
+    ? waitDecision(decision.intent.step, context.set.tasks(), context.set.brokenTasks())
+    : decision.intent.kind === 'await-confirmation'
+      ? { kind: 'none', reason: 'awaiting-confirmation' }
+      : task && run.position.state !== 'terminal' && task.status !== 'ready'
+        ? { kind: 'none', reason: 'on-hold' }
+        : continuationOf(run, definition, context.catalogue);
 }
 
 function draftTasks(context: AdvanceContext, request: FinishStepInput): readonly string[] {

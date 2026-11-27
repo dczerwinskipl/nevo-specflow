@@ -1,13 +1,20 @@
 import {
   abandonSpecification,
+  confirmAgentResult,
   finishStep,
+  rejectAgentResult,
   inspectActionsForRead,
+  readWorkflowHistory,
   reevaluateWait,
+  retryAgentAttemptCommit,
   returnToStep,
   startSpecificationExecution,
   startTaskExecution,
+  type AgentAttemptDependencies,
   type WorkflowDependencies,
 } from '@nevo/specflow-engine';
+
+import { WorkflowUnavailableError } from './refusal';
 
 import type { WorkflowPort } from './port';
 
@@ -16,7 +23,11 @@ import type { WorkflowPort } from './port';
  * project Runtime loads its definitions each time, so an edit of a workflow, a task type or an
  * archetype is seen by the next request; the demo Runtime answers from its in-memory state.
  */
-export function createEngineWorkflowPort(open: () => Promise<WorkflowDependencies>): WorkflowPort {
+export function createEngineWorkflowPort(
+  open: () => Promise<WorkflowDependencies>,
+  /** The agent attempt operations (Retry commit); absent, that route answers 503. */
+  openAgentAttempts?: () => Promise<AgentAttemptDependencies>,
+): WorkflowPort {
   return {
     async actions(subject) {
       return inspectActionsForRead(await open(), subject);
@@ -47,7 +58,22 @@ export function createEngineWorkflowPort(open: () => Promise<WorkflowDependencie
     },
 
     async return(input) {
-      return returnToStep(await open(), input);
+      // Without the agent attempt operations (the demo) no agent attempt exists: it applies now.
+      return { kind: 'returned', ...(await returnToStep(await open(), input)) };
+    },
+
+    async history(subject) {
+      if (!openAgentAttempts) {
+        return readWorkflowHistory(await open(), subject);
+      }
+
+      const attempts = await openAgentAttempts();
+
+      return readWorkflowHistory(await open(), subject, {
+        journal: (attemptId) => attempts.journal.read(attemptId),
+        ledger: (workspaceId, specId) => attempts.ledger(workspaceId, specId),
+        specification: (workspaceId, specId) => attempts.specification(workspaceId, specId),
+      });
     },
 
     async reevaluateWait(input) {
@@ -56,6 +82,30 @@ export function createEngineWorkflowPort(open: () => Promise<WorkflowDependencie
 
     async abandon(input) {
       return abandonSpecification(await open(), input);
+    },
+
+    async retryAttemptCommit(input) {
+      if (!openAgentAttempts) {
+        throw new WorkflowUnavailableError();
+      }
+
+      return retryAgentAttemptCommit(await openAgentAttempts(), input);
+    },
+
+    async confirm(input) {
+      if (!openAgentAttempts) {
+        throw new WorkflowUnavailableError();
+      }
+
+      return confirmAgentResult(await openAgentAttempts(), input);
+    },
+
+    async reject(input) {
+      if (!openAgentAttempts) {
+        throw new WorkflowUnavailableError();
+      }
+
+      return rejectAgentResult(await openAgentAttempts(), input);
     },
   };
 }

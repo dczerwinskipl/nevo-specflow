@@ -1,11 +1,20 @@
+import { randomUUID } from 'node:crypto';
+
 import {
+  confirmAgentResult,
+  engineAgentContextSource,
   finishStep,
   inspectActions,
+  readStepContext,
+  openAgentAttempts,
   reevaluateWait,
+  rejectAgentResult,
   resolveSpecification,
-  returnToStep,
+  retryAgentAttemptCommit,
+  returnDuringAgentAttempt,
   startSpecificationExecution,
   startTaskExecution,
+  takeOverAgentAttempt,
   type FinishStepInput,
   type TaskDecision,
   type TaskProposal,
@@ -14,15 +23,32 @@ import {
 } from '@nevo/specflow-engine';
 import { Command } from 'commander';
 
+import type { AgentBrokerTransport, BrokerOperation } from '../agent-broker/client';
+import { runBrokeredWrite } from '../agent-broker/routing';
 import { runExecution, type ExecutionOutput, type ExecutionSession } from '../execution-session';
 import { localOwner } from '../local-actor';
 import { parsePositiveInt, readStructuredFile } from '../structured-input';
-import { actionLines, finishLines, returnLines, startLines } from './present';
+import {
+  actionLines,
+  confirmLines,
+  contextLines,
+  finishLines,
+  rejectLines,
+  retryCommitLines,
+  returnLines,
+  startLines,
+  takeOverLines,
+} from './present';
 
 export interface WorkflowCommandContext extends ExecutionOutput {
   readonly cwd: string;
   /** The OS user behind the owner actor; the installed user unless a test supplies one. */
   readonly osUser?: string;
+  /**
+   * Inside an agent Turn: the Runtime's broker, to which `finish` sends the attempt's finish
+   * proposal (recorded, applied once the Turn ended; the Engine is never opened for writing).
+   */
+  readonly broker?: AgentBrokerTransport;
 }
 
 interface CommonOptions {
@@ -62,6 +88,37 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       ? { kind: 'specification', specId }
       : { kind: 'task', specId, taskId: options.task };
 
+  /** The finish input of `workflow finish`, with its files read (the owner's and an agent's). */
+  const finishInputOf = async (options: {
+    readonly result?: string;
+    readonly feedback?: string;
+    readonly artifact: string[];
+    readonly tasksFile?: string;
+    readonly taskDecisionsFile?: string;
+  }): Promise<FinishStepInput['input']> => ({
+    ...(options.result !== undefined ? { result: options.result } : {}),
+    ...(options.feedback !== undefined ? { feedback: options.feedback } : {}),
+    ...(options.artifact.length > 0 ? { artifacts: options.artifact } : {}),
+    ...(options.tasksFile !== undefined
+      ? {
+          tasks: (await readStructuredFile(
+            context.cwd,
+            options.tasksFile,
+            'tasks',
+          )) as TaskProposal[],
+        }
+      : {}),
+    ...(options.taskDecisionsFile !== undefined
+      ? {
+          taskDecisions: (await readStructuredFile(
+            context.cwd,
+            options.taskDecisionsFile,
+            'Task decisions',
+          )) as TaskDecision[],
+        }
+      : {}),
+  });
+
   const run = (
     options: CommonOptions,
     kind: 'read' | 'change',
@@ -86,6 +143,23 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
     await run(options, 'read', async ({ workflow: dependencies }) => {
       const projection = await inspectActions(dependencies, subjectOf(specId, options));
       emit(options, projection, actionLines(projection));
+    });
+  });
+
+  common(
+    workflow
+      .command('context')
+      .description(
+        'Show what the active attempt works from: documents, document types and the Task context as references with digests (read-only)',
+      ),
+  ).action(async (specId: string, options: CommonOptions) => {
+    await run(options, 'read', async ({ engine, workflow: dependencies }) => {
+      const result = await readStepContext(
+        dependencies,
+        engineAgentContextSource(engine),
+        subjectOf(specId, options),
+      );
+      emit(options, result, contextLines(result));
     });
   });
 
@@ -151,6 +225,12 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       .option(
         '--task-decisions-file <path>',
         'A Specification step: YAML/JSON list of Task status decisions',
+      )
+      .option(
+        '--changed <path>',
+        'Inside an agent Turn: a file you changed outside SpecFlow, checkout-relative (repeatable)',
+        collect,
+        [] as string[],
       ),
   ).action(
     async (
@@ -163,32 +243,46 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
         artifact: string[];
         tasksFile?: string;
         taskDecisionsFile?: string;
+        changed: string[];
       },
     ) => {
+      if (context.broker !== undefined) {
+        const input = await finishInputOf(options);
+        await runBrokeredWrite(
+          context,
+          context.broker,
+          options,
+          {
+            ...input,
+            name: 'workflow.finish',
+            specId,
+            ...(options.task !== undefined ? { taskId: options.task } : {}),
+            step: options.step,
+            stepAttempt: options.attempt,
+            ...(options.changed.length > 0 ? { changes: { paths: options.changed } } : {}),
+          } as BrokerOperation,
+          (value) => {
+            const result = ('result' in value ? value.result : undefined) as
+              { kind?: string; transition?: string } | undefined;
+
+            return [
+              `Proposal ${result?.kind ?? ''}: ${result?.transition ?? ''}. It is applied once this Turn ends; stop now.`,
+            ];
+          },
+        );
+
+        return;
+      }
+
       await run(options, 'change', async ({ workflow: dependencies }) => {
-        const input: FinishStepInput['input'] = {
-          ...(options.result !== undefined ? { result: options.result } : {}),
-          ...(options.feedback !== undefined ? { feedback: options.feedback } : {}),
-          ...(options.artifact.length > 0 ? { artifacts: options.artifact } : {}),
-          ...(options.tasksFile !== undefined
-            ? {
-                tasks: (await readStructuredFile(
-                  context.cwd,
-                  options.tasksFile,
-                  'tasks',
-                )) as TaskProposal[],
-              }
-            : {}),
-          ...(options.taskDecisionsFile !== undefined
-            ? {
-                taskDecisions: (await readStructuredFile(
-                  context.cwd,
-                  options.taskDecisionsFile,
-                  'Task decisions',
-                )) as TaskDecision[],
-              }
-            : {}),
-        };
+        if (options.changed.length > 0) {
+          throw new WorkflowError(
+            'WORKFLOW_INPUT_INVALID',
+            '--changed is for an agent finish proposal inside an agent Turn.',
+          );
+        }
+
+        const input = await finishInputOf(options);
         const result = await finishStep(dependencies, {
           subject: subjectOf(specId, options),
           step: options.step,
@@ -208,8 +302,10 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       .requiredOption('--step <step-id>', 'The declared return target (see "workflow actions")')
       .option('--reason <text>', 'Why; handed to the step as feedback, required by some returns'),
   ).action(async (specId: string, options: CommonOptions & { step: string; reason?: string }) => {
-    await run(options, 'change', async ({ workflow: dependencies }) => {
-      const result = await returnToStep(dependencies, {
+    await run(options, 'change', async ({ engine }) => {
+      // During an agent attempt whose Turn may still run, the return is recorded and applies once
+      // the agent's process stopped (D19); offline, nothing stops it: the owner stops it.
+      const result = await returnDuringAgentAttempt(await openAgentAttempts(engine), {
         subject: subjectOf(specId, options),
         step: options.step,
         ...(options.reason !== undefined ? { feedback: options.reason } : {}),
@@ -218,6 +314,127 @@ export function createWorkflowCommand(context: WorkflowCommandContext): Command 
       emit(options, result, returnLines(result));
     });
   });
+
+  common(
+    workflow
+      .command('retry-commit')
+      .description(
+        "Retry the commit of a finished agent attempt that failed or an interruption left pending (one commit of the attempt's own files), or the commit of a confirmation an interruption left undone",
+      )
+      .requiredOption('--step <step-id>', 'The step the agent finished (see "workflow actions")')
+      .requiredOption(
+        '--attempt <number>',
+        'The attempt whose commit failed or is pending',
+        parsePositiveInt,
+      ),
+  ).action(async (specId: string, options: CommonOptions & { step: string; attempt: number }) => {
+    await run(options, 'change', async ({ engine }) => {
+      const subject = subjectOf(specId, options);
+      const result = await retryAgentAttemptCommit(await openAgentAttempts(engine), {
+        subject,
+        step: options.step,
+        attempt: options.attempt,
+        actor: owner(),
+      });
+      emit(options, result, retryCommitLines(subject, options.step, options.attempt, result));
+    });
+  });
+
+  common(
+    workflow
+      .command('take-over')
+      .description(
+        "Take over a stopped agent attempt and go on yourself; the agent's changes stay uncommitted",
+      )
+      .requiredOption('--step <step-id>', 'The step the agent works on (see "workflow actions")')
+      .requiredOption('--attempt <number>', "The agent's attempt", parsePositiveInt),
+  ).action(async (specId: string, options: CommonOptions & { step: string; attempt: number }) => {
+    await run(options, 'change', async ({ engine }) => {
+      const result = await takeOverAgentAttempt(await openAgentAttempts(engine), {
+        subject: subjectOf(specId, options),
+        step: options.step,
+        attempt: options.attempt,
+        actor: owner(),
+      });
+      emit(options, result, takeOverLines(result));
+    });
+  });
+
+  common(
+    workflow
+      .command('confirm')
+      .description(
+        "Confirm an agent's result that waits for you: its transition and effects apply as yours, then the owner's commit",
+      )
+      .requiredOption('--step <step-id>', 'The step the agent finished (see "workflow actions")')
+      .requiredOption('--attempt <number>', 'The attempt whose result waits', parsePositiveInt)
+      .requiredOption(
+        '--confirms-digest <sha256>',
+        'The digest "workflow actions" shows with the result: Confirm applies exactly what you read',
+      )
+      .option('--request-id <uuid>', 'Repeat an earlier confirm (idempotency key); new by default'),
+  ).action(
+    async (
+      specId: string,
+      options: CommonOptions & {
+        step: string;
+        attempt: number;
+        confirmsDigest: string;
+        requestId?: string;
+      },
+    ) => {
+      const requestId = options.requestId ?? randomUUID();
+      // Before the Engine is opened, so an interrupted confirm can be repeated with the same id.
+      context.stderr(`Request id: ${requestId} (repeat with --request-id ${requestId})`);
+      await run(options, 'change', async ({ engine }) => {
+        const result = await confirmAgentResult(await openAgentAttempts(engine), {
+          subject: subjectOf(specId, options),
+          step: options.step,
+          attempt: options.attempt,
+          confirmsDigest: options.confirmsDigest,
+          requestId,
+          actor: owner(),
+        });
+        emit(options, result, confirmLines(result));
+      });
+    },
+  );
+
+  common(
+    workflow
+      .command('reject')
+      .description(
+        "Reject an agent's result that waits for you: the step is ready again with your feedback",
+      )
+      .requiredOption('--step <step-id>', 'The step the agent finished (see "workflow actions")')
+      .requiredOption('--attempt <number>', 'The attempt whose result waits', parsePositiveInt)
+      .requiredOption('--feedback <text>', 'What should change; the next attempt reads it first')
+      .option('--request-id <uuid>', 'Repeat an earlier reject (idempotency key); new by default'),
+  ).action(
+    async (
+      specId: string,
+      options: CommonOptions & {
+        step: string;
+        attempt: number;
+        feedback: string;
+        requestId?: string;
+      },
+    ) => {
+      const requestId = options.requestId ?? randomUUID();
+      context.stderr(`Request id: ${requestId} (repeat with --request-id ${requestId})`);
+      await run(options, 'change', async ({ engine }) => {
+        const result = await rejectAgentResult(await openAgentAttempts(engine), {
+          subject: subjectOf(specId, options),
+          step: options.step,
+          attempt: options.attempt,
+          feedback: options.feedback,
+          requestId,
+          actor: owner(),
+        });
+        emit(options, result, rejectLines(result));
+      });
+    },
+  );
 
   workflow
     .command('reevaluate-wait')

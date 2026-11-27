@@ -49,13 +49,13 @@ runtime:
         role: developer
 
 # Optional feature-owned Specs presentation policy.
-# Omit this section to use: requires-attention, active, ready, draft.
+# Omit this section to use: requires-attention, in-progress, not-started, ended.
 specs:
   overview:
     current:
       # Section order is presentation order. Omit a section to hide it from Current.
       sections:
         - requires-attention
-        - active
-        - ready
-        - draft
+        - in-progress
+        - not-started
+        - ended

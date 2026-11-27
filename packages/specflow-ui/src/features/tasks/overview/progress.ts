@@ -12,17 +12,6 @@ export function progressText(progress: TaskProgressData, t: TFunction): string {
   ].join(' · ');
 }
 
-/**
- * The same progress beside Now's Tasks bar, naming what is counted: "1 of 5 tasks done · 1 on
- * hold".
- */
-export function tasksProgressText(progress: TaskProgressData, t: TFunction): string {
-  return [
-    t('taskOverview.progress.tasksDone', { completed: progress.completed, total: progress.total }),
-    ...namedParts(progress, t),
-  ].join(' · ');
-}
-
 function namedParts(progress: TaskProgressData, t: TFunction): string[] {
   return [
     ...(progress.cancelled

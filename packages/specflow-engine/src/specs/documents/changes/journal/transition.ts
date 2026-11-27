@@ -68,6 +68,7 @@ export function transitionDocumentChange(
     plan: journal.plan,
     ...(journal.commit !== undefined ? { commit: journal.commit } : {}),
     ...(journal.commitMode !== undefined ? { commitMode: journal.commitMode } : {}),
+    ...(journal.agent !== undefined ? { agent: journal.agent } : {}),
     ...(keepsExecutor ? executorOf(journal, patch) : {}),
     ...(to === 'recovery-required' && patch.recoveryPhase !== undefined
       ? { recoveryPhase: patch.recoveryPhase }

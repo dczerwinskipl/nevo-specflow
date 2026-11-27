@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from 'react';
-import { Button, Icon, InformationList, useContainerMinWidth, type IconName } from '@nevo/ui';
+import { Button, Icon, InformationList, useContainerMinWidth, type IconGlyph } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { translateMessage } from '../../../../i18n/message';
 import { OperationalRow, type CompactFactItem } from '../../../../shared/operational-list';
@@ -33,7 +33,7 @@ function Reason({
 }: {
   text: string;
   tone: keyof typeof toneClass;
-  icon?: IconName;
+  icon?: IconGlyph;
 }) {
   return (
     <span className={toneClass[tone]}>

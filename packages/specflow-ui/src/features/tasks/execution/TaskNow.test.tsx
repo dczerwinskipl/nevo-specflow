@@ -36,6 +36,14 @@ function renderTaskNow(
       returnTo: vi.fn(never),
       reevaluateWait: vi.fn(never),
       abandon: vi.fn(never),
+      checkAgentExecution: vi.fn(never),
+      startAgentExecution: vi.fn(never),
+      stopAgentExecution: vi.fn(never),
+      retryAttemptCommit: vi.fn(never),
+      confirmResult: vi.fn(never),
+      takeOverAgentExecution: vi.fn(never),
+      history: vi.fn(never),
+      rejectResult: vi.fn(never),
       closePreview: vi.fn(never),
       closeOccupancy: vi.fn(never),
       close: vi.fn(never),
@@ -117,22 +125,18 @@ describe('the Task Now block', () => {
     expect(menu.textContent).toContain('Step implement · Standard Task rev 1');
   });
 
-  it('shows a hand-off that is a labelled paragraph in the Narrow band and a quote in the card', () => {
+  it('shows the last hand-off as the Specification does: its result, then the step', () => {
     renderTaskNow('rework');
 
     const handoff = now().querySelector<HTMLElement>('[data-now-handoff]')!;
-    expect(handoff.className).toContain('@min-[40rem]/app-content:border-l-2');
-    expect(handoff.className).not.toMatch(/(^|\s)border-l-2/);
-    expect(within(handoff).getByText('Last hand-off').className).toContain(
-      '@min-[40rem]/app-content:hidden',
-    );
-    // Under the label the step is not prefixed with "Last:" again; in the card it is.
-    expect(within(handoff).getByText('Last: Review ·', { exact: false }).className).toBe(
-      'hidden @min-[40rem]/app-content:inline',
-    );
-    expect(within(handoff).getByText('Review ·', { exact: true }).className).toBe(
-      '@min-[40rem]/app-content:hidden',
-    );
+    // One look at every width: the same Last hand-off as the Specification's Now.
+    expect(within(handoff).getByRole('heading', { name: 'Last hand-off' })).toBeTruthy();
+    // The result, then the step, who and when on their own lines.
+    expect(
+      Array.from(handoff.querySelectorAll('[data-now-handoff-lines] > span')).map(
+        (line) => line.textContent,
+      )[0],
+    ).toBe('Review');
     // A second attempt is named; the only result leads to Review.
     expect(now().textContent).toContain('Attempt 2 · in progress since');
     expect(within(now()).getByText('Then: Review')).toBeTruthy();

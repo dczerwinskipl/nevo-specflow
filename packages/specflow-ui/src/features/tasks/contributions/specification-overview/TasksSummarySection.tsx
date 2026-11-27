@@ -7,6 +7,7 @@ import {
   Link,
   MenuItem,
   OverflowMenu,
+  StatusIndicator,
   Typography,
   cn,
 } from '@nevo/ui';
@@ -20,7 +21,10 @@ import type { SpecificationWorkSectionContext } from '../../../specs';
 import { useSpecificationWorkflow } from '../../execution/specification/SpecificationWorkflow';
 import { TaskRow } from '../../list/TaskRow';
 import { taskRowViewOf } from '../../list/taskListModel';
+import { getGroupTone } from '../../list/presentation';
 import { emptyTasks } from '../../overview/tasksStepLine';
+import { productIcons } from '../../../../shared/product-icons';
+import { unreadableCauseOfSection, unreadableCopy } from '../../../../shared/unreadable/unreadable';
 
 /** A plain click opens in the app; a modified click keeps the browser's own behaviour. */
 const plainClick = (event: MouseEvent) =>
@@ -43,13 +47,14 @@ export function emptyTasksLine(
  * The Overview's Tasks:the Runtime's preview of its configured grouping, rendered as delivered.
  * Every `row` group shows its first Tasks (the Runtime picks them in importance order) as the Tasks
  * page's own `TaskRow`, on the same tracks without a column header (stacked below 48rem of
- * section width), then "N more in <group>" opening the Tasks page filtered to that group. There
- * are no group headers: each row's status names its group. `compact` groups share one quiet line
+ * section width) under the group's name and count, then "Show N more" opening the Tasks page
+ * filtered to that group. A row says its state only when it adds to the group's name ("Waiting
+ * for 4 other tasks") and leaves the Task's key to the Tasks page. `compact` groups share one quiet line
  * of links. The header keeps All tasks, with New task in its overflow when the projection allows
  * it. Without Tasks the section keeps its place with the line naming the workflow step that
  * produces them, and a quiet New task.
  */
-export function TasksSummarySection({ specId, data, actions }: SpecificationWorkSectionContext) {
+export function TasksSummarySection({ data, actions }: SpecificationWorkSectionContext) {
   const { t } = useTranslation();
   const workflow = useSpecificationWorkflow();
   const availability = data.sectionAvailability?.tasks;
@@ -60,10 +65,33 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
     return <FeatureUnavailable className="border-none" />;
   }
 
-  if (availability === 'forbidden' || availability === 'unavailable') {
+  if (availability === 'forbidden') {
     return (
-      <Alert tone="attention" title={t('specification.unavailableTitle')}>
-        {t('specification.unavailableDescription', { id: specId })}
+      <Alert tone="attention" title={t('specification.resourceAccessDeniedTitle')}>
+        {t('specification.resourceAccessDeniedDescription')}
+      </Alert>
+    );
+  }
+
+  if (availability === 'unavailable') {
+    // The Runtime could not read the Tasks now: `source_busy` (busy or recovering from a stop) or
+    // `source_unavailable` (also a file it cannot read). Transient, so it says so and offers Retry.
+    return (
+      <Alert tone="attention" role="status" title={t('specification.tasksUnreadableTitle')}>
+        <p>
+          {t(
+            unreadableCopy(unreadableCauseOfSection(data.sectionUnavailableReason?.tasks))
+              .description,
+          )}
+        </p>
+        <Button
+          className="mt-3"
+          variant="secondary"
+          size="sm"
+          onClick={() => void actions.refresh()}
+        >
+          {t('common.retry')}
+        </Button>
       </Alert>
     );
   }
@@ -74,7 +102,7 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
       id="tasks-summary-heading"
       headingTag="h2"
       title={t('specification.tasksHeading')}
-      icon="list-checks"
+      icon={productIcons.task.collection}
       actions={
         <>
           <Button variant="ghost" size="sm" onClick={() => actions.openTasks()}>
@@ -117,6 +145,13 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
     );
   }
 
+  // The titles of the Tasks the rows' facts name (the Runtime's `taskTitles`, also for a Task the
+  // preview does not list), else of the Tasks the preview shows: "Waiting for <title>".
+  const titles = new Map(
+    overview.rows.flatMap((row) => row.tasks.map((entry) => [entry.id, entry.title] as const)),
+  );
+  const titleOf = (taskId: string) => overview.taskTitles?.[taskId] ?? titles.get(taskId);
+
   const openGroup = (group: string) => (event: MouseEvent) => {
     if (!plainClick(event)) {
       return;
@@ -134,38 +169,75 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
        * item's divider, on the same rounded box), so a group boundary reads like a row boundary.
        */}
       <div className={cn(collectionContainer, 'grid min-w-0 divide-y divide-border-subtle')}>
-        {overview.rows.map((row) => (
-          <div
-            key={row.groupId}
-            className="grid min-w-0 rounded-control"
-            data-summary-group={row.groupId}
-          >
-            <InformationList aria-label={row.name}>
-              {row.tasks.map((entry) => (
-                <TaskRow
-                  key={entry.id}
-                  row={taskRowViewOf(entry)}
-                  fullTaskHref={actions.fullTaskHref(entry.id)}
-                  onOpen={(taskId) => actions.openTask(taskId)}
-                  specificationTitle={data.title}
-                />
-              ))}
-            </InformationList>
-            {row.more > 0 ? (
-              <Typography as="p" variant="body-sm" className="px-2 pb-2">
-                <Link
-                  tone="muted"
-                  href={actions.tasksHref({ group: row.groupId })}
-                  onClick={openGroup(row.groupId)}
-                  data-summary-more={row.groupId}
+        {overview.rows.map((row) => {
+          const views = row.tasks.map(taskRowViewOf);
+          const headingId = `tasks-summary-group-${row.groupId}`;
+
+          return (
+            <section
+              key={row.groupId}
+              className="grid min-w-0 gap-1 rounded-control pt-3"
+              aria-labelledby={headingId}
+              data-summary-group={row.groupId}
+            >
+              {/* The group's name and count lead it: its rows never repeat the state. */}
+              <div className="flex min-w-0 items-center gap-2 px-2">
+                <span className="flex size-4 shrink-0 items-center justify-center">
+                  <StatusIndicator
+                    tone={getGroupTone({
+                      id: row.groupId,
+                      name: row.name,
+                      collapsed: false,
+                      rows: views,
+                    })}
+                  />
+                </span>
+                <Typography
+                  as="h3"
+                  id={headingId}
+                  variant="label-sm"
+                  className="font-semibold text-content-primary"
                 >
                   {/* The Runtime's group name, as configured: no copy of the UI's own. */}
-                  {t('taskOverview.summary.moreIn', { count: row.more, group: row.name })}
-                </Link>
-              </Typography>
-            ) : null}
-          </div>
-        ))}
+                  {row.name}
+                </Typography>
+                <Typography as="span" variant="body-sm" className="text-content-muted">
+                  {row.count}
+                </Typography>
+              </div>
+              <InformationList aria-labelledby={headingId}>
+                {views.map((view) => (
+                  <TaskRow
+                    key={view.id}
+                    row={view}
+                    fullTaskHref={actions.fullTaskHref(view.id)}
+                    onOpen={(taskId) => actions.openTask(taskId)}
+                    specificationTitle={data.title}
+                    titleOf={titleOf}
+                    inGroup
+                  />
+                ))}
+              </InformationList>
+              {row.more > 0 ? (
+                <Typography as="p" variant="body-sm" className="px-2 pb-2">
+                  {/* Inside its group, so "Show 3 more" needs no group name (owner, 2026-11-25). */}
+                  <Link
+                    href={actions.tasksHref({ group: row.groupId })}
+                    onClick={openGroup(row.groupId)}
+                    data-summary-more={row.groupId}
+                    // Read on its own (a links list), the link still names its group.
+                    aria-label={t('taskOverview.summary.moreIn', {
+                      count: row.more,
+                      group: row.name,
+                    })}
+                  >
+                    {t('taskOverview.summary.showMore', { count: row.more })}
+                  </Link>
+                </Typography>
+              ) : null}
+            </section>
+          );
+        })}
         {overview.compact.length > 0 ? (
           <Typography
             as="p"
@@ -175,9 +247,8 @@ export function TasksSummarySection({ specId, data, actions }: SpecificationWork
             {overview.compact.map((group, index) => (
               <span key={group.groupId}>
                 {index > 0 ? ' · ' : null}
-                {/* The same quiet link as "N more in <group>". */}
+                {/* The same link as "Show N more tasks". */}
                 <Link
-                  tone="muted"
                   href={actions.tasksHref({ group: group.groupId })}
                   onClick={openGroup(group.groupId)}
                   data-summary-group={group.groupId}

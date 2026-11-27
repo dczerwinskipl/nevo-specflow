@@ -16,7 +16,7 @@ summary: >
 related:
   - adr.0024-tasks-are-resources
   - architecture.workflow.workflow-kernel
-  - ideas.specflow-engine.reusable-workflow.agent-execution
+  - adr.0026-agent-step-execution
 ---
 
 # Tasks as resources and context building (superseded)
@@ -29,5 +29,7 @@ Dispositions of the F20 decisions:
   Q10 broken-Task isolation, the slim run record, typed context authoring and process artifacts.
 - **Superseded:** the creation-time `expectedBinding` and rebind (replaced by first-start validation
   with `expectedWorkflowRevision`).
-- **Still open** ([agent-assisted execution](reusable-workflow-manual-execution/agent-assisted-execution.md#context-resolution-for-agents)):
-  Q9 path hints, Q12 per-attempt context evidence, resolved references with digests and budgets.
+- **Implemented with agent step execution** ([ADR 0026](../../architecture/decisions/0026-agent-step-execution.md), D13):
+  the resolved context as references with digests and budgets, and the digest of the resolved
+  context on the attempt (Q12 in part: the full resolved list is not kept as local evidence; `workflow
+context` reads it again). Q9 path hints were not part of it.

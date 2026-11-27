@@ -82,6 +82,30 @@ export const Finished: Story = {
   },
 };
 
+/** The operation concluded without one of its parts (Create done, its agent not started). */
+export const EndedWithStepNotDone: Story = {
+  tags: ['contract'],
+  args: {
+    steps: [
+      step('reserving', 'done', 'create.progress.steps.reserving.title'),
+      step('registering', 'done', 'create.progress.steps.registering.title'),
+      {
+        id: 'starting-agent',
+        status: 'not-done',
+        label: message('create.progress.steps.starting-agent.notStarted', {
+          step: 'Zbieranie wymagań',
+        }),
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const region = canvas.getByRole('group', { name: 'Postęp tworzenia specyfikacji' });
+    const notDone = within(region).getAllByRole('listitem').at(-1)!;
+    await expect(notDone).not.toHaveAttribute('aria-current');
+    await expect(notDone).toHaveTextContent('nie wykonano');
+  },
+};
+
 /** Before the first snapshot: rows are reserved so nothing moves when the checklist arrives. */
 export const WaitingForFirstSnapshot: Story = {
   tags: ['contract'],

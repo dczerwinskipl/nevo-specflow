@@ -10,6 +10,7 @@ import { SessionsSection } from './contributions/specification-work/SessionsSect
 import { SessionProviderIcon } from './shared/SessionProviderIcon';
 import { sessionsDisabled } from './navigation/summary';
 import { startSessionOffered } from './associations/startSessionGate';
+import { productIcons } from '../../shared/product-icons';
 
 /** Sessions the Overview lists (UX contract: at most three). */
 const OVERVIEW_SESSIONS = 3;
@@ -103,7 +104,7 @@ export const sessionsUiModule: UiModule = {
 
           return {
             item,
-            icon: 'chat',
+            icon: productIcons.session.item,
             ...(session?.providerId
               ? { leading: <SessionProviderIcon providerId={session.providerId} /> }
               : {}),
@@ -111,7 +112,7 @@ export const sessionsUiModule: UiModule = {
               message('specification.attentionSession'),
               ...(session?.providerTitle ? [session.providerTitle] : []),
             ],
-            reasonIcon: 'chat',
+            reasonIcon: productIcons.session.item,
             action: item.targetId
               ? {
                   label: message(

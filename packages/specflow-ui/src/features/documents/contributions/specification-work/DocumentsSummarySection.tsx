@@ -14,6 +14,7 @@ import {
   sharedContentLabel,
 } from '../../workflow/documentState';
 import { useDocumentStateRow } from '../../workflow/useDocumentStateRow';
+import { productIcons } from '../../../../shared/product-icons';
 
 /** Documents the section lists before "Show all" (the accepted Overview: a whole archetype set). */
 const OVERVIEW_DOCUMENTS = 8;
@@ -68,7 +69,7 @@ export function DocumentsSummarySection({
       <WorkspaceSection.Header
         id="documents-summary-heading"
         title={t('specification.documentsHeading')}
-        icon="file"
+        icon={productIcons.document.collection}
         count={
           shared
             ? t('documents.state.allInitialContent', { count: documents.length })

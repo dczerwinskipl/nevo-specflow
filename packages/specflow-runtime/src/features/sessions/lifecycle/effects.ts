@@ -10,6 +10,11 @@ export interface SessionEffectIdentity {
   workspaceIdentity?: string;
   /** The Specification whose workspace is claimed: admission re-checks its binding. */
   specId?: string;
+  /**
+   * The agent attempt the Turn belongs to (agent step execution), recorded in the claim's durable intent. A
+   * recovery identity may lack it: the recorded intent is read then.
+   */
+  attemptId?: string;
 }
 export interface SessionEffectClaim {
   /** The workspace root the Engine claimed. */

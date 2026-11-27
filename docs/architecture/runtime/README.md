@@ -34,6 +34,7 @@ semantics live under [workflow architecture](../workflow/).
   - [Write journal and commit queue](document-write-and-commit-queue.md)
   - [Commit policy and workflow-state writes](document-commit-policy.md)
 - [Workspace execution claims](workspace-execution-claims.md)
+- [Agent step execution](agent-step-execution.md): broker, invocation capability, agent attempt lifecycle
 
 ## Runtime reads and policy
 

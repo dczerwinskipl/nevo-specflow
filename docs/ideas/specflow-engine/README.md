@@ -48,7 +48,7 @@ Open proposals (drafts, not current rules; current documentation and code win):
 | [Workspace binding lifecycle](workspace-binding-lifecycle.md)                                         | Relocate, repair, active Turn blocking rebind                                                        |
 | [Ownership and state](ownership-and-state.md)                                                         | Human approval provenance; external claim reconciliation on boot                                     |
 | [Local actor and human gates](local-actor-and-human-gates.md)                                         | Local trust model for human approvals                                                                |
-| [Agent-assisted execution (E6)](reusable-workflow-manual-execution/agent-assisted-execution.md)       | Owner-delegated single agent steps, claim-owned writes, context resolution for agents                |
+| [Agent execution (E6, superseded)](reusable-workflow-manual-execution/agent-assisted-execution.md)    | Implemented as agent step execution: ADR 0026 and the Runtime architecture page                      |
 | [Typed transition inputs (E5)](reusable-workflow-manual-execution/typed-transition-inputs.md)         | Definition-driven finish forms; needs bounded run history (F19)                                      |
 | [Legacy Nevo migration](legacy-nevo-migration.md)                                                     | Legacy modules not yet ported                                                                        |
 | [Decisions](decisions-and-promotion.md)                                                               | Open decision register                                                                               |

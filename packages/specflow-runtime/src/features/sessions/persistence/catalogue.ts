@@ -39,7 +39,10 @@ export type SessionListSummary = Omit<SessionListItem, 'association'>;
  * A summary as stored: the stored readiness plus the mode facts its effective readiness reads, and
  * no catalogue titles. Never returned as is (`listedSession` projects it).
  */
-export type StoredListSummary = Omit<SessionListSummary, 'providerTitle' | 'modelTitle'> &
+export type StoredListSummary = Omit<
+  SessionListSummary,
+  'providerTitle' | 'modelTitle' | 'providerModeTitle'
+> &
   Pick<SessionInfo, 'mode' | 'providerModeId'>;
 
 const IDENTITIES_MAX = SessionListLimits.scanBudget;

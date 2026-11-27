@@ -5,6 +5,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, MarkdownDocument, Spinner } from '@nevo/ui';
@@ -32,6 +33,8 @@ export const ReadableText = forwardRef<
     value: TextPreview;
     /** Session Chat V10: the agent's final answer is borderless-first Markdown, not plain text. */
     markdown?: boolean;
+    /** Renders the resolved text itself (the agent's brief, read as labelled parts). */
+    render?: (text: string) => ReactNode;
     /**
      * Called synchronously, in the same commit as every text growth (initial render plus each
      * auto-stitched page below), right after the DOM has grown but before the browser paints.
@@ -44,7 +47,7 @@ export const ReadableText = forwardRef<
      */
     onGrow?: () => void;
   }
->(function ReadableText({ api, sessionId, value, markdown = false, onGrow }, ref) {
+>(function ReadableText({ api, sessionId, value, markdown = false, render, onGrow }, ref) {
   // Loaded pages, pagination and in-flight reads all belong to one immutable revision.
   const identity = JSON.stringify([sessionId, value.content?.contentId, value.content?.revision]);
 
@@ -56,6 +59,7 @@ export const ReadableText = forwardRef<
       sessionId={sessionId}
       value={value}
       markdown={markdown}
+      render={render}
       onGrow={onGrow}
     />
   );
@@ -78,9 +82,10 @@ const RevisionText = forwardRef<
     sessionId: string;
     value: TextPreview;
     markdown: boolean;
-    onGrow?: () => void;
+    render?: ((text: string) => ReactNode) | undefined;
+    onGrow?: (() => void) | undefined;
   }
->(function RevisionText({ api, sessionId, value, markdown, onGrow }, ref) {
+>(function RevisionText({ api, sessionId, value, markdown, render, onGrow }, ref) {
   const { t } = useTranslation();
   const markdownLabels = useMarkdownLabels();
   // Text fetched beyond the initial preview, appended page by page as the auto-fetch progresses.
@@ -183,10 +188,15 @@ const RevisionText = forwardRef<
 
   return (
     <div className="grid min-w-0 gap-2">
-      {markdown ? (
+      {render ? (
+        render(text)
+      ) : markdown ? (
         <MarkdownDocument source={text} labels={markdownLabels} headingOffset={1} />
       ) : (
-        <p className="whitespace-pre-wrap break-words text-body-md">{text}</p>
+        // `wrap-anywhere`, not `break-words`: a long unbroken token (a JSON blob or a path in an
+        // agent brief) must not set the message's minimum width, or it widens the conversation
+        // past a phone's viewport.
+        <p className="whitespace-pre-wrap wrap-anywhere text-body-md">{text}</p>
       )}
       {(busy || failed) && (
         <span className="flex flex-wrap items-center gap-2">

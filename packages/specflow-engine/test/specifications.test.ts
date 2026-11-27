@@ -115,7 +115,6 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
       },
       documents: [{ id: 'overview', path: 'overview.md', type: 'overview' }],
       folders: [],
-      status: 'draft',
       priority: 10,
       created: '2026-10-14',
       relativeManifestPath: first.files[0]?.relativePath,
@@ -177,7 +176,7 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     });
   });
 
-  it('reflects manifest edits directly without a generated index or stale status cache', async () => {
+  it('writes no status and ignores the status key of an older manifest', async () => {
     const root = await workspace();
     const scaffold = createSpecificationScaffold({
       catalogue,
@@ -189,9 +188,12 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     await persist(root, scaffold);
     const manifestPath = join(root, scaffold.files[0]!.relativePath);
     const original = await readFile(manifestPath, 'utf8');
-    expect((await listWorkspaceSpecifications(root))[0]?.status).toBe('draft');
-    await writeFile(manifestPath, original.replace('status: draft', 'status: approved'));
-    expect((await listWorkspaceSpecifications(root))[0]?.status).toBe('approved');
+    expect(original).not.toMatch(/^status:/m);
+    expect((await listWorkspaceSpecifications(root))[0]).not.toHaveProperty('status');
+    await writeFile(manifestPath, original.replace(/^title:.*$/m, '$&\nstatus: draft'));
+    const [legacy] = await listWorkspaceSpecifications(root);
+    expect(legacy).toMatchObject({ title: 'Status source', location: 'active' });
+    expect(legacy).not.toHaveProperty('status');
   });
 
   it('rejects duplicate spec IDs across active/archive instead of choosing one silently', async () => {

@@ -3,6 +3,7 @@ import { BackLink, LocationLink } from './LocationLink';
 import {
   Breadcrumbs,
   BreadcrumbItem,
+  cn,
   hitAreaClassName,
   Icon,
   Typography,
@@ -18,6 +19,8 @@ import {
   type ValidateLinkOptions,
 } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import type { LucideIcon } from 'lucide-react';
+import { productIcons } from '../../shared/product-icons';
 import { useSpecificationNavigationSource } from '../../features/specs/overview/useSpecificationNavigationMetadata';
 import {
   backParentTitleKey,
@@ -38,6 +41,32 @@ export type ApplicationView =
   | 'new-specification'
   | 'new-session'
   | 'session';
+
+/**
+ * The icon that says what a screen is (interaction-model.md "Page identity"): an area's own icon, a
+ * peer list's collection icon, a stacked item's item icon. Flows (a new Specification or Session)
+ * have none.
+ */
+const viewIcons: Partial<Record<ApplicationView, LucideIcon>> = {
+  specifications: productIcons.specification.collection,
+  overview: productIcons.overview,
+  sessions: productIcons.session.collection,
+  tasks: productIcons.task.collection,
+  documents: productIcons.document.collection,
+  changes: productIcons.changes,
+  repository: productIcons.repository,
+  task: productIcons.task.item,
+  document: productIcons.document.item,
+  session: productIcons.session.item,
+};
+
+/**
+ * A stacked item whose identifier is a long technical key (a Task's): the application header names
+ * the page by its type ("Task · nevo-2"), never the key; the body carries the key as secondary
+ * metadata with a copy action (interaction-model.md "Visual conventions").
+ */
+const typeNamedViews: ReadonlySet<ApplicationView> = new Set(['task']);
+
 export function applicationLocationHeader({
   title,
   view,
@@ -109,27 +138,35 @@ function RoutedIdentity({
   const { supportsSplit } = useWorkspaceCapabilities();
   const { collection, identity, specificationKey, contextNotice, parent } =
     useApplicationLocationModel(specId, view);
+  const icon = viewIcons[view];
+  // A Task page is named by its type; its key stays the trail item's tooltip.
+  const typeName = typeNamedViews.has(view) ? t('applicationNavigation.taskPage') : undefined;
+  const itemLabel = typeName ?? detailLabel;
   if (!supportsSplit) {
-    // Narrow: the header names the screen itself (a stacked detail its own name) with the
-    // Specification's key, and carries the context notice in full (two lines fit the 56 px header),
-    // so a peer area needs no line in its body.
+    // Narrow: the header names the screen with its icon: a peer area and a Task page by their name
+    // and the Specification's key ("Task · nevo-2"), another stacked item by its own identifier (as
+    // a document tab names its file). It carries the context notice in full (two lines fit the
+    // 56 px header), so a peer area needs no line in its body.
     return (
-      <span className="grid min-w-0" data-narrow-identity="">
-        <span className="flex min-w-0 items-baseline gap-1.5">
-          <span className="truncate text-title-sm text-content-primary">
-            {detailLabel ?? title}
+      <span className="flex min-w-0 items-center gap-2.5" data-narrow-identity="">
+        {icon ? <Icon name={icon} size="md" className="text-content-secondary" /> : null}
+        <span className="grid min-w-0">
+          <span className="flex min-w-0 items-baseline gap-1.5">
+            <span className="truncate text-title-sm text-content-primary">
+              {itemLabel ?? title}
+            </span>
+            {specificationKey && (typeName || !detailLabel) ? (
+              <span className="shrink-0 whitespace-nowrap text-body-sm text-content-secondary">
+                · {specificationKey}
+              </span>
+            ) : null}
           </span>
-          {specificationKey ? (
-            <span className="shrink-0 whitespace-nowrap text-body-sm text-content-secondary">
-              · {specificationKey}
+          {contextNotice ? (
+            <span className="line-clamp-2 text-body-sm text-content-secondary" role="status">
+              {contextNotice}
             </span>
           ) : null}
         </span>
-        {contextNotice ? (
-          <span className="line-clamp-2 text-body-sm text-content-secondary" role="status">
-            {contextNotice}
-          </span>
-        ) : null}
       </span>
     );
   }
@@ -148,7 +185,8 @@ function RoutedIdentity({
                 {t('navigation.specifications')}
               </LocationLink>
             ) : (
-              title
+              // The list itself: named with its collection icon, as the Narrow header names it.
+              <LocationItem icon={icon}>{title}</LocationItem>
             )}
           </BreadcrumbItem>,
           ...(specId
@@ -163,7 +201,7 @@ function RoutedIdentity({
                     search={{ collection }}
                   >
                     {/* Truncated inside: the link's own box keeps its hit area unclipped. */}
-                    <span className="block truncate">{identity}</span>
+                    <LocationItem icon={productIcons.specification.item}>{identity}</LocationItem>
                   </LocationLink>
                 </BreadcrumbItem>,
               ]
@@ -184,8 +222,10 @@ function RoutedIdentity({
           ...(specId || view === 'new-specification'
             ? [
                 <BreadcrumbItem key="view" current title={detailLabel}>
-                  {detailLabel ? (
-                    <span className="block max-w-40 truncate">{detailLabel}</span>
+                  {itemLabel ? (
+                    <LocationItem icon={icon} className="max-w-56">
+                      {itemLabel}
+                    </LocationItem>
                   ) : (
                     title
                   )}
@@ -195,6 +235,24 @@ function RoutedIdentity({
         ]}
       </Breadcrumbs>
     </RegionalLocation>
+  );
+}
+
+/** One trail item: its type's icon, then its name, cut to one line. */
+function LocationItem({
+  icon,
+  className,
+  children,
+}: {
+  icon?: LucideIcon;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className={cn('flex min-w-0 items-center gap-1.5', className)}>
+      {icon ? <Icon name={icon} size="sm" /> : null}
+      <span className="min-w-0 truncate">{children}</span>
+    </span>
   );
 }
 

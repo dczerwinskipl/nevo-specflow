@@ -15,6 +15,7 @@ import {
   type OperationSourceRow,
 } from '../../operations';
 import { canViewSpec } from '../overview/filter-authorized-specs';
+import type { CreateFirstStep } from './first-step';
 
 export const SPECS_OPERATIONS_PATH = '/api/specs/operations';
 
@@ -23,7 +24,10 @@ export const SPECS_OPERATIONS_PATH = '/api/specs/operations';
  * mapped onto the public rows. Raw stages never leave the Engine listing; the step checklist is
  * rebuilt from the public vocabulary (`specificationCreateSteps`) exactly like live progress.
  */
-export function createOperationSource(engine: SpecFlowEngine): OperationListSource {
+export function createOperationSource(
+  engine: SpecFlowEngine,
+  firstStep?: Pick<CreateFirstStep, 'read'>,
+): OperationListSource {
   return {
     kind: 'specification-create',
     async list() {
@@ -39,11 +43,27 @@ export function createOperationSource(engine: SpecFlowEngine): OperationListSour
           continue;
         }
 
-        const checklist = specificationCreateSteps(row.target.kind, row.commits === true);
-        const at = row.currentStep ? checklist.findIndex((step) => step === row.currentStep) : -1;
+        // A Create with a first-step intent ends with its agent start: until that is settled the
+        // operation is still running, on `starting-agent`.
+        const intent = await firstStep?.read(row.operationId).catch(() => undefined);
+        const checklist = specificationCreateSteps(
+          row.target.kind,
+          row.commits === true,
+          intent !== undefined,
+        );
+        const startingAgent = row.state === 'completed' && intent !== undefined && !intent.result;
+        const state = startingAgent ? 'in-progress' : row.state;
+        const currentStep = startingAgent ? 'starting-agent' : row.currentStep;
+        const at = currentStep ? checklist.findIndex((step) => step === currentStep) : -1;
         const steps =
-          row.state === 'completed'
-            ? checklist.map((id) => ({ id, status: 'done' as const }))
+          state === 'completed'
+            ? checklist.map((id) => ({
+                id,
+                status:
+                  id === 'starting-agent' && intent?.result?.status === 'not-started'
+                    ? ('skipped' as const)
+                    : ('done' as const),
+              }))
             : at >= 0
               ? checklist.map((id, index) => ({
                   id,
@@ -57,7 +77,7 @@ export function createOperationSource(engine: SpecFlowEngine): OperationListSour
               : undefined;
         rows.push({
           operationId: row.operationId,
-          state: row.state,
+          state,
           ...(row.title !== undefined ? { title: row.title } : {}),
           subject: {
             ...(row.specId ? { specId: row.specId } : {}),
@@ -68,9 +88,7 @@ export function createOperationSource(engine: SpecFlowEngine): OperationListSour
             workspaceId: row.target.workspaceId,
             ...(row.target.branch ? { branch: row.target.branch } : {}),
           },
-          ...(at >= 0 && row.currentStep && row.state !== 'completed'
-            ? { currentStep: row.currentStep }
-            : {}),
+          ...(at >= 0 && currentStep && state !== 'completed' ? { currentStep } : {}),
           ...(steps ? { steps } : {}),
           ...(row.startedAt ? { startedAt: row.startedAt } : {}),
           updatedAt: row.updatedAt,
@@ -86,6 +104,8 @@ export interface SpecsOperationListOptions {
   /** Absent Engine answers 503 OPERATIONS_UNAVAILABLE. */
   readonly engine?: SpecFlowEngine | undefined;
   readonly registry: OperationProgressRegistry;
+  /** The first-step intents of Creates (their agent start is part of the operation). */
+  readonly firstStep?: Pick<CreateFirstStep, 'read'> | undefined;
   readonly config?: Partial<OperationListConfig>;
   readonly now?: () => Date;
 }
@@ -100,7 +120,9 @@ export function registerSpecsOperationList<RawServer extends RawServerBase>(
     summary: 'List Specification operations',
     description:
       "Read-only list of the feature's background operations; the request/inspection for each operation remains authoritative. Caller must have spec.view in some scope; each identified Specification row is independently filtered by spec.view at its trusted scope, and rows without a known Specification require spec.create. Counts are computed after authorization and before status/limit filters; no paths, journal internals or server text are exposed. The list does not run Git or acquire the Engine control lock. The weak ETag ignores generatedAt; an unchanged list answers 304. 400 OPERATION_LIST_QUERY_INVALID rejects invalid status or limit; 503 OPERATIONS_UNAVAILABLE means no Engine or failed source.",
-    sources: options.engine ? [createOperationSource(options.engine)] : undefined,
+    sources: options.engine
+      ? [createOperationSource(options.engine, options.firstStep)]
+      : undefined,
     registry: options.registry,
     authorize: requireCapabilityInAnyScope({
       resource: SpecCapabilities,

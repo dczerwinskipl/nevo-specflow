@@ -282,9 +282,9 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       status: 'completed',
       journal: { outcome: 'archive-only-closed' },
     });
-    expect((await readWorkspaceSpecification(a.workspaceRoot, a.specId)).status).toBe('draft');
-    expect((await readWorkspaceSpecification(a.workspaceRoot, b.specId)).status).toBe('archived');
-    expect((await readWorkspaceSpecification(a.workspaceRoot, c.specId)).status).toBe('draft');
+    expect((await readWorkspaceSpecification(a.workspaceRoot, a.specId)).location).toBe('active');
+    expect((await readWorkspaceSpecification(a.workspaceRoot, b.specId)).location).toBe('archive');
+    expect((await readWorkspaceSpecification(a.workspaceRoot, c.specId)).location).toBe('active');
     const after = await engine.readRegistry();
     expect(after.specBindings).toEqual(before.specBindings);
     expect(after.revision).toBe(before.revision);
@@ -519,15 +519,15 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
     const current = await engine.readRegistry();
     expect(current.revision).toBe(revision + 2);
     expect(current.workspaces.some((x) => x.workspaceId === workspaceId)).toBe(false);
-    for (const { specId, status } of [
-      { specId: a.specId, status: 'draft' },
-      { specId: b.specId, status: 'archived' },
-      { specId: c.specId, status: 'draft' },
+    for (const { specId, location } of [
+      { specId: a.specId, location: 'active' },
+      { specId: b.specId, location: 'archive' },
+      { specId: c.specId, location: 'active' },
     ]) {
       const binding = current.specBindings.find((x) => x.specId === specId);
       expect(binding?.workspaceId).toBe(registry.primaryWorkspaceId);
       expect(binding?.generation).toBe(revision + 1);
-      expect((await readWorkspaceSpecification(root, specId)).status).toBe(status);
+      expect((await readWorkspaceSpecification(root, specId)).location).toBe(location);
     }
 
     expect(git(root, 'rev-parse', 'HEAD')).not.toBe(primaryHead);
@@ -619,7 +619,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
     expect(registry.workspaces.some((x) => x.workspaceId === workspaceId)).toBe(true);
     expect(registry.specBindings.every((x) => x.workspaceId !== workspaceId)).toBe(true);
     for (const specId of [a.specId, b.specId]) {
-      expect((await readWorkspaceSpecification(root, specId)).status).toBe('draft');
+      expect((await readWorkspaceSpecification(root, specId)).location).toBe('active');
     }
   }, 120000);
 
@@ -667,15 +667,15 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
     );
     const current = await engine.readRegistry();
     expect(current.revision).toBe(oldRevision + 2);
-    for (const { specId, status } of [
-      { specId: a.specId, status: 'draft' },
-      { specId: siblings[0]!.specId, status: 'archived' },
-      { specId: siblings[1]!.specId, status: 'draft' },
+    for (const { specId, location } of [
+      { specId: a.specId, location: 'active' },
+      { specId: siblings[0]!.specId, location: 'archive' },
+      { specId: siblings[1]!.specId, location: 'active' },
     ]) {
       expect(current.specBindings.find((x) => x.specId === specId)?.workspaceId).toBe(
         registry.primaryWorkspaceId,
       );
-      expect((await readWorkspaceSpecification(root, specId)).status).toBe(status);
+      expect((await readWorkspaceSpecification(root, specId)).location).toBe(location);
     }
 
     expect(git(root, 'status', '--porcelain')).toBe('');
@@ -718,8 +718,8 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
     expect(git(a.workspaceRoot, 'rev-parse', 'HEAD')).toBe(sourceHead);
     expect((await engine.readRegistry()).specBindings).toEqual(before.specBindings);
     expect((await engine.readRegistry()).revision).toBe(before.revision);
-    expect((await readWorkspaceSpecification(a.workspaceRoot, a.specId)).status).toBe('draft');
-    expect((await readWorkspaceSpecification(a.workspaceRoot, b.specId)).status).toBe('draft');
+    expect((await readWorkspaceSpecification(a.workspaceRoot, a.specId)).location).toBe('active');
+    expect((await readWorkspaceSpecification(a.workspaceRoot, b.specId)).location).toBe('active');
     await expect(
       closeWorkspace(engine, { operationId: randomUUID(), workspaceId }),
     ).rejects.toMatchObject({ code: 'CLOSE_CONFLICT' });
@@ -766,8 +766,8 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
         (await engine.readRegistry()).workspaces.some((x) => x.workspaceId === a.workspaceId),
       ).toBe(true);
       expect(git(a.workspaceRoot, 'status', '--porcelain')).toBe('');
-      expect((await readWorkspaceSpecification(root, a.specId)).status).toBe('draft');
-      expect((await readWorkspaceSpecification(root, b.specId)).status).toBe('draft');
+      expect((await readWorkspaceSpecification(root, a.specId)).location).toBe('active');
+      expect((await readWorkspaceSpecification(root, b.specId)).location).toBe('active');
     } finally {
       await writeFile(markerPath, oldMarker);
     }

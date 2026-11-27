@@ -14,7 +14,7 @@ import {
   withExecutableFields,
   type ExecutableResolution,
 } from '../executable';
-import { projectProviderEnvironment } from '../process';
+import { projectProviderEnvironment, withRuntimeEntries } from '../process';
 import { installationUnavailable, ProviderUnavailableError } from '../unavailable';
 import { antigravityExecutable } from './executable';
 import { admitProvider } from '../compatibility/admission';
@@ -468,16 +468,19 @@ export function createAntigravityDriver(
                 discoveryPermissionRules: bridge.discoveryPermissionRules,
                 hooks,
               });
-              const environment = {
-                values: {
-                  ...profile.environment.values,
-                  NEVO_ANTIGRAVITY_HOOK_CONFIG: configurationPath,
+              const environment = withRuntimeEntries(
+                {
+                  values: {
+                    ...profile.environment.values,
+                    NEVO_ANTIGRAVITY_HOOK_CONFIG: configurationPath,
+                  },
+                  sources: {
+                    ...profile.environment.sources,
+                    NEVO_ANTIGRAVITY_HOOK_CONFIG: 'runtime' as const,
+                  },
                 },
-                sources: {
-                  ...profile.environment.sources,
-                  NEVO_ANTIGRAVITY_HOOK_CONFIG: 'runtime' as const,
-                },
-              };
+                invocation.runtimeEnvironment?.values,
+              );
               const owner = await launch({
                 invocationId: invocation.invocationId,
                 scope: temporary,
@@ -487,7 +490,10 @@ export function createAntigravityDriver(
                 environment,
                 signal: operationSignal,
                 maxFrameBytes: 1024 * 1024,
-                secrets: [bridge.nativeHookClientConfiguration.token],
+                secrets: [
+                  bridge.nativeHookClientConfiguration.token,
+                  ...(invocation.runtimeEnvironment?.secrets ?? []),
+                ],
                 ...(invocation.recordProcess ? { record: invocation.recordProcess } : {}),
               });
               launched = true;

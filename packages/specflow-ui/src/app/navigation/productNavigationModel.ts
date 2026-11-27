@@ -1,38 +1,43 @@
-import { Home, MessagesSquare, ListChecks, Files, GitCompare, FolderGit2 } from 'lucide-react';
+import { productIcons } from '../../shared/product-icons';
 
 const specificationViews = [
-  { id: 'overview', to: '/specs/$specId', labelKey: 'specification.viewOverview', icon: Home },
+  {
+    id: 'overview',
+    to: '/specs/$specId',
+    labelKey: 'specification.viewOverview',
+    icon: productIcons.overview,
+  },
   {
     id: 'sessions',
     to: '/specs/$specId/sessions',
     labelKey: 'specification.viewSessions',
-    icon: MessagesSquare,
+    icon: productIcons.session.collection,
   },
   {
     id: 'tasks',
     // The Tasks page; a Full Task under it keeps Tasks active.
     to: '/specs/$specId/tasks',
     labelKey: 'specification.viewTasks',
-    icon: ListChecks,
+    icon: productIcons.task.collection,
   },
   {
     id: 'documents',
     to: '/specs/$specId/documents',
     labelKey: 'specification.viewDocuments',
-    icon: Files,
+    icon: productIcons.document.collection,
   },
   {
     id: 'changes',
     to: '/specs/$specId/changes',
     labelKey: 'specification.changesHeading',
-    icon: GitCompare,
+    icon: productIcons.changes,
     requiresGit: true,
   },
   {
     id: 'repository',
     to: '/specs/$specId/repository',
     labelKey: 'specification.viewRepository',
-    icon: FolderGit2,
+    icon: productIcons.repository,
     requiresGit: true,
   },
 ] as const;

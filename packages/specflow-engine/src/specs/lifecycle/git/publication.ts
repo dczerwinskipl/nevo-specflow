@@ -581,8 +581,7 @@ export async function requireVerifiedCloseIntegration(
           if (
             spec.specId !== occupant.specId ||
             spec.slug !== occupant.slug ||
-            spec.location !== occupant.location ||
-            spec.status !== occupant.status
+            spec.location !== occupant.location
           ) {
             throw conflict('Canonical workspace occupant manifest changed before binding CAS.');
           }

@@ -85,7 +85,9 @@ describe('SpecsOverview states', () => {
       error: true,
     });
     const alert = screen.getByRole('alert');
-    expect(within(alert).getByText('Specifications are unavailable')).toBeTruthy();
+    expect(within(alert).getByText("Couldn't load specifications")).toBeTruthy();
+    // Never "not available from this Runtime": a failed read is said as what it is.
+    expect(within(alert).queryByText(/not available|not supported/i)).toBeNull();
     fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }));
     expect(onRefresh).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('No current specifications')).toBeNull();
@@ -142,17 +144,14 @@ describe('SpecsOverview page title', () => {
       .mockReturnValue({ width, height: 900, x: 0, y: 0, top: 0, left: 0, right: 0 } as DOMRect);
   afterEach(() => vi.restoreAllMocks());
 
-  it('shows the page title under the header in a split layout', () => {
-    shellWidth(1600);
-    renderOverview(loaded());
-    expect(pageTitle().classList.contains('sr-only')).toBe(false);
-  });
-
-  it('keeps the title for assistive technology only on Narrow, where the header names the screen', () => {
-    shellWidth(390);
-    renderOverview(loaded());
-    expect(pageTitle().classList.contains('sr-only')).toBe(true);
-  });
+  it.each([1600, 390])(
+    'keeps the title for assistive technology only at %i px, where the header names the screen',
+    (width) => {
+      shellWidth(width);
+      renderOverview(loaded());
+      expect(pageTitle().classList.contains('sr-only')).toBe(true);
+    },
+  );
 });
 
 describe('SpecsOverview create', () => {
@@ -350,7 +349,7 @@ describe('SpecsOverview without work status', () => {
     );
     expect(document.querySelector('[data-spec-layout="flat"]')).not.toBeNull();
     expect(document.querySelector('[data-spec-columns]')?.textContent).toBe(
-      'SpecificationUpdatedProgress',
+      'SpecificationUpdatedTasks',
     );
   });
 

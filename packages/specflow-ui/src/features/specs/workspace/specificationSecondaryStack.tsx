@@ -4,6 +4,7 @@ import {
   AppContent,
   AppWorkspaceBody,
   defineSecondaryStack,
+  useSecondaryStack,
   WorkspaceHeaderIdentity,
   type SecondaryData,
   type SecondaryScreenProps,
@@ -13,9 +14,11 @@ import { useTranslation } from 'react-i18next';
 import { appI18n } from '../../../i18n';
 import type { ActivityEvent, SpecificationWorkspaceData } from '../read-model/model';
 
-import { ActivityHistory } from './ActivityHistory';
+import { SpecificationActivityHistory } from './activity/SpecificationActivityHistory';
 import { DocumentContent } from '../../documents';
 import { DocumentReadingColumns } from '../../../shared/document-reading/DocumentReadingColumns';
+import { feedbackStack } from '../../tasks';
+import { productIcons } from '../../../shared/product-icons';
 
 export interface SpecificationSecondaryContextValue {
   readonly specId: string;
@@ -53,7 +56,7 @@ function useDocumentPreviewData({
   if (context?.specId !== specId) {
     return {
       status: 'unavailable',
-      message: t('specification.unavailableDescription', { id: documentId }),
+      message: t('unreadable.failed.description'),
     };
   }
 
@@ -167,7 +170,7 @@ export function ActivityHistoryHeader() {
   return (
     <WorkspaceHeaderIdentity
       headingLevel={2}
-      icon="clock"
+      icon={productIcons.history}
       title={t('specification.activityHistory')}
       subtitle={t('specification.thisSpecification')}
     />
@@ -177,11 +180,15 @@ export function ActivityHistoryHeader() {
 export function ActivityHistoryScreen({
   data,
 }: SecondaryScreenProps<HistorySecondaryData, HistoryPages['history']>) {
+  const stack = useSecondaryStack<HistoryPages>();
+
   return (
     <AppContent className="w-content-standard max-w-full">
       <AppWorkspaceBody padding="none" scroll="area">
-        <ActivityHistory
-          showHeading={false}
+        <SpecificationActivityHistory
+          specId={data.specId}
+          // A feedback opened from the history is pushed: Back returns to the history.
+          onOpenFeedback={(ref) => void stack.navTo(feedbackStack, { specId: data.specId, ref })}
           events={data.events}
           availability={data.availability}
           onRetry={data.retry}
@@ -189,7 +196,7 @@ export function ActivityHistoryScreen({
             data.openTask(taskId);
           }}
           onOpenSession={data.openSession}
-          onOpenDoc={data.openDoc}
+          {...(data.openDoc ? { onOpenDoc: data.openDoc } : {})}
         />
       </AppWorkspaceBody>
     </AppContent>

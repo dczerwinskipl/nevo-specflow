@@ -6,6 +6,13 @@ import { effectiveAutoCommit } from '../../version-control/worktrees/policy';
 import { resolveSpecificationForRead } from '../discovery';
 import { listLedgerRecords, type LedgerReason } from '../durable';
 import { isExecutionStatePath, isExecutionStatePathOf } from '../execution-paths';
+import {
+  attemptsHolding,
+  heldPaths,
+  waitingAttemptCommits,
+  type ReadableAttemptCommitHolds,
+  type UncommittedAttempt,
+} from './attempts';
 
 /** How many paths of one owner a hold names; `count` is the total. */
 export const UNCOMMITTED_HOLD_PATHS_NAMED = UNCOMMITTED_HOLD_PATHS_MAX;
@@ -42,8 +49,13 @@ export interface UncommittedHold {
    * no setting names it (off is the default). Absent when the configuration cannot be read.
    */
   readonly policy?: { readonly auto: boolean; readonly source: 'project' | 'local' | 'default' };
-  /** Per owner, in the ledger's order; an owner whose paths `allowance` accepts is left out. */
+  /**
+   * Per owner, in the ledger's order; an owner whose paths `allowance` accepts is left out, and so
+   * are the paths of `attempts`.
+   */
   readonly owners: readonly UncommittedHoldOwner[];
+  /** Agent attempts whose commit waits (pending or failed), with their held paths (retry it). */
+  readonly attempts?: readonly UncommittedAttempt[];
   /** Ledger records that cannot be read: they hold the checkout like entries. */
   readonly unreadable: number;
 }
@@ -74,29 +86,49 @@ const isWorkflowState = (path: string): boolean => {
  * (`commit-uncommitted`), with whose paths they are and why they are uncommitted. Lock-free,
  * Git-free. With Git disabled nothing can be committed, so the ledger holds nothing back (an
  * unreadable policy is treated as Git enabled: fail closed). The entries `allowance` names do not
- * hold the checkout.
+ * hold the checkout, but never one a waiting agent attempt commit takes (`holds`, the attempt commit
+ * holds of the checkout, `SpecFlowEngine.attemptCommitHolds`): those are listed under their attempt.
  */
 export async function readUncommittedHold(
   engine: SpecFlowEngine,
   workspaceId: string,
-  allowance?: UncommittedAllowance,
+  allowance: UncommittedAllowance | undefined,
+  holds: ReadableAttemptCommitHolds,
 ): Promise<UncommittedHold | undefined> {
   const { records, unreadable } = await listLedgerRecords(engine.context, { workspaceId });
-  const held = records.flatMap((record) => {
+  // A path a waiting attempt commit takes is never allowed: no archive commit takes it along (D15).
+  const taken = heldPaths(holds);
+  const allowed = records.flatMap((record) => {
     const ownerId = record.owner.kind === 'specification' ? record.owner.id : undefined;
     const own =
       ownerId !== undefined
         ? allowance?.directories.find((entry) => entry.specId === ownerId)
         : undefined;
     const entries = record.entries.filter(
-      (entry) => own === undefined || !isExecutionStatePathOf(own.directory, entry.path),
+      (entry) =>
+        own === undefined ||
+        taken.has(entry.path) ||
+        !isExecutionStatePathOf(own.directory, entry.path),
     );
 
     return entries.length === 0 ? [] : [{ owner: record.owner, entries }];
   });
-  const entries = held.flatMap((record) => record.entries);
+  // A waiting attempt commit's paths (pending or failed) are listed under that attempt, not under
+  // their owner.
+  const failed = attemptsHolding(
+    waitingAttemptCommits(holds),
+    allowed.flatMap((record) => record.entries.map((entry) => entry.path)),
+    UNCOMMITTED_HOLD_PATHS_NAMED,
+    'always',
+  );
+  const held = allowed.flatMap((record) => {
+    const entries = record.entries.filter((entry) => !failed.taken.has(entry.path));
+
+    return entries.length === 0 ? [] : [{ owner: record.owner, entries }];
+  });
+  const all = allowed.flatMap((record) => record.entries);
   // A record that cannot be read is a fact nobody can judge: it holds the checkout like an entry.
-  if (entries.length === 0 && unreadable === 0) {
+  if (all.length === 0 && failed.attempts.length === 0 && unreadable === 0) {
     return undefined;
   }
 
@@ -113,13 +145,13 @@ export async function readUncommittedHold(
     // Fail closed: the hold stands, without a policy to name.
   }
 
-  const ids = new Set(entries.flatMap((entry) => entry.operationIds));
+  const ids = new Set(all.flatMap((entry) => entry.operationIds));
 
   return {
     workspaceId,
     operationIds: [...ids].slice(-50),
-    paths: entries.length,
-    reasons: [...new Set(entries.map((entry) => entry.reason))].sort(),
+    paths: all.length,
+    reasons: [...new Set(all.map((entry) => entry.reason))].sort(),
     ...(policy !== undefined ? { policy } : {}),
     owners: await Promise.all(
       held.map(async ({ owner, entries: owned }): Promise<UncommittedHoldOwner> => {
@@ -145,6 +177,7 @@ export async function readUncommittedHold(
         };
       }),
     ),
+    ...(failed.attempts.length > 0 ? { attempts: failed.attempts } : {}),
     unreadable,
   };
 }

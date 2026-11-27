@@ -89,7 +89,8 @@ describe('SpecificationSurface', () => {
     );
 
     // Shows honest unavailable state, not false 404 "not found"
-    expect(markup).toContain('Specyfikacja jest niedostępna');
+    expect(markup).toContain('Nie można tego teraz odczytać');
+    expect(markup).not.toContain('wspierany');
     expect(markup).not.toContain('Nie znaleziono specyfikacji');
   });
 

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Button, EmptyState, type IconGlyph } from '@nevo/ui';
+import { productIcons } from '../../../shared/product-icons';
 
 /** A start action offered in the empty area (New document, Upload). */
 export interface DocumentsEmptyStateAction {
@@ -34,7 +35,7 @@ export function DocumentsEmptyState({
   return (
     <EmptyState
       variant="pane"
-      icon="file"
+      icon={productIcons.document.collection}
       title={t('documents.empty.heading')}
       description={actions.length > 0 ? t('documents.empty.title') : t('documents.empty.choose')}
       actions={

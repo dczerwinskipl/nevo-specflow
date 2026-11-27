@@ -12,6 +12,8 @@ export const TaskReadErrorSchema = Type.Object(
       Type.Literal('specification_task_not_found'),
       Type.Literal('specification_source_unavailable'),
     ]),
+    /** Why the source is unavailable, when only an operator's recovery helps. */
+    code: Type.Optional(Type.Literal('CONTROL_LOCK_RECOVERY_REQUIRED')),
   },
   { $id: 'TaskReadError' },
 );

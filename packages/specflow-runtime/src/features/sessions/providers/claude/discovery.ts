@@ -1,12 +1,36 @@
 import type { ProviderDescriptor } from '@nevo/specflow-contracts/sessions';
 import { resolve } from 'node:path';
 import type { Invocation } from '../driver';
-import { object, ClaudeProtocolError } from './protocol';
-import { claudeMode, toolsForClaudeMode } from './modes';
+import { object, ClaudeProtocolError, shown } from './protocol';
+import { partitionAgentPermissionRules } from '@nevo/specflow-contracts/documents';
+import { claudeMode, toolsForClaudeMode, type ClaudeMode } from './modes';
+
+/**
+ * The `--settings` of a Turn. Setting sources are off (`--setting-sources ''`), so no owner or
+ * project permission is ever merged. SpecFlow adds no Bash rule of its own: the native permission
+ * mode decides each Bash call as it does in Claude Code (`auto`: its classifier; `manual` and
+ * `acceptEdits`: its read-only check, else a prompt; `dontAsk`: refused; `plan`: no Bash tool),
+ * and only what Claude itself would ask reaches the host. No `Bash(...)` rule is ever forwarded as a
+ * native `allow` (Claude matches it as a prefix); an allowlisted product CLI command that Claude
+ * asks about is approved by the host instead (see `createClaudeOperation`). Only the scoped
+ * read-tool rules of an agent step execution Turn become native `allow` rules.
+ */
+export function claudeSettings(permissions?: { readonly allow: readonly string[] }): string {
+  const allow = (
+    permissions ? partitionAgentPermissionRules(permissions.allow).accepted : []
+  ).filter((rule) => !rule.startsWith('Bash('));
+
+  return JSON.stringify({
+    disableAllHooks: true,
+    ...(allow.length > 0 ? { permissions: { allow } } : {}),
+    env: { CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR: '1' },
+  });
+}
 
 export function claudeArguments(
   selection?: Invocation['selection'],
   context?: Invocation['providerContext'],
+  permissions?: Invocation['permissions'],
 ): string[] {
   const mode = claudeMode(selection);
 
@@ -33,7 +57,7 @@ export function claudeArguments(
     '--setting-sources',
     '',
     '--settings',
-    '{"disableAllHooks":true,"permissions":{"ask":["Bash"]},"env":{"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR":"1"}}',
+    claudeSettings(permissions),
     '--disable-slash-commands',
     '--no-chrome',
     ...(context ? [context.resume ? '--resume' : '--session-id', context.nativeSessionId] : []),
@@ -42,12 +66,25 @@ export function claudeArguments(
   ];
 }
 
-export function claudeModels(payload: Record<string, unknown>): ProviderDescriptor['models'] {
+/**
+ * The models of a native mode. For `auto`, when Claude reports `supportsAutoMode` (2.1.312), only
+ * the models it marks: Claude would run any other model in `default` instead, so the choice is
+ * refused before dispatch. A Claude that reports the field for no model keeps every model; a
+ * fallback there is still refused by its `system/status` frame (`verifyClaudeStatus`).
+ */
+export function claudeModels(
+  payload: Record<string, unknown>,
+  modeId?: ClaudeMode['modeId'],
+): ProviderDescriptor['models'] {
   if (!Array.isArray(payload.models) || payload.models.length > 64) {
     throw new ClaudeProtocolError();
   }
 
-  const models = payload.models.map((entry) => {
+  const reported = payload.models.some((entry) => 'supportsAutoMode' in object(entry));
+  const entries = payload.models.filter(
+    (entry) => modeId !== 'auto' || !reported || object(entry).supportsAutoMode === true,
+  );
+  const models = entries.map((entry) => {
     const model = object(entry);
     if (
       typeof model.value !== 'string' ||
@@ -70,13 +107,57 @@ export function claudeModels(payload: Record<string, unknown>): ProviderDescript
       throw new ClaudeProtocolError();
     }
 
-    return { modelId: model.value, title: model.displayName, efforts: efforts as string[] };
+    const resolved =
+      typeof model.resolvedModel === 'string' &&
+      model.resolvedModel !== model.value &&
+      /^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$/.test(model.resolvedModel)
+        ? model.resolvedModel
+        : undefined;
+
+    return {
+      modelId: model.value,
+      title: model.displayName,
+      efforts: efforts as string[],
+      ...(resolved ? { resolvedModelId: resolved } : {}),
+    };
   });
   if (new Set(models.map((model) => model.modelId)).size !== models.length) {
     throw new ClaudeProtocolError();
   }
 
   return models;
+}
+
+/**
+ * A launch the restricted profile refuses, naming the field that failed. Still a protocol error (the
+ * process is stopped and the Turn is lost as rejected); its message becomes the provider's reason.
+ */
+export class ClaudeRestrictionError extends ClaudeProtocolError {
+  constructor(reason: string) {
+    super(reason);
+    this.name = 'ClaudeRestrictionError';
+    this.message = reason;
+  }
+}
+
+const builtinPlugins = ['cc-plugin-agents-md', 'cc-plugin-telemetry', 'cc-plugin-plugin-authoring'];
+
+/**
+ * Claude reports the permission mode it applies in `system/status`, also before `system/init`. It
+ * falls back silently to another mode (2.1.312: `default` for a model without auto mode); a Turn
+ * never runs in a mode other than the admitted one.
+ */
+export function verifyClaudeStatus(
+  frame: Record<string, unknown>,
+  selection?: Invocation['selection'],
+  version = 'of an unknown version',
+) {
+  const mode = claudeMode(selection);
+  if (frame.permissionMode !== undefined && frame.permissionMode !== mode.nativeMode) {
+    throw new ClaudeRestrictionError(
+      `Claude ${version} switched to permission mode ${shown(frame.permissionMode)} instead of ${mode.nativeMode}.`,
+    );
+  }
 }
 
 export function verifyClaudeInit(
@@ -87,36 +168,70 @@ export function verifyClaudeInit(
 ) {
   const mode = claudeMode(selection);
   const requiredTools = toolsForClaudeMode(mode);
-  const tools = frame.tools;
-  if (
-    frame.type !== 'system' ||
-    frame.subtype !== 'init' ||
-    (expectedVersion !== undefined && claudeVersion(frame) !== expectedVersion) ||
-    typeof frame.cwd !== 'string' ||
-    resolve(frame.cwd) !== resolve(workspace) ||
-    frame.permissionMode !== mode.nativeMode ||
-    !Array.isArray(tools) ||
-    requiredTools.some((tool) => !tools.includes(tool)) ||
-    tools.some(
-      (tool) => typeof tool !== 'string' || ![...requiredTools, 'EndConversation'].includes(tool),
-    ) ||
-    !Array.isArray(frame.mcp_servers) ||
-    frame.mcp_servers.length !== 0 ||
-    (frame.plugins !== undefined &&
-      (!Array.isArray(frame.plugins) ||
-        frame.plugins.some((value) => {
-          const plugin = object(value);
+  const version = claudeVersion(frame) ?? 'of an unknown version';
+  if (frame.type !== 'system' || frame.subtype !== 'init') {
+    throw new ClaudeRestrictionError(
+      `Claude ${version} sent ${shown(frame.type)} output before its system/init frame.`,
+    );
+  }
 
-          return (
-            !['cc-plugin-agents-md', 'cc-plugin-telemetry', 'cc-plugin-plugin-authoring'].includes(
-              String(plugin.name),
-            ) ||
-            plugin.path !== 'builtin' ||
-            plugin.source !== String(plugin.name) + '@builtin'
-          );
-        })))
-  ) {
-    throw new ClaudeProtocolError();
+  if (expectedVersion !== undefined && claudeVersion(frame) !== expectedVersion) {
+    throw new ClaudeRestrictionError(
+      `Claude reported version ${version} at init but ${expectedVersion} at initialize.`,
+    );
+  }
+
+  if (typeof frame.cwd !== 'string' || resolve(frame.cwd) !== resolve(workspace)) {
+    throw new ClaudeRestrictionError(
+      `Claude ${version} started in another working directory than the Turn's workspace.`,
+    );
+  }
+
+  if (frame.permissionMode !== mode.nativeMode) {
+    throw new ClaudeRestrictionError(
+      `Claude ${version} started in permission mode ${shown(frame.permissionMode)} instead of ${mode.nativeMode}.`,
+    );
+  }
+
+  const tools: unknown[] = Array.isArray(frame.tools) ? frame.tools : [];
+  const missing = requiredTools.filter((tool) => !tools.includes(tool));
+  const extra = tools.filter(
+    (tool) => typeof tool !== 'string' || ![...requiredTools, 'EndConversation'].includes(tool),
+  );
+  if (!Array.isArray(frame.tools) || missing.length || extra.length) {
+    throw new ClaudeRestrictionError(
+      `Claude ${version} reported other tools than the restricted set` +
+        (missing.length ? `; missing ${missing.join(', ')}` : '') +
+        (extra.length ? `; not allowed ${extra.slice(0, 8).map(shown).join(', ')}` : '') +
+        '.',
+    );
+  }
+
+  if (!Array.isArray(frame.mcp_servers) || frame.mcp_servers.length !== 0) {
+    throw new ClaudeRestrictionError(
+      `Claude ${version} reported MCP servers, but the restricted profile allows none.`,
+    );
+  }
+
+  if (frame.plugins === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(frame.plugins)) {
+    throw new ClaudeRestrictionError(`Claude ${version} reported its plugins in an unknown form.`);
+  }
+
+  for (const value of frame.plugins as unknown[]) {
+    const plugin = object(value);
+    if (
+      !builtinPlugins.includes(String(plugin.name)) ||
+      plugin.path !== 'builtin' ||
+      plugin.source !== String(plugin.name) + '@builtin'
+    ) {
+      throw new ClaudeRestrictionError(
+        `Claude ${version} loaded the plugin ${shown(plugin.name)}, which is not allowed.`,
+      );
+    }
   }
 }
 

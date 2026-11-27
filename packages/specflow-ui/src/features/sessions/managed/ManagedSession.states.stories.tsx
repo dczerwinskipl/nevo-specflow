@@ -4,7 +4,12 @@ import { expect, fn, userEvent, within, waitFor } from 'storybook/test';
 import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { ManagedSession } from './ManagedSession';
 import type { ManagedSessionsApi } from './api';
-import { fixtureApi, fixtureSessionId, sessionFixture } from './managedSession.stories-support';
+import {
+  fixtureApi,
+  fixtureSessionId,
+  providerFixture,
+  sessionFixture,
+} from './managedSession.stories-support';
 import {
   genericSpecLevelSnapshot,
   richDefaultApi,
@@ -62,17 +67,20 @@ import {
  * Context Secondary must leave behind a visible, clickable way to reopen it — not only on narrow
  * layouts. Context is the one tab of the Secondary rail there, with no close of its own and no
  * panel close beside it (secondary-navigation.md, "Root tabs and local navigation"): the
- * Primary header's persistent "Panel boczny" toggle (aria-pressed mirrors the panel) hides and
+ * Primary header's persistent "Kontekst" toggle (aria-pressed mirrors the panel) hides and
  * shows the WHOLE side panel — Context and any opened tab — and showing it again restores both.
  * Verified in every state story below that uses the Context mock view model, at 1440px.
  */
 async function verifyContextReopens(canvasElement: HTMLElement) {
+  // The side panel and its toggle exist from the split width on: the runner's frame is resized to
+  // the desktop width the story's `globals` name (the static viewport global is not applied there).
+  await settleViewport(1440, 900);
   const canvas = within(canvasElement);
   const contextTab = () => canvas.queryByRole('tab', { name: 'Kontekst' });
   await waitFor(() => expect(contextTab()).toBeVisible());
   await expect(canvas.queryByRole('button', { name: 'Zamknij panel dodatkowy' })).toBeNull();
   await expect(canvas.queryByRole('button', { name: 'Zamknij Kontekst' })).toBeNull();
-  const toggle = await canvas.findByRole('button', { name: 'Panel boczny' });
+  const toggle = await canvas.findByRole('button', { name: 'Kontekst' });
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await userEvent.click(toggle);
   await waitFor(() => expect(contextTab()).not.toBeInTheDocument());
@@ -273,7 +281,7 @@ export const TerminalFailure: Story = {
       within(attentionItem).queryByRole('img', { name: 'Wymaga uwagi' }),
     ).not.toBeInTheDocument();
 
-    // Item 4 regression: the outcome entry's icon names the specific outcome, not the generic
+    // The outcome names the specific outcome in words beside its danger icon, not the generic
     // entry-kind label every outcome used to share.
     const outcomeEntry = canvasElement.querySelector('[data-entry-id="outcome-1"]');
     if (!outcomeEntry) {
@@ -281,8 +289,9 @@ export const TerminalFailure: Story = {
     }
 
     await expect(
-      within(outcomeEntry as HTMLElement).getByRole('img', { name: 'Niepowodzenie' }),
-    ).toBeInTheDocument();
+      within(outcomeEntry as HTMLElement).getByText('Tura zakończona niepowodzeniem'),
+    ).toBeVisible();
+    await expect(outcomeEntry.querySelector('.text-status-danger svg')).not.toBeNull();
   },
 };
 
@@ -491,13 +500,19 @@ async function verifyWorkBlocks(canvasElement: HTMLElement) {
     await expect(block.querySelectorAll('button, a, [tabindex]')).toHaveLength(1);
     const button = block.querySelector('button')!;
     await expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth + 1);
+    // A light row: the icon and the first line (with its chevron) share one centre line, in every
+    // state; a failure or live line goes under it.
+    const centre = (rect: DOMRect) => rect.top + rect.height / 2;
+    const icon = centre(button.firstElementChild!.getBoundingClientRect());
+    const firstLine = block.querySelector('[data-work-block-text] > *')!.getBoundingClientRect();
+    await expect(Math.abs(centre(firstLine) - icon)).toBeLessThanOrEqual(1);
+    await expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(24);
   }
 
   await expect(canvas.getAllByText('Tura przerwana')).toHaveLength(1);
   await expect(canvas.queryByText('Przerwano')).not.toBeInTheDocument();
-  await expect(canvas.getByText('Niepowodzenie')).toBeVisible();
+  await expect(canvas.getByText('Tura zakończona niepowodzeniem')).toBeVisible();
   await expect(canvas.getByText('Nie powiodło się: 1 uruchomienie testów')).toBeVisible();
-  await expect(canvas.getByText('4 działania narzędzia')).toBeVisible();
   await expect(canvas.getByText(/i więcej$/)).toBeVisible();
   await expect(canvas.getByText('Myśli…')).toBeVisible();
   // The live line is the only spinner in the conversation; the header defers to it.
@@ -508,7 +523,11 @@ async function verifyWorkBlocks(canvasElement: HTMLElement) {
   // on mobile: "2 / odczyty" split across two lines) — a literal-space regex stopped matching.
   await userEvent.click(canvas.getByRole('button', { name: /4\sodczyty\s·\s1\swyszukiwanie/ }));
   // That Turn's own Work history: its 5 tool actions, and nothing from other Turns.
-  await waitFor(() => expect(canvas.getByText('5 elementów przebiegu')).toBeVisible());
+  await waitFor(() =>
+    expect(canvasElement.querySelector('[data-work-counts]')).toHaveTextContent(
+      /^5\sdziałań narzędzia/,
+    ),
+  );
 }
 
 export const WorkSummaryStates: Story = {
@@ -697,5 +716,114 @@ export const ContextLoadingToReady: Story = {
     const after = workSectionTop(canvasElement);
     console.info('Work section top before/after', before, after);
     await expect(Math.abs(after - before)).toBeLessThanOrEqual(0.5);
+  },
+};
+
+/**
+ * A Send the Runtime has not answered yet (it may take minutes): the Composer shows it at once,
+ * the message stays in the read-only editor and Send cannot run twice.
+ */
+export const SendPending: Story = {
+  tags: ['contract'],
+  args: {
+    owner: 'send-pending-story',
+    api: { ...fixtureApi(sessionFixture()), start: () => new Promise<never>(() => undefined) },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByLabelText('Wiadomość');
+    await userEvent.type(editor, 'Sprawdź specyfikację');
+    await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
+    await expect(await canvas.findByRole('status', { name: 'Wysyłanie…' })).toBeVisible();
+    await expect(editor).toBeDisabled();
+    await expect(editor).toHaveValue('Sprawdź specyfikację');
+  },
+};
+
+/** A Turn SpecFlow stopped: one outcome event, its notice as the cause (said once, not as a row of
+ * its own), and the Composer still usable. */
+const stopped = sessionFixture();
+stopped.history = { hasOlder: false };
+stopped.entries = [
+  stopped.entries[0]!,
+  {
+    ...stopped.entries[0]!,
+    id: 'stopped-notice',
+    ordinal: 2,
+    kind: 'commentary',
+    notice: { severity: 'error' },
+    text: {
+      text: 'SpecFlow stopped the Claude process because it sent output that SpecFlow does not support.',
+      complete: true,
+    },
+  },
+  {
+    ...stopped.entries[0]!,
+    id: 'stopped-outcome',
+    ordinal: 3,
+    kind: 'outcome',
+    text: { text: 'interrupted', complete: true },
+    error: {
+      code: 'PROCESS_STOPPED',
+      message: 'The agent process stopped while its outcome was not recorded.',
+    },
+  },
+];
+export const StoppedProcessNotice: Story = {
+  tags: ['contract'],
+  args: { owner: 'stopped-notice-story', api: fixtureApi(stopped) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(/sent output that SpecFlow does not support/),
+    ).toBeVisible();
+    await expect(canvas.getAllByText(/sent output that SpecFlow does not support/)).toHaveLength(1);
+    await expect(canvas.getByText('Tura przerwana')).toBeVisible();
+    await expect(canvas.queryByText('Błąd SpecFlow.')).toBeNull();
+    await expect(canvas.getByLabelText('Wiadomość')).toBeEnabled();
+  },
+};
+
+/** The Session's saved work mode does not run its model (Claude auto + Haiku 4.5): said before
+ * sending, and Send stays off until another model or mode is picked. */
+const pairProvider = providerFixture();
+pairProvider.providerModes = pairProvider.providerModes!.map((mode) =>
+  mode.modeId === 'default' ? { ...mode, modelIds: ['mock-standard'] } : mode,
+);
+const pairSnapshot = sessionFixture();
+pairSnapshot.session = { ...pairSnapshot.session, modelId: 'mock-fast', providerModeId: 'default' };
+export const ModeModelUnsupported: Story = {
+  tags: ['contract'],
+  args: {
+    owner: 'mode-model-story',
+    api: {
+      ...fixtureApi(pairSnapshot),
+      providers: () => Promise.resolve({ items: [pairProvider] }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(await canvas.findByLabelText('Wiadomość'), 'Sprawdź specyfikację');
+    await expect(await canvas.findByText(/nie obsługuje modelu Fast/)).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Wyślij' })).toBeDisabled();
+  },
+};
+
+/** A Send whose answer was lost: Retry confirms the same request, and checking the Session frees
+ * the message when it did not arrive. */
+export const SendUnconfirmed: Story = {
+  tags: ['contract'],
+  args: {
+    owner: 'send-unconfirmed-story',
+    api: { ...fixtureApi(sessionFixture()), start: () => Promise.reject(new Error('Lost')) },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByLabelText('Wiadomość');
+    await userEvent.type(editor, 'Sprawdź specyfikację');
+    await userEvent.click(canvas.getByRole('button', { name: 'Wyślij' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Sprawdź sesję' }));
+    await waitFor(() => expect(editor).toBeEnabled());
+    await expect(editor).toHaveValue('Sprawdź specyfikację');
   },
 };

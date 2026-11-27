@@ -58,7 +58,13 @@ export type TaskActionUnavailableReason =
    * The Specification's workflow ended (completed or abandoned): its Tasks stay as they are for
    * audit, so they are neither edited nor removed (`WORKFLOW_SPECIFICATION_ENDED`).
    */
-  | 'specification-ended';
+  | 'specification-ended'
+  /**
+   * With Git on, an agent attempt of the Specification waits for its own commit (D15): no workflow
+   * write of the Specification is admitted until it ran (`WORKFLOW_ATTEMPT_COMMIT_REQUIRED`;
+   * `ActionProjection.attemptCommit` names the attempt).
+   */
+  | 'attempt-commit';
 
 /** The owner's Task lifecycle actions (`setTaskStatus`, `editTask`, `removeTask`). */
 export interface TaskLifecycleActions {

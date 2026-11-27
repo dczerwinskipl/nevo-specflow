@@ -8,6 +8,7 @@ import {
   type TransitionTarget,
   type WorkflowPin,
 } from '@nevo/workflow';
+import type { AgentStepContext } from './agent-step-context';
 import { isTaskTypeAllowed, taskReadiness, type TaskReadiness } from '../tasks/tasks';
 import {
   taskPosition,
@@ -106,6 +107,11 @@ export interface StepContext {
     readonly tasks?: { readonly rule: string };
   };
   readonly handoff?: Handoff;
+  /**
+   * A transition hand-off as people name it, from the pinned definition: the title of the step that
+   * handed over and the display label of the transition it took (when the definition gives one).
+   */
+  readonly handoffNames?: { readonly fromTitle: string; readonly label?: string };
   readonly archetype?: {
     readonly id: string;
     readonly title: string;
@@ -143,9 +149,16 @@ export interface StepContext {
    * `existingTasks`. Nothing can be decided on them until their record is restored from Git.
    */
   readonly broken?: readonly string[];
+  /**
+   * For an agent attempt: the documents, the document types and the resolved Task context as
+   * references with digests (D13).
+   */
+  readonly agent?: AgentStepContext;
 }
 
 export interface StepContextInput {
+  /** The agent data, read by `gatherAgentContext`; compiling does no I/O. */
+  readonly agent?: AgentStepContext;
   readonly subject: WorkflowSubject;
   readonly run: WorkflowRun;
   /** The definition the run is pinned to (the titles of the steps the transitions lead to). */
@@ -175,6 +188,14 @@ export function compileStepContext(input: StepContextInput): StepContext {
   });
   const task = input.task;
   const type = task ? catalogue.taskType(task.type) : undefined;
+  const handoffStep =
+    handoff?.kind === 'transition'
+      ? input.definition.steps.find((candidate) => candidate.id === handoff.from.step)
+      : undefined;
+  const handoffLabel =
+    handoff?.kind === 'transition' && handoffStep?.kind === 'work'
+      ? handoffStep.transitions.find((transition) => transition.id === handoff.transition)?.label
+      : undefined;
 
   return {
     subject: input.subject,
@@ -188,6 +209,14 @@ export function compileStepContext(input: StepContextInput): StepContext {
         : {}),
     },
     ...(handoff ? { handoff } : {}),
+    ...(handoffStep
+      ? {
+          handoffNames: {
+            fromTitle: handoffStep.title,
+            ...(handoffLabel !== undefined ? { label: handoffLabel } : {}),
+          },
+        }
+      : {}),
     ...(archetype
       ? {
           archetype: {
@@ -235,5 +264,6 @@ export function compileStepContext(input: StepContextInput): StepContext {
           broken: input.broken,
         }
       : {}),
+    ...(input.agent ? { agent: input.agent } : {}),
   };
 }

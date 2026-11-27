@@ -12,10 +12,16 @@ import { stubLayoutApis } from '../../../../test-support/app/stubLayoutApis';
 import { fakeTaskAuthoringApi } from '../authoring/authoring.test-support';
 import { specificationActionsKey } from '../read-model/specificationActions';
 import type { WorkflowExecutionApi } from './api';
-import { SPEC, dominik, withExits } from './projections.stories-support';
+import { SPEC, dominik, taskWorkflowProjection, withExits } from './projections.stories-support';
+import { NowBlock } from './NowBlock';
 import { WorkflowNow } from './WorkflowNow';
+import type { NowLinks } from './StartBlockerLines';
+import type { FeedbackRef } from './feedback/feedbackRef';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const never = () => new Promise<never>(() => undefined);
 
@@ -29,6 +35,14 @@ function renderNow(ui: ReactNode, start: WorkflowExecutionApi['start'] = vi.fn(n
       returnTo: vi.fn(never),
       reevaluateWait: vi.fn(never),
       abandon: vi.fn(never),
+      checkAgentExecution: vi.fn(never),
+      startAgentExecution: vi.fn(never),
+      stopAgentExecution: vi.fn(never),
+      retryAttemptCommit: vi.fn(never),
+      confirmResult: vi.fn(never),
+      takeOverAgentExecution: vi.fn(never),
+      history: vi.fn(never),
+      rejectResult: vi.fn(never),
       closePreview: vi.fn(never),
       closeOccupancy: vi.fn(never),
       close: vi.fn(never),
@@ -91,16 +105,18 @@ function breakdown(attempt = 1): WorkflowActionProjection {
 function OverviewNow({
   projection,
   onNewTask,
+  links = {},
 }: {
   readonly projection: WorkflowActionProjection;
   readonly onNewTask?: () => void;
+  readonly links?: NowLinks;
 }) {
   return (
     <WorkflowNow
       subject={{ specId: SPEC }}
       projection={projection}
       headingId="now"
-      links={{}}
+      links={links}
       artifactOptions={[]}
       specification={{ specId: SPEC, ...(onNewTask ? { onNewTask } : {}) }}
     />
@@ -108,6 +124,94 @@ function OverviewNow({
 }
 
 describe('the Specification Now block', () => {
+  const changesRequested = (feedback: string): WorkflowActionProjection => ({
+    ...breakdown(2),
+    handoff: {
+      kind: 'transition',
+      from: { step: 'review', attempt: 1, title: 'Review the breakdown', actor: dominik },
+      transition: 'changes-requested',
+      label: 'Changes requested',
+      result: 'fail',
+      feedback,
+      artifacts: [],
+    },
+  });
+  const findings =
+    'Two findings need changes: the detached HEAD case and the skill hold.\n\n' +
+    '1. CONFLICT, detached HEAD: the edge case says install writes and notes it did not commit.';
+
+  it('says a review requested changes and opens its feedback in the Feedback view', () => {
+    const refs: FeedbackRef[] = [];
+    renderNow(
+      <OverviewNow
+        projection={changesRequested(findings)}
+        links={{ feedback: (ref) => refs.push(ref) }}
+      />,
+    );
+
+    const handoff = document.querySelector<HTMLElement>('[data-now-handoff]')!;
+    expect(handoff.dataset.handoffTone).toBe('blocking');
+    expect(within(handoff).getByText('Changes requested')).toBeTruthy();
+    // No preview in place: one way to the whole feedback.
+    expect(within(handoff).queryByText(/Two findings need changes/)).toBeNull();
+    expect(
+      within(handoff).queryByRole('button', { name: /Show feedback|Open full feedback/ }),
+    ).toBeNull();
+    fireEvent.click(within(handoff).getByRole('button', { name: 'View feedback' }));
+    expect(refs).toEqual([{ step: 'review', attempt: 1 }]);
+  });
+
+  it('names a return by when it happened, and has no View feedback without feedback', () => {
+    const refs: FeedbackRef[] = [];
+    const { unmount } = renderNow(
+      <OverviewNow
+        projection={{
+          ...breakdown(2),
+          handoff: { kind: 'return', at: '2026-11-14T10:00:00Z', feedback: findings },
+        }}
+        links={{ feedback: (ref) => refs.push(ref) }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'View feedback' }));
+    expect(refs).toEqual([{ returnedAt: '2026-11-14T10:00:00Z' }]);
+    unmount();
+
+    renderNow(
+      <OverviewNow
+        projection={{ ...breakdown(2), handoff: { kind: 'return', at: '2026-11-14T10:00:00Z' } }}
+        links={{ feedback: (ref) => refs.push(ref) }}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'View feedback' })).toBeNull();
+  });
+
+  it('says the last hand-off line by line: the step, who and when', () => {
+    renderNow(
+      <OverviewNow
+        projection={{
+          ...breakdown(),
+          handoff: {
+            kind: 'transition',
+            from: { step: 'design', attempt: 1, title: 'Design the solution' },
+            transition: 'done',
+            label: 'Solution designed',
+            result: 'done',
+            feedback: 'Covers every acceptance criterion.',
+            artifacts: [],
+          },
+        }}
+        links={{ feedback: () => undefined }}
+      />,
+    );
+
+    const handoff = document.querySelector<HTMLElement>('[data-now-handoff]')!;
+    expect(handoff.dataset.handoffTone).toBe('done');
+    expect(within(handoff).getByText('Solution designed')).toBeTruthy();
+    expect(within(handoff).getByText('Design the solution')).toBeTruthy();
+    expect(within(handoff).queryByText('Covers every acceptance criterion.')).toBeNull();
+    expect(within(handoff).getByRole('button', { name: 'View feedback' })).toBeTruthy();
+  });
+
   it('is a card that becomes a flush band below a 40rem page (a container query)', () => {
     renderNow(<OverviewNow projection={breakdown()} />);
 
@@ -121,8 +225,10 @@ describe('the Specification Now block', () => {
 
     const track = screen.getByRole('img', { name: 'Step 4 of 7: Break the solution down' });
     expect(track.getAttribute('data-progress-representation')).toBe('position');
-    const label = screen.getByText('Step 4 of 7 · next: Review the breakdown');
+    // The position beside the step's title; the next step is its tooltip.
+    const label = screen.getByText('Step 4 of 7');
     expect(label.getAttribute('aria-hidden')).toBe('true');
+    expect(label.getAttribute('title')).toBe('Step 4 of 7 · next: Review the breakdown');
 
     const region = screen.getByRole('region', { name: 'Now' });
     expect(within(region).getByText(/^In progress since .+ · started by /)).toBeTruthy();
@@ -139,6 +245,47 @@ describe('the Specification Now block', () => {
     expect(region.querySelector('[data-now-done-when]')).toBeNull();
     expect(within(region).queryByText(/Done (with .+ )?when/)).toBeNull();
     expect(within(region).queryByText(/needed to (finish|start)/i)).toBeNull();
+  });
+
+  it('says in one sentence who does the step now and what is expected of the owner', () => {
+    const you = { class: 'human', details: { actorId: 'runtime:trusted-local', trust: 'local' } };
+    const owned = breakdown(3);
+    const taken = {
+      ...owned,
+      position: {
+        ...owned.position,
+        attempt: {
+          number: 3,
+          startedAt: new Date().toISOString(),
+          actor: you,
+          takenOverFrom: { attempt: 2 },
+        },
+      },
+    } as WorkflowActionProjection;
+    const view = renderNow(<OverviewNow projection={taken} />);
+
+    expect(screen.getByText(/^You took this step over from the agent.*finish it\.$/)).toBeTruthy();
+    view.unmount();
+
+    // Hand to agent is offered: the line says so, and why it cannot run now when it cannot.
+    const handable = {
+      ...taken,
+      actions: {
+        ...taken.actions,
+        handToAgent: {
+          step: 'breakdown',
+          attempt: 3,
+          agent: { kind: 'unavailable', reason: 'provider-not-chosen' },
+        },
+      },
+    } as WorkflowActionProjection;
+    const handView = renderNow(<OverviewNow projection={handable} />);
+    expect(screen.getByText(/or hand it back to the agent in a new attempt\./)).toBeTruthy();
+    expect(screen.getByText(/Hand to agent cannot run now: No agent is chosen for/)).toBeTruthy();
+    handView.unmount();
+
+    renderNow(<OverviewNow projection={breakdown(2)} />);
+    expect(screen.getByText('dominik is doing this step; you can follow it here.')).toBeTruthy();
   });
 
   it('names the attempt from the second one on', () => {
@@ -288,7 +435,8 @@ describe('the Specification Now block', () => {
 it('keeps Start pending and its refusal across remounts, scoped to its subject, through refresh', async () => {
   const projection = {
     ...breakdown(),
-    position: { kind: 'not-started' },
+    // A real not-started position (with its pin preview), as the contract requires.
+    position: taskWorkflowProjection('first-start').position,
     actions: { start: {} },
   } as WorkflowActionProjection;
   let rejectStart!: (error: Error) => void;
@@ -367,4 +515,90 @@ it('keeps Start pending and its refusal across remounts, scoped to its subject, 
   } finally {
     unsubscribe();
   }
+});
+
+describe('the shared Now composition', () => {
+  /** A Task that never started, held by two dependencies that are still open. */
+  function waitingForDependencies(): WorkflowActionProjection {
+    const held = taskWorkflowProjection('on-hold');
+    if (held.position.kind !== 'blocked') {
+      throw new Error('Expected a blocked position.');
+    }
+
+    return {
+      ...held,
+      position: {
+        ...held.position,
+        blockers: [{ kind: 'dependencies', waitingFor: ['t-01', 't-02'], unsatisfiable: [] }],
+      },
+    };
+  }
+
+  it('leads with the actionable readiness, the lifecycle position second', () => {
+    const dependencies = vi.fn();
+    renderNow(
+      <NowBlock projection={waitingForDependencies()} headingId="now" links={{ dependencies }} />,
+    );
+    const now = screen.getByRole('region', { name: 'Now' });
+
+    const lead = within(now).getByText('Waiting for dependencies');
+    expect(lead.closest('p')?.className).toContain('text-status-attention');
+    expect(within(now).getByText('Not started · First step · Design')).toBeTruthy();
+    expect(within(now).getByText('2 dependencies remaining')).toBeTruthy();
+    // Said once: no second "Waiting for 2 dependencies" blocker line.
+    expect(within(now).queryByText(/Waiting for 2 dependencies/)).toBeNull();
+    fireEvent.click(within(now).getByRole('button', { name: 'View dependencies' }));
+    expect(dependencies).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the hold first when the Task is on hold, whatever else holds it', () => {
+    renderNow(
+      <NowBlock
+        projection={waitingForDependencies()}
+        headingId="now"
+        links={{}}
+        hold={{ reason: 'Paused by the owner.' }}
+      />,
+    );
+
+    expect(screen.getByText('On hold')).toBeTruthy();
+    expect(screen.queryByText('Waiting for dependencies')).toBeNull();
+  });
+
+  it('names the agent that holds the step and opens its Session from the executor row', () => {
+    const projection = breakdown();
+    if (projection.position.kind !== 'active') {
+      throw new Error('Expected an active position.');
+    }
+
+    const held: WorkflowActionProjection = {
+      ...projection,
+      position: {
+        ...projection.position,
+        attempt: {
+          ...projection.position.attempt,
+          actor: {
+            class: 'agent',
+            details: {
+              provider: 'claude',
+              providerTitle: 'Claude Code',
+              model: 'claude-opus-5-5',
+              modelTitle: 'Opus 5.5',
+              sessionId: 'session-7',
+            },
+          },
+        },
+      },
+    };
+    renderNow(<NowBlock projection={held} headingId="now" links={{}} />);
+    const executor = document.querySelector<HTMLElement>('[data-now-executor]')!;
+
+    expect(within(executor).getByRole('img', { name: 'Claude Code · Opus 5.5' })).toBeTruthy();
+    expect(executor.querySelector('[data-now-executor-state="success"]')?.textContent).toMatch(
+      /^Working since /,
+    );
+    expect(within(executor).getByRole('link', { name: 'Open session' })).toBeTruthy();
+    // The executor replaces the quiet "started by" line: the agent is named once.
+    expect(screen.queryByText(/started by/)).toBeNull();
+  });
 });

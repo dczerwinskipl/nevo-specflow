@@ -41,6 +41,7 @@ import { authorizeProviderCatalogue, authorizedProviderModes } from './catalogue
 import { createSessionStreams } from './stream';
 import { registerTelemetryRoutes } from './telemetry';
 import { registerSessionManagementRoutes } from './management';
+import { agentStepReader, type AgentStepOrigins } from './agent-step';
 import { registerSessionErrorHandling } from './error-handling';
 import {
   capabilityRefusal,
@@ -105,8 +106,13 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
     demoList?: { source: SessionListSource; projectId: string };
     /** Demo mode: the read-only reads of the managed Session screen (no coordinator). */
     demoReads?: DemoManagedSessionReads;
+    /** The step and attempt of agent step execution Sessions (`agentStep` of every Session read). */
+    agentStepOrigins?: AgentStepOrigins;
+    /** Why an owner Turn cannot start in a Session now (`AgentTurnAdmission.ownerTurnHold`). */
+    ownerTurnHold?: (specId: string, sessionId: string) => Promise<string | undefined>;
   },
 ): void {
+  const agentStepOf = agentStepReader(options.agentStepOrigins);
   const streams = createSessionStreams(app);
   const demoReads = options.coordinator ? undefined : options.demoReads;
   app.register((feature, _options, registered) => {
@@ -125,7 +131,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       const identity = await authorize(request, true);
       const response = request.body as RespondInteraction;
       if (continuation && response.kind === 'permission' && response.decision === 'deny') {
-        return;
+        return identity;
       }
 
       const snapshot = await coordinator().snapshot(
@@ -139,6 +145,8 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
         // Store-derived identity; execute-write never takes the home Specification's scope.
         authorizeSessionWrite(request, identity);
       }
+
+      return identity;
     }
 
     function authorizeCreate(
@@ -211,13 +219,30 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
             response: { 200: SessionSnapshotSchema, ...capabilityRefusal },
           },
         },
-        async (request) =>
-          effective(
+        async (request) => {
+          const identity = authorizedIdentity(request, ids(request).sessionId);
+          const snapshot = effective(
             await coordinator().snapshot(ids(request).sessionId, actor(request)),
             request,
             coordinator().provider,
-            authorizedIdentity(request, ids(request).sessionId),
-          ),
+            identity,
+          );
+          const agentStep = await agentStepOf(request, identity);
+          if (agentStep) {
+            snapshot.session.agentStep = agentStep;
+          }
+
+          // Said before the owner writes, not only when the send is refused (the same hold as Start a Turn).
+          const hold =
+            identity.specId !== undefined && options.ownerTurnHold
+              ? await options.ownerTurnHold(identity.specId, identity.sessionId)
+              : undefined;
+          if (hold !== undefined) {
+            snapshot.session.ownerMessageHold = { reason: 'agent-attempt-open', message: hold };
+          }
+
+          return snapshot;
+        },
       );
       feature.get(
         '/api/sessions/:sessionId/history',
@@ -348,6 +373,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
             ids(request).sessionId,
             actor(request),
             query(request).after,
+            agentStepOf,
           );
         },
       );
@@ -359,7 +385,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       registerManagedReads();
     }
 
-    registerSessionManagementRoutes(feature, coordinator);
+    registerSessionManagementRoutes(feature, coordinator, agentStepOf);
     registerSessionListRoute(
       feature,
       () =>
@@ -367,6 +393,7 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
           ? storeSessionListSource(coordinator())
           : options.demoList.source,
       () => (options.coordinator ? options.projectId! : (options.demoList?.projectId ?? '')),
+      options.coordinator ? options.agentStepOrigins : undefined,
     );
 
     feature.post(
@@ -395,7 +422,18 @@ export function registerSessionRoutes<RawServer extends RawServerBase>(
       '/api/sessions/:sessionId/turns',
       {
         bodyLimit: 256 * 1024,
-        preHandler: (request) => authorizeExecution(request),
+        preHandler: async (request) => {
+          // Before send: the Session of an open agent attempt takes no owner message (the attempt's
+          // own Turns start in-process, never through this route).
+          const identity = await authorizeExecution(request);
+          const hold =
+            identity.specId !== undefined && options.ownerTurnHold
+              ? await options.ownerTurnHold(identity.specId, identity.sessionId)
+              : undefined;
+          if (hold !== undefined) {
+            throw new SessionError('TURN_CONFLICT', hold, { reason: 'agent-attempt-open' });
+          }
+        },
         config: { openApiResponses: sessionRouteErrors.start },
         schema: {
           tags: ['Sessions'],

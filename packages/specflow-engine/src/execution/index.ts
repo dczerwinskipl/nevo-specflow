@@ -12,5 +12,6 @@ export {
   markWorkspaceExecutionUnknown,
   abandonWorkspaceExecutionAdmission,
   settleWorkspaceExecution,
+  settleWorkspaceExecutionInSection,
 } from './operations';
 export type { WorkspaceExecutionTarget } from './operations';

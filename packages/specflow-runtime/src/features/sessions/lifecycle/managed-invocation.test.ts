@@ -256,3 +256,150 @@ it('refuses to cross the dispatch barrier before the process evidence and the cl
   expect(f.claim.dispatch).not.toHaveBeenCalled();
   expect(f.phase()).toBe('settled');
 });
+
+/** A Turn of a Session associated with Specification S1. */
+function inSpecification(f: ReturnType<typeof fixture>) {
+  f.options.invocation.executionContext = {
+    ...f.options.invocation.executionContext,
+    specId: 'S1',
+  } as Invocation['executionContext'];
+}
+
+it('gives a Specification Turn its capability: active once dispatched, revoked before the claim settles, redacted from stored facts', async () => {
+  const f = fixture();
+  inSpecification(f);
+  const secret = 'nvcap_' + 'x'.repeat(43);
+  const grant = {
+    environment: { NEVO_AGENT_CAPABILITY: secret, NEVO_AGENT_BROKER: '/broker' },
+    secrets: [secret],
+    activate: vi.fn(() => f.order.push('capability-active')),
+    // Idempotent, as the port requires: the first revocation counts.
+    revoke: vi.fn(async () => {
+      // The broker's calls drain first: settlement waits for the revocation to resolve.
+      await Promise.resolve();
+      if (!f.order.includes('capability-revoked')) {
+        f.order.push('capability-revoked');
+      }
+
+      return 'drained' as const;
+    }),
+    redact: (text: string) => text.split(secret).join('[redacted]'),
+  };
+  const mint = vi.fn(() => {
+    f.order.push('capability-minted');
+
+    return Promise.resolve(grant);
+  });
+  f.start.mockImplementation((invocation, emit) => ({
+    done: (async () => {
+      expect(invocation.runtimeEnvironment).toEqual({
+        values: grant.environment,
+        secrets: [secret],
+      });
+      await launched(invocation);
+      await emit({
+        kind: 'text',
+        key: 'tool-1',
+        channel: 'tool-output',
+        text: 'NEVO_AGENT_CAPABILITY=' + secret,
+      });
+      await emit(f.result);
+    })(),
+    settlement: Promise.resolve({
+      process: 'stopped' as const,
+      source: 'native-result' as const,
+      result: f.result,
+    }),
+    respond: () => Promise.resolve({ deliveredKeys: [] }),
+  }));
+  await createManagedInvocation({ ...f.options, capabilities: { mint } }).done;
+  expect(mint).toHaveBeenCalledWith(
+    expect.objectContaining({ specId: 'S1', workspace: '/verified/workspace' }),
+  );
+  expect(f.order).toEqual([
+    'engine-admit',
+    'capability-minted',
+    'process-identity',
+    'engine-dispatch',
+    'capability-active',
+    'dispatch-intent',
+    'capability-revoked',
+    'engine-settle',
+    'canonical-outcome',
+  ]);
+  expect(JSON.stringify(f.persist.mock.calls)).not.toContain(secret);
+  expect(f.persist).toHaveBeenCalledWith({
+    kind: 'text',
+    key: 'tool-1',
+    channel: 'tool-output',
+    text: 'NEVO_AGENT_CAPABILITY=[redacted]',
+  });
+});
+
+it('abandons the claim as never dispatched when no capability may be minted', async () => {
+  const f = fixture();
+  inSpecification(f);
+  const mint = vi.fn(() =>
+    Promise.reject(new SessionError('PROVIDER_UNAVAILABLE', 'Broker unavailable.')),
+  );
+  await createManagedInvocation({ ...f.options, capabilities: { mint } }).done;
+  expect(f.start).not.toHaveBeenCalled();
+  expect(f.claim.abandon).toHaveBeenCalled();
+  expect(f.finalize).toHaveBeenCalledWith(
+    expect.objectContaining({ outcome: 'failed' }),
+    'not-dispatched',
+  );
+});
+
+it('marks the claim unknown, never settled, when a broker call outlives the revocation wait', async () => {
+  const f = fixture();
+  inSpecification(f);
+  const revoke = vi.fn(() => Promise.resolve('timed-out' as const));
+  const mint = vi.fn(() =>
+    Promise.resolve({
+      environment: { NEVO_AGENT_CAPABILITY: 'nvcap_' + 'y'.repeat(43) },
+      secrets: [],
+      activate: () => undefined,
+      revoke,
+      redact: (text: string) => text,
+    }),
+  );
+  await createManagedInvocation({ ...f.options, capabilities: { mint } }).done;
+  expect(revoke).toHaveBeenCalledTimes(1);
+  expect(f.claim.settle).not.toHaveBeenCalled();
+  expect(f.claim.unknown).toHaveBeenCalled();
+  expect(f.phase()).toBe('unknown');
+  expect(f.finalize).not.toHaveBeenCalled();
+  expect(f.persist).toHaveBeenCalledWith(expect.objectContaining({ kind: 'lost' }));
+});
+it('hands a supporting driver only the recognised allowlist and reports the ignored rules', async () => {
+  const f = fixture();
+  f.options.driver.supportsPermissionAllowlist = true;
+  await createManagedInvocation({
+    ...f.options,
+    permissions: { allow: ['Read(src/**)', 'Write', 'Bash(nevo-specflow tasks list *)'] },
+  }).done;
+  expect(f.start.mock.calls[0]![0].permissions).toEqual({
+    allow: ['Read(src/**)', 'Bash(nevo-specflow tasks list *)'],
+  });
+  expect(f.persist).toHaveBeenCalledWith(
+    expect.objectContaining({ kind: 'text', text: expect.stringContaining('"Write"') as string }),
+  );
+});
+it('reports not supported instead of faking an allowlist for a driver without one', async () => {
+  const f = fixture();
+  await createManagedInvocation({ ...f.options, permissions: { allow: ['Read(src/**)'] } }).done;
+  expect(f.start.mock.calls[0]![0].permissions).toBeUndefined();
+  expect(f.persist).toHaveBeenCalledWith(
+    expect.objectContaining({
+      kind: 'text',
+      text: expect.stringContaining('not supported') as string,
+    }),
+  );
+});
+it('leaves a Turn without an allowlist unchanged', async () => {
+  const f = fixture();
+  await createManagedInvocation(f.options).done;
+  expect(f.start.mock.calls[0]![0].permissions).toBeUndefined();
+  expect(f.persist).not.toHaveBeenCalled();
+});

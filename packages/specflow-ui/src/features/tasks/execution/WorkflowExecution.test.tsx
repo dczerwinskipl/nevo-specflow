@@ -46,6 +46,14 @@ function fakeExecutionApi(overrides: Partial<WorkflowExecutionApi> = {}) {
     returnTo: vi.fn(never),
     reevaluateWait: vi.fn(never),
     abandon: vi.fn(never),
+    checkAgentExecution: vi.fn(never),
+    startAgentExecution: vi.fn(never),
+    stopAgentExecution: vi.fn(never),
+    retryAttemptCommit: vi.fn(never),
+    confirmResult: vi.fn(never),
+    takeOverAgentExecution: vi.fn(never),
+    history: vi.fn(never),
+    rejectResult: vi.fn(never),
     closePreview: vi.fn(never),
     closeOccupancy: vi.fn(() => Promise.resolve({ blockers: [] })),
     close: vi.fn(never),
@@ -542,7 +550,8 @@ describe('manual workflow execution', () => {
 
     // The refreshed projection is the next attempt: the dialog of the finished one is gone.
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByRole('status').textContent).toBe(
+    // Said once the lost finish settles, not while it still runs.
+    expect((await screen.findByRole('status')).textContent).toBe(
       'This step was already finished. What you can do now is shown below.',
     );
     expect(finish).toHaveBeenCalledTimes(1);

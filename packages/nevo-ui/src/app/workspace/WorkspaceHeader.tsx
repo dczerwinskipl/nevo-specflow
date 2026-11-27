@@ -32,6 +32,7 @@ import {
 import { RailTail } from '../../components/navigation/ItemTabs/RailTail';
 import { cn } from '../../lib';
 import { useWorkspaceHeaderIdentityOverride } from './workspaceHeaderIdentityOverride';
+import { useWorkspaceCapabilities } from './useWorkspaceCapabilities';
 import { WORKSPACE_HEADER_NARROW_MAX_WIDTH } from './workspaceSizing';
 
 export type WorkspaceHeaderActionTone = 'neutral' | 'danger';
@@ -97,6 +98,14 @@ export interface WorkspaceHeaderButtonAction extends WorkspaceHeaderActionBase {
 interface WorkspaceHeaderIconActionBase extends WorkspaceHeaderActionBase {
   icon: IconGlyph;
   presentation: 'icon';
+  /**
+   * A direct non-primary icon action that also shows its label beside the icon from the split
+   * width (the workspace can show Primary and Secondary side by side) on a wide header: a neutral
+   * (ghost) button, never the filled primary look, the same pressed state. Below the split width (a
+   * phone, a narrow window) and on a narrow header it keeps the icon only, its label the accessible
+   * name and tooltip. Outside a measured workspace (a standalone header) the header width decides.
+   */
+  labelWhenWide?: boolean;
 }
 
 /**
@@ -391,6 +400,14 @@ function WorkspaceActionMenu({
   );
 }
 
+/**
+ * A header toggle while on: the accent (blue is active, interaction-model.md "Visual conventions")
+ * as a tinted background and the icon and words in the accent colour, so "on" never reads as a
+ * plain button. The same look for the icon-only and the labelled form.
+ */
+const PRESSED_TOGGLE_CLASS_NAME =
+  'aria-pressed:bg-action-primary/15 aria-pressed:text-action-primary aria-pressed:hover:bg-action-primary/20';
+
 function DirectIconAction({
   action,
 }: {
@@ -403,11 +420,7 @@ function DirectIconAction({
           <IconButton
             aria-label={action.label}
             aria-pressed={action.primary ? undefined : menuCheckedState(action)}
-            className={
-              action.primary
-                ? undefined
-                : 'aria-pressed:bg-surface-selected aria-pressed:text-content-primary'
-            }
+            className={action.primary ? undefined : PRESSED_TOGGLE_CLASS_NAME}
             disabled={action.disabled}
             aria-disabled={action.busy ? true : undefined}
             icon={action.icon}
@@ -429,7 +442,25 @@ function DirectPrimaryAction({
   action: WorkspaceHeaderAction;
   narrow: boolean;
 }) {
+  const { supportsSplit, measured } = useWorkspaceCapabilities();
   if (action.presentation === 'icon') {
+    if (action.labelWhenWide && !narrow && !action.primary && (!measured || supportsSplit)) {
+      return (
+        <Button
+          aria-pressed={menuCheckedState(action)}
+          className={PRESSED_TOGGLE_CLASS_NAME}
+          disabled={action.disabled}
+          aria-disabled={action.busy ? true : undefined}
+          leadingIcon={action.icon}
+          onClick={action.busy ? undefined : action.onPress}
+          size="sm"
+          variant="ghost"
+        >
+          {action.label}
+        </Button>
+      );
+    }
+
     return <DirectIconAction action={action} />;
   }
 

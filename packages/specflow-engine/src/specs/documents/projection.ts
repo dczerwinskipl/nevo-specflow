@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import type {
   ArchetypeDefined,
   ContentKind,
+  DocumentAttemptCommit,
   DocumentIssue,
   DocumentTree,
 } from '@nevo/specflow-contracts/documents';
@@ -85,7 +86,22 @@ export interface TreeProjectionInput {
   readonly policyReason?: PolicyReason;
   /** The open commits of the Specification (journals and batches); absent means none. */
   readonly commits?: DocumentCommitView;
+  /** A waiting agent attempt commit that takes files of the Specification; absent means none. */
+  readonly attemptCommit?: TreeAttemptCommit;
 }
+
+/**
+ * The agent attempt commit (D15) that waits and takes files of the Specification, as the tree
+ * reports it: the attempt with every Specification-relative path it takes (`paths`), or
+ * `unreadable` when an attempt journal or the ledger cannot be read (every write is refused then).
+ */
+export type TreeAttemptCommit =
+  | { readonly kind: 'unreadable' }
+  | {
+      readonly kind: 'held';
+      readonly hold: DocumentAttemptCommit;
+      readonly paths: readonly string[];
+    };
 
 const TEXT_FORMATS: readonly string[] = [...EDITABLE_EXTENSIONS];
 
@@ -101,6 +117,7 @@ export type TreeRevisionContext = Pick<
   | 'archetypeTitle'
   | 'archetypeDefined'
   | 'commits'
+  | 'attemptCommit'
 >;
 
 /**
@@ -143,6 +160,11 @@ function contextFields(context: TreeRevisionContext): unknown[] {
     context.archetypeTitle ?? null,
     context.archetypeDefined ?? null,
     context.commits?.fingerprint ?? null,
+    context.attemptCommit === undefined
+      ? null
+      : context.attemptCommit.kind === 'unreadable'
+        ? 'unreadable'
+        : [context.attemptCommit.hold, [...context.attemptCommit.paths].sort(compareCodeUnits)],
   ];
 }
 
@@ -156,6 +178,14 @@ export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
     archived: input.location === 'archive',
     ...(input.policyReason !== undefined ? { policyReason: input.policyReason } : {}),
     commits: input.commits ?? emptyCommitView(),
+    ...(input.attemptCommit !== undefined
+      ? {
+          attemptHeld:
+            input.attemptCommit.kind === 'unreadable'
+              ? ('unreadable' as const)
+              : new Set(input.attemptCommit.paths.map((path) => foldPathKey(path))),
+        }
+      : {}),
   };
   const requirements = evaluateRequirements(manifest, filePaths, input.unreadableRegisteredPaths);
 
@@ -211,6 +241,7 @@ export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
     },
     issues: collectIssues(input, requirements.validation.issues, filePaths),
     commits: { ...context.commits.summary },
+    ...(input.attemptCommit?.kind === 'held' ? { attemptCommit: input.attemptCommit.hold } : {}),
     truncated: input.truncated,
     skippedEntries: input.skippedEntries,
   };

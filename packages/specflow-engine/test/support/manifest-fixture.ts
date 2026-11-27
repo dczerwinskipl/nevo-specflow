@@ -46,7 +46,6 @@ export async function writeSpecificationManifestFixture(
       },
       documents: input.documents ?? [{ id: 'overview', path: 'overview.md', type: 'overview' }],
       folders: input.folders ?? [],
-      status: 'draft',
       location,
       priority: 10,
       created: '2026-10-14',

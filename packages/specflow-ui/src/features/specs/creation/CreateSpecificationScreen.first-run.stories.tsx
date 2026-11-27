@@ -68,6 +68,11 @@ export const MissingDefinitionsNarrow: Story = {
     const canvas = within(canvasElement);
     for (const width of [320, 390, 834, 1440]) {
       await settleViewport(width, 844);
+      const manual = canvas.queryByRole('button', { name: /^Ręcznie/ });
+      if (manual) {
+        manual.click();
+      }
+
       const footer = await canvas.findByRole('group', { name: 'Utworzenie specyfikacji' });
       await canvas.findByRole('textbox', { name: 'Archetyp' });
       await expect(canvas.getByText('Projekt nie ma dostępnych archetypów.')).toBeVisible();

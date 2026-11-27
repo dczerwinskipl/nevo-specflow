@@ -40,7 +40,7 @@ function needsIntegration(journal: CloseJournal): boolean {
 /** Canonical archive is physically owned by source until a proven CAS rebind. */
 async function assertArchivedAt(root: string, specId: string): Promise<void> {
   const specification = await readWorkspaceSpecification(root, specId);
-  if (specification.location !== 'archive' || specification.status !== 'archived') {
+  if (specification.location !== 'archive') {
     throw recovery('Canonical archived Specification is not physically present.');
   }
 }

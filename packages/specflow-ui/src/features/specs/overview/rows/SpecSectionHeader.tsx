@@ -43,6 +43,8 @@ export function SpecSectionHeader({
       }}
       selectable={false}
       ariaDisabled={searching}
+      // Lighter than a filled band: the rows carry the state, the header only groups them.
+      surface="plain"
     />
   );
 }

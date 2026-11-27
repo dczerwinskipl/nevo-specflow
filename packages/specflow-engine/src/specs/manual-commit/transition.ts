@@ -1,4 +1,4 @@
-import type { ExecutorIdentity } from '../durable/executor-identity';
+import type { ExecutorIdentity } from '../../project/process/executor-identity';
 import { manualCommitError } from './errors';
 import {
   canTransitionManualCommit,

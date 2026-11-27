@@ -5,7 +5,7 @@ import {
   BlockingTaskSchema,
   HeldTaskBlocksSchema,
 } from '../../workflow/projection';
-import { SessionIdSchema } from '../../sessions/model';
+import { AgentStepOriginSchema, SessionIdSchema } from '../../sessions/model';
 import { SpecIdSchema, TaskIdSchema, WorkspaceIdSchema } from '../../identifiers';
 import { DocumentContentStateSchema } from '../../documents/vocabulary';
 export * from '../../tasks';
@@ -25,7 +25,18 @@ export const ReadSectionSchema = <T extends ReturnType<typeof Type.Object>>(data
     Type.Object({ state: Type.Literal('available'), data }),
     Type.Object({
       state: Type.Literal('unavailable'),
-      reason: Type.Union([Type.Literal('not_implemented'), Type.Literal('source_unavailable')]),
+      /**
+       * `source_busy`: the source is held by another writer (the project control lock) longer than
+       * a read waits; a retry soon can succeed. `source_recovery`: the lock is held by a process
+       * nothing proves stopped (or is corrupt); only an operator's recovery helps.
+       * `source_unavailable`: it cannot be read now.
+       */
+      reason: Type.Union([
+        Type.Literal('not_implemented'),
+        Type.Literal('source_unavailable'),
+        Type.Literal('source_busy'),
+        Type.Literal('source_recovery'),
+      ]),
     }),
     Type.Object({ state: Type.Literal('forbidden') }),
   ]);
@@ -82,7 +93,11 @@ export const WorkspaceSessionSchema = Type.Object(
     providerTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
     modelId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
     modelTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
+    /** The title of the provider mode the Session runs in (for Claude: Auto, Manual, ...). */
+    providerModeTitle: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
     updatedAt: Type.String({ minLength: 1, maxLength: 40 }),
+    /** An agent step execution Session's step and attempt (sessions `AgentStepOrigin`). */
+    agentStep: Type.Optional(AgentStepOriginSchema),
   },
   { additionalProperties: false },
 );
@@ -126,6 +141,7 @@ export const WorkspaceAttentionSchema = Type.Object({
     ),
   ),
   taskIds: Type.Optional(Type.Array(TaskIdSchema)),
+  brokenTaskIds: Type.Optional(Type.Array(TaskIdSchema)),
   blocking: Type.Optional(Type.Array(BlockingTaskSchema)),
   blocks: Type.Optional(HeldTaskBlocksSchema),
 });
@@ -228,8 +244,13 @@ export const SpecificationWorkspaceResponseSchema = Type.Object({
   recommendedSessionId: Type.Optional(SessionIdSchema),
   specification: Type.Object({
     id: IdSchema,
-    /** Optional human-facing Specification key (for example `UI-1234`). */
-    key: Type.Optional(Type.String()),
+    /** The human key Create gave the Specification (`nevo-2`); absent for one created without. */
+    key: Type.Optional(
+      Type.String({
+        description:
+          'Human key of the Specification from its manifest (for example nevo-2), as the Specifications list shows it; absent when the manifest has none.',
+      }),
+    ),
     title: Type.String(),
     summary: Type.String({
       description:
@@ -264,6 +285,8 @@ export const SpecificationReadErrorSchema = Type.Object(
       Type.Literal('specification_task_not_found'),
       Type.Literal('specification_source_unavailable'),
     ]),
+    /** Why the source is unavailable, when only an operator's recovery helps. */
+    code: Type.Optional(Type.Literal('CONTROL_LOCK_RECOVERY_REQUIRED')),
   },
   { $id: 'SpecificationReadError' },
 );

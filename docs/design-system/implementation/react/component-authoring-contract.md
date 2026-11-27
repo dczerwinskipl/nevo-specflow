@@ -92,7 +92,11 @@ that they already own.
   `import { AlarmClock } from 'lucide-react'`, then `<Icon name={AlarmClock} />` or
   `<Button leadingIcon={AlarmClock} />`). No icon-by-icon design-system code changes are
   required. Avoid importing the entire Lucide namespace or dynamic icon loaders for static
-  product UI; tree-shaking should retain only imported glyphs.
+  product UI; tree-shaking should retain only imported glyphs. A product with an icon dictionary
+  names its concepts through it instead: SpecFlow UI's product concepts (Specification, Task,
+  Session, Document, ...) come from its product icon dictionary
+  ([interaction model](../../../product/specflow/ui/interaction-model.md#page-identity-and-product-icons)),
+  and ESLint refuses their glyphs elsewhere.
 - The finite `iconNames` list remains **only** the curated set of exported Figma icon assets
   and the matching Storybook design-capture matrix. It is not a runtime allowlist.
   Direct Lucide components render with the same DS sizing/accessibility but have no Figma asset

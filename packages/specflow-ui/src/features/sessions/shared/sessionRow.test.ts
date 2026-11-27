@@ -57,6 +57,21 @@ describe('Session row facts', () => {
       { text: '1 zadanie', accessibleText: 'Powiązana z 1 zadaniem' },
     ]);
   });
+
+  it('reads an agent step Session as its attempt, the model and the age', () => {
+    const updatedAt = '2026-11-08T02:00:00.000Z';
+    const facts = sessionRowFacts(
+      { updatedAt, agent: claude, taskCount: 1, attempt: 1 },
+      en,
+      now,
+      'en',
+    );
+    expect(facts.map((fact) => (typeof fact === 'string' ? fact : fact.text))).toEqual([
+      'Attempt 1',
+      'Opus 4.1',
+      '10 hours ago',
+    ]);
+  });
 });
 
 describe('Session row status', () => {
@@ -77,7 +92,7 @@ describe('Session row status', () => {
       textClassName: 'text-content-muted',
     });
     expect(sessionRowStatus('unavailable', claude, pl)).toEqual({
-      text: 'Stan sesji nieznany',
+      text: 'SpecFlow nie potwierdził, że Claude może ją prowadzić; otwórz sesję, aby to sprawdzić',
       textClassName: 'text-content-muted',
     });
   });

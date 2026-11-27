@@ -8,8 +8,10 @@ import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { effectiveAutoCommit } from '../../version-control/worktrees/policy';
 import { resolveSpecification } from '../discovery';
 import { readLedgerRecord } from '../durable';
+import { ledgerAuthorsOf } from '../durable/ledger/model';
 import { EXECUTION_DIRECTORY, isExecutionStatePathOf } from '../execution-paths';
 import { pruneUncommitted } from '../uncommitted';
+import { NO_ATTEMPT_COMMIT_HOLDS } from '../uncommitted/attempts';
 import {
   closureOf,
   editedSince,
@@ -22,14 +24,27 @@ import { manualCommit, type ManualCommitCommandOptions } from './manual-commit';
 import { workflowCommitMessage } from './queue/commit-summary';
 
 /**
- * Execution state the commit left out because someone edited part of it since the Engine wrote it:
- * `edited` are those paths, `paths` everything that travels with them (closed under shared operation
+ * Execution state the commit left out because someone edited part of it since the Engine wrote it,
+ * or because an agent attempt's Turn wrote it and that attempt's own commit still takes it (D15):
+ * `edited` are the
+ * edited paths, `paths` everything held, with everything that travels with them (closed under shared operation
  * ids, the Task index joining none, `edited` included; the index itself when it waits for a held Task). They stay uncommitted until the person commits them (with Git; the ledger
  * then forgets them) or a Close takes them into its archive commit.
  */
 export interface HeldExecutionState {
   readonly edited: readonly string[];
   readonly paths: readonly string[];
+  /**
+   * Some of `paths` are an owner's changes made into the uncommitted work of an agent attempt whose
+   * own commit has not run (D15): they wait for it. The caller never reports such a commit as done.
+   */
+  readonly attempt?: true;
+  /**
+   * Some of `paths` were written by agent executions and the attempt journals cannot all be read, so
+   * SpecFlow cannot tell whether an attempt commit still takes them or they are the owner's to
+   * commit. The caller never reports such a commit as done.
+   */
+  readonly unattributable?: true;
 }
 
 /** What committing a Specification's execution state did. */
@@ -78,6 +93,19 @@ const messageText = (message: { subject: string; body: string }): string =>
  * it would register a held Task that HEAD does not have, or drop one HEAD still has; then it is held
  * too, and the next commit after the held Task is released takes it. Other refusals are the manual
  * commit's (`MANUAL_COMMIT_CONFLICT` still, when a path is edited between this check and the commit).
+ *
+ * An entry an agent attempt's Turn wrote whose attempt commit still takes it (its durable authors
+ * name one of the `executions` of the attempt commit holds of the Specification's own checkout,
+ * `SpecFlowEngine.attemptCommitHolds`: the Task drafts and execution state of an attempt in progress
+ * or waiting for its commit) is
+ * never taken, nor anything that travels with it: it belongs to that attempt's own commit alone
+ * (D15), so this owner's commit can never split the agent's work. An owner's change tied to it is
+ * reported `held` with `attempt`, so the commit is never reported done while it stays behind. An
+ * entry of an attempt that ended without its own commit (the owner took it over, or returned it) is
+ * committed here, so no execution state is left uncommitted that no commit will ever take. An entry
+ * an agent of such an attempt changed together with someone else is held with `attempt` too; without
+ * readable holds (an attempt journal or the ledger cannot be read) the execution state agents wrote
+ * is held `unattributable`. The caller reports neither as done.
  */
 export async function commitExecutionState(
   engine: SpecFlowEngine,
@@ -99,6 +127,9 @@ export async function commitExecutionState(
     return { kind: 'nothing-to-commit' };
   }
 
+  // The holds of the Specification's own checkout, which need not be the one the Engine opened.
+  const holds = (await engine.attemptCommitHolds?.(found.workspaceId)) ?? NO_ATTEMPT_COMMIT_HOLDS;
+  const pending = holds.readable ? holds.executions : undefined;
   const directory = containerDirectory(found.specification.slug, { kind: 'specification' });
   const index = `${directory}/${TASKS_FOLDER}/${TASK_INDEX_FILE}`;
   const unlinked = new Set([index]);
@@ -109,20 +140,60 @@ export async function commitExecutionState(
       id: specId,
     });
     const entries = scopeEntriesOf(record === undefined ? [] : [record]);
+    // An entry an attempt's commit still takes (D15) is the agent's work, never this owner's
+    // commit's: it is left out with everything that travels with it.
+    const state = (record?.entries ?? []).filter((entry) =>
+      isExecutionStatePathOf(directory, entry.path),
+    );
+    const authoredEntries = state.filter((entry) => {
+      const { executions } = ledgerAuthorsOf(entry);
+
+      return pending === undefined
+        ? executions.length > 0
+        : executions.some((id) => pending.has(id));
+    });
+    const authored = new Set(authoredEntries.map((entry) => entry.path));
+    // Someone else's change inside such an entry (an owner's, or an execution no attempt commit
+    // takes): it cannot be committed here, nor by the attempt commit. Never reported done.
+    const shared = authoredEntries
+      .filter((entry) => {
+        const authors = ledgerAuthorsOf(entry);
+
+        return (
+          pending !== undefined &&
+          (authors.unattributed === true || authors.executions.some((id) => !pending.has(id)))
+        );
+      })
+      .map((entry) => entry.path);
     const seed = entries
       .map((entry) => entry.path)
-      .filter((path) => isExecutionStatePathOf(directory, path));
+      .filter((path) => isExecutionStatePathOf(directory, path) && !authored.has(path));
     const closure = seed.length === 0 ? [] : closureOf(entries, seed, unlinked);
+    // Only what an owner's operation ties to the agent's work: the rest is the attempt's alone.
+    const agents = closure.filter((path) => authored.has(path));
+    const edited = await heldOf(found.workspaceRoot, entries, closure, unlinked);
+    const withAgents =
+      agents.length > 0 || shared.length > 0
+        ? withAgentWork(edited, closureOf(entries, agents, unlinked), closure, shared)
+        : edited;
 
     return {
       entries,
       closure,
-      held: await heldOf(found.workspaceRoot, entries, closure, unlinked),
+      // Execution state agents wrote while the journals cannot all be read: whose it is is unknown.
+      held:
+        pending === undefined && authored.size > 0
+          ? {
+              edited: withAgents?.edited ?? [],
+              paths: [...new Set([...(withAgents?.paths ?? []), ...authored])].sort(),
+              unattributable: true as const,
+            }
+          : withAgents,
     };
   };
 
   let planned = await plan();
-  if (planned.held) {
+  if (planned.held && planned.held.edited.length > 0) {
     // An edit a person already committed with Git is no edit any more: the prune drops the entries
     // HEAD holds (the sweep would, later), and only what is still edited is held.
     await pruneUncommitted(engine, { workspaceId: found.workspaceId });
@@ -163,6 +234,26 @@ export async function commitExecutionState(
     ...(result.commit.sha !== undefined ? { sha: result.commit.sha } : {}),
     paths: result.paths,
     ...(held ? { held } : {}),
+  };
+}
+
+/**
+ * `held` widened by the agents' entries of `closure` and what travels with them (`travelling`): never
+ * committed here; `edited` stays what someone edited, and `attempt` says an owner's change waits for
+ * an attempt commit.
+ */
+function withAgentWork(
+  held: HeldExecutionState | undefined,
+  travelling: readonly string[],
+  closure: readonly string[],
+  shared: readonly string[],
+): HeldExecutionState {
+  const paths = new Set([...(held?.paths ?? []), ...travelling]);
+
+  return {
+    edited: held?.edited ?? [],
+    paths: [...new Set([...closure.filter((path) => paths.has(path)), ...shared])].sort(),
+    attempt: true,
   };
 }
 
@@ -261,5 +352,7 @@ async function withIndex(
   return {
     edited: held.edited,
     paths: [...new Set([...closure.filter((path) => travelling.has(path)), index])].sort(),
+    ...(held.attempt ? { attempt: true as const } : {}),
+    ...(held.unattributable ? { unattributable: true as const } : {}),
   };
 }

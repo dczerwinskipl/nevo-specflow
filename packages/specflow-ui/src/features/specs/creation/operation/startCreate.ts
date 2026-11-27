@@ -22,6 +22,8 @@ export interface StartCreateInput {
     ProjectCreateRequest,
     'archetypeId' | 'archetypeVersion' | 'catalogueRevision' | 'optionalDocumentIds'
   >;
+  /** Create with an agent: "then run the first step with this agent" (the Runtime starts it). */
+  firstStep?: ProjectCreateRequest['firstStep'];
   now?: () => number;
 }
 
@@ -33,7 +35,16 @@ export interface StartCreateInput {
  * prepared (nothing was stored or sent, the form stays usable).
  */
 export function startCreate(input: StartCreateInput): SentCreateRequest | undefined {
-  const { attempt, storage, draft, slug, buildTarget, selection, now = Date.now } = input;
+  const {
+    attempt,
+    storage,
+    draft,
+    slug,
+    buildTarget,
+    selection,
+    firstStep,
+    now = Date.now,
+  } = input;
   let request: SentCreateRequest;
   try {
     const target = buildTarget();
@@ -46,6 +57,7 @@ export function startCreate(input: StartCreateInput): SentCreateRequest | undefi
         ...(slug ? { slug } : {}),
         ...(target ? { target } : {}),
         ...selection,
+        ...(firstStep ? { firstStep } : {}),
       },
       undefined,
       'operationId',

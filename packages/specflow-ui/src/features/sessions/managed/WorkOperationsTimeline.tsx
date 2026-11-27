@@ -1,6 +1,11 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { WorkSummary } from '@nevo/specflow-contracts/sessions';
-import { Collapsible, Timeline, Typography } from '@nevo/ui';
+import type { TFunction } from 'i18next';
+import { MessageCircleQuestion, ShieldCheck, ShieldQuestion, ShieldX } from 'lucide-react';
+import type { ToolOperation, WorkSummary } from '@nevo/specflow-contracts/sessions';
+import { Collapsible, Icon, Timeline, Typography, cn } from '@nevo/ui';
+import { leadingOperation, toolOperationOrder } from './workDigest';
+import { workOperationIcon } from './workOperationIcon';
 import { historyEntry } from './pagedHistoryAnchor';
 import { useGroupKeys } from './stableGroupKeys';
 import type { ChapterEntry, ToolBurstEntry } from './workGrouping';
@@ -11,10 +16,116 @@ import {
   type ViewStore,
   type WorkViewState,
 } from './workInspectorStore';
-import { workStateTone } from './workStatus';
+import { workMarkerTone, workStateTextClassName } from './workStatus';
 import { WorkRowContent, useWorkRowMeta } from './WorkRow';
+import { workFailureText, workItemTitle, workItemTitleParts } from './toolLabels';
 
-type OpenActions = (workId: string, title: string) => void;
+/** Opens a tool Work's actions; `permissionId`: the permission folded into it. */
+type OpenActions = (item: WorkSummary, permissionId?: string) => void;
+type Authorizations = ReadonlyMap<string, WorkSummary>;
+
+/**
+ * A Work row's title: the label emphasised ("Ran command", "Allowed"), the subject under it as an
+ * identifier — the mono, regular-weight secondary text the Specification key uses — at most two
+ * lines.
+ */
+function WorkTitle({ item }: { item: WorkSummary }) {
+  const { t } = useTranslation();
+  const { label, subject } = workItemTitleParts(t, item);
+
+  return (
+    <>
+      {label}
+      {subject && (
+        <span
+          className="mt-0.5 line-clamp-2 font-mono text-body-sm font-normal text-content-secondary [overflow-wrap:anywhere]"
+          data-work-subject=""
+        >
+          <span className="sr-only"> · </span>
+          {subject}
+        </span>
+      )}
+    </>
+  );
+}
+
+/** A failed tool Work's meta line, then what failed and why, so the row says it unopened. */
+function withFailure(meta: ReactNode, item: WorkSummary, t: TFunction): ReactNode {
+  const failure = workFailureText(t, item);
+
+  return failure ? (
+    <>
+      {meta}
+      <span className={cn('mt-0.5 block', workStateTextClassName('danger'))}>{failure}</span>
+    </>
+  ) : (
+    meta
+  );
+}
+
+/**
+ * A tool row's meta line with how its permission was answered, when one was folded into it
+ * (`foldPermissions`): "Allowed" or "Denied" behind a shield, never a second row for the same
+ * operation.
+ */
+function withAuthorization(meta: ReactNode, permission: WorkSummary | undefined): ReactNode {
+  if (!permission?.decision) {
+    return meta;
+  }
+
+  const denied = permission.decision === 'denied';
+
+  return (
+    <>
+      {meta}
+      {meta ? ' · ' : null}
+      <span
+        className={cn(
+          'inline-flex items-center gap-1 align-bottom',
+          denied && workStateTextClassName('danger'),
+        )}
+        data-work-authorization={permission.decision}
+      >
+        <Icon
+          name={denied ? ShieldX : ShieldCheck}
+          size="sm"
+          aria-hidden="true"
+          className={denied ? undefined : 'text-status-success'}
+        />
+        <AuthorizationWord decision={permission.decision} />
+      </span>
+    </>
+  );
+}
+
+function AuthorizationWord({ decision }: { decision: 'allowed' | 'denied' }) {
+  const { t } = useTranslation();
+
+  return <>{t(`managedSession.permissionState.${decision}`)}</>;
+}
+
+/** How many of each operation a tool group holds (the Runtime's `operation`). */
+function burstCounts(burst: ToolBurstEntry): Partial<Record<ToolOperation, number>> {
+  const counts: Partial<Record<ToolOperation, number>> = {};
+  for (const item of burst.items) {
+    const operation = item.operation ?? 'other';
+    counts[operation] = (counts[operation] ?? 0) + 1;
+  }
+
+  return counts;
+}
+
+/** What a tool group holds by kind ("5 commands · 1 read"), from the Runtime's `operation`. */
+function burstKinds(burst: ToolBurstEntry, t: TFunction): string | undefined {
+  const counts = burstCounts(burst);
+  const kinds = toolOperationOrder
+    .filter((operation) => counts[operation] !== undefined)
+    .map((operation) =>
+      t(`managedSession.workSummary.kind.${operation}`, { count: counts[operation] }),
+    );
+
+  return kinds.length > 0 ? kinds.join(' · ') : undefined;
+}
 
 /** The Work ids an entry of a run holds: a tool group's members, or the one item. */
 export const chapterEntryMembers = (entry: ChapterEntry): string[] =>
@@ -23,23 +134,141 @@ export const chapterEntryMembers = (entry: ChapterEntry): string[] =>
 /** A Work row's title on the Timeline rail (`WorkRowContent`). The Timeline is `size="md"`: its
  * title slot is a block that wraps (long tool titles take two lines instead of being cut), and the
  * row carries its own meta line and navigation chevron. */
+/** The answer of a recorded question in a few words: the chosen labels, else the person's own words. */
+function answerText(t: TFunction, question: NonNullable<WorkSummary['question']>): string {
+  const chosen = question.answer.optionIds.flatMap(
+    (id) => question.options?.find((option) => option.id === id)?.label ?? [],
+  );
+  const parts = [...chosen, ...(question.answer.text ? [question.answer.text] : [])];
+
+  return parts.length ? parts.join(', ') : t('managedSession.workInspector.question.ownText');
+}
+
+/**
+ * A question the person answered, recorded with its answer: the row says the question's label (or
+ * its text) and the answer ("Scope → All batches A–E"); opening it shows the question, every option
+ * with the chosen ones marked, and the person's own words. Older questions carry no record and keep
+ * the plain row (never an answer guessed from the transcript).
+ */
+function AnsweredQuestionTimelineItem({
+  item,
+  question,
+}: {
+  item: WorkSummary;
+  question: NonNullable<WorkSummary['question']>;
+}) {
+  const { t } = useTranslation();
+  const { meta, srStatus } = useWorkRowMeta(item, {
+    leading: t('managedSession.workInspector.question.asked'),
+  });
+  const chosen = new Set(question.answer.optionIds);
+
+  return (
+    <Timeline.Item {...historyEntry(item.workId)}>
+      <Timeline.Marker icon={MessageCircleQuestion} tone={workMarkerTone(item.state)} />
+      <Collapsible density="inline" defaultExpanded={false}>
+        <Timeline.Content
+          title={
+            <Collapsible.Trigger className="relative text-left after:absolute after:inset-x-0 after:top-1/2 after:h-[max(100%,var(--target-size))] after:-translate-y-1/2 after:content-['']">
+              <span className="line-clamp-2 [overflow-wrap:anywhere]" data-question-answer="">
+                {t('managedSession.workInspector.question.answer', {
+                  question: question.header ?? question.text,
+                  answer: answerText(t, question),
+                })}
+              </span>
+              {srStatus}
+            </Collapsible.Trigger>
+          }
+          description={meta}
+        >
+          <Collapsible.Content>
+            <div className="grid gap-2 pt-1" data-question-detail="">
+              <Typography as="p" variant="body-sm" className="[overflow-wrap:anywhere]">
+                {question.text}
+              </Typography>
+              {question.options?.length ? (
+                <ul className="grid gap-1">
+                  {question.options.map((option) => (
+                    <li
+                      key={option.id}
+                      className={cn(
+                        'flex min-w-0 items-start gap-2 text-body-sm',
+                        chosen.has(option.id) ? 'text-content-primary' : 'text-content-secondary',
+                      )}
+                      data-chosen={chosen.has(option.id) ? 'true' : undefined}
+                    >
+                      {chosen.has(option.id) ? (
+                        <Icon name="check" size="sm" className="mt-0.5 shrink-0" />
+                      ) : (
+                        <span aria-hidden="true" className="inline-block size-icon-sm shrink-0" />
+                      )}
+                      <span className="min-w-0 [overflow-wrap:anywhere]">
+                        {option.label}
+                        {chosen.has(option.id) ? (
+                          <span className="sr-only">
+                            {' '}
+                            ({t('managedSession.workInspector.question.chosen')})
+                          </span>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {question.answer.text ? (
+                <Typography as="p" variant="body-sm" className="[overflow-wrap:anywhere]">
+                  {t('managedSession.workInspector.question.yourText', {
+                    text: question.answer.text,
+                  })}
+                </Typography>
+              ) : null}
+            </div>
+          </Collapsible.Content>
+        </Timeline.Content>
+      </Collapsible>
+    </Timeline.Item>
+  );
+}
+
+/**
+ * An interaction Work is a permission request by the Runtime's own `interaction` kind; Work recorded
+ * before that field existed is one when its data shows it (a decision, the tool call it is for).
+ * Never decided from a title.
+ */
+function isPermission(item: WorkSummary): boolean {
+  return item.interaction !== undefined
+    ? item.interaction === 'permission'
+    : item.decision !== undefined || item.operation !== undefined || item.subject !== undefined;
+}
+
 function InteractionTimelineItem({ item }: { item: WorkSummary }) {
   const { t } = useTranslation();
-  const kind = t('managedSession.workKind.interaction');
+
+  // What kind of request it was, in the row's own words (never a generic "User interaction").
+  const kind = t(
+    isPermission(item)
+      ? 'managedSession.workInspector.interaction.permission'
+      : 'managedSession.workInspector.interaction.question',
+  );
   // The interaction's own title (e.g. "Permission to write workspace") — previously every
   // interaction showed only the generic kind name, losing what was actually asked — with its kind
   // leading the meta line under it.
   const { meta, srStatus } = useWorkRowMeta(item, { leading: item.title.text ? kind : undefined });
+  const title = workItemTitle(t, item);
 
   return (
     <Timeline.Item {...historyEntry(item.workId)}>
-      <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
+      <Timeline.Marker
+        active={item.state === 'active'}
+        icon={isPermission(item) ? ShieldQuestion : MessageCircleQuestion}
+        tone={workMarkerTone(item.state)}
+      />
       <Timeline.Content
         title={
           <WorkRowContent
             title={
               <>
-                {item.title.text || kind}
+                {title ? <WorkTitle item={item} /> : kind}
                 {srStatus}
               </>
             }
@@ -59,30 +288,36 @@ function InteractionTimelineItem({ item }: { item: WorkSummary }) {
  * plain completion), never only by the marker's colour — `Timeline.Marker` is `aria-hidden`. */
 function ToolTimelineItem({
   item,
+  permission,
   onOpenActions,
 }: {
   item: WorkSummary;
+  /** The permission folded into this tool Work, when one answered for it. */
+  permission?: WorkSummary;
   onOpenActions: OpenActions;
 }) {
+  const { t } = useTranslation();
   const { meta, srStatus } = useWorkRowMeta(item, { actionCount: item.actionCount });
 
   return (
     <Timeline.Item {...historyEntry(item.workId)}>
-      <Timeline.Marker active={item.state === 'active'} tone={workStateTone(item.state)} />
+      <Timeline.Marker
+        active={item.state === 'active'}
+        icon={workOperationIcon(item.operation)}
+        tone={workMarkerTone(item.state)}
+      />
       <Timeline.Content
         title={
           <WorkRowContent
             bleed="rail"
             title={
               <>
-                {item.title.text}
+                <WorkTitle item={item} />
                 {srStatus}
               </>
             }
-            meta={meta}
-            onOpen={
-              item.actionCount ? () => onOpenActions(item.workId, item.title.text) : undefined
-            }
+            meta={withFailure(withAuthorization(meta, permission), item, t)}
+            onOpen={item.actionCount ? () => onOpenActions(item, permission?.workId) : undefined}
           />
         }
       />
@@ -96,9 +331,11 @@ function ToolTimelineItem({
  * tools are ever grouped (`groupChapterEntries`), so the state word never shows here. */
 function GroupedToolRow({
   item,
+  permission,
   onOpenActions,
 }: {
   item: WorkSummary;
+  permission?: WorkSummary;
   onOpenActions: OpenActions;
 }) {
   const { meta, srStatus } = useWorkRowMeta(item, { actionCount: item.actionCount });
@@ -107,12 +344,12 @@ function GroupedToolRow({
     <WorkRowContent
       title={
         <Typography as="span" variant="body-md" className="text-content-primary">
-          {item.title.text}
+          <WorkTitle item={item} />
           {srStatus}
         </Typography>
       }
-      meta={meta}
-      onOpen={item.actionCount ? () => onOpenActions(item.workId, item.title.text) : undefined}
+      meta={withAuthorization(meta, permission)}
+      onOpen={item.actionCount ? () => onOpenActions(item, permission?.workId) : undefined}
     />
   );
 }
@@ -133,11 +370,13 @@ function ToolBurstTimelineItem({
   burst,
   entryId,
   view,
+  authorizations,
   onOpenActions,
 }: {
   burst: ToolBurstEntry;
   entryId: string;
   view: ViewStore<WorkViewState>;
+  authorizations: Authorizations;
   onOpenActions: OpenActions;
 }) {
   const { t } = useTranslation();
@@ -146,7 +385,7 @@ function ToolBurstTimelineItem({
 
   return (
     <Timeline.Item {...historyEntry(entryId)}>
-      <Timeline.Marker tone="success" />
+      <Timeline.Marker icon={workOperationIcon(leadingOperation(burstCounts(burst)))} />
       <Collapsible
         density="inline"
         isExpanded={open}
@@ -161,12 +400,17 @@ function ToolBurstTimelineItem({
               {t('managedSession.workInspector.toolBurst', { count: burst.items.length })}
             </Collapsible.Trigger>
           }
+          description={burstKinds(burst, t)}
         >
           <Collapsible.Content>
             <ul className="grid gap-3 pt-1">
               {burst.items.map((item) => (
-                <li key={item.workId} className="min-w-0">
-                  <GroupedToolRow item={item} onOpenActions={onOpenActions} />
+                <li key={item.workId} className="min-w-0" data-work-id={item.workId}>
+                  <GroupedToolRow
+                    item={item}
+                    permission={authorizations.get(item.workId)}
+                    onOpenActions={onOpenActions}
+                  />
                 </li>
               ))}
             </ul>
@@ -187,10 +431,13 @@ function ToolBurstTimelineItem({
 export function WorkOperationsTimeline({
   entries,
   view,
+  authorizations,
   onOpenActions,
 }: {
   entries: readonly ChapterEntry[];
   view: ViewStore<WorkViewState>;
+  /** Permissions folded into the tool Work they were for (`foldPermissions`). */
+  authorizations: Authorizations;
   onOpenActions: OpenActions;
 }) {
   const { t } = useTranslation();
@@ -212,12 +459,24 @@ export function WorkOperationsTimeline({
             burst={entry}
             entryId={keys[index]!}
             view={view}
+            authorizations={authorizations}
             onOpenActions={onOpenActions}
+          />
+        ) : entry.item.kind === 'interaction' && entry.item.question ? (
+          <AnsweredQuestionTimelineItem
+            key={keys[index]}
+            item={entry.item}
+            question={entry.item.question}
           />
         ) : entry.item.kind === 'interaction' ? (
           <InteractionTimelineItem key={keys[index]} item={entry.item} />
         ) : (
-          <ToolTimelineItem key={keys[index]} item={entry.item} onOpenActions={onOpenActions} />
+          <ToolTimelineItem
+            key={keys[index]}
+            item={entry.item}
+            permission={authorizations.get(entry.item.workId)}
+            onOpenActions={onOpenActions}
+          />
         ),
       )}
     </Timeline>

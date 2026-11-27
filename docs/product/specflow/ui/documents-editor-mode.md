@@ -120,9 +120,17 @@ Use the shell's 840 px split threshold; smaller workspaces stack. The screen doe
 
 #### Read-only policy
 
-- A document is read-only when `editable` is false or a Specification-wide write capability is
-  unavailable (the contract has no per-document write action yet). The reason is chosen in this order: `archived`,
-  `git-policy-invalid`, `branch-protected`, `branch-not-allowed`, `commit-blocked`, `not-editable`.
+- A document is read-only when `editable` is false, a Specification-wide write capability is
+  unavailable, or the tree's Save of the document is unavailable with reason `attempt-commit`. The reason is
+  chosen in this order: `archived`, `git-policy-invalid`, `branch-protected`, `branch-not-allowed`,
+  `commit-blocked`, `attempt-commit`, `not-editable`.
+- `attempt-commit`: an agent's work on this document is part of an attempt whose commit has not run yet or
+  failed (the tree's `attemptCommit`). Instead of the read-only line the document starts with a note:
+  "The agent's work on this document in <step> is not committed yet, so it cannot be edited until it is…",
+  then "SpecFlow is committing it…" (info, the tree is read again every 3 s until it ends) or "Its commit
+  failed (<code>): fix the cause, then Retry commit." (attention, role `alert`), and **Retry commit**, the
+  same action as the workflow's notice of that attempt. After it the tree is read again; once the commit
+  ran the document is editable. The other documents of the specification stay editable.
 - The first line of the document content is an `InlineNote` (info): `Read-only: <reason>` plus the remedy
   for that reason. It is in the document flow, not sticky, not a box. The Edit action is not
   offered; Show path and Close tab stay.
@@ -150,14 +158,15 @@ Use the shell's 840 px split threshold; smaller workspaces stack. The screen doe
   the user merges by hand and Save returns. For the other refusals Save stays available unless the reason
   makes it pointless:
 
-| Error                                                     | Alert title                                   | Body / actions                                                                                                                                                                             |
-| --------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `DOCUMENT_REVISION_CONFLICT`                              | Not saved: <file> changed on disk             | The file was changed outside this editor after you opened it. Nothing was overwritten and your changes are still here. **Copy my version**, **Load the version on disk** (asks to discard) |
-| `BRANCH_PROTECTED`, `GIT_POLICY_INVALID`, `SPEC_ARCHIVED` | Not saved: <reason>                           | Remedy line. The tab switches to read-only (5.1) but keeps the draft until the user closes or discards it.                                                                                 |
-| `COMMIT_BLOCKED`                                          | Not saved: Git cannot take a commit right now | Remedy line; **Try again**.                                                                                                                                                                |
-| `SPEC_BUSY`                                               | Not saved: another change is in progress      | **Try again**.                                                                                                                                                                             |
-| `DOCUMENT_RECOVERY_REQUIRED`                              | The save did not finish                       | "Finish the save before editing further." **Resume** (same operation id). Editing is locked until resumed.                                                                                 |
-| `DOCUMENT_FILE_MISSING`                                   | Not saved: the file is missing                | The tab becomes the missing state (5.5) and keeps the draft.                                                                                                                               |
+| Error                                                     | Alert title                                                       | Body / actions                                                                                                                                                                             |
+| --------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DOCUMENT_REVISION_CONFLICT`                              | Not saved: <file> changed on disk                                 | The file was changed outside this editor after you opened it. Nothing was overwritten and your changes are still here. **Copy my version**, **Load the version on disk** (asks to discard) |
+| `BRANCH_PROTECTED`, `GIT_POLICY_INVALID`, `SPEC_ARCHIVED` | Not saved: <reason>                                               | Remedy line. The tab switches to read-only (5.1) but keeps the draft until the user closes or discards it.                                                                                 |
+| `COMMIT_BLOCKED`                                          | Not saved: Git cannot take a commit right now                     | Remedy line; **Try again**.                                                                                                                                                                |
+| `SPEC_BUSY`                                               | Not saved: another change is in progress                          | **Try again**.                                                                                                                                                                             |
+| `DOCUMENT_RECOVERY_REQUIRED`                              | The save did not finish                                           | "Finish the save before editing further." **Resume** (same operation id). Editing is locked until resumed.                                                                                 |
+| `DOCUMENT_FILE_MISSING`                                   | Not saved: the file is missing                                    | The tab becomes the missing state (5.5) and keeps the draft.                                                                                                                               |
+| `DOCUMENT_COMMITS_PENDING` (`cause: attempt-commit`)      | Not saved: the agent's work on this document is not committed yet | The tree is read again; once it reports the hold the Alert gives way to the `attempt-commit` note (5.1) with **Retry commit**, and the draft is kept.                                      |
 
 - Close tab / leave with a draft after a refusal uses the existing Unsaved changes dialog.
 

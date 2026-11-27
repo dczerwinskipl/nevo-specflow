@@ -78,7 +78,7 @@ async function server(
 }
 
 describe('GET /api/specs/archetypes', () => {
-  it('serves the catalogue with its revision as ETag and revalidates with 304', async () => {
+  it('serves the catalogue with its revision in the ETag and revalidates with 304', async () => {
     const { app, headers } = await server();
     try {
       const response = await app.inject({ method: 'GET', url: '/api/specs/archetypes', headers });
@@ -86,10 +86,21 @@ describe('GET /api/specs/archetypes', () => {
       const catalogue = response.json<{
         revision: string;
         defaultArchetypeId?: string;
-        archetypes: { id: string; version: number; documents: { id: string }[] }[];
+        archetypes: {
+          id: string;
+          version: number;
+          documents: { id: string }[];
+          firstStep?: { id: string; title: string; agent: boolean };
+        }[];
         documentTypes: { id: string; instructions: string }[];
       }>();
-      expect(response.headers.etag).toBe(`"${catalogue.revision}"`);
+      // The first workflow steps are part of the answer, so they are part of the ETag too.
+      expect(response.headers.etag).toMatch(new RegExp(`^"${catalogue.revision}\\.[0-9a-f]{16}"$`));
+      expect(catalogue.archetypes.find((item) => item.id === 'feature')?.firstStep).toEqual({
+        id: 'requirements',
+        title: 'Gather requirements',
+        agent: true,
+      });
       expect(catalogue.defaultArchetypeId).toBeUndefined();
       expect(catalogue.archetypes.map((item) => item.id)).toEqual([
         'architecture',

@@ -11,7 +11,7 @@ import {
   createFilesystemDefinitionSource,
 } from '../specs/definitions/source';
 import { createFilesystemDefinitionWriter } from '../specs/definitions/filesystem-writer';
-import { resolveExecutionCatalogue } from './definitions/catalogue';
+import { resolveExecutionCatalogue, type ExecutionCatalogue } from './definitions/catalogue';
 import { WorkflowError as CoreWorkflowError } from '@nevo/workflow';
 import { WorkflowError } from './errors';
 import type { ExecutionHolds, WorkflowDependencies } from './operations/loaded-execution';
@@ -24,9 +24,18 @@ import {
 } from './close/blockers';
 import { inspectActions, type SpecificationExitPort } from './operations/actions';
 import { assertSharedResourcesAvailable } from '../specs/coordination/resources';
-import { SharedResourceError } from '../specs/durable';
+import {
+  SharedResourceError,
+  ownedTurnOf,
+  type OwnedExecution,
+  type OwnedExecutionClaim,
+} from '../specs/durable';
+import { guardExecutionClaims } from './state/claim-guard';
+import { executionClaimAdmission } from './write-admission';
+import { guardAttemptCommits, specificationAttemptCommitWait } from './attempt-commit-admission';
 import type { RememberModelDependencies } from './definitions/remember-model';
 import type { TaskReferences } from './operations/task-references';
+import { readTaskDocuments } from '../specs/documents/task-document-reader';
 import {
   hasPendingTaskDocumentChange,
   pendingTaskDocumentChanges,
@@ -40,12 +49,17 @@ import { ofSubject } from './operations/loaded-execution';
 import type { PostActionResult, WorkflowPostActions } from './operations/post-actions';
 import { hasPendingExecutionChange } from './state/pending-task-change';
 import { createFilesystemWorkflowStore } from './state/filesystem-store';
+import type { WorkflowStore } from './state/store';
 import {
   guardTaskDocumentChanges,
   type PendingTaskDocumentChange,
 } from './state/task-document-guard';
 import { checkoutPathExists } from './checkout-paths';
-import { readExecution, readTaskProgress } from './operations/execution-read';
+import {
+  readExecution,
+  readSpecificationListing,
+  readSpecificationListings,
+} from './operations/execution-read';
 import { guardCloseReservations } from './state/close-guard';
 import { listCloseJournals } from '../specs/lifecycle';
 
@@ -86,6 +100,15 @@ export interface SpecificationCheckout {
   readonly root: string;
 }
 
+/**
+ * An active project document found by its stable id: `path` is its file, relative to the checkout
+ * root with `/` separators. The agent context hashes that file, so the document's content is part of
+ * the attempt's context digest; a bare `true` pins the document by its id only.
+ */
+export interface ProjectDocumentHit {
+  readonly path: string;
+}
+
 export interface OpenWorkflowOptions {
   /**
    * Whether the documentation of the Specification's checkout has an active document of this
@@ -93,7 +116,17 @@ export interface OpenWorkflowOptions {
    * `path` references; reading its documentation belongs to the caller (the Runtime, the CLI).
    * Without it no project document resolves, so such a reference is refused.
    */
-  readonly projectDocument?: (checkout: SpecificationCheckout, id: string) => Promise<boolean>;
+  readonly projectDocument?: (
+    checkout: SpecificationCheckout,
+    id: string,
+  ) => Promise<boolean | ProjectDocumentHit>;
+  /**
+   * The agent execution whose running Turn makes these workflow writes (the Runtime broker, D11):
+   * its `dispatched` claim admits them; every other unsettled writer still refuses them. Named
+   * in-process by the trusted host, never taken from a request. Without it, every unsettled agent
+   * claim of the project refuses a write.
+   */
+  readonly ownedExecution?: OwnedExecution;
 }
 
 /**
@@ -102,6 +135,19 @@ export interface OpenWorkflowOptions {
  * documents is pending (Task-scoped Documents, D03).
  */
 function engineReferences(engine: SpecFlowEngine, options: OpenWorkflowOptions): TaskReferences {
+  const projectDocumentOf = async (specId: string, id: string) => {
+    if (!options.projectDocument) {
+      return false;
+    }
+
+    const found = await availableSpecification(engine, specId);
+
+    return options.projectDocument(
+      { workspaceId: found.workspaceId, root: found.workspaceRoot },
+      id,
+    );
+  };
+
   return {
     archetype: async (specId) =>
       (await availableSpecification(engine, specId)).specification.archetype.id,
@@ -109,22 +155,21 @@ function engineReferences(engine: SpecFlowEngine, options: OpenWorkflowOptions):
       (await availableSpecification(engine, specId)).specification.documents.some(
         (document) => document.id === id,
       ),
-    projectDocument: async (specId, id) => {
-      if (!options.projectDocument) {
-        return false;
-      }
+    projectDocument: async (specId, id) => (await projectDocumentOf(specId, id)) !== false,
+    projectDocumentPath: async (specId, id) => {
+      const hit = await projectDocumentOf(specId, id);
 
-      const found = await availableSpecification(engine, specId);
-
-      return options.projectDocument(
-        { workspaceId: found.workspaceId, root: found.workspaceRoot },
-        id,
-      );
+      return typeof hit === 'object' ? hit.path : undefined;
     },
     path: async (specId, path) =>
       checkoutPathExists((await availableSpecification(engine, specId)).workspaceRoot, path),
     pendingDocumentChange: pendingTaskDocuments(engine),
     pendingDocumentChanges: (specId) => pendingTaskDocumentChanges(engine.context, specId),
+    taskDocumentRevisions: async (specId, taskId) =>
+      (await readTaskDocuments(engine, specId, taskId)).documents.map((document) => ({
+        path: document.path,
+        revision: document.file?.revision ?? null,
+      })),
     documentsOfType: async (scope, documentType) => {
       try {
         return await readRegisteredDocumentsOfType(engine, scope, documentType);
@@ -181,7 +226,58 @@ function engineHolds(engine: SpecFlowEngine): ExecutionHolds {
         throw error;
       }
     },
+    attemptCommit: (specId) => specificationAttemptCommitWait(engine, specId),
   };
+}
+
+/**
+ * The execution store of an opened Engine, every change admitted against the writer claims with
+ * `owned` as the caller's own claim (none: every unsettled agent claim refuses). The host forms come
+ * from {@link OpenWorkflowOptions.ownedExecution} (`turn`); the agent attempt's finalize section uses
+ * the `finalize` form, inside that section only (`workflow/agent`). `attributedExecution` names the
+ * agent Turn a change without its own claim is made for (the start of an agent attempt): its ledger
+ * entries name that Turn, so the attempt commit can take them (D15); it admits nothing.
+ */
+export function engineExecutionStore(
+  engine: SpecFlowEngine,
+  owned: OwnedExecutionClaim | undefined,
+  attributedExecution?: string,
+): WorkflowStore {
+  // The claim admission first: an agent Turn's claim is the holder a refusal names. Then, for every
+  // write not made under an agent Turn's own claim, none while an agent attempt of the Specification
+  // waits for its commit (`attempt-commit-admission.ts`).
+  const store = guardCloseReservations(
+    guardTaskDocumentChanges(
+      createFilesystemWorkflowStore({
+        stateRoot: engine.context.project.stateRoot,
+        specificationDirectory: (specId) => specificationDirectory(engine, specId),
+        commits: {
+          admit: (specId, paths, operationId) =>
+            admitExecutionStateChange(engine, specId, paths, operationId, {
+              ...(owned !== undefined ? { ownedExecution: owned } : {}),
+              ...(attributedExecution !== undefined ? { attributedExecution } : {}),
+            }),
+        },
+      }),
+      pendingTaskDocuments(engine),
+    ),
+    (specId) => closeInProgress(engine, specId),
+  );
+
+  return guardExecutionClaims(
+    owned === undefined ? guardAttemptCommits(store, engineHolds(engine)) : store,
+    executionClaimAdmission(engine, owned),
+  );
+}
+
+/** The execution catalogue of the Project Home's definitions as they are now (no workflow state). */
+export async function loadExecutionCatalogue(engine: SpecFlowEngine): Promise<ExecutionCatalogue> {
+  return resolveExecutionCatalogue(
+    await loadDefinitions(
+      createFilesystemDefinitionSource(definitionsRoot(engine)),
+      createDefaultDefinitionRegistry(),
+    ),
+  );
 }
 
 /**
@@ -192,31 +288,13 @@ export async function openWorkflow(
   engine: SpecFlowEngine,
   options: OpenWorkflowOptions = {},
 ): Promise<WorkflowDependencies> {
-  const reloadCatalogue = async () =>
-    resolveExecutionCatalogue(
-      await loadDefinitions(
-        createFilesystemDefinitionSource(definitionsRoot(engine)),
-        createDefaultDefinitionRegistry(),
-      ),
-    );
+  const reloadCatalogue = () => loadExecutionCatalogue(engine);
 
+  const owned = ownedTurnOf(options.ownedExecution).ownedExecution;
   const dependencies: Omit<WorkflowDependencies, 'specificationExit'> = {
     catalogue: await reloadCatalogue(),
     reloadCatalogue,
-    store: guardCloseReservations(
-      guardTaskDocumentChanges(
-        createFilesystemWorkflowStore({
-          stateRoot: engine.context.project.stateRoot,
-          specificationDirectory: (specId) => specificationDirectory(engine, specId),
-          commits: {
-            admit: (specId, paths, operationId) =>
-              admitExecutionStateChange(engine, specId, paths, operationId),
-          },
-        }),
-        pendingTaskDocuments(engine),
-      ),
-      (specId) => closeInProgress(engine, specId),
-    ),
+    store: engineExecutionStore(engine, owned),
     references: engineReferences(engine, options),
     holds: engineHolds(engine),
     now: () => new Date(),
@@ -246,64 +324,125 @@ function asReadRequest<Args extends unknown[], Result>(
 /** {@link readExecution} without Git (Workspace and Task reads). */
 export const readExecutionForRead = asReadRequest(readExecution);
 
-/** {@link readTaskProgress} without Git (the Specs list progress). */
-export const readTaskProgressForRead = asReadRequest(readTaskProgress);
+/** {@link readSpecificationListing} without Git (the Specs list rows). */
+export const readSpecificationListingForRead = asReadRequest(readSpecificationListing);
+
+/** {@link readSpecificationListings} without Git (the whole Specs list, one short lock per row). */
+export const readSpecificationListingsForRead = asReadRequest(readSpecificationListings);
 
 /** {@link inspectActions} without Git (the workflow `actions` read). */
 export const inspectActionsForRead = asReadRequest(inspectActions);
 
+/** A Specification's execution snapshot without Git (a presentation read of its Task manifests). */
+export const readExecutionSnapshotForRead = asReadRequest(
+  (workflow: Pick<WorkflowDependencies, 'store'>, specId: string) => workflow.store.read(specId),
+);
+
 /**
- * The post actions of an opened Engine (`operations/post-actions.ts`): after a step's finish, commit
- * the Specification's execution state when auto-commit is off (with it on, the document queue commits
- * each change by itself). Seam for E6: the push of an agent step joins here.
+ * The post actions of an opened Engine (`operations/post-actions.ts`): after a step's finish, and
+ * after an owner's change that finishes no step (Reject, Return) or before an agent's new attempt,
+ * commit the Specification's execution state when auto-commit is off (with it on, the document queue
+ * commits each change by itself). Seam for E6: the push of an agent step joins here.
  */
 function enginePostActions(engine: SpecFlowEngine): WorkflowPostActions {
   return {
-    async afterStepFinished(event): Promise<readonly PostActionResult[]> {
-      const action = 'commit-execution-state';
-      try {
-        const outcome = await commitExecutionState(engine, event.subject.specId, {
-          phrase: `finish "${event.stepTitle}"${ofSubject(event.subject)}`,
-          details: [`Step ${event.step}, attempt ${event.attempt}.`],
-        });
-        const held = 'held' in outcome && outcome.held ? { held: outcome.held } : {};
-        switch (outcome.kind) {
-          case 'committed':
-            return [
-              {
-                action,
-                status: 'completed',
-                commit: {
-                  ...(outcome.sha !== undefined ? { sha: outcome.sha } : {}),
-                  paths: outcome.paths,
-                },
-                ...held,
-              },
-            ];
-          case 'nothing-to-commit':
-            return [{ action, status: 'completed', ...held }];
-          case 'not-applicable':
-            return [{ action, status: 'skipped', reason: outcome.reason }];
-        }
-      } catch (error) {
-        // The finish is recorded; the state stays uncommitted (a Close takes it with its archive commit).
-        const code =
-          error instanceof Error && 'code' in error && typeof error.code === 'string'
-            ? error.code
-            : 'POST_ACTION_FAILED';
+    afterStepFinished: (event) =>
+      commitOwnerState(engine, event.subject.specId, {
+        phrase: `finish "${event.stepTitle}"${ofSubject(event.subject)}`,
+        details: [`Step ${event.step}, attempt ${event.attempt}.`],
+      }),
+    afterOwnerChange: (event) =>
+      commitOwnerState(engine, event.subject.specId, {
+        phrase: event.phrase,
+        ...(event.details !== undefined ? { details: event.details } : {}),
+      }),
+  };
+}
 
+const listed = (paths: readonly string[]): string =>
+  paths.slice(0, 10).join(', ') +
+  (paths.length > 10 ? ` and ${String(paths.length - 10)} more` : '');
+
+/**
+ * `commit-execution-state`: the owner's commit of the Specification's execution state. It is never
+ * reported `completed` while it left any of the owner's own changes uncommitted because of an agent's
+ * work: an owner's change tied to an attempt whose commit waits is `failed`
+ * `WORKFLOW_ATTEMPT_COMMIT_REQUIRED`, execution state no journal can attribute `failed`
+ * `WORKFLOW_STATE_CORRUPT`, both with the paths held. Only paths a person edited by hand are held
+ * on a `completed` result (they stay theirs to commit).
+ */
+async function commitOwnerState(
+  engine: SpecFlowEngine,
+  specId: string,
+  change: { readonly phrase: string; readonly details?: readonly string[] },
+): Promise<readonly PostActionResult[]> {
+  const action = 'commit-execution-state';
+  try {
+    const outcome = await commitExecutionState(engine, specId, change);
+    const held =
+      'held' in outcome && outcome.held
+        ? { held: { edited: outcome.held.edited, paths: outcome.held.paths } }
+        : {};
+    if ('held' in outcome && outcome.held?.unattributable) {
+      return [
+        {
+          action,
+          status: 'failed',
+          code: 'WORKFLOW_STATE_CORRUPT',
+          message: `An agent attempt's record cannot be read, so SpecFlow cannot tell who wrote some of the workflow state (${listed(outcome.held.paths)}); it stays uncommitted. Repair or remove the unreadable record under the project's local state, then finish again or commit with Git.`,
+          ...held,
+        },
+      ];
+    }
+
+    if ('held' in outcome && outcome.held?.attempt) {
+      // Never reported done while the owner's own change waits for an agent's attempt commit.
+      return [
+        {
+          action,
+          status: 'failed',
+          code: 'WORKFLOW_ATTEMPT_COMMIT_REQUIRED',
+          message: `Some of the workflow state (${listed(outcome.held.paths)}) was changed together with an agent attempt's work whose commit has not run; it stays uncommitted until that commit ran (retry the commit), then the next commit of the workflow state takes it.`,
+          ...held,
+        },
+      ];
+    }
+
+    switch (outcome.kind) {
+      case 'committed':
         return [
           {
             action,
-            status: 'failed',
-            code,
-            message:
-              error instanceof Error ? error.message : 'The commit of the workflow state failed.',
+            status: 'completed',
+            commit: {
+              ...(outcome.sha !== undefined ? { sha: outcome.sha } : {}),
+              paths: outcome.paths,
+            },
+            ...held,
           },
         ];
-      }
-    },
-  };
+      case 'nothing-to-commit':
+        return [{ action, status: 'completed', ...held }];
+      case 'not-applicable':
+        return [{ action, status: 'skipped', reason: outcome.reason }];
+    }
+  } catch (error) {
+    // The change is recorded; the state stays uncommitted (a Close takes it with its archive commit).
+    const code =
+      error instanceof Error && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : 'POST_ACTION_FAILED';
+
+    return [
+      {
+        action,
+        status: 'failed',
+        code,
+        message:
+          error instanceof Error ? error.message : 'The commit of the workflow state failed.',
+      },
+    ];
+  }
 }
 
 /**
@@ -336,12 +475,16 @@ export function specificationExitPort(
   };
 }
 
-/** Archetype edits ("remember this choice"), serialized by the same project control lock. */
+/**
+ * Archetype edits ("remember this choice"), serialized by the same project control lock and refused
+ * like every workflow write while an agent execution claim is unsettled.
+ */
 export function openArchetypeEditing(engine: SpecFlowEngine): RememberModelDependencies {
   return {
     source: createFilesystemDefinitionSource(definitionsRoot(engine)),
     writer: createFilesystemDefinitionWriter(engine.context.project.homeRoot),
     serialize: (operation) => withProjectControlLock(engine.context, operation),
+    admission: executionClaimAdmission(engine, undefined),
   };
 }
 
@@ -367,8 +510,9 @@ export async function specificationCloseBlockers(
 }
 
 /**
- * Whether a step of the Specification run or of a Task run is in progress (position `active`): its
- * finish commits the execution state when automatic commits are off. Lock-free read for a refusal's
+ * Whether a step of the Specification run or of a Task run is in progress (position `active`, or
+ * `awaiting-confirmation` of an agent's result): its finish (or the confirmation) commits the
+ * execution state when automatic commits are off. Lock-free read for a refusal's
  * facts; `undefined` when the records cannot be read.
  */
 export async function specificationStepInProgress(
@@ -380,7 +524,9 @@ export async function specificationStepInProgress(
 
     return [snapshot.specification?.value.run, ...snapshot.runs.map((record) => record.value.run)]
       .filter((run) => run !== undefined)
-      .some((run) => run.position.state === 'active');
+      .some(
+        (run) => run.position.state === 'active' || run.position.state === 'awaiting-confirmation',
+      );
   } catch {
     return undefined;
   }

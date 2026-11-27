@@ -244,7 +244,7 @@ describe('WorkspaceHeader pressed icon toggles', () => {
   });
 
   it('styles the pressed state through the aria-pressed variant and keeps the action name as label', () => {
-    expect(render({ ...toggle, pressed: true })).toContain('aria-pressed:bg-surface-selected');
+    expect(render({ ...toggle, pressed: true })).toContain('aria-pressed:bg-action-primary/15');
     expect(render({ ...toggle, pressed: true })).toContain('aria-label="Show preview"');
     expect(
       render({
@@ -256,7 +256,7 @@ describe('WorkspaceHeader pressed icon toggles', () => {
         direct: 'always',
         onPress: vi.fn(),
       }),
-    ).not.toContain('aria-pressed:bg-surface-selected');
+    ).not.toContain('aria-pressed:bg-action-primary/15');
   });
 
   it('does not change the direct budget', () => {
@@ -332,5 +332,33 @@ describe('WorkspaceHeader complete menu grouping', () => {
     expect(renderToStaticMarkup(<WorkspaceHeader title="Doc" menu="complete" />)).not.toContain(
       'More actions',
     );
+  });
+});
+
+describe('WorkspaceHeader labelled icon toggle', () => {
+  it('shows a labelWhenWide toggle as a neutral button with its words on a wide header', () => {
+    const markup = renderToStaticMarkup(
+      <WorkspaceHeader
+        title="Work"
+        actions={[
+          {
+            id: 'detailed',
+            label: 'Show every operation',
+            icon: 'list',
+            presentation: 'icon',
+            labelWhenWide: true,
+            direct: 'always',
+            pressed: true,
+            onPress: vi.fn(),
+          },
+        ]}
+      />,
+    );
+
+    expect(markup).toContain('Show every operation</');
+    expect(markup).toContain('aria-pressed="true"');
+    // Never the filled primary look; the pressed accent tint is a variant class only.
+    expect(markup).not.toMatch(/[\s"]bg-action-primary[\s"]/);
+    expect(markup).toContain('aria-pressed:bg-action-primary/15');
   });
 });

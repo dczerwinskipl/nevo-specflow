@@ -102,6 +102,8 @@ export const InteractionSchema = Type.Union([
       workId: WorkIdSchema,
       revision: SessionSequenceSchema,
       kind: Type.Literal('question'),
+      /** A short label of the question the provider gave (Claude's `header`, e.g. "Scope"). */
+      header: Type.Optional(text(128)),
       prompt: text(8192),
       options: Type.Optional(
         Type.Array(Type.Object({ id: text(128), label: text(512) }, closed), { maxItems: 20 }),
@@ -125,6 +127,26 @@ export const InteractionSchema = Type.Union([
     closed,
   ),
 ]);
+/**
+ * The agent step attempt an agent step execution Session was made for (its first attempt; a reused
+ * Session keeps it), derived on each read from the committed attempt records, never stored: the
+ * step's id and title in the pinned workflow (the id when the workflow no longer defines it), the
+ * attempt number and, for a Task subject, the Task. Present only to a caller who may view the
+ * Session's Specification. A client words the Session's lines from it; the Session `title` stays
+ * the title line when the owner gave one.
+ */
+export const AgentStepOriginSchema = Type.Object(
+  {
+    stepId: text(128),
+    stepTitle: text(512),
+    attempt: Type.Integer({ minimum: 1 }),
+    taskId: Type.Optional(text(128)),
+    taskTitle: Type.Optional(text(512)),
+  },
+  closed,
+);
+export type AgentStepOrigin = Static<typeof AgentStepOriginSchema>;
+
 export const SessionInfoSchema = Type.Object(
   {
     sessionId: SessionIdSchema,
@@ -166,6 +188,15 @@ export const SessionInfoSchema = Type.Object(
     archivedAt: Type.Optional(text(40)),
     createdAt: text(40),
     updatedAt: text(40),
+    agentStep: Type.Optional(AgentStepOriginSchema),
+    /**
+     * Present while the Session's agent attempt is open: an owner message would be refused
+     * (`TURN_CONFLICT`, reason `agent-attempt-open`), so a client disables the Composer up front
+     * and shows `message`, which says what to do instead.
+     */
+    ownerMessageHold: Type.Optional(
+      Type.Object({ reason: Type.Literal('agent-attempt-open'), message: text(1024) }, closed),
+    ),
   },
   closed,
 );
@@ -216,6 +247,12 @@ export const ToolOperationSchema = Type.Union([
   Type.Literal('web'),
   Type.Literal('other'),
 ]);
+/**
+ * What a tool operation acts on, language-neutral and short: a path relative to the Session's
+ * workspace for a file tool, the first line of a command, a search pattern, a URL. The client
+ * names the operation in its own words before it.
+ */
+export const ToolSubjectSchema = text(1024);
 const operationCounts = Type.Object(
   {
     read: Type.Optional(SessionSequenceSchema),
@@ -242,7 +279,79 @@ export const WorkDigestSchema = Type.Object(
   },
   closed,
 );
-export const TurnErrorSchema = Type.Object({ code: text(64), message: text(2048) }, closed);
+/** How serious a notice SpecFlow writes into a conversation is. */
+export const NoticeSeveritySchema = Type.Union([
+  Type.Literal('error'),
+  Type.Literal('warning'),
+  Type.Literal('info'),
+]);
+export const TurnErrorSchema = Type.Object(
+  {
+    code: text(64),
+    message: text(2048),
+    /** A stable reason a client words itself (e.g. `claude-policy-check-failed`); `message` is the
+     * Runtime's English fallback for a reason the client does not know. */
+    reason: Type.Optional(text(128)),
+  },
+  closed,
+);
+/**
+ * Who wrote a `request` entry when it was not a person: `specflow-step-brief`, the brief agent step
+ * execution sent to start or continue an agent attempt. The entry's `text` is the full brief (its
+ * `content` reference reads all of it); a client shows a short line naming the step and the attempt
+ * and opens the brief on demand. `handoff` is what the previous step handed over, as data.
+ */
+export const RequestOriginSchema = Type.Object(
+  {
+    kind: Type.Literal('specflow-step-brief'),
+    specId: text(128),
+    /** The Task subject of the attempt, with its title. */
+    task: Type.Optional(Type.Object({ id: text(128), title: text(512) }, closed)),
+    step: Type.Object({ id: text(128), title: text(512) }, closed),
+    attempt: Type.Integer({ minimum: 1 }),
+    /** The agent archetype the step runs with, by its id and title. Absent on older briefs. */
+    archetype: Type.Optional(Type.Object({ id: text(128), title: text(512) }, closed)),
+    /**
+     * The request continues the same attempt (a Continue of its Session's agent) instead of
+     * starting it: a client says "execution resumed", never a new attempt. Absent for the brief
+     * that started the attempt.
+     */
+    continuation: Type.Optional(Type.Literal(true)),
+    /**
+     * The owner's note sent with this brief (after it, in the same Turn): a client shows it as the
+     * owner's own message, after the brief (after "execution resumed" for a Continue).
+     */
+    ownerNote: Type.Optional(text(4000)),
+    handoff: Type.Optional(
+      Type.Object(
+        {
+          kind: Type.Union([Type.Literal('transition'), Type.Literal('return')]),
+          /** A transition: the step and attempt that finished, and its result. */
+          from: Type.Optional(
+            Type.Object(
+              {
+                step: text(128),
+                attempt: Type.Integer({ minimum: 1 }),
+                /** The step's title in the pinned definition; absent on older briefs. */
+                title: Type.Optional(text(512)),
+              },
+              closed,
+            ),
+          ),
+          transition: Type.Optional(text(128)),
+          /** The transition's display label in the definition, when it gives one. */
+          label: Type.Optional(text(256)),
+          result: Type.Optional(text(128)),
+          feedback: Type.Optional(text(8192)),
+          artifacts: Type.Optional(Type.Array(text(1024), { maxItems: 64 })),
+        },
+        closed,
+      ),
+    ),
+  },
+  closed,
+);
+export type RequestOrigin = Static<typeof RequestOriginSchema>;
 export const ConversationEntrySchema = Type.Object(
   {
     id: SessionUuidSchema,
@@ -264,6 +373,14 @@ export const ConversationEntrySchema = Type.Object(
     /** An `outcome` entry of a Turn that ended with an error: the Turn's safe reason (`code` lets a
      * client say why and what to do). */
     error: Type.Optional(TurnErrorSchema),
+    /**
+     * Only on a `commentary` entry SpecFlow wrote itself (a provider error it relays, a process it
+     * stopped, a recovery it made), never on the agent's own words: a client shows it as a notice
+     * of this severity, apart from the agent's commentary.
+     */
+    notice: Type.Optional(Type.Object({ severity: NoticeSeveritySchema }, closed)),
+    /** Only on a `request` entry SpecFlow wrote itself (the brief of an agent attempt). */
+    origin: Type.Optional(RequestOriginSchema),
     createdAt: text(40),
   },
   closed,
@@ -350,6 +467,49 @@ export const WorkSummarySchema = Type.Object(
     title: TextPreviewSchema,
     content: Type.Optional(ContentRefSchema),
     actionCount: Type.Optional(SessionSequenceSchema),
+    /** Tool Work: its first ToolAction's operation and subject; a permission: what it asks for. */
+    operation: Type.Optional(ToolOperationSchema),
+    subject: Type.Optional(ToolSubjectSchema),
+    /** Tool Work with a failed ToolAction: the first one's subject and the provider's reason. */
+    failure: Type.Optional(
+      Type.Object(
+        {
+          subject: Type.Optional(ToolSubjectSchema),
+          message: text(1024),
+          /** A stable reason a client words itself (`outside-worktree`); `message` stays raw. */
+          reason: Type.Optional(text(128)),
+        },
+        closed,
+      ),
+    ),
+    /** An interaction Work: whether it asks for a permission or asks a question. */
+    interaction: Type.Optional(Type.Union([Type.Literal('permission'), Type.Literal('question')])),
+    /** A permission the person answered: what they decided. */
+    decision: Type.Optional(Type.Union([Type.Literal('allowed'), Type.Literal('denied')])),
+    /**
+     * A question the person answered, as asked and as answered, recorded when the answer is
+     * accepted (bounded: the question's first paragraph, the option labels, the free text). Absent
+     * for questions answered before it was recorded; a client then never guesses the answer.
+     */
+    question: Type.Optional(
+      Type.Object(
+        {
+          header: Type.Optional(text(128)),
+          text: text(1024),
+          options: Type.Optional(
+            Type.Array(Type.Object({ id: text(128), label: text(512) }, closed), { maxItems: 20 }),
+          ),
+          answer: Type.Object(
+            {
+              optionIds: Type.Array(text(128), { maxItems: 20 }),
+              text: Type.Optional(text(2048)),
+            },
+            closed,
+          ),
+        },
+        closed,
+      ),
+    ),
     createdAt: text(40),
     updatedAt: text(40),
   },
@@ -363,6 +523,7 @@ export const ToolActionSummarySchema = Type.Object(
     state: WorkStateSchema,
     title: TextPreviewSchema,
     operation: Type.Optional(ToolOperationSchema),
+    subject: Type.Optional(ToolSubjectSchema),
     input: Type.Optional(ContentRefSchema),
     output: Type.Optional(ContentRefSchema),
     error: Type.Optional(TurnErrorSchema),
@@ -385,6 +546,11 @@ export const WorkCountsSchema = Type.Object(
       },
       closed,
     ),
+    /**
+     * Of `byKind.commentary`, the notes SpecFlow wrote itself (a notice: an automatic approval, a
+     * relayed error), not the agent's progress notes. Absent for Turns counted before it existed.
+     */
+    notices: Type.Optional(SessionSequenceSchema),
   },
   closed,
 );
@@ -488,6 +654,7 @@ export const SessionChangeSchema = Type.Union([
 export type SessionInfo = Static<typeof SessionInfoSchema>;
 export type SessionSnapshot = Static<typeof SessionSnapshotSchema>;
 export type ConversationEntry = Static<typeof ConversationEntrySchema>;
+export type NoticeSeverity = Static<typeof NoticeSeveritySchema>;
 export type TextPreview = Static<typeof TextPreviewSchema>;
 export type ContentRef = Static<typeof ContentRefSchema>;
 export type ContentPage = Static<typeof ContentPageSchema>;

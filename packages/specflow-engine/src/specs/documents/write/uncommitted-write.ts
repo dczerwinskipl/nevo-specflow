@@ -79,6 +79,7 @@ export async function completeUncommittedWrite(
           },
           {
             operationId: journal.operationId,
+            ...executionOf(journal),
             reason: UNCOMMITTED_AUTO_COMMIT_OFF,
             recordedAt: now,
             branch: pin.branch,
@@ -148,6 +149,7 @@ export async function reimageUncommittedPaths(
       },
       {
         operationId: journal.operationId,
+        ...executionOf(journal),
         reason: UNCOMMITTED_AUTO_COMMIT_OFF,
         recordedAt: rt.nowIso(),
         branch: record.branch,
@@ -156,4 +158,9 @@ export async function reimageUncommittedPaths(
       },
     ),
   );
+}
+
+/** The agent Turn an operation was made for, as its ledger entries record it. */
+export function executionOf(journal: DocumentChangeJournal): { readonly executionId?: string } {
+  return journal.agent !== undefined ? { executionId: journal.agent.executionId } : {};
 }

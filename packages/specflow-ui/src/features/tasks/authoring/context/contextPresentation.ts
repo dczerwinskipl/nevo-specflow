@@ -1,7 +1,8 @@
 import type { TFunction } from 'i18next';
-import type { IconName } from '@nevo/ui';
+import type { IconGlyph } from '@nevo/ui';
 import type { TreeRowState } from '../../../../shared/document-tree';
 import { isArtifact, referenceOf, type ContextRow, type TaskContextEntry } from './contextModel';
+import { productIcons } from '../../../../shared/product-icons';
 
 /** What the context rows know about the documents they name. */
 export interface ContextNames {
@@ -11,12 +12,12 @@ export interface ContextNames {
   readonly specificationDocuments: ReadonlyMap<string, string>;
 }
 
-export const kindIcon: Record<TaskContextEntry['kind'], IconName> = {
-  'task-document': 'file',
-  'specification-document': 'file',
-  'project-document': 'book-open',
+export const kindIcon: Record<TaskContextEntry['kind'], IconGlyph> = {
+  'task-document': productIcons.document.item,
+  'specification-document': productIcons.document.item,
+  'project-document': productIcons.documentation,
   path: 'folder',
-  instructions: 'info',
+  instructions: productIcons.instructions,
 };
 
 /** The row's name: a document's file name, the path, or the instruction text. */

@@ -27,6 +27,7 @@ import {
   type CreateJournal,
 } from '../journal';
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
+import { ownExecutorIdentity } from '../../../project/process/executor-identity';
 import { admitCreateArchetype } from '../admission';
 import { assertCreatePathsFitWindows, type WindowsPathBoundOptions } from '../path-bound';
 import { getStableProjectCatalogue } from '../../../definitions/process-catalogue';
@@ -320,6 +321,7 @@ export async function reserveCreateOperation(
         sha256,
         bytes,
       })),
+      executor: await ownExecutorIdentity(),
     };
     try {
       await assertSharedResourcesAvailable(engine.context, resourcesForCreate(record));

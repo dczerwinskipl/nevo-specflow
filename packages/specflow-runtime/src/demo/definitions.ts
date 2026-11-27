@@ -20,7 +20,7 @@ export const seedDocumentTypes: readonly DocumentTypeDefinition[] = [
     instructions:
       'Describe the structure: the problem, the boundaries and owners involved, the options considered with their trade-offs, the chosen structure and the constraints it imposes. Make dependencies and the direction of change explicit.',
     defaultFilename: 'architecture.md',
-    icon: 'network',
+    icon: 'boxes',
   },
   {
     id: 'backend',
@@ -52,7 +52,7 @@ export const seedDocumentTypes: readonly DocumentTypeDefinition[] = [
     instructions:
       'Record each decision as context, the options considered, the decision and its consequences, one decision per section, with who decided and when if known. Record decisions that are costly to rediscover, not routine choices.',
     defaultFilename: 'decisions.md',
-    icon: 'file-check',
+    icon: 'scale',
   },
   {
     id: 'note',
@@ -72,7 +72,7 @@ export const seedDocumentTypes: readonly DocumentTypeDefinition[] = [
     instructions:
       'Write this first and keep it current. State the context and the goal in plain terms, list explicit non-goals and constraints, name the affected areas, and write acceptance criteria that can be checked. Link to the other documents instead of repeating their content. Do not put detailed design here.',
     defaultFilename: 'overview.md',
-    icon: 'book-open',
+    icon: 'telescope',
   },
   {
     id: 'research',
@@ -94,7 +94,7 @@ export const seedDocumentTypes: readonly DocumentTypeDefinition[] = [
     instructions:
       "Write stories as 'As a <role> I want <capability> so that <benefit>', each with acceptance criteria. Keep stories small and independent and link them to the behaviour they imply.",
     defaultFilename: 'user-story.md',
-    icon: 'book-user',
+    icon: 'user-pen',
   },
   {
     id: 'ux',
@@ -176,7 +176,7 @@ export const seedArchetypes: readonly ArchetypeDefinition[] = [
     ],
     execution: {
       workflow: 'specification-standard',
-      taskTypes: ['implementation'],
+      taskTypes: ['implementation', 'ui-implementation'],
     },
   },
   {

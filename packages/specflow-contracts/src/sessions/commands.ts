@@ -245,6 +245,11 @@ export const ProviderDescriptorSchema = Type.Object(
           modelId: choice(256),
           title: choice(512),
           efforts: Type.Array(choice(64), { maxItems: 16 }),
+          /**
+           * The model an alias runs, when the provider says so and it is another id (Claude's
+           * `opus` runs `claude-opus-5-5`): a configured full id finds the entry that offers it.
+           */
+          resolvedModelId: Type.Optional(choice(256)),
         },
         closed,
       ),
@@ -268,6 +273,12 @@ export const ProviderDescriptorSchema = Type.Object(
             ),
             mode: SessionModeSchema,
             readiness: Type.Union([Type.Literal('ready'), Type.Literal('unavailable')]),
+            /**
+             * The `models` this mode runs (by `modelId`) when it runs only some of them (Claude's
+             * auto mode only models with auto support); absent: every model. A Turn with another
+             * model in this mode is refused with `MODEL_UNSUPPORTED`.
+             */
+            modelIds: Type.Optional(Type.Array(choice(256), { maxItems: 100 })),
             authorized: Type.Optional(Type.Boolean()),
             reason: Type.Optional(Type.String({ maxLength: 512 })),
           },

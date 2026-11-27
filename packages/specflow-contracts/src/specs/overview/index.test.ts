@@ -23,7 +23,7 @@ describe('Specs Overview contracts', () => {
     expect(
       Value.Check(SpecsOverviewSchema, {
         ...archive,
-        items: [{ ...baseItem, classification: { section: 'ready' } }],
+        items: [{ ...baseItem, classification: { section: 'not-started' } }],
       }),
     ).toBe(false);
   });
@@ -33,17 +33,57 @@ describe('Specs Overview contracts', () => {
       Value.Check(SpecsOverviewSchema, {
         collection: 'current',
         revision: '1',
-        sections: ['requires-attention', 'active', 'ready', 'draft'],
+        sections: ['requires-attention', 'in-progress', 'not-started', 'ended'],
         items: [
           {
             ...baseItem,
-            classification: { section: 'draft' },
+            workflow: { kind: 'not-started' },
+            classification: { section: 'not-started' },
             signals: [],
             currentExecutions: [],
           },
         ],
       }),
     ).toBe(true);
+  });
+
+  it('carries where the workflow run stands, with the Task counts of a wait step', () => {
+    const current = (workflow: unknown) => ({
+      collection: 'current',
+      revision: '1',
+      sections: ['in-progress'],
+      items: [
+        {
+          ...baseItem,
+          workflow,
+          classification: { section: 'in-progress' },
+          signals: [],
+          currentExecutions: [],
+        },
+      ],
+    });
+
+    expect(
+      Value.Check(
+        SpecsOverviewSchema,
+        current({
+          kind: 'step',
+          state: 'waiting',
+          step: { title: 'Waiting for Tasks', position: 6, count: 7 },
+          tasks: { open: 12, total: 12, inProgress: 0, readyToStart: 5 },
+        }),
+      ),
+    ).toBe(true);
+    expect(Value.Check(SpecsOverviewSchema, current({ kind: 'ended', outcome: 'completed' }))).toBe(
+      true,
+    );
+    // The manifest's free status is no Current field any more.
+    expect(
+      Value.Check(SpecsOverviewSchema, {
+        ...current({ kind: 'not-started' }),
+        items: [{ ...current({ kind: 'not-started' }).items[0], status: 'draft' }],
+      }),
+    ).toBe(false);
   });
 
   it('accepts explicitly unknown progress, signals and session evidence', () => {
@@ -56,6 +96,7 @@ describe('Specs Overview contracts', () => {
           {
             ...baseItem,
             progress: null,
+            workflow: null,
             classification: { section: 'unknown' },
             signals: null,
             currentExecutions: null,
@@ -74,6 +115,7 @@ describe('Specs Overview contracts', () => {
         items: [
           {
             ...baseItem,
+            workflow: { kind: 'step', state: 'ready' },
             classification: { section: 'requires-attention' },
             signals: [
               {

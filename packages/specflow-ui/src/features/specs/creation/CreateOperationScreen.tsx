@@ -12,6 +12,7 @@ export function CreateOperationScreen(props: {
   onOpen: (created: CreatedSpec) => void;
   onBackToForm: (restoreDraftOf?: string) => void;
   onBackToSpecifications: () => void;
+  onOpenSession?: (sessionId: string) => void;
 }) {
   return (
     <CreateRuntimeGate>

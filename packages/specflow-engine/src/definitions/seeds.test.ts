@@ -40,20 +40,20 @@ beforeAll(async () => {
 });
 
 describe('seed files', () => {
-  it('give the shipped document types Design System icons, and the API catalogue carries them', () => {
+  it('give the shipped document types their product icon dictionary names, and the API catalogue carries them', () => {
     const icons = Object.fromEntries(
       toArchetypeCatalogue(project).documentTypes.map((type) => [type.id, type.icon]),
     );
-    // The owner's icons; the Engine does not check the registry (the UI falls back). `note` has none.
+    // The owner's icons; the Engine does not check the dictionary (the UI falls back). `note` has none.
     expect(icons).toEqual({
-      architecture: 'network',
+      architecture: 'boxes',
       backend: 'server',
       behaviour: 'list-ordered',
-      decisions: 'file-check',
+      decisions: 'scale',
       note: undefined,
-      overview: 'book-open',
+      overview: 'telescope',
       research: 'file-search',
-      'user-story': 'book-user',
+      'user-story': 'user-pen',
       ux: 'panels-top-left',
     });
   });
@@ -92,7 +92,7 @@ describe('seed files', () => {
   it('pin the revision of the shipped catalogue', () => {
     // Recompute (and re-pin) only when the shipped definitions change on purpose.
     expect(project.catalogue.revision).toBe(
-      '3add201adaaef393caf492731875c9f311a1eb75e39d31e72fe916c4b16d474a',
+      'ea2f3d5dc12d991398391f22530e58d35a61d19d552e6db944386927cf9a6d83',
     );
   });
 });

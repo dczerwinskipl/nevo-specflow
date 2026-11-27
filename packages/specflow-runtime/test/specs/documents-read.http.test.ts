@@ -138,7 +138,6 @@ async function handBuilt(
       },
       documents: options.documents ?? [{ id: 'overview', path: 'overview.md', type: 'overview' }],
       folders: [],
-      status: 'draft',
       location,
       priority: 10,
       created: '2026-10-24',

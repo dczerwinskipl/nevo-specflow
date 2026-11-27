@@ -33,7 +33,11 @@ export {
 export {
   abandonRun,
   activeAttempt,
+  historyOf,
+  isReturnRecord,
+  awaitingAttempt,
   newRun,
+  type AttemptConfirmation,
   type AttemptOutcome,
   type AttemptRecord,
   type ReturnRecord,

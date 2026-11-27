@@ -2,16 +2,29 @@ import { useTranslation } from 'react-i18next';
 import { InlineNote, Typography } from '@nevo/ui';
 import type { WorkflowActionProjection } from '@nevo/specflow-contracts/workflow';
 import { GateList } from './GateList';
-import { InlineAction } from './InlineAction';
+import { TextAction } from '../../../shared/actions';
+import type { FeedbackRef } from './feedback/feedbackRef';
 
 type Position = WorkflowActionProjection['position'];
 export type StartBlocker = Extract<Position, { kind: 'blocked' }>['blockers'][number];
 
 /** Where the page lets the reader fix a blocker (each a section heading of the page). */
+/** One attempt of a step, as the workflow history names it. */
+export interface AttemptRef {
+  readonly step: string;
+  readonly attempt: number;
+}
+
 export interface NowLinks {
   readonly tasks?: () => void;
   readonly context?: () => void;
   readonly dependencies?: () => void;
+  /** Opens the subject's workflow history: the agent's attempts ("See the attempt"). */
+  readonly attempt?: () => void;
+  /** Opens a hand-off's feedback in the shared Feedback view; absent: the page has none. */
+  readonly feedback?: (ref: FeedbackRef) => void;
+  /** Opens a document by its checkout-relative path (the agent's kept work); false: not found here. */
+  readonly document?: (path: string) => boolean;
 }
 
 /**
@@ -21,18 +34,21 @@ export interface NowLinks {
 export function StartBlockerLines({
   blockers,
   links,
+  omitWaitingDependencies = false,
 }: {
   readonly blockers: readonly StartBlocker[];
   readonly links: NowLinks;
+  /** The Now block already leads with "Waiting for dependencies" and says how many remain. */
+  readonly omitWaitingDependencies?: boolean;
 }) {
   const { t } = useTranslation();
   const see = (label: string, go: (() => void) | undefined) =>
     go ? (
       <>
         {' '}
-        <InlineAction className="ml-1" onClick={go}>
+        <TextAction className="ml-1" onClick={go}>
           {label}
-        </InlineAction>
+        </TextAction>
       </>
     ) : null;
 
@@ -44,7 +60,7 @@ export function StartBlockerLines({
       case 'dependencies':
         return (
           <div key={key} className="grid gap-1">
-            {blocker.waitingFor.length > 0 ? (
+            {blocker.waitingFor.length > 0 && !omitWaitingDependencies ? (
               <InlineNote tone="attention" icon="clock">
                 <span className="font-medium text-content-primary">
                   {t('workflowExecution.blocker.dependencies', {

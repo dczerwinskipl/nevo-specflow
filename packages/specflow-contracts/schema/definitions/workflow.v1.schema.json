@@ -210,6 +210,10 @@
                       "uniqueItems": true,
                       "maxItems": 1
                     },
+                    "confirmation": {
+                      "type": "string",
+                      "const": "owner"
+                    },
                     "escalate": {
                       "type": "boolean"
                     },
@@ -539,6 +543,10 @@
                       },
                       "uniqueItems": true,
                       "maxItems": 1
+                    },
+                    "confirmation": {
+                      "type": "string",
+                      "const": "owner"
                     },
                     "escalate": {
                       "type": "boolean"

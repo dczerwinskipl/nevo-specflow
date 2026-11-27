@@ -8,6 +8,7 @@ import {
 } from '../documents';
 import { WorkspaceIdSchema } from '../identifiers';
 import { OperationIdSchema } from '../operations/progress';
+import { AgentOptionSchema } from '../workflow/projection';
 import { SPEC_SLUG_MAX_LENGTH, SPEC_SLUG_PATTERN } from './slug';
 
 const UuidSchema = Type.String({
@@ -41,6 +42,60 @@ export const NewSpecWorktreeTargetSchema = Type.Object(
   { additionalProperties: false },
 );
 
+/**
+ * "Then run the first step with this agent": after the Specification is created, the Runtime
+ * starts an agent attempt of the archetype's first step (its workflow's entry step) with this agent,
+ * as the caller. The intent is stored with the operation and resumed after a Runtime restart, so the
+ * client may leave once the Create is accepted. The archetype's first step must be one an agent may
+ * do, and the caller must also be allowed to manage the Specification it creates; otherwise the
+ * request is refused before anything is written.
+ */
+export const CreateFirstStepRequestSchema = Type.Object(
+  {
+    run: Type.Literal('agent'),
+    provider: Type.String({ minLength: 1, maxLength: 200 }),
+    model: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
+    effort: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
+  },
+  { additionalProperties: false },
+);
+export type CreateFirstStepRequest = Static<typeof CreateFirstStepRequestSchema>;
+
+/** The step the agent was asked to start: the archetype's first step as Create resolved it. */
+const CreateFirstStepRefSchema = Type.Object(
+  { id: Type.String({ minLength: 1 }), title: Type.String() },
+  { additionalProperties: false },
+);
+
+/**
+ * What became of the first-step intent once the Specification exists: the agent `started` (its
+ * Session and attempt), or `not-started` with the refusal's stable `code` and, when the refusal is
+ * about the agent or the checkout, the agent option that explains it (the same shape Run with agent
+ * shows). A refused start never undoes the Create: the Specification exists and Run with agent (a
+ * new request) is the way on.
+ */
+export const CreateFirstStepResultSchema = Type.Union([
+  Type.Object(
+    {
+      status: Type.Literal('started'),
+      step: CreateFirstStepRefSchema,
+      sessionId: Type.String({ minLength: 1 }),
+      attemptId: Type.String({ minLength: 1 }),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      status: Type.Literal('not-started'),
+      step: CreateFirstStepRefSchema,
+      code: Type.String({ minLength: 1 }),
+      agent: Type.Optional(AgentOptionSchema),
+    },
+    { additionalProperties: false },
+  ),
+]);
+export type CreateFirstStepResult = Static<typeof CreateFirstStepResultSchema>;
+
 export const CreateSpecRequestSchema = Type.Object(
   {
     title: Type.String({ minLength: 1, maxLength: 200 }),
@@ -71,6 +126,7 @@ export const CreateSpecRequestSchema = Type.Object(
      * in the contract; the same property record is the exported `CreateArchetypeSelectionSchema`.
      */
     ...CreateArchetypeSelectionProperties,
+    firstStep: Type.Optional(CreateFirstStepRequestSchema),
   },
   { additionalProperties: false },
 );
@@ -102,6 +158,12 @@ export const CreatedSpecSchema = Type.Object(
           'Present and true when Git is disabled and the new scaffold remains uncommitted; later Git-enabled Close may refuse the dirty checkout.',
       }),
     ),
+    /**
+     * Present when the request carried `firstStep`: what became of the agent start. A Create with a
+     * first-step intent is reported `in-progress` until the start is settled, so a completed answer
+     * always carries the settled result.
+     */
+    firstStep: Type.Optional(CreateFirstStepResultSchema),
   },
   { additionalProperties: false },
 );

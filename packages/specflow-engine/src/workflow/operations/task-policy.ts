@@ -119,7 +119,26 @@ function describeEntry(issue: TaskContextIssue): string {
 
   return isAwaited(issue)
     ? `${String(issue.index + 1)} (${what})`
-    : `${String(issue.index + 1)} (${what}: ${issue.reason})`;
+    : `${String(issue.index + 1)} (${what}: ${issue.reason}; ${acceptedFormOf(issue.entry)})`;
+}
+
+/**
+ * B7: the field of an entry that does not resolve and the form it accepts, so the one who wrote it
+ * can correct it without reading the schema (the CLI shorthand is `<kind>:<value>`).
+ */
+function acceptedFormOf(entry: TaskContextEntry): string {
+  switch (entry.kind) {
+    case 'task-document':
+      return 'field "id" takes a document id registered in the Task, such as "task" (task-doc:task)';
+    case 'specification-document':
+      return 'field "id" takes a document id registered in the Specification, such as "overview" (spec-doc:overview)';
+    case 'project-document':
+      return 'field "id" takes the stable id of an active project documentation document, such as "architecture.workflow.workflow-kernel" (project-doc:<id>)';
+    case 'path':
+      return 'field "path" takes a repository-relative file, folder or glob, such as "packages/**/*.ts", without a leading "/" or ".." (path:<path>)';
+    case 'instructions':
+      return 'field "text" takes the instructions themselves';
+  }
 }
 
 /**

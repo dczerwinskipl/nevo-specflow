@@ -154,4 +154,63 @@ describe('proveExecutorState', () => {
       await proveExecutorState({ ...own, pid: 200, processStartTime: undefined }, own, procs),
     ).toBe('unknown');
   });
+
+  it('proves a zombie dead: it has exited, only its parent has not reaped it yet', async () => {
+    const zombie = table({
+      pid: 100,
+      files: { ...LINUX.files, '/proc/200/stat': `200 (node) Z ${'0 '.repeat(18)}6000 0 0` },
+      links: LINUX.links,
+    });
+    expect(
+      await proveExecutorState({ ...own, pid: 200, processStartTime: '6000' }, own, zombie),
+    ).toBe('dead');
+  });
+});
+
+describe('proveExecutorState without procfs (Windows, macOS)', () => {
+  const own = { pid: 100, hostId: 'host-1', platform: 'win32', processStartTime: '1000' };
+  const host = (probe: 'alive' | 'dead' | 'unknown', start?: string): ProcessTable => ({
+    ...table({ pid: 100 }),
+    probe: () => probe,
+    startTimeOf: () => start,
+  });
+
+  it('proves a PID that is not running dead', async () => {
+    expect(await proveExecutorState({ ...own, pid: 200 }, own, host('dead'))).toBe('dead');
+  });
+
+  it('proves a reused PID dead by its creation time, and never takes over the live holder', async () => {
+    const recorded = { ...own, pid: 200, processStartTime: '1500' };
+    expect(await proveExecutorState(recorded, own, host('alive', '9999'))).toBe('dead');
+    expect(await proveExecutorState(recorded, own, host('alive', '1500'))).toBe('alive');
+  });
+
+  it('fails closed when a live PID cannot be told apart from a reused one', async () => {
+    const recorded = { ...own, pid: 200, processStartTime: '1500' };
+    expect(await proveExecutorState(recorded, own, host('alive'))).toBe('unknown');
+    expect(
+      await proveExecutorState(
+        { ...recorded, processStartTime: undefined },
+        own,
+        host('alive', '1'),
+      ),
+    ).toBe('unknown');
+    expect(await proveExecutorState(recorded, own, host('unknown'))).toBe('unknown');
+    // Without a process probe nothing is proven.
+    expect(await proveExecutorState(recorded, own, table({ pid: 100 }))).toBe('unknown');
+  });
+
+  it('proves an earlier process with this very PID dead by its other creation time', async () => {
+    expect(await proveExecutorState({ ...own, processStartTime: '1' }, own, host('alive'))).toBe(
+      'dead',
+    );
+    expect(await proveExecutorState(own, own, host('alive', '1000'))).toBe('self');
+  });
+
+  it('records the creation time the host supplies', async () => {
+    expect(
+      (await captureExecutorIdentity({ ...table({ pid: 42 }), startTimeOf: () => '777' }))
+        .processStartTime,
+    ).toBe('777');
+  });
 });

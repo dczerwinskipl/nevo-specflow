@@ -15,11 +15,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { onLinux } from '../support/platform';
 
-import {
-  ProjectControlLockError,
-  inspectProjectControlLock,
-  withProjectControlLock,
-} from '../../src/project/control-lock';
+import { inspectProjectControlLock, withProjectControlLock } from '../../src/project/control-lock';
 import { applyDocumentChange } from '../../src/specs/documents/api';
 import { listDocumentBatches } from '../../src/specs/documents/queue/batch-store';
 import { readQueueLease } from '../../src/specs/documents/queue/lease';
@@ -92,26 +88,20 @@ async function queueThree(project: QueueProject, model: SaveModel): Promise<stri
   return ids;
 }
 
-/** The control lock is held, by `pid`, and nothing steals it: a second taker waits and gives up. */
-async function expectLockStalled(project: QueueProject, pid: number): Promise<void> {
+/**
+ * The control lock is held by the killed `pid`; the next taker releases it on the evidence that the
+ * holder is gone (ADR 0027), never by age or timeout.
+ */
+async function expectLockReleasedOnEvidence(project: QueueProject, pid: number): Promise<void> {
   expect(await inspectProjectControlLock(project.engine.context)).toMatchObject({
     status: 'held',
     pid,
   });
-  const error = await withProjectControlLock(project.engine.context, () => Promise.resolve(), {
+  await withProjectControlLock(project.engine.context, () => Promise.resolve(), {
     waitMs: 150,
     retryMs: 25,
-  }).then(
-    () => undefined,
-    (caught: unknown) => caught,
-  );
-  expect(error).toBeInstanceOf(ProjectControlLockError);
-  expect(error).toMatchObject({ code: 'CONTROL_LOCK_BUSY' });
-  // Still there: nothing removed it by age, PID or timeout.
-  expect(await inspectProjectControlLock(project.engine.context)).toMatchObject({
-    status: 'held',
-    pid,
   });
+  expect(await inspectProjectControlLock(project.engine.context)).toEqual({ status: 'free' });
 }
 
 /** Waits until the process no longer exists, so that nothing it was doing can still be recorded. */
@@ -193,8 +183,8 @@ describe.skipIf(!onLinux)('a queue worker killed inside the control lock', () =>
       );
       await terminateCheckpointPid(checkpoint.pid, worker);
 
-      // The holder is dead and the lock stays: documented stall of document operations and Create.
-      await expectLockStalled(project, checkpoint.pid);
+      // The holder is dead: its lock is released on that evidence, the queue work stays for the takeover.
+      await expectLockReleasedOnEvidence(project, checkpoint.pid);
       expect(
         await takeOverDocumentQueue(project.engine, { confirmExecutorStopped: false }),
       ).toEqual({
@@ -204,16 +194,12 @@ describe.skipIf(!onLinux)('a queue worker killed inside the control lock', () =>
         passes: [],
       });
       expect(engineCommits(project)).toEqual([]);
-      expect(await inspectProjectControlLock(project.engine.context)).toMatchObject({
-        status: 'held',
-        pid: checkpoint.pid,
-      });
 
       const taken = await takeOverDocumentQueue(project.engine, {
         confirmExecutorStopped: true,
         queue: isolatedQueue(),
       });
-      expect(taken.lock).toMatchObject({ status: 'cleared', holder: { pid: checkpoint.pid } });
+      expect(taken.lock).toEqual({ status: 'free' });
       expect(taken.passes[0]?.results[0]).toMatchObject({ status: 'committed' });
       expect(await inspectProjectControlLock(project.engine.context)).toEqual({ status: 'free' });
       await expectOneCommit(project, ids, before);
@@ -244,14 +230,14 @@ describe.skipIf(!onLinux)('a queue worker killed inside the control lock', () =>
     expect(batch?.executor?.pid).toBe(resumer.pid);
     const lease = await readQueueLease(project.engine.context, project.workspaceId);
     expect(lease?.executor.pid).toBe(executor.pid);
-    await expectLockStalled(project, resumer.pid);
+    await expectLockReleasedOnEvidence(project, resumer.pid);
     await expectPipelineInvariants(project, model, 'stopped');
 
     const taken = await takeOverDocumentQueue(project.engine, {
       confirmExecutorStopped: true,
       queue: isolatedQueue(),
     });
-    expect(taken.lock.status).toBe('cleared');
+    expect(taken.lock.status).toBe('free');
     expect(taken.passes[0]?.results[0]).toMatchObject({ status: 'committed', resumed: true });
     await expectOneCommit(project, ids, before);
     await expectPipelineInvariants(project, model, 'drained');
@@ -388,10 +374,10 @@ describe.skipIf(!onLinux)('a writer killed inside the control lock', () => {
 
     expect(await findDocumentChangeJournal(project.engine.context, operationId)).toBeUndefined();
     expect(await readFile(join(project.dir, notesPath(1)), 'utf8')).toBe('notes 1\n');
-    await expectLockStalled(project, checkpoint.pid);
+    await expectLockReleasedOnEvidence(project, checkpoint.pid);
 
     const taken = await takeOverDocumentQueue(project.engine, { confirmExecutorStopped: true });
-    expect(taken.lock.status).toBe('cleared');
+    expect(taken.lock.status).toBe('free');
 
     const result = await applyDocumentChange(project.engine, project.specId, operationId, {
       action: 'save',

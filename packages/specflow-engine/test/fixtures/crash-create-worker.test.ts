@@ -57,18 +57,25 @@ it.skipIf(!enabled)(
       throw new Error('Create crash barrier unexpectedly returned.');
     }
 
-    if (mode !== 'resume') {
+    if (mode !== 'resume' && mode !== 'retry') {
       throw new Error('Unexpected crash worker mode.');
     }
 
     const expectedError = process.env.NEVO_CREATE_CRASH_EXPECT_ERROR;
     try {
-      const result = await createSpecification(engine, input, {
-        // A fresh, explicitly started crash-recovery process is the operator's
-        // evidence that the killed writer is no longer active.
-        resumeInterruptedOperation: true,
-        confirmInterruptedGitSettled: process.env.NEVO_CREATE_CRASH_GIT_SETTLED === '1',
-      });
+      const result = await createSpecification(
+        engine,
+        input,
+        mode === 'resume'
+          ? {
+              // A fresh, explicitly started crash-recovery process is the operator's
+              // evidence that the killed writer is no longer active.
+              resumeInterruptedOperation: true,
+              confirmInterruptedGitSettled: process.env.NEVO_CREATE_CRASH_GIT_SETTLED === '1',
+            }
+          : // A plain retry (a restarted Runtime): no assertion, only the Engine's own evidence.
+            {},
+      );
       if (expectedError) {
         throw new Error('Unexpected successful recovery: ' + result.specId);
       }

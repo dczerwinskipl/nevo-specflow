@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import {
   bootstrapProjectHome,
   createSpecificationForTesting,
+  inspectCreateSpecification,
   installDefinitionsForTesting,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine/testing';
@@ -19,6 +20,10 @@ import { createOperationProgressRegistry } from '../../src/features/operations';
 import type { FirstStepStarter } from '../../src/features/specs';
 import { createFileFirstStepIntentStore } from '../../src/features/specs/create/first-step-store';
 import { firstStepIntentDirectory } from '../../src/features/specs/create/first-step';
+import {
+  CREATE_REQUEST_RELATIVE_DIR,
+  createFileCreateRequestStore,
+} from '../../src/features/specs/create/request-store';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 import { ARCHETYPE_REQUEST } from '../support/archetype';
@@ -374,5 +379,142 @@ describe('Create with a first-step intent (real Git)', () => {
     });
     expect(response.statusCode).toBe(409);
     expect(await intentFiles(engine)).toEqual([]);
+  }, 240000);
+});
+
+/** A PID that ran and exited: what a killed Runtime leaves in its records. */
+function deadPid(): number {
+  const child = spawnSync(process.execPath, ['-e', '']);
+
+  return child.pid;
+}
+
+const requests = (engine: SpecFlowEngine) =>
+  createFileCreateRequestStore(() =>
+    join(engine.context.project.stateRoot, CREATE_REQUEST_RELATIVE_DIR),
+  );
+
+describe('a Create in flight when the Runtime died (real Git)', () => {
+  /** What the killed Runtime had written before it died: the request and the first-step intent. */
+  async function accepted(engine: SpecFlowEngine, operationId: string, title: string) {
+    const body = {
+      ...ARCHETYPE_REQUEST,
+      operationId,
+      title,
+      firstStep,
+      target: { kind: 'existing' as const, workspaceId: engine.workspace.workspaceId },
+    };
+    const before = new Date(Date.now() - 60_000).toISOString();
+    await requests(engine).write({
+      version: 1,
+      operationId,
+      principal: 'owner-principal',
+      request: body,
+      createdAt: before,
+    });
+    await createFileFirstStepIntentStore(firstStepIntentDirectory(engine)).write({
+      version: 1,
+      operationId,
+      principal: 'owner-principal',
+      request: firstStep,
+      step: { id: 'requirements', title: 'Gather requirements' },
+      createdAt: before,
+    });
+
+    return body;
+  }
+
+  it('runs a Create that died before its reservation at the next start, and its agent once', async () => {
+    const engine = await project();
+    const operationId = randomUUID();
+    await accepted(engine, operationId, 'Died while reserving');
+
+    const { starter, start } = fakeStarter();
+    const first = await server(engine, starter);
+    const settled = await first.untilSettled(operationId);
+    expect(settled).toMatchObject({ status: 'completed', firstStep: { status: 'started' } });
+    await vi.waitFor(() => expect(start).toHaveBeenCalledTimes(1));
+    expect(start.mock.calls[0]![0]).toMatchObject({ operationId, principal: 'owner-principal' });
+    expect(await requests(engine).read(operationId)).toBeUndefined();
+    expect((await engine.readRegistry()).specBindings).toHaveLength(1);
+    await first.app.close();
+
+    // Another restart neither creates again nor starts the agent again.
+    const again = fakeStarter();
+    await server(engine, again.starter);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(again.start).not.toHaveBeenCalled();
+    expect((await engine.readRegistry()).specBindings).toHaveLength(1);
+  }, 240000);
+
+  it.each(['reservation', 'manifest', 'registry'])(
+    'resumes a Create that died at %s from its journal, and starts its agent once',
+    async (stage) => {
+      const engine = await project();
+      const operationId = randomUUID();
+      const body = await accepted(engine, operationId, 'Died at ' + stage);
+      // The killed Runtime's own run of the Engine Create, interrupted after `stage`.
+      await expect(
+        createSpecificationForTesting(
+          engine,
+          {
+            operationId,
+            title: body.title,
+            created: new Date().toISOString().slice(0, 10),
+            archetype: { id: body.archetypeId, version: body.archetypeVersion },
+            catalogueRevision: body.catalogueRevision,
+            target: body.target,
+          },
+          {
+            afterEffect: (effect) =>
+              effect === stage ? Promise.reject(new Error('killed')) : Promise.resolve(),
+          },
+        ),
+      ).rejects.toThrow('killed');
+      // Its executor is a process that no longer runs.
+      const path = join(
+        engine.context.project.stateRoot,
+        'engine/operations/create',
+        operationId + '.json',
+      );
+      const journal = JSON.parse(await readFile(path, 'utf8')) as {
+        executor: { pid: number; processStartTime?: string };
+      };
+      const stuck = (await inspectCreateSpecification(engine, operationId))!;
+      await writeFile(
+        path,
+        JSON.stringify({ ...journal, executor: { ...journal.executor, pid: deadPid() } }) + '\n',
+      );
+
+      const { starter, start } = fakeStarter();
+      const { untilSettled } = await server(engine, starter);
+      const settled = await untilSettled(operationId);
+      expect(settled).toMatchObject({
+        status: 'completed',
+        specId: stuck.specId,
+        firstStep: { status: 'started' },
+      });
+      expect(start).toHaveBeenCalledTimes(1);
+      expect((await engine.readRegistry()).specBindings).toHaveLength(1);
+    },
+    240000,
+  );
+
+  it('keeps a Create that was refused readable as failed, never "not found"', async () => {
+    const engine = await project();
+    const { starter } = fakeStarter();
+    const { post, inspect } = await server(engine, starter);
+    const operationId = randomUUID();
+    const response = await post({
+      operationId,
+      title: 'Refused create',
+      catalogueRevision: 'stale',
+      target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+    });
+    expect(response.statusCode).toBe(409);
+    expect((await inspect(operationId)).json()).toMatchObject({
+      status: 'failed',
+      code: response.json<{ code: string }>().code,
+    });
   }, 240000);
 });

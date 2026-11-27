@@ -6,6 +6,12 @@ import { verifyScaffold, writeScaffoldWithEvidence } from './scaffold-writer';
 import type { WindowsPathBoundOptions } from './path-bound';
 import { reserveCreateOperation, writingSlugsByWorkspace } from './reservation/reservation';
 import { followExistingCreateOperation } from './reservation/observation';
+import {
+  nodeProcessTable,
+  ownExecutorIdentity,
+  proveExecutorState,
+  type ExecutorIdentity,
+} from '../durable/executor-identity';
 import type { CreateSpecificationInput } from './input';
 export type { CreateSpecificationInput, CreateSpecificationTarget } from './input';
 import { commitBinding } from './binding/binding';
@@ -187,6 +193,42 @@ async function isGitDisabled(engine: SpecFlowEngine): Promise<boolean> {
   }
 }
 
+/**
+ * Whether a retry takes an unfinished journal over: only on positive evidence that its executor is
+ * gone (ADR 0027): the recorded process is provably dead (its PID absent, or reused by a process
+ * with another start time, or another boot). A live, unknown or same-process executor is followed
+ * as before (a retry is only a reader). The journal then names this process as its executor (a compare-and-set: a concurrent taker wins
+ * or loses cleanly). `git-initiated` is never taken over this way: a Git child of the dead executor
+ * may still run, which only an operator can confirm settled.
+ */
+async function takeOverStoppedExecutor(
+  engine: SpecFlowEngine,
+  record: CreateJournal,
+): Promise<CreateJournal | 'stopped-in-git' | undefined> {
+  if (!record.executor || record.stage === 'completed' || record.stage === 'recovery-required') {
+    return undefined;
+  }
+
+  const own = await ownExecutorIdentity();
+  if ((await proveExecutorState(record.executor, own, nodeProcessTable)) !== 'dead') {
+    return undefined;
+  }
+
+  if (record.stage === 'git-initiated') {
+    return 'stopped-in-git';
+  }
+
+  try {
+    return await transition(engine, record, record.stage, undefined, undefined, own);
+  } catch (error) {
+    if (error instanceof CreateOperationError && error.code === 'CREATE_CONFLICT') {
+      return undefined;
+    }
+
+    throw error;
+  }
+}
+
 async function createWithVerifiedIntent(
   engine: SpecFlowEngine,
   operationId: string,
@@ -207,13 +249,32 @@ async function createWithVerifiedIntent(
     windowsPathBound,
   );
   let record = reservation.record;
+  // A journal whose executor is provably gone is resumed by this retry, as if an operator had
+  // confirmed the original stopped.
+  const takeover =
+    reservation.existing && !options.resumeInterruptedOperation
+      ? await takeOverStoppedExecutor(engine, record)
+      : undefined;
+  if (takeover === 'stopped-in-git') {
+    // Nothing will advance this journal: answer at once instead of following it.
+    throw recovery(
+      'Create stopped while Git was creating its worktree; confirm Git settled to resume it.',
+    );
+  }
+
+  const takenOver = takeover;
+  if (takenOver) {
+    record = takenOver;
+  }
+
+  const writer = options.resumeInterruptedOperation === true || takenOver !== undefined;
   // A retry that finds the operation still reserved is announced only after the reserved plan
   // validated again, so a transport never accepts it ahead of the original run's rejection.
   const replayAwaitsValidation =
     reservation.existing &&
     record.stage === 'reserved' &&
     record.target.kind === 'new-worktree' &&
-    !options.resumeInterruptedOperation;
+    !writer;
   if (!replayAwaitsValidation) {
     notifyStage(options.onStage, record, reservation.existing);
   }
@@ -226,9 +287,10 @@ async function createWithVerifiedIntent(
   // Its original writer may still be active inside an uncertain Git/FS stage,
   // even if the journal has not changed for a long time. Do not infer a lease
   // or quiescence from the persisted stage, and do not execute any side effect.
-  // Only resumeInterruptedOperation permits takeover of Create. The separate
+  // Only resumeInterruptedOperation, or positive evidence that the executor is gone (above),
+  // permits takeover of Create. The separate
   // confirmInterruptedGitSettled flag cannot bypass this writer boundary.
-  if (reservation.existing && record.stage !== 'completed' && !options.resumeInterruptedOperation) {
+  if (reservation.existing && record.stage !== 'completed' && !writer) {
     if (replayAwaitsValidation) {
       await rejectInvalidReservedReplay(engine, record);
       notifyStage(options.onStage, record, true);
@@ -439,6 +501,7 @@ async function transition(
   stage: CreateStage,
   observer?: CreateStageObserver,
   commit?: Partial<Pick<NonNullable<CreateJournal['commit']>, 'parentHead' | 'commitSha'>>,
+  executor?: ExecutorIdentity,
 ): Promise<CreateJournal> {
   const next = await withCreateJournalLock(engine.context, async () => {
     const current = await readCreateJournal(engine.context, record.operationId);
@@ -453,6 +516,7 @@ async function transition(
       ...current,
       stage,
       ...(commit && current.commit ? { commit: { ...current.commit, ...commit } } : {}),
+      ...(executor ? { executor } : {}),
     };
     await publishCreateJournal(engine.context, next);
 

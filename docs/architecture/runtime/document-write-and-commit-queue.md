@@ -127,8 +127,8 @@ resolved by the operator command. `abandon`, like auto-commit off, ends `uncommi
 
 - **Where the queue lives.** In persisted journals, a batch record and a per-checkout lease record under the Project Home engine operations directory, not in memory.
 - Every claim and transition is read, compare and write under the control lock (not a hardware compare-and-swap).
-- The control lock is never stolen: a holder killed by SIGKILL stalls document operations (and Create) until an operator clears it (see the operator takeover below).
-- Executors are identified by PID, host, PID namespace, process start time and boot id; automatic takeover needs a dead proof (same host and namespace and the PID absent or with a different start time, or a different boot id), otherwise an operator assertion.
+- The control lock is released only on positive evidence that its holder is gone ([ADR 0027](../decisions/0027-locks-released-only-on-positive-evidence.md)): the Runtime checks at startup and every waiter while it waits; a live holder is never overridden, and a holder that cannot be judged is left to the operator takeover below.
+- Executors are identified by PID, host, platform, PID namespace, process start time and boot id; automatic takeover needs a dead proof (same host and namespace and the PID absent or with a different start time, or a different boot id; without procfs, same host and platform and the PID absent (`ESRCH`) or with a different creation time), otherwise an operator assertion.
 
 **Interaction with other operations.** Create and other path-limited commits are unaffected. Another checkout has its
 own queue, branch and HEAD. Git deadlines: read 10 s, mutation 30 s plus 3 s grace, batch attempt 150 s; children are
@@ -196,9 +196,9 @@ Close does (`CREATE_CONFLICT`). A Git-disabled project queues nothing, so the fl
 
 ### Operator takeover
 
-**Operator takeover.** The control lock is never stolen by age, PID or timeout. `takeOverDocumentQueue`
-(`--confirmed-stopped` of the recover command) is the operator's answer to a stopped Runtime on platforms where the Engine
-cannot prove the holder dead (Windows, macOS, containers without procfs). It needs the explicit assertion
+**Operator takeover.** The control lock is never stolen by age or timeout. `takeOverDocumentQueue`
+(`--confirmed-stopped` of the recover command) is the operator's answer where the Engine cannot prove the holder gone
+(an owner of another host or platform, a live PID without a comparable start time, unreadable metadata). It needs the explicit assertion
 `confirmExecutorStopped`; without it nothing is touched. It then:
 
 1. clears the control lock (`takeOverProjectControlLock`) only when the lock is a regular file and the holder is provably not running on this host: the recorded PID is absent (`kill(pid, 0)`), or it is the PID of this process and the lock was written before this process started (a restarted container) while this process does not hold it, or the metadata is unreadable and the file is at least a minute old.

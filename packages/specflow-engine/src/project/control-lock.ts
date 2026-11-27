@@ -16,11 +16,20 @@ import {
   rememberProvenInOperation,
 } from './request-verification-memo';
 import { assertProjectHomeLockProof, captureProjectHomeLockProof } from './home/lock-proof';
+import {
+  isExecutorIdentity,
+  ownExecutorIdentity,
+  nodeProcessTable,
+  proveExecutorState,
+  type ExecutorIdentity,
+  type ProcessTable,
+} from '../specs/durable/executor-identity';
 
 export const PROJECT_CONTROL_LOCK_RELATIVE_PATH = 'engine/control.lock';
 
 // Subscribers can profile contention without modifying the coordinated operation.
 const lockTimingChannel = channel('nevo.specflow.engine.control-lock');
+const releaseChannel = channel('nevo.specflow.engine.control-lock-abandoned');
 
 /**
  * Lock files this process holds right now (path -> token). A takeover never clears one of them; it is
@@ -56,6 +65,12 @@ interface ControlLockRecord {
   readonly token: string;
   readonly pid: number;
   readonly createdAt: string;
+  /**
+   * Who holds the lock: host, platform, PID and, where the OS supplies it, the process start time.
+   * The evidence that the holder is gone (`releaseAbandonedProjectControlLock`). Absent on a lock
+   * written before the owner was recorded: then only an absent PID is evidence.
+   */
+  readonly owner?: ExecutorIdentity;
 }
 
 export type ProjectControlLockInspection =
@@ -64,21 +79,27 @@ export type ProjectControlLockInspection =
       readonly status: 'held';
       readonly pid: number;
       readonly createdAt: string;
-      /** A PID is only diagnostic, not a proof that an external writer ended. */
+      readonly owner?: ExecutorIdentity;
     }
   | { readonly status: 'corrupt'; readonly reason: string };
 
 export interface ProjectControlLockOptions {
-  /** Maximum time to wait for another short writer; never steals an orphan lock. */
+  /**
+   * Maximum time to wait for another short writer. A lock whose holder is provably gone is
+   * released while waiting (`releaseAbandonedProjectControlLock`); a live or unknown holder never is.
+   */
   readonly waitMs?: number;
   readonly retryMs?: number;
 }
+
+/** While waiting, how often the holder of a busy lock is checked for positive evidence that it is gone. */
+const OWNER_CHECK_MS = 1000;
 
 export function projectControlLockPath(context: ResolvedProjectHome): string {
   return join(context.project.stateRoot, PROJECT_CONTROL_LOCK_RELATIVE_PATH);
 }
 
-/** Read-only diagnostics. No age-, PID- or TTL-based lock stealing is supported. */
+/** Read-only diagnostics. No age- or TTL-based lock stealing is supported. */
 export async function inspectProjectControlLock(
   context: ResolvedProjectHome,
 ): Promise<ProjectControlLockInspection> {
@@ -110,13 +131,143 @@ export async function inspectProjectControlLock(
     return { status: 'corrupt', reason: 'Control lock has invalid owner/project identity.' };
   }
 
-  return { status: 'held', pid: value.pid, createdAt: value.createdAt };
+  return {
+    status: 'held',
+    pid: value.pid,
+    createdAt: value.createdAt,
+    ...(value.owner ? { owner: value.owner } : {}),
+  };
+}
+
+/**
+ * Why a held lock is kept: its holder runs (`holder-alive`, `held-by-this-process`), or nothing
+ * proves it gone (`holder-unknown`: another host or platform, a live PID whose start time cannot be
+ * compared; `corrupt`: no readable owner at all), or it changed while it was judged. Only an
+ * operator clears `holder-unknown` and `corrupt`
+ * (`nevo-specflow specs documents recover --confirmed-stopped`).
+ */
+export type AbandonedLockKeptReason =
+  'held-by-this-process' | 'holder-alive' | 'holder-unknown' | 'corrupt' | 'changed';
+
+export type AbandonedLockRelease =
+  | { readonly status: 'free' }
+  | {
+      readonly status: 'released';
+      readonly holder: { readonly pid: number; readonly createdAt: string };
+    }
+  | { readonly status: 'kept'; readonly reason: AbandonedLockKeptReason };
+
+export interface AbandonedLockOptions {
+  /** The OS process table (seam). */
+  readonly table?: ProcessTable;
+  /** This process's identity (seam); defaults to the one it writes into its own locks. */
+  readonly own?: ExecutorIdentity;
+}
+
+/**
+ * Releases the control lock ONLY on positive evidence that its holder is gone (ADR 0027: a lock is
+ * released only on positive evidence that its owner is gone). The evidence is the dead proof of the
+ * recorded owner (`proveExecutorState`), the same PID-and-start-time evidence as the native stop of
+ * an agent's processes:
+ *
+ * - its PID is not running on this host (`ESRCH`, or no `/proc/<pid>` in the same PID namespace);
+ * - a different process now has its PID: another start time (Linux `/proc` start time, Windows
+ *   creation time) or another boot;
+ * - it names this very process and thread, which does not hold it (a section of this process that
+ *   failed after creating the file).
+ *
+ * A lock written before the owner was recorded has only a PID: an absent PID is the evidence. A
+ * live holder is never released, and neither is one that cannot be judged (another host or
+ * platform, a live PID without a comparable start time, unreadable metadata): fail closed. The file
+ * is read again just before the removal and must be byte-identical to the one judged.
+ */
+export async function releaseAbandonedProjectControlLock(
+  context: ResolvedProjectHome,
+  options: AbandonedLockOptions = {},
+): Promise<AbandonedLockRelease> {
+  const path = projectControlLockPath(context);
+  let before: string;
+  try {
+    before = await readFileWindowsSafe(path);
+  } catch (error) {
+    if (isNodeError(error, 'ENOENT')) {
+      return { status: 'free' };
+    }
+
+    throw error;
+  }
+
+  const inspected = await inspectProjectControlLock(context);
+  if (inspected.status === 'free') {
+    return { status: 'free' };
+  }
+
+  if (inspected.status === 'corrupt') {
+    return { status: 'kept', reason: 'corrupt' };
+  }
+
+  if (heldHere.has(path)) {
+    return { status: 'kept', reason: 'held-by-this-process' };
+  }
+
+  const table = options.table ?? nodeProcessTable;
+  const verdict = await judgeOwner(inspected, options.own ?? (await ownExecutorIdentity()), table);
+  if (verdict !== 'gone') {
+    return { status: 'kept', reason: verdict };
+  }
+
+  // The record must still be the one judged: a holder that released it and another that took it is left alone.
+  const after = await readFileWindowsSafe(path).catch(() => undefined);
+  if (after !== before || heldHere.has(path)) {
+    return { status: 'kept', reason: 'changed' };
+  }
+
+  await unlinkWindowsSafe(path);
+  if (releaseChannel.hasSubscribers) {
+    try {
+      releaseChannel.publish({ projectId: context.project.projectId, pid: inspected.pid });
+    } catch {
+      // Diagnostic subscribers are observers.
+    }
+  }
+
+  return { status: 'released', holder: { pid: inspected.pid, createdAt: inspected.createdAt } };
+}
+
+async function judgeOwner(
+  held: Extract<ProjectControlLockInspection, { status: 'held' }>,
+  own: ExecutorIdentity,
+  table: ProcessTable,
+): Promise<'gone' | 'holder-alive' | 'holder-unknown'> {
+  if (!held.owner) {
+    // Written before the owner was recorded: only an absent PID (never this process's own) is evidence.
+    if (held.pid === own.pid) {
+      return 'holder-unknown';
+    }
+
+    const probed = table.probe?.(held.pid) ?? 'unknown';
+
+    return probed === 'dead' ? 'gone' : probed === 'alive' ? 'holder-alive' : 'holder-unknown';
+  }
+
+  switch (await proveExecutorState(held.owner, own, table)) {
+    case 'dead':
+      return 'gone';
+    case 'self':
+      // This very process and thread, which does not hold it (checked by the caller).
+      return 'gone';
+    case 'alive':
+      return 'holder-alive';
+    default:
+      return 'holder-unknown';
+  }
 }
 
 /**
  * One deterministic, OS-process exclusive lock per verified Project Home.
  * Exclusive file creation admits exactly one process. Files left after process
- * death are never removed by timeout; explicit lock recovery is a later gate.
+ * death are never removed by timeout: only on positive evidence that the holder is gone
+ * (`releaseAbandonedProjectControlLock`, also while waiting here), or by an operator.
  *
  * The physical proof pinned before acquisition (see {@link attemptProjectControlLock}) goes stale
  * whenever anything legitimately touches the Git/worktree structure while this call waits or holds
@@ -172,17 +323,20 @@ async function attemptProjectControlLock<T>(
   await ensureSafeLockDirectory(context, dir);
   const path = projectControlLockPath(context);
   const token = randomUUID();
+  const owner = await ownExecutorIdentity();
   const record: ControlLockRecord = {
     version: 1,
     projectId: context.project.projectId,
     token,
-    pid: process.pid,
+    pid: owner.pid,
     createdAt: new Date().toISOString(),
+    owner,
   };
   const measuring = lockTimingChannel.hasSubscribers;
   const startedAt = measuring ? performance.now() : 0;
   let acquiredAt = 0;
   let file;
+  let ownerCheckedAt: number | undefined;
   while (true) {
     try {
       file = await open(path, 'wx', 0o600);
@@ -205,6 +359,16 @@ async function attemptProjectControlLock<T>(
           ((await isExistingRegularLock(path)) || (await isMissingPath(path))));
       if (!busy) {
         throw error;
+      }
+
+      // A holder that is provably gone (a crashed Runtime or CLI) is released and the lock is tried
+      // again at once; a live or unknown holder is waited for, never stolen.
+      if (ownerCheckedAt === undefined || Date.now() - ownerCheckedAt >= OWNER_CHECK_MS) {
+        ownerCheckedAt = Date.now();
+        const released = await releaseAbandonedProjectControlLock(context).catch(() => undefined);
+        if (released?.status === 'released' || released?.status === 'free') {
+          continue;
+        }
       }
 
       if (Date.now() >= deadline) {
@@ -498,7 +662,8 @@ function isLockRecord(value: unknown): value is ControlLockRecord {
     Number.isSafeInteger(obj.pid) &&
     (obj.pid as number) > 0 &&
     typeof obj.createdAt === 'string' &&
-    !Number.isNaN(Date.parse(obj.createdAt))
+    !Number.isNaN(Date.parse(obj.createdAt)) &&
+    (obj.owner === undefined || (isExecutorIdentity(obj.owner) && obj.owner.pid === obj.pid))
   );
 }
 

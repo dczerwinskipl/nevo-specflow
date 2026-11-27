@@ -13,9 +13,10 @@ import {
 } from '@nevo/specflow-engine';
 
 import type { OperationProgressRegistry } from '../../operations';
-import { createErrorCode } from './error-status';
+import { createErrorCode, statusForCreateError } from './error-status';
 import type { CreateFirstStep } from './first-step';
 import { isRecoveryCode, startCreateProgress, type CreateProgress } from './progress';
+import type { CreateRequestStore } from './request-store';
 
 export interface RunCreateInput {
   readonly engine: SpecFlowEngine;
@@ -33,6 +34,14 @@ export interface RunCreateInput {
    * Runtime runs no agent, and a request with `firstStep` is refused.
    */
   readonly firstStep?: { readonly owner: CreateFirstStep; readonly principal: string } | undefined;
+  /**
+   * The Runtime's record of accepted Creates and who asked: written before the Engine reserves
+   * anything, so a Runtime that dies mid-Create resumes it at its next start. Absent (tests): the
+   * operation is not resumed by the Runtime.
+   */
+  readonly requests?:
+    | { readonly store: CreateRequestStore; readonly principal: string; readonly now?: () => Date }
+    | undefined;
 }
 
 export type RunCreateOutcome =
@@ -76,6 +85,19 @@ export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome
           principal: firstStep.principal,
         })
       : undefined;
+
+  // The operation the owner started is durable from here on, before the Engine writes anything.
+  const requests = input.requests && operationId ? input.requests : undefined;
+  if (requests && operationId) {
+    const earlier = await requests.store.read(operationId);
+    await requests.store.write({
+      version: 1,
+      operationId,
+      principal: earlier?.principal ?? requests.principal,
+      request: { ...body, operationId },
+      createdAt: earlier?.createdAt ?? (requests.now ?? (() => new Date()))().toISOString(),
+    });
+  }
 
   // Best-effort progress for the operation stream; never affects the outcome.
   const progress: CreateProgress | undefined =
@@ -124,6 +146,11 @@ export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome
         },
       );
       const created: CreatedSpec = projectCreatedSpecification(result);
+      // The Engine journal is complete and durable: it, and the first-step intent, carry the rest.
+      if (requests && operationId) {
+        await requests.store.remove(operationId).catch(() => undefined);
+      }
+
       if (!intent || !firstStep) {
         progress?.complete(created);
 
@@ -151,6 +178,22 @@ export async function runCreate(input: RunCreateInput): Promise<RunCreateOutcome
     } catch (error) {
       const code = createErrorCode(error);
       progress?.fail(code);
+      if (requests && operationId && code !== undefined) {
+        // The operation stays readable with how it ended; an open outcome is tried again at the next
+        // Runtime start, a refusal is final.
+        await requests.store
+          .read(operationId)
+          .then((record) =>
+            record
+              ? requests.store.write({
+                  ...record,
+                  failure: { code, definite: statusForCreateError(code) < 500 },
+                })
+              : undefined,
+          )
+          .catch(() => undefined);
+      }
+
       if (intent && firstStep && operationId) {
         // A definite refusal ends the operation: its intent goes with it. An uncertain outcome
         // keeps it for the retry with the same operation id.

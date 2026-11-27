@@ -672,6 +672,22 @@ describe('CreateOperationPage', () => {
       expect(post).not.toHaveBeenCalled();
       expect(screen.queryByRole('alert')).toBeNull();
     });
+
+    it('keeps the draft this browser holds for an operation the server does not know', async () => {
+      storage().saveDraft({
+        operationId,
+        title: 'Payment limits',
+        goal: 'Goal',
+        choice: initialWorkspaceChoice,
+      });
+      const { onBackToForm } = renderPage({
+        get: vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND')),
+      });
+      expect(await heading('Operation not found', false)).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Back to Create' }));
+      expect(onBackToForm).toHaveBeenCalledWith(operationId);
+      expect(storage().loadDraft(operationId)).toMatchObject({ title: 'Payment limits' });
+    });
   });
 
   describe('a failure the live stream reports', () => {

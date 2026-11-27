@@ -49,7 +49,13 @@ export {
   type WorkspaceUnavailableReason,
 } from './specs/workspaces/inspection';
 
-export { ProjectControlLockError, type ProjectControlLockErrorCode } from './project/control-lock';
+export {
+  ProjectControlLockError,
+  releaseAbandonedProjectControlLock,
+  type AbandonedLockRelease,
+  type ProjectControlLockErrorCode,
+} from './project/control-lock';
+export { setProcessStartTimeSource } from './specs/durable/executor-identity';
 
 export { readRegistrySnapshot, type SpecFlowEngine } from './application';
 export { openSpecFlowEngine } from './engine';

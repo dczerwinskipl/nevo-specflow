@@ -379,7 +379,11 @@ export function CreateOperationPage({
                 <Button onClick={() => backToForm()}>{t('create.page.backToForm')}</Button>
               ))}
             {view === 'not-found' && (
-              <Button variant="secondary" onClick={() => onBackToForm()}>
+              // The draft this browser kept for the operation, if any: the owner's input is never dropped.
+              <Button
+                variant="secondary"
+                onClick={() => onBackToForm(ownDraft ? operationId : undefined)}
+              >
                 {t('create.page.backToCreate')}
               </Button>
             )}

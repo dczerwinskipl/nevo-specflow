@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { RoutedSpecificationApp, type ControlCenterPage } from './ControlCenterApp.stories-support';
+import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import {
   earlyCatalogue,
   earlyDocumentApi,
@@ -230,6 +231,41 @@ export const Waiting: Story = {
     const track = await canvas.findByRole('img', { name: 'Step 6 of 7: Implement' });
     await expect(track).toHaveClass('h-1');
     await expect(canvas.queryByRole('button', { name: 'New task' })).toBeNull();
+  },
+};
+
+/**
+ * The Now draws its two bars as the Specifications list does: the step track spans its block, the
+ * position on the step's label line, and both blocks stop at the list's Workflow width (22rem) on a
+ * wide Overview, while a phone keeps them across the block.
+ */
+export const NowProgressWidth: Story = {
+  tags: ['contract', '!autodocs'],
+  args: { scenario: 'waiting' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('img', { name: 'Step 6 of 7: Implement' });
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const now = () => canvasElement.querySelector<HTMLElement>('[data-workflow-now]')!;
+    const blocks = () =>
+      [
+        ...now().querySelectorAll<HTMLElement>('[data-step-progress], [data-now-tasks-progress]'),
+      ].map((block) => block.getBoundingClientRect());
+    try {
+      for (const width of [375, 1280, 1920]) {
+        await settleViewport(width, 900);
+        const step = now().querySelector<HTMLElement>('[data-step-progress]')!;
+        const track = step.querySelector<HTMLElement>('[role="img"]')!;
+        await expect(
+          Math.abs(track.getBoundingClientRect().width - step.getBoundingClientRect().width),
+        ).toBeLessThan(1);
+        for (const block of blocks()) {
+          await expect(block.width).toBeLessThanOrEqual(22 * rem + 0.5);
+        }
+      }
+    } finally {
+      await settleViewport();
+    }
   },
 };
 

@@ -40,7 +40,9 @@ const collectionTrackPresets = {
   /**
    * Specifications, current: title, workflow, Tasks. Every track grows from its minimum toward its
    * maximum together, so on an ordinary width the title gives room to the two full-width bars
-   * rather than pushing them to the edge; on a wide frame all three stop at their maximum.
+   * rather than pushing them to the edge; on a wide frame all three stop at their maximum. The
+   * Workflow maximum (22rem) is also the Now's progress width (`progressBlockMeasure` in
+   * features/tasks), so both screens draw the bars alike.
    */
   specification: {
     header:

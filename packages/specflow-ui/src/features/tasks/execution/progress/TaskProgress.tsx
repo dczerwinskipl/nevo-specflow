@@ -1,8 +1,9 @@
 import type { CSSProperties } from 'react';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Progress, Typography } from '@nevo/ui';
+import { Progress, Typography, cn } from '@nevo/ui';
 import type { TaskProgressData } from '../../../specs/read-model';
+import { progressBlockMeasure } from './measure';
 
 /** Done work fills in the success tone, told apart from the step track's info-toned current step. */
 const doneFill = { '--color-progress-fill': 'var(--color-status-success)' } as CSSProperties;
@@ -15,7 +16,8 @@ const doneFill = { '--color-progress-fill': 'var(--color-status-success)' } as C
  * Both variants: the count with what else matters about its Tasks ("5 ready to start · 1 on hold")
  * on one line, the bar across the full width under it.
  *
- * - `block` (the Now): the count as the region's primary content (`title-sm`);
+ * - `block` (the Now): the count as the region's primary content (`title-sm`), at most
+ *   {@link progressBlockMeasure} wide, as the step track above it;
  * - `compact` (a list row): body text and the compact bar, in the grammar of the row's workflow
  *   (`StepProgress` compact); `label` names the Specification for assistive technology, which does
  *   not see the row.
@@ -72,7 +74,7 @@ export function TaskProgress({
   }
 
   return (
-    <div className="grid min-w-0 gap-2" data-now-tasks-progress="">
+    <div className={cn('grid min-w-0 gap-2', progressBlockMeasure)} data-now-tasks-progress="">
       <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <Typography as="p" variant="title-sm" id={labelId} className="min-w-0">
           {count}

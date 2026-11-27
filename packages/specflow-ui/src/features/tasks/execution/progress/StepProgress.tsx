@@ -1,13 +1,15 @@
 import type { ReactNode } from 'react';
 import { Progress, Typography, cn } from '@nevo/ui';
 import type { StepTrack } from '../presentation';
+import { progressBlockMeasure } from './measure';
 
 /**
  * Where a Specification's workflow stands. Shared by the Specification's Now and the Specifications
  * list; the track carries the accessible name, so the visible count is not read twice.
  *
- * - `block` (the Now): the step's title with its position ("Step 6 of 7") on one line, the DS
- *   segmented position track under it;
+ * - `block` (the Now): the step's title with its position ("Step 6 of 7") on its label line, the DS
+ *   segmented position track across the full width under it, as the list draws it; the block stops
+ *   at {@link progressBlockMeasure};
  * - `compact` (a list row): the same grammar in body text, as the list's Task progress
  *   (`TaskProgress` compact) beside or under it: the title with its position on the track's own
  *   label line, the track across the full width under it, then `detail` ("Attempt 1 · agent working
@@ -83,7 +85,7 @@ export function StepProgress({
   }
 
   return (
-    <div className="grid min-w-0 gap-2" data-step-progress="">
+    <div className={cn('grid min-w-0 gap-2', progressBlockMeasure)} data-step-progress="">
       <div className="flex min-w-0 items-baseline justify-between gap-x-3">
         <Typography
           as="p"
@@ -105,6 +107,7 @@ export function StepProgress({
       </div>
       <Progress
         variant="segmented"
+        width="fill"
         position={track.position}
         total={track.total}
         aria-label={track.ariaLabel}

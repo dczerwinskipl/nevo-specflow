@@ -60,7 +60,10 @@ dashboard configuration). The Overview renders what the reads deliver.
 
 - **Now** — the Specification workflow's position, in this order: the step title; the **step
   track** (the design system's `Progress` position mode): the step's title and its position
-  ("Step 2 of 7", the projection's `outline`) on one line, the track under it; the full position
+  ("Step 2 of 7", the projection's `outline`) on its label line, the track across the full width
+  under it, as the Specifications list draws it; both Now bars and their label lines stop at the
+  list's Workflow column maximum (22rem), so a wide Overview or Task page never stretches them
+  (owner review, 2026-11-27, the same in a Task's Now); the full position
   ("Step 2 of 7 · next: Design the solution") is the count's tooltip. Then one quiet line "In
   progress since 11:18 · started by you" ("Attempt 2 · …" only from a second attempt on, never
   "Attempt 1"); then the step's purpose. The track and the number show the step's position in the

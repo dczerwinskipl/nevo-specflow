@@ -175,6 +175,7 @@ describe.skipIf(!onLinux)('a queue worker killed inside the control lock', () =>
       // A live holder is never overridden, not even on the operator's assertion.
       expect(await takeOverDocumentQueue(project.engine, { confirmExecutorStopped: true })).toEqual(
         {
+          breaker: 'absent',
           lock: { status: 'refused', reason: 'holder-alive' },
           writes: [],
           manualCommits: [],
@@ -188,6 +189,7 @@ describe.skipIf(!onLinux)('a queue worker killed inside the control lock', () =>
       expect(
         await takeOverDocumentQueue(project.engine, { confirmExecutorStopped: false }),
       ).toEqual({
+        breaker: 'absent',
         lock: { status: 'refused', reason: 'assertion-missing' },
         writes: [],
         manualCommits: [],

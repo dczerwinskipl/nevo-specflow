@@ -201,6 +201,7 @@ Close does (`CREATE_CONFLICT`). A Git-disabled project queues nothing, so the fl
 (an owner of another host or platform, a live PID without a comparable start time, unreadable metadata). It needs the explicit assertion
 `confirmExecutorStopped`; without it nothing is touched. It then:
 
+0. removes the breaker of the control lock (`control.lock.breaker`, left by a remover of an abandoned lock that stopped inside its short section and whose owner cannot be judged), reported as `Control lock breaker: removed`;
 1. clears the control lock (`takeOverProjectControlLock`) only when the lock is a regular file and the holder is provably not running on this host: the recorded PID is absent (`kill(pid, 0)`), or it is the PID of this process and the lock was written before this process started (a restarted container) while this process does not hold it, or the metadata is unreadable and the file is at least a minute old.
    - A live PID, a lock this process holds, a lock written by this process after it started (a sibling thread may hold it) and a lock that changed while it was judged are refused, and a refusal ends the command.
    - The record carries no host, so the assertion is also the statement that the Project Home is not shared with another machine; a recycled PID of an unrelated live process needs a person to remove the file;

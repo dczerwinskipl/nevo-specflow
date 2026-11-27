@@ -713,6 +713,7 @@ export function createDocumentsCommand(context: DocumentsCommandContext): Comman
         if (operationId === undefined) {
           const result = await api.takeOver(session.engine);
           emit(options, result, [
+            `Control lock breaker: ${result.breaker}`,
             `Control lock: ${result.lock.status}`,
             ...result.writes.map((item) => `Write ${item.operationId}: ${item.outcome}`),
             ...result.manualCommits.map(

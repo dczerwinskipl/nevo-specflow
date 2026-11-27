@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { channel } from 'node:diagnostics_channel';
-import { link, lstat, mkdir, open, realpath, writeFile } from 'node:fs/promises';
+import { link, lstat, mkdir, open, realpath, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { performance } from 'node:perf_hooks';
@@ -354,9 +354,39 @@ async function clearAbandonedBreaker(
     return;
   }
 
-  const after = await readFileWindowsSafe(path).catch(() => undefined);
-  if (after === before) {
-    await unlinkWindowsSafe(path).catch(() => undefined);
+  // Moved aside atomically: of two removers that judged the same dead breaker, one wins the rename.
+  // A breaker that is not the one judged (a new remover's) is put back.
+  const tomb = `${path}.${randomUUID()}.tomb`;
+  try {
+    await rename(path, tomb);
+  } catch {
+    return;
+  }
+
+  const moved = await readFileWindowsSafe(tomb).catch(() => undefined);
+  if (moved !== before) {
+    await link(tomb, path).catch(() => undefined);
+  }
+
+  await unlinkWindowsSafe(tomb).catch(() => undefined);
+}
+
+/**
+ * The operator's removal of the breaker of the control lock (`documents recover
+ * --confirmed-stopped`): a breaker whose owner cannot be judged (a Windows CLI records no start time)
+ * is never cleared automatically. `true` when one was removed.
+ */
+export async function removeControlLockBreaker(context: ResolvedProjectHome): Promise<boolean> {
+  try {
+    await unlinkWindowsSafe(projectControlLockPath(context) + BREAKER_SUFFIX);
+
+    return true;
+  } catch (error) {
+    if (isNodeError(error, 'ENOENT')) {
+      return false;
+    }
+
+    throw error;
   }
 }
 

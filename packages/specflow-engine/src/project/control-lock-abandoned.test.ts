@@ -4,7 +4,11 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { projectControlLockPath, releaseAbandonedProjectControlLock } from './control-lock';
+import {
+  projectControlLockPath,
+  releaseAbandonedProjectControlLock,
+  removeControlLockBreaker,
+} from './control-lock';
 import type { ResolvedProjectHome } from './home/home';
 import type { ExecutorIdentity, ProcessTable } from '../specs/durable/executor-identity';
 
@@ -164,5 +168,37 @@ describe('release of an abandoned control lock (positive evidence only)', () => 
     expect(await releaseAbandonedProjectControlLock(fakeHome(), { own, table: os({}) })).toEqual({
       status: 'free',
     });
+  });
+
+  it('clears a breaker its stopped remover left, keeps one nothing judges, and the operator removes it', async () => {
+    const home = fakeHome();
+    const breaker = projectControlLockPath(home) + '.breaker';
+    const writeBreaker = (owner: ExecutorIdentity) =>
+      writeFileSync(
+        breaker,
+        JSON.stringify({ version: 1, token: TOKEN, owner, createdAt: CREATED_AT }) + '\n',
+      );
+    writeLock(home, 1184488, holder(1184488, '1'));
+    // A remover killed inside its section: its PID is gone. This attempt clears it; the next releases.
+    writeBreaker(holder(4242, '1'));
+    expect(await releaseAbandonedProjectControlLock(home, { own, table: os({}) })).toEqual({
+      status: 'kept',
+      reason: 'changed',
+    });
+    expect(existsSync(breaker)).toBe(false);
+    expect(await releaseAbandonedProjectControlLock(home, { own, table: os({}) })).toMatchObject({
+      status: 'released',
+    });
+
+    // A breaker of an owner nothing judges (another platform) stays, and so does the lock.
+    writeLock(home, 1184488, holder(1184488, '1'));
+    writeBreaker({ ...holder(4242, '1'), platform: 'linux' });
+    expect(await releaseAbandonedProjectControlLock(home, { own, table: os({}) })).toEqual({
+      status: 'kept',
+      reason: 'changed',
+    });
+    expect(existsSync(breaker)).toBe(true);
+    expect(await removeControlLockBreaker(home)).toBe(true);
+    expect(await removeControlLockBreaker(home)).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
 import type { SpecFlowEngine } from '../../../application';
+import { removeControlLockBreaker } from '../../../project/control-lock';
 import {
   takeOverProjectControlLock,
   type ControlLockTakeoverOptions,
@@ -34,6 +35,8 @@ export interface DocumentQueueTakeoverOptions {
 }
 
 export interface DocumentQueueTakeoverResult {
+  /** The breaker of the control lock a stopped remover left (removed on the assertion). */
+  readonly breaker: 'removed' | 'absent';
   readonly lock: ControlLockTakeoverResult;
   /** Interrupted writes that were rolled forward or refused, in journal order. */
   readonly writes: readonly {
@@ -54,6 +57,8 @@ export interface DocumentQueueTakeoverResult {
  * counterpart: the answer to "a crashed Runtime leaves the document queue busy" where the Engine
  * cannot prove the dead holder by itself (Windows, macOS, containers without procfs).
  *
+ * 0. The breaker of the control lock (a remover of an abandoned lock stopped inside its short section)
+ *    is removed on the assertion.
  * 1. The Project Home control lock is cleared if, and only if, `takeOverProjectControlLock` proves
  *    its conditions (never a live holder, never a lock this process holds). A refusal ends the
  *    command: nothing else is touched, because every later step needs that lock.
@@ -69,12 +74,17 @@ export async function takeOverDocumentQueue(
   engine: SpecFlowEngine,
   options: DocumentQueueTakeoverOptions,
 ): Promise<DocumentQueueTakeoverResult> {
+  // A breaker whose owner the Engine cannot judge stays until here: the assertion covers it too.
+  const breaker =
+    options.confirmExecutorStopped === true && (await removeControlLockBreaker(engine.context))
+      ? ('removed' as const)
+      : ('absent' as const);
   const lock = await takeOverProjectControlLock(engine.context, {
     ...options.lock,
     confirmExecutorStopped: options.confirmExecutorStopped,
   });
   if (lock.status === 'refused') {
-    return { lock, writes: [], manualCommits: [], passes: [] };
+    return { breaker, lock, writes: [], manualCommits: [], passes: [] };
   }
 
   const writes: DocumentQueueTakeoverResult['writes'][number][] = [];
@@ -125,5 +135,5 @@ export async function takeOverDocumentQueue(
     });
   }
 
-  return { lock, writes, manualCommits, passes };
+  return { breaker, lock, writes, manualCommits, passes };
 }

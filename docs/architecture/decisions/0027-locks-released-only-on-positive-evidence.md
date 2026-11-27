@@ -120,8 +120,10 @@ recovery automatically.
   whose Git command may still run. The Runtime logs which one; the Create page shows the reason and
   the command. The other screens get the codes (`CONTROL_LOCK_RECOVERY_REQUIRED`); their wording is
   the UI's.
-- A breaker left by a remover killed inside its compare-and-remove is cleared on the same evidence;
-  two removers clearing the same dead breaker at once is the only residual race (both would then
-  have to be inside a section of a few microseconds).
+- A breaker left by a remover killed inside its compare-and-remove is cleared on the same evidence,
+  by an atomic rename to a unique tomb (one remover wins) and a byte comparison of the tomb; a
+  breaker that turns out not to be the judged one is linked back. A breaker whose owner cannot be
+  judged (a Windows CLI records no start time) stays: `documents recover --confirmed-stopped`
+  removes it on the operator's assertion and reports `Control lock breaker: removed`.
 - A lock file emptied by a kill between its exclusive creation and its metadata write has no owner
   to judge and stays for the operator (the window is a few microseconds).

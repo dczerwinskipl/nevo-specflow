@@ -39,6 +39,18 @@ function EarlyOverviewApp({
  * without items; Tasks, Sessions and Documents always in their place, each with an inline empty
  * state while empty; Now with the step's purpose and its position in the workflow.
  */
+/**
+ * The Now's position: the count on the step's label line ("Step 2 of 7"), the full position with
+ * the next step as its tooltip (specification-overview.md, Now).
+ */
+async function expectNowPosition(canvasElement: HTMLElement, count: string, full: string) {
+  const position = canvasElement.querySelector<HTMLElement>(
+    '[data-workflow-now] [data-step-progress-count]',
+  );
+  await expect(position).toHaveTextContent(count);
+  await expect(position).toHaveAttribute('title', full);
+}
+
 const meta = {
   title: 'SpecFlow/Screens/Specification Overview early states',
   component: EarlyOverviewApp,
@@ -115,7 +127,11 @@ export const WriteSpec: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('button', { name: 'Finish step' })).toBeVisible();
-    await expect(canvas.getByText('Step 2 of 7 · next: Design the solution')).toBeVisible();
+    await expectNowPosition(
+      canvasElement,
+      'Step 2 of 7',
+      'Step 2 of 7 · next: Design the solution',
+    );
     await expect(
       canvas.getByRole('img', { name: 'Step 2 of 7: Write the Specification' }),
     ).toBeVisible();
@@ -218,7 +234,11 @@ export const TasksCreated: Story = {
     // The Tasks section lists the drafts as Task rows instead of its step line.
     await expect(await canvas.findByRole('list', { name: 'Needs approval' })).toBeVisible();
     await expect(canvas.queryByText(/creates the tasks\.$/)).toBeNull();
-    await expect(canvas.getByText('Step 4 of 7 · next: Review the breakdown')).toBeVisible();
+    await expectNowPosition(
+      canvasElement,
+      'Step 4 of 7',
+      'Step 4 of 7 · next: Review the breakdown',
+    );
   },
 };
 
@@ -229,7 +249,9 @@ export const Waiting: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const track = await canvas.findByRole('img', { name: 'Step 6 of 7: Implement' });
-    await expect(track).toHaveClass('h-1');
+    // The Now's track: the default height, across its block as in the Specifications list.
+    await expect(track).toHaveClass('h-progress-track');
+    await expect(track).toHaveAttribute('data-progress-representation', 'position');
     await expect(canvas.queryByRole('button', { name: 'New task' })).toBeNull();
   },
 };
@@ -292,7 +314,11 @@ export const Requirements: Story = {
     await expect(
       await canvas.findByRole('img', { name: 'Step 1 of 7: Gather requirements' }),
     ).toBeVisible();
-    await expect(canvas.getByText('Step 1 of 7 · next: Write the Specification')).toBeVisible();
+    await expectNowPosition(
+      canvasElement,
+      'Step 1 of 7',
+      'Step 1 of 7 · next: Write the Specification',
+    );
     await expect(canvas.getByRole('button', { name: 'Finish step' })).toBeVisible();
     // Now offers no New task before the breakdown (the Tasks section keeps its own quiet one).
     const now = canvasElement.querySelector<HTMLElement>('[data-workflow-now]')!;

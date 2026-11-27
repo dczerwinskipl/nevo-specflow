@@ -430,7 +430,8 @@ describe('the Specification Now block', () => {
 it('keeps Start pending and its refusal across remounts, scoped to its subject, through refresh', async () => {
   const projection = {
     ...breakdown(),
-    position: { kind: 'not-started' },
+    // A real not-started position (with its pin preview), as the contract requires.
+    position: taskWorkflowProjection('first-start').position,
     actions: { start: {} },
   } as WorkflowActionProjection;
   let rejectStart!: (error: Error) => void;

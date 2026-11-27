@@ -184,10 +184,9 @@ export function NowBlock({
   switch (position.kind) {
     case 'not-started':
       current = t('workflowExecution.now.notStarted');
-      // The track's label names the first step.
-      facts = track
-        ? undefined
-        : t('workflowExecution.now.firstStep', { title: position.preview.firstStepTitle });
+      // The first step is named in words, with or without a track: the track's label line says
+      // "7 steps" and keeps the full position for its tooltip only.
+      facts = t('workflowExecution.now.firstStep', { title: position.preview.firstStepTitle });
       break;
     case 'ready':
       current = <StepTitle step={position.next.step} />;
